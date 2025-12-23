@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"project-bulky-be/internal/config"
+	"project-bulky-be/internal/models"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -33,4 +34,35 @@ func InitDB(cfg *config.Config) {
 
 func GetDB() *gorm.DB {
 	return DB
+}
+
+// AutoMigrate - Only use in development!
+// For production, use manual migration via golang-migrate
+func AutoMigrate(env string) {
+	if env == "production" {
+		log.Println("Skipping auto migrate in production. Use manual migration.")
+		return
+	}
+
+	// Enable UUID extension
+	DB.Exec(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`)
+
+	err := DB.AutoMigrate(
+		&models.KategoriProduk{},
+		&models.MerekProduk{},
+		&models.KondisiProduk{},
+		&models.KondisiPaket{},
+		&models.SumberProduk{},
+		&models.Warehouse{},
+		&models.TipeProduk{},
+		&models.DiskonKategori{},
+		&models.BannerTipeProduk{},
+		&models.Produk{},
+		&models.ProdukGambar{},
+		&models.ProdukDokumen{},
+	)
+	if err != nil {
+		log.Fatal("Failed to auto migrate:", err)
+	}
+	log.Println("Database migrated successfully")
 }
