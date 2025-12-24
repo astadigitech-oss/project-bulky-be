@@ -22,3 +22,16 @@ INSERT INTO tipe_produk (nama, slug, deskripsi, urutan) VALUES
 ('Paletbox', 'paletbox', 'Produk dalam kemasan paletbox', 1),
 ('Container', 'container', 'Produk dalam kemasan container', 2),
 ('Truckload', 'truckload', 'Produk dalam kemasan truckload', 3);
+
+
+-- Table & Column Comments
+COMMENT ON TABLE tipe_produk IS 'Menyimpan tipe produk (Paletbox, Container, Truckload)';
+COMMENT ON COLUMN tipe_produk.id IS 'Primary key UUID';
+COMMENT ON COLUMN tipe_produk.nama IS 'Nama tipe produk';
+COMMENT ON COLUMN tipe_produk.slug IS 'URL-friendly identifier';
+COMMENT ON COLUMN tipe_produk.deskripsi IS 'Deskripsi tipe produk';
+COMMENT ON COLUMN tipe_produk.urutan IS 'Urutan tampilan';
+COMMENT ON COLUMN tipe_produk.is_active IS 'Status aktif';
+COMMENT ON COLUMN tipe_produk.created_at IS 'Waktu dibuat';
+COMMENT ON COLUMN tipe_produk.updated_at IS 'Waktu terakhir diupdate';
+COMMENT ON COLUMN tipe_produk.deleted_at IS 'Soft delete timestamp';

@@ -60,6 +60,8 @@ func AutoMigrate(env string) {
 		&models.Produk{},
 		&models.ProdukGambar{},
 		&models.ProdukDokumen{},
+		&models.Admin{},
+		&models.AdminSession{},
 	)
 	if err != nil {
 		log.Fatal("Failed to auto migrate:", err)

@@ -1,0 +1,87 @@
+package controllers
+
+import (
+	"net/http"
+
+	"project-bulky-be/internal/models"
+	"project-bulky-be/internal/services"
+	"project-bulky-be/pkg/utils"
+
+	"github.com/gin-gonic/gin"
+)
+
+type KelurahanController struct {
+	service services.KelurahanService
+}
+
+func NewKelurahanController(service services.KelurahanService) *KelurahanController {
+	return &KelurahanController{service: service}
+}
+
+func (c *KelurahanController) Create(ctx *gin.Context) {
+	var req models.CreateKelurahanRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ValidationErrorResponse(ctx, err)
+		return
+	}
+
+	result, err := c.service.Create(ctx.Request.Context(), &req)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	utils.SuccessResponse(ctx, http.StatusCreated, "Kelurahan berhasil dibuat", result)
+}
+
+func (c *KelurahanController) FindByID(ctx *gin.Context) {
+	id := ctx.Param("id")
+	result, err := c.service.FindByID(ctx.Request.Context(), id)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error())
+		return
+	}
+	utils.SuccessResponse(ctx, http.StatusOK, "Detail kelurahan berhasil diambil", result)
+}
+
+func (c *KelurahanController) FindAll(ctx *gin.Context) {
+	var params models.KelurahanFilterRequest
+	if err := ctx.ShouldBindQuery(&params); err != nil {
+		utils.ValidationErrorResponse(ctx, err)
+		return
+	}
+
+	items, meta, err := c.service.FindAll(ctx.Request.Context(), &params)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	utils.PaginatedResponse(ctx, http.StatusOK, "Data kelurahan berhasil diambil", items, meta)
+}
+
+func (c *KelurahanController) Update(ctx *gin.Context) {
+	id := ctx.Param("id")
+	var req models.UpdateKelurahanRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ValidationErrorResponse(ctx, err)
+		return
+	}
+
+	result, err := c.service.Update(ctx.Request.Context(), id, &req)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	utils.SuccessResponse(ctx, http.StatusOK, "Kelurahan berhasil diupdate", result)
+}
+
+func (c *KelurahanController) Delete(ctx *gin.Context) {
+	id := ctx.Param("id")
+	if err := c.service.Delete(ctx.Request.Context(), id); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error())
+		return
+	}
+	utils.SuccessResponse(ctx, http.StatusOK, "Kelurahan berhasil dihapus", nil)
+}

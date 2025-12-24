@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strings"
 
+	"project-bulky-be/pkg/utils"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -13,17 +15,18 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		if authHeader == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "Authorization header required",
+				"success": false,
+				"message": "Authorization header tidak ditemukan",
 			})
 			c.Abort()
 			return
 		}
 
-		// Check if token starts with "Bearer "
-		parts := strings.SplitN(authHeader, " ", 2)
+		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "Invalid authorization header format",
+				"success": false,
+				"message": "Format authorization tidak valid",
 			})
 			c.Abort()
 			return
@@ -31,15 +34,18 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		token := parts[1]
 
-		// TODO: Validate JWT token here
-		// For now, just check if token exists
-		if token == "" {
+		claims, err := utils.ValidateJWT(token)
+		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "Invalid token",
+				"success": false,
+				"message": "Token tidak valid atau sudah expired",
 			})
 			c.Abort()
 			return
 		}
+
+		c.Set("admin_id", claims.AdminID)
+		c.Set("admin_email", claims.Email)
 
 		c.Next()
 	}

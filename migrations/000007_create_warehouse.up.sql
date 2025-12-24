@@ -19,3 +19,18 @@ CREATE INDEX idx_warehouse_kota ON warehouse(kota);
 CREATE TRIGGER update_warehouse_updated_at
     BEFORE UPDATE ON warehouse
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+
+-- Table & Column Comments
+COMMENT ON TABLE warehouse IS 'Menyimpan data gudang/warehouse asal produk';
+COMMENT ON COLUMN warehouse.id IS 'Primary key UUID';
+COMMENT ON COLUMN warehouse.nama IS 'Nama warehouse';
+COMMENT ON COLUMN warehouse.slug IS 'URL-friendly identifier';
+COMMENT ON COLUMN warehouse.alamat IS 'Alamat lengkap warehouse';
+COMMENT ON COLUMN warehouse.kota IS 'Kota lokasi warehouse';
+COMMENT ON COLUMN warehouse.kode_pos IS 'Kode pos';
+COMMENT ON COLUMN warehouse.telepon IS 'Nomor telepon';
+COMMENT ON COLUMN warehouse.is_active IS 'Status aktif warehouse';
+COMMENT ON COLUMN warehouse.created_at IS 'Waktu dibuat';
+COMMENT ON COLUMN warehouse.updated_at IS 'Waktu terakhir diupdate';
+COMMENT ON COLUMN warehouse.deleted_at IS 'Soft delete timestamp';

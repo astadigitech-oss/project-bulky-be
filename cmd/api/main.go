@@ -10,28 +10,23 @@ import (
 	"project-bulky-be/internal/routes"
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/database"
+	"project-bulky-be/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
 
 func main() {
-	// Load environment variables
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found")
 	}
 
-	// Load configuration
 	cfg := config.LoadConfig()
+	utils.SetJWTSecret(cfg.JWTSecret)
 
-	// Initialize database
 	database.InitDB(cfg)
 	db := database.GetDB()
 
-	// Auto migrate models (only in development)
-	database.AutoMigrate(cfg.AppEnv)
-
-	// Set Gin mode
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -49,6 +44,14 @@ func main() {
 	produkRepo := repositories.NewProdukRepository(db)
 	produkGambarRepo := repositories.NewProdukGambarRepository(db)
 	produkDokumenRepo := repositories.NewProdukDokumenRepository(db)
+	adminRepo := repositories.NewAdminRepository(db)
+	adminSessionRepo := repositories.NewAdminSessionRepository(db)
+	buyerRepo := repositories.NewBuyerRepository(db)
+	alamatBuyerRepo := repositories.NewAlamatBuyerRepository(db)
+	provinsiRepo := repositories.NewProvinsiRepository(db)
+	kotaRepo := repositories.NewKotaRepository(db)
+	kecamatanRepo := repositories.NewKecamatanRepository(db)
+	kelurahanRepo := repositories.NewKelurahanRepository(db)
 
 	// Initialize services
 	kategoriService := services.NewKategoriProdukService(kategoriRepo)
@@ -63,9 +66,15 @@ func main() {
 	produkGambarService := services.NewProdukGambarService(produkGambarRepo)
 	produkDokumenService := services.NewProdukDokumenService(produkDokumenRepo)
 	produkService := services.NewProdukService(produkRepo, produkGambarRepo)
-	masterService := services.NewMasterService(
-		kategoriRepo, merekRepo, kondisiRepo, kondisiPaketRepo, sumberRepo,
-	)
+	authService := services.NewAuthService(adminRepo, adminSessionRepo)
+	adminService := services.NewAdminService(adminRepo, adminSessionRepo)
+	masterService := services.NewMasterService(kategoriRepo, merekRepo, kondisiRepo, kondisiPaketRepo, sumberRepo)
+	buyerService := services.NewBuyerService(buyerRepo, alamatBuyerRepo)
+	alamatBuyerService := services.NewAlamatBuyerService(alamatBuyerRepo, buyerRepo, kelurahanRepo)
+	provinsiService := services.NewProvinsiService(provinsiRepo)
+	kotaService := services.NewKotaService(kotaRepo, provinsiRepo)
+	kecamatanService := services.NewKecamatanService(kecamatanRepo, kotaRepo)
+	kelurahanService := services.NewKelurahanService(kelurahanRepo, kecamatanRepo)
 
 	// Initialize controllers
 	kategoriController := controllers.NewKategoriProdukController(kategoriService)
@@ -78,28 +87,28 @@ func main() {
 	diskonKategoriController := controllers.NewDiskonKategoriController(diskonKategoriService)
 	bannerTipeProdukController := controllers.NewBannerTipeProdukController(bannerTipeProdukService)
 	produkController := controllers.NewProdukController(produkService, produkGambarService, produkDokumenService)
+	authController := controllers.NewAuthController(authService)
+	adminController := controllers.NewAdminController(adminService)
 	masterController := controllers.NewMasterController(masterService)
+	buyerController := controllers.NewBuyerController(buyerService)
+	alamatBuyerController := controllers.NewAlamatBuyerController(alamatBuyerService)
+	provinsiController := controllers.NewProvinsiController(provinsiService)
+	kotaController := controllers.NewKotaController(kotaService)
+	kecamatanController := controllers.NewKecamatanController(kecamatanService)
+	kelurahanController := controllers.NewKelurahanController(kelurahanService)
+	wilayahController := controllers.NewWilayahController(provinsiService, kotaService, kecamatanService, kelurahanService)
 
-	// Initialize router
 	router := gin.Default()
 
-	// Setup routes
 	routes.SetupRoutes(
 		router,
-		kategoriController,
-		merekController,
-		kondisiController,
-		kondisiPaketController,
-		sumberController,
-		warehouseController,
-		tipeProdukController,
-		diskonKategoriController,
-		bannerTipeProdukController,
-		produkController,
-		masterController,
+		kategoriController, merekController, kondisiController, kondisiPaketController, sumberController,
+		warehouseController, tipeProdukController, diskonKategoriController, bannerTipeProdukController,
+		produkController, authController, adminController, masterController,
+		buyerController, alamatBuyerController,
+		provinsiController, kotaController, kecamatanController, kelurahanController, wilayahController,
 	)
 
-	// Start server
 	port := os.Getenv("APP_PORT")
 	if port == "" {
 		port = "8080"

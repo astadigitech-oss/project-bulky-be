@@ -28,3 +28,13 @@ CREATE TRIGGER trigger_single_primary_image
     FOR EACH ROW
     WHEN (NEW.is_primary = true)
     EXECUTE FUNCTION ensure_single_primary_image();
+
+
+-- Table & Column Comments
+COMMENT ON TABLE produk_gambar IS 'Menyimpan multiple gambar per produk';
+COMMENT ON COLUMN produk_gambar.id IS 'Primary key UUID';
+COMMENT ON COLUMN produk_gambar.produk_id IS 'FK ke produk';
+COMMENT ON COLUMN produk_gambar.gambar_url IS 'URL gambar';
+COMMENT ON COLUMN produk_gambar.urutan IS 'Urutan tampilan gambar';
+COMMENT ON COLUMN produk_gambar.is_primary IS 'Gambar utama (hanya 1 per produk)';
+COMMENT ON COLUMN produk_gambar.created_at IS 'Waktu dibuat';

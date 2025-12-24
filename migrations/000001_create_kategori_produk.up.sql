@@ -21,3 +21,19 @@ CREATE TABLE kategori_produk (
 CREATE INDEX idx_kategori_produk_slug ON kategori_produk(slug);
 CREATE INDEX idx_kategori_produk_is_active ON kategori_produk(is_active) WHERE deleted_at IS NULL;
 CREATE INDEX idx_kategori_produk_deleted_at ON kategori_produk(deleted_at);
+
+-- Table & Column Comments
+COMMENT ON TABLE kategori_produk IS 'Menyimpan data kategori produk dengan fitur kondisi tambahan (gambar/teks)';
+COMMENT ON COLUMN kategori_produk.id IS 'Primary key UUID';
+COMMENT ON COLUMN kategori_produk.nama IS 'Nama kategori';
+COMMENT ON COLUMN kategori_produk.slug IS 'URL-friendly identifier';
+COMMENT ON COLUMN kategori_produk.deskripsi IS 'Deskripsi kategori';
+COMMENT ON COLUMN kategori_produk.icon_url IS 'URL icon kategori';
+COMMENT ON COLUMN kategori_produk.memiliki_kondisi_tambahan IS 'Flag apakah kategori memiliki kondisi tambahan';
+COMMENT ON COLUMN kategori_produk.tipe_kondisi_tambahan IS 'Tipe kondisi tambahan (gambar/teks)';
+COMMENT ON COLUMN kategori_produk.gambar_kondisi_url IS 'URL gambar kondisi tambahan';
+COMMENT ON COLUMN kategori_produk.teks_kondisi IS 'Teks kondisi tambahan';
+COMMENT ON COLUMN kategori_produk.is_active IS 'Status aktif';
+COMMENT ON COLUMN kategori_produk.created_at IS 'Waktu dibuat';
+COMMENT ON COLUMN kategori_produk.updated_at IS 'Waktu terakhir diupdate';
+COMMENT ON COLUMN kategori_produk.deleted_at IS 'Soft delete timestamp';

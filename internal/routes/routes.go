@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"project-bulky-be/internal/controllers"
+	"project-bulky-be/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,19 +21,133 @@ func SetupRoutes(
 	diskonKategoriController *controllers.DiskonKategoriController,
 	bannerTipeProdukController *controllers.BannerTipeProdukController,
 	produkController *controllers.ProdukController,
+	authController *controllers.AuthController,
+	adminController *controllers.AdminController,
 	masterController *controllers.MasterController,
+	buyerController *controllers.BuyerController,
+	alamatBuyerController *controllers.AlamatBuyerController,
+	provinsiController *controllers.ProvinsiController,
+	kotaController *controllers.KotaController,
+	kecamatanController *controllers.KecamatanController,
+	kelurahanController *controllers.KelurahanController,
+	wilayahController *controllers.WilayahController,
 ) {
 	// Health check
 	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status":  "OK",
-			"message": "Server is running",
-		})
+		c.JSON(200, gin.H{"status": "OK", "message": "Server is running"})
 	})
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 	{
+		// Public Auth Routes
+		auth := v1.Group("/auth")
+		{
+			auth.POST("/login", authController.Login)
+			auth.POST("/refresh", authController.RefreshToken)
+		}
+
+		// Protected Auth Routes
+		authProtected := v1.Group("/auth")
+		authProtected.Use(middleware.AuthMiddleware())
+		{
+			authProtected.POST("/logout", authController.Logout)
+			authProtected.GET("/me", authController.Me)
+			authProtected.PUT("/profile", authController.UpdateProfile)
+			authProtected.PUT("/change-password", authController.ChangePassword)
+		}
+
+		// Admin Management Routes (Protected)
+		admin := v1.Group("/admin")
+		admin.Use(middleware.AuthMiddleware())
+		{
+			admin.GET("", adminController.FindAll)
+			admin.GET("/:id", adminController.FindByID)
+			admin.POST("", adminController.Create)
+			admin.PUT("/:id", adminController.Update)
+			admin.DELETE("/:id", adminController.Delete)
+			admin.PATCH("/:id/toggle-status", adminController.ToggleStatus)
+			admin.PUT("/:id/reset-password", adminController.ResetPassword)
+		}
+
+		// Buyer Management Routes (Protected - RUD only)
+		buyer := v1.Group("/buyer")
+		buyer.Use(middleware.AuthMiddleware())
+		{
+			buyer.GET("", buyerController.FindAll)
+			buyer.GET("/statistik", buyerController.GetStatistik)
+			buyer.GET("/:id", buyerController.FindByID)
+			buyer.PUT("/:id", buyerController.Update)
+			buyer.DELETE("/:id", buyerController.Delete)
+			buyer.PATCH("/:id/toggle-status", buyerController.ToggleStatus)
+			buyer.PUT("/:id/reset-password", buyerController.ResetPassword)
+		}
+
+		// Alamat Buyer Routes (Protected)
+		alamatBuyer := v1.Group("/alamat-buyer")
+		alamatBuyer.Use(middleware.AuthMiddleware())
+		{
+			alamatBuyer.GET("", alamatBuyerController.FindAll)
+			alamatBuyer.GET("/:id", alamatBuyerController.FindByID)
+			alamatBuyer.POST("", alamatBuyerController.Create)
+			alamatBuyer.PUT("/:id", alamatBuyerController.Update)
+			alamatBuyer.DELETE("/:id", alamatBuyerController.Delete)
+			alamatBuyer.PATCH("/:id/set-default", alamatBuyerController.SetDefault)
+		}
+
+		// Wilayah Dropdown Routes (Public - no auth)
+		wilayah := v1.Group("/wilayah")
+		{
+			wilayah.GET("/provinsi", wilayahController.DropdownProvinsi)
+			wilayah.GET("/kota", wilayahController.DropdownKota)
+			wilayah.GET("/kecamatan", wilayahController.DropdownKecamatan)
+			wilayah.GET("/kelurahan", wilayahController.DropdownKelurahan)
+		}
+
+		// Provinsi CRUD Routes (Protected)
+		provinsi := v1.Group("/provinsi")
+		provinsi.Use(middleware.AuthMiddleware())
+		{
+			provinsi.GET("", provinsiController.FindAll)
+			provinsi.GET("/:id", provinsiController.FindByID)
+			provinsi.POST("", provinsiController.Create)
+			provinsi.PUT("/:id", provinsiController.Update)
+			provinsi.DELETE("/:id", provinsiController.Delete)
+		}
+
+		// Kota CRUD Routes (Protected)
+		kota := v1.Group("/kota")
+		kota.Use(middleware.AuthMiddleware())
+		{
+			kota.GET("", kotaController.FindAll)
+			kota.GET("/:id", kotaController.FindByID)
+			kota.POST("", kotaController.Create)
+			kota.PUT("/:id", kotaController.Update)
+			kota.DELETE("/:id", kotaController.Delete)
+		}
+
+		// Kecamatan CRUD Routes (Protected)
+		kecamatan := v1.Group("/kecamatan")
+		kecamatan.Use(middleware.AuthMiddleware())
+		{
+			kecamatan.GET("", kecamatanController.FindAll)
+			kecamatan.GET("/:id", kecamatanController.FindByID)
+			kecamatan.POST("", kecamatanController.Create)
+			kecamatan.PUT("/:id", kecamatanController.Update)
+			kecamatan.DELETE("/:id", kecamatanController.Delete)
+		}
+
+		// Kelurahan CRUD Routes (Protected)
+		kelurahan := v1.Group("/kelurahan")
+		kelurahan.Use(middleware.AuthMiddleware())
+		{
+			kelurahan.GET("", kelurahanController.FindAll)
+			kelurahan.GET("/:id", kelurahanController.FindByID)
+			kelurahan.POST("", kelurahanController.Create)
+			kelurahan.PUT("/:id", kelurahanController.Update)
+			kelurahan.DELETE("/:id", kelurahanController.Delete)
+		}
+
 		// Kategori Produk
 		kategori := v1.Group("/kategori-produk")
 		{
@@ -155,16 +270,12 @@ func SetupRoutes(
 			produk.DELETE("/:id", produkController.Delete)
 			produk.PATCH("/:id/toggle-status", produkController.ToggleStatus)
 			produk.PATCH("/:id/update-stock", produkController.UpdateStock)
-
-			// Produk Gambar
 			produk.POST("/:id/gambar", produkController.AddGambar)
-			produk.PUT("/:id/gambar/:id", produkController.UpdateGambar)
-			produk.DELETE("/:id/gambar/:id", produkController.DeleteGambar)
+			produk.PUT("/:id/gambar/:gambar_id", produkController.UpdateGambar)
+			produk.DELETE("/:id/gambar/:gambar_id", produkController.DeleteGambar)
 			produk.PUT("/:id/gambar/reorder", produkController.ReorderGambar)
-
-			// Produk Dokumen
 			produk.POST("/:id/dokumen", produkController.AddDokumen)
-			produk.DELETE("/:id/dokumen/:id", produkController.DeleteDokumen)
+			produk.DELETE("/:id/dokumen/:dokumen_id", produkController.DeleteDokumen)
 		}
 
 		// Master (Dropdown)
@@ -178,10 +289,7 @@ func SetupRoutes(
 	router.GET("/routes", func(c *gin.Context) {
 		var endpointList []gin.H
 		for _, route := range router.Routes() {
-			endpointList = append(endpointList, gin.H{
-				"method": route.Method,
-				"path":   route.Path,
-			})
+			endpointList = append(endpointList, gin.H{"method": route.Method, "path": route.Path})
 		}
 		c.JSON(http.StatusOK, endpointList)
 	})

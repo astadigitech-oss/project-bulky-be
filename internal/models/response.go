@@ -305,3 +305,246 @@ type ProdukDetailResponse struct {
 	CreatedAt            time.Time               `json:"created_at"`
 	UpdatedAt            time.Time               `json:"updated_at"`
 }
+
+
+// ========================================
+// Auth Response
+// ========================================
+
+type LoginResponse struct {
+	AccessToken  string        `json:"access_token"`
+	RefreshToken string        `json:"refresh_token"`
+	TokenType    string        `json:"token_type"`
+	ExpiresIn    int64         `json:"expires_in"`
+	Admin        AdminResponse `json:"admin"`
+}
+
+type RefreshTokenResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   int64  `json:"expires_in"`
+}
+
+// ========================================
+// Admin Response
+// ========================================
+
+type AdminResponse struct {
+	ID          string     `json:"id"`
+	Nama        string     `json:"nama"`
+	Email       string     `json:"email"`
+	IsActive    bool       `json:"is_active"`
+	LastLoginAt *time.Time `json:"last_login_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
+type AdminListResponse struct {
+	ID          string     `json:"id"`
+	Nama        string     `json:"nama"`
+	Email       string     `json:"email"`
+	IsActive    bool       `json:"is_active"`
+	LastLoginAt *time.Time `json:"last_login_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+}
+
+type AdminSessionResponse struct {
+	ID        string    `json:"id"`
+	IPAddress *string   `json:"ip_address"`
+	UserAgent *string   `json:"user_agent"`
+	ExpiresAt time.Time `json:"expires_at"`
+	CreatedAt time.Time `json:"created_at"`
+	IsCurrent bool      `json:"is_current"`
+}
+
+
+// ========================================
+// Buyer Response
+// ========================================
+
+type BuyerListResponse struct {
+	ID           string     `json:"id"`
+	Nama         string     `json:"nama"`
+	Username     string     `json:"username"`
+	Email        string     `json:"email"`
+	Telepon      *string    `json:"telepon"`
+	IsActive     bool       `json:"is_active"`
+	IsVerified   bool       `json:"is_verified"`
+	JumlahAlamat int        `json:"jumlah_alamat"`
+	LastLoginAt  *time.Time `json:"last_login_at"`
+	CreatedAt    time.Time  `json:"created_at"`
+}
+
+type BuyerDetailResponse struct {
+	ID              string                `json:"id"`
+	Nama            string                `json:"nama"`
+	Username        string                `json:"username"`
+	Email           string                `json:"email"`
+	Telepon         *string               `json:"telepon"`
+	IsActive        bool                  `json:"is_active"`
+	IsVerified      bool                  `json:"is_verified"`
+	EmailVerifiedAt *time.Time            `json:"email_verified_at"`
+	LastLoginAt     *time.Time            `json:"last_login_at"`
+	Alamat          []AlamatBuyerResponse `json:"alamat"`
+	CreatedAt       time.Time             `json:"created_at"`
+	UpdatedAt       time.Time             `json:"updated_at"`
+}
+
+type BuyerStatistikResponse struct {
+	TotalBuyer          int64 `json:"total_buyer"`
+	BuyerAktif          int64 `json:"buyer_aktif"`
+	BuyerNonaktif       int64 `json:"buyer_nonaktif"`
+	BuyerVerified       int64 `json:"buyer_verified"`
+	BuyerUnverified     int64 `json:"buyer_unverified"`
+	RegistrasiHariIni   int64 `json:"registrasi_hari_ini"`
+	RegistrasiMingguIni int64 `json:"registrasi_minggu_ini"`
+	RegistrasiBulanIni  int64 `json:"registrasi_bulan_ini"`
+}
+
+// ========================================
+// Alamat Buyer Response
+// ========================================
+
+type AlamatBuyerResponse struct {
+	ID              string          `json:"id"`
+	BuyerID         string          `json:"buyer_id"`
+	Label           string          `json:"label"`
+	NamaPenerima    string          `json:"nama_penerima"`
+	TeleponPenerima string          `json:"telepon_penerima"`
+	Wilayah         WilayahResponse `json:"wilayah"`
+	KodePos         string          `json:"kode_pos"`
+	AlamatLengkap   string          `json:"alamat_lengkap"`
+	AlamatFormatted string          `json:"alamat_formatted"`
+	Catatan         *string         `json:"catatan"`
+	IsDefault       bool            `json:"is_default"`
+	CreatedAt       time.Time       `json:"created_at"`
+	UpdatedAt       time.Time       `json:"updated_at"`
+}
+
+type WilayahResponse struct {
+	Kelurahan WilayahItemResponse `json:"kelurahan"`
+	Kecamatan WilayahItemResponse `json:"kecamatan"`
+	Kota      WilayahItemResponse `json:"kota"`
+	Provinsi  WilayahItemResponse `json:"provinsi"`
+}
+
+type WilayahItemResponse struct {
+	ID   string `json:"id"`
+	Nama string `json:"nama"`
+	Kode string `json:"kode"`
+}
+
+// ========================================
+// Provinsi Response
+// ========================================
+
+type ProvinsiListResponse struct {
+	ID         string `json:"id"`
+	Nama       string `json:"nama"`
+	Kode       string `json:"kode"`
+	JumlahKota int    `json:"jumlah_kota"`
+}
+
+type ProvinsiDetailResponse struct {
+	ID        string    `json:"id"`
+	Nama      string    `json:"nama"`
+	Kode      string    `json:"kode"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// ========================================
+// Kota Response
+// ========================================
+
+type KotaListResponse struct {
+	ID              string         `json:"id"`
+	Nama            string         `json:"nama"`
+	Kode            string         `json:"kode"`
+	Provinsi        ProvinsiSimple `json:"provinsi"`
+	JumlahKecamatan int            `json:"jumlah_kecamatan"`
+}
+
+type KotaDetailResponse struct {
+	ID        string         `json:"id"`
+	Nama      string         `json:"nama"`
+	Kode      string         `json:"kode"`
+	Provinsi  ProvinsiSimple `json:"provinsi"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+}
+
+// ========================================
+// Kecamatan Response
+// ========================================
+
+type KecamatanListResponse struct {
+	ID              string     `json:"id"`
+	Nama            string     `json:"nama"`
+	Kode            string     `json:"kode"`
+	Kota            KotaSimple `json:"kota"`
+	JumlahKelurahan int        `json:"jumlah_kelurahan"`
+}
+
+type KecamatanDetailResponse struct {
+	ID        string     `json:"id"`
+	Nama      string     `json:"nama"`
+	Kode      string     `json:"kode"`
+	Kota      KotaSimple `json:"kota"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+}
+
+// ========================================
+// Kelurahan Response
+// ========================================
+
+type KelurahanListResponse struct {
+	ID        string          `json:"id"`
+	Nama      string          `json:"nama"`
+	Kode      string          `json:"kode"`
+	Kecamatan KecamatanSimple `json:"kecamatan"`
+}
+
+type KelurahanDetailResponse struct {
+	ID        string          `json:"id"`
+	Nama      string          `json:"nama"`
+	Kode      string          `json:"kode"`
+	Kecamatan KecamatanSimple `json:"kecamatan"`
+	CreatedAt time.Time       `json:"created_at"`
+	UpdatedAt time.Time       `json:"updated_at"`
+}
+
+// ========================================
+// Simple Response (for nested)
+// ========================================
+
+type ProvinsiSimple struct {
+	ID   string `json:"id"`
+	Nama string `json:"nama"`
+	Kode string `json:"kode"`
+}
+
+type KotaSimple struct {
+	ID       string         `json:"id"`
+	Nama     string         `json:"nama"`
+	Kode     string         `json:"kode"`
+	Provinsi ProvinsiSimple `json:"provinsi"`
+}
+
+type KecamatanSimple struct {
+	ID   string     `json:"id"`
+	Nama string     `json:"nama"`
+	Kode string     `json:"kode"`
+	Kota KotaSimple `json:"kota"`
+}
+
+// ========================================
+// Wilayah Dropdown Response
+// ========================================
+
+type WilayahDropdownItem struct {
+	ID   string `json:"id"`
+	Nama string `json:"nama"`
+	Kode string `json:"kode"`
+}

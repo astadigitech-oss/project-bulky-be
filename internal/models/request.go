@@ -302,3 +302,182 @@ type CreateProdukDokumenRequest struct {
 	TipeFile    string `json:"tipe_file" binding:"required,max=50"`
 	UkuranFile  *int   `json:"ukuran_file"`
 }
+
+
+// ========================================
+// Auth Request
+// ========================================
+
+type LoginRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=6"`
+}
+
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+type ChangePasswordRequest struct {
+	OldPassword     string `json:"old_password" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required,min=6"`
+	ConfirmPassword string `json:"confirm_password" binding:"required,eqfield=NewPassword"`
+}
+
+// ========================================
+// Admin CRUD Request
+// ========================================
+
+type CreateAdminRequest struct {
+	Nama            string `json:"nama" binding:"required,min=2,max=100"`
+	Email           string `json:"email" binding:"required,email,max=255"`
+	Password        string `json:"password" binding:"required,min=6"`
+	ConfirmPassword string `json:"confirm_password" binding:"required,eqfield=Password"`
+}
+
+type UpdateAdminRequest struct {
+	Nama     *string `json:"nama" binding:"omitempty,min=2,max=100"`
+	Email    *string `json:"email" binding:"omitempty,email,max=255"`
+	IsActive *bool   `json:"is_active"`
+}
+
+type UpdateProfileRequest struct {
+	Nama  *string `json:"nama" binding:"omitempty,min=2,max=100"`
+	Email *string `json:"email" binding:"omitempty,email,max=255"`
+}
+
+type ResetPasswordRequest struct {
+	NewPassword     string `json:"new_password" binding:"required,min=6"`
+	ConfirmPassword string `json:"confirm_password" binding:"required,eqfield=NewPassword"`
+}
+
+
+// ========================================
+// Buyer Request (Admin: RUD only, no Create)
+// ========================================
+
+type UpdateBuyerRequest struct {
+	Nama     *string `json:"nama" binding:"omitempty,min=2,max=100"`
+	Username *string `json:"username" binding:"omitempty,min=3,max=50"`
+	Email    *string `json:"email" binding:"omitempty,email,max=255"`
+	Telepon  *string `json:"telepon" binding:"omitempty,max=20"`
+	IsActive *bool   `json:"is_active"`
+}
+
+type ResetBuyerPasswordRequest struct {
+	NewPassword     string `json:"new_password" binding:"required,min=6"`
+	ConfirmPassword string `json:"confirm_password" binding:"required,eqfield=NewPassword"`
+}
+
+type BuyerFilterRequest struct {
+	PaginationRequest
+	IsVerified *bool `form:"is_verified"`
+}
+
+// ========================================
+// Alamat Buyer Request
+// ========================================
+
+type CreateAlamatBuyerRequest struct {
+	BuyerID         string  `json:"buyer_id" binding:"required,uuid"`
+	KelurahanID     string  `json:"kelurahan_id" binding:"required,uuid"`
+	Label           string  `json:"label" binding:"required,min=1,max=50"`
+	NamaPenerima    string  `json:"nama_penerima" binding:"required,min=2,max=100"`
+	TeleponPenerima string  `json:"telepon_penerima" binding:"required,max=20"`
+	KodePos         string  `json:"kode_pos" binding:"required,max=10"`
+	AlamatLengkap   string  `json:"alamat_lengkap" binding:"required,max=500"`
+	Catatan         *string `json:"catatan" binding:"omitempty,max=500"`
+	IsDefault       bool    `json:"is_default"`
+}
+
+type UpdateAlamatBuyerRequest struct {
+	KelurahanID     *string `json:"kelurahan_id" binding:"omitempty,uuid"`
+	Label           *string `json:"label" binding:"omitempty,min=1,max=50"`
+	NamaPenerima    *string `json:"nama_penerima" binding:"omitempty,min=2,max=100"`
+	TeleponPenerima *string `json:"telepon_penerima" binding:"omitempty,max=20"`
+	KodePos         *string `json:"kode_pos" binding:"omitempty,max=10"`
+	AlamatLengkap   *string `json:"alamat_lengkap" binding:"omitempty,max=500"`
+	Catatan         *string `json:"catatan" binding:"omitempty,max=500"`
+	IsDefault       *bool   `json:"is_default"`
+}
+
+type AlamatBuyerFilterRequest struct {
+	PaginationRequest
+	BuyerID string `form:"buyer_id" binding:"required,uuid"`
+}
+
+// ========================================
+// Provinsi Request
+// ========================================
+
+type CreateProvinsiRequest struct {
+	Nama string  `json:"nama" binding:"required,min=2,max=100"`
+	Kode *string `json:"kode" binding:"omitempty,max=10"`
+}
+
+type UpdateProvinsiRequest struct {
+	Nama *string `json:"nama" binding:"omitempty,min=2,max=100"`
+	Kode *string `json:"kode" binding:"omitempty,max=10"`
+}
+
+// ========================================
+// Kota Request
+// ========================================
+
+type CreateKotaRequest struct {
+	ProvinsiID string  `json:"provinsi_id" binding:"required,uuid"`
+	Nama       string  `json:"nama" binding:"required,min=2,max=100"`
+	Kode       *string `json:"kode" binding:"omitempty,max=10"`
+}
+
+type UpdateKotaRequest struct {
+	ProvinsiID *string `json:"provinsi_id" binding:"omitempty,uuid"`
+	Nama       *string `json:"nama" binding:"omitempty,min=2,max=100"`
+	Kode       *string `json:"kode" binding:"omitempty,max=10"`
+}
+
+type KotaFilterRequest struct {
+	PaginationRequest
+	ProvinsiID string `form:"provinsi_id" binding:"required,uuid"`
+}
+
+// ========================================
+// Kecamatan Request
+// ========================================
+
+type CreateKecamatanRequest struct {
+	KotaID string  `json:"kota_id" binding:"required,uuid"`
+	Nama   string  `json:"nama" binding:"required,min=2,max=100"`
+	Kode   *string `json:"kode" binding:"omitempty,max=10"`
+}
+
+type UpdateKecamatanRequest struct {
+	KotaID *string `json:"kota_id" binding:"omitempty,uuid"`
+	Nama   *string `json:"nama" binding:"omitempty,min=2,max=100"`
+	Kode   *string `json:"kode" binding:"omitempty,max=10"`
+}
+
+type KecamatanFilterRequest struct {
+	PaginationRequest
+	KotaID string `form:"kota_id" binding:"required,uuid"`
+}
+
+// ========================================
+// Kelurahan Request
+// ========================================
+
+type CreateKelurahanRequest struct {
+	KecamatanID string  `json:"kecamatan_id" binding:"required,uuid"`
+	Nama        string  `json:"nama" binding:"required,min=2,max=100"`
+	Kode        *string `json:"kode" binding:"omitempty,max=15"`
+}
+
+type UpdateKelurahanRequest struct {
+	KecamatanID *string `json:"kecamatan_id" binding:"omitempty,uuid"`
+	Nama        *string `json:"nama" binding:"omitempty,min=2,max=100"`
+	Kode        *string `json:"kode" binding:"omitempty,max=15"`
+}
+
+type KelurahanFilterRequest struct {
+	PaginationRequest
+	KecamatanID string `form:"kecamatan_id" binding:"required,uuid"`
+}

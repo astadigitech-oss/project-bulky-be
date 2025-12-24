@@ -48,3 +48,28 @@ CREATE INDEX idx_produk_warehouse_active ON produk(warehouse_id, is_active) WHER
 CREATE TRIGGER update_produk_updated_at
     BEFORE UPDATE ON produk
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+
+-- Table & Column Comments
+COMMENT ON TABLE produk IS 'Tabel utama produk dengan relasi ke semua master data';
+COMMENT ON COLUMN produk.id IS 'Primary key UUID';
+COMMENT ON COLUMN produk.nama IS 'Nama produk';
+COMMENT ON COLUMN produk.slug IS 'URL-friendly identifier';
+COMMENT ON COLUMN produk.id_cargo IS 'ID Cargo unik (opsional)';
+COMMENT ON COLUMN produk.kategori_id IS 'FK ke kategori_produk';
+COMMENT ON COLUMN produk.merek_id IS 'FK ke merek_produk (opsional)';
+COMMENT ON COLUMN produk.kondisi_id IS 'FK ke kondisi_produk';
+COMMENT ON COLUMN produk.kondisi_paket_id IS 'FK ke kondisi_paket';
+COMMENT ON COLUMN produk.sumber_id IS 'FK ke sumber_produk (opsional)';
+COMMENT ON COLUMN produk.warehouse_id IS 'FK ke warehouse';
+COMMENT ON COLUMN produk.tipe_produk_id IS 'FK ke tipe_produk';
+COMMENT ON COLUMN produk.harga_sebelum_diskon IS 'Harga asli sebelum diskon';
+COMMENT ON COLUMN produk.persentase_diskon IS 'Persentase diskon (0-100)';
+COMMENT ON COLUMN produk.harga_sesudah_diskon IS 'Harga setelah diskon';
+COMMENT ON COLUMN produk.quantity IS 'Stok tersedia';
+COMMENT ON COLUMN produk.quantity_terjual IS 'Jumlah terjual';
+COMMENT ON COLUMN produk.discrepancy IS 'Catatan discrepancy/kekurangan produk';
+COMMENT ON COLUMN produk.is_active IS 'Status aktif/tampil';
+COMMENT ON COLUMN produk.created_at IS 'Waktu dibuat';
+COMMENT ON COLUMN produk.updated_at IS 'Waktu terakhir diupdate';
+COMMENT ON COLUMN produk.deleted_at IS 'Soft delete timestamp';

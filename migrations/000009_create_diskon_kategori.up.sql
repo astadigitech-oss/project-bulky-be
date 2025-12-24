@@ -20,3 +20,17 @@ CREATE INDEX idx_diskon_kategori_is_active ON diskon_kategori(is_active) WHERE d
 CREATE TRIGGER update_diskon_kategori_updated_at
     BEFORE UPDATE ON diskon_kategori
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+
+-- Table & Column Comments
+COMMENT ON TABLE diskon_kategori IS 'Menyimpan diskon otomatis per kategori produk';
+COMMENT ON COLUMN diskon_kategori.id IS 'Primary key UUID';
+COMMENT ON COLUMN diskon_kategori.kategori_id IS 'FK ke kategori_produk';
+COMMENT ON COLUMN diskon_kategori.persentase_diskon IS 'Persentase diskon (0-100)';
+COMMENT ON COLUMN diskon_kategori.nominal_diskon IS 'Nominal diskon fixed (opsional)';
+COMMENT ON COLUMN diskon_kategori.tanggal_mulai IS 'Tanggal mulai berlaku';
+COMMENT ON COLUMN diskon_kategori.tanggal_selesai IS 'Tanggal selesai berlaku';
+COMMENT ON COLUMN diskon_kategori.is_active IS 'Status aktif';
+COMMENT ON COLUMN diskon_kategori.created_at IS 'Waktu dibuat';
+COMMENT ON COLUMN diskon_kategori.updated_at IS 'Waktu terakhir diupdate';
+COMMENT ON COLUMN diskon_kategori.deleted_at IS 'Soft delete timestamp';
