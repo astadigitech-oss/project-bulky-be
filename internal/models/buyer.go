@@ -29,3 +29,18 @@ type Buyer struct {
 func (Buyer) TableName() string {
 	return "buyer"
 }
+
+// Response DTO
+type BuyerResponse struct {
+	ID              string     `json:"id"`
+	Nama            string     `json:"nama"`
+	Username        string     `json:"username"`
+	Email           string     `json:"email"`
+	Telepon         *string    `json:"telepon"`
+	IsActive        bool       `json:"is_active"`
+	IsVerified      bool       `json:"is_verified"`
+	EmailVerifiedAt *time.Time `json:"email_verified_at"`
+	LastLoginAt     *time.Time `json:"last_login_at"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
+}
