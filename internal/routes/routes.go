@@ -26,11 +26,8 @@ func SetupRoutes(
 	masterController *controllers.MasterController,
 	buyerController *controllers.BuyerController,
 	alamatBuyerController *controllers.AlamatBuyerController,
-	provinsiController *controllers.ProvinsiController,
-	kotaController *controllers.KotaController,
-	kecamatanController *controllers.KecamatanController,
-	kelurahanController *controllers.KelurahanController,
-	wilayahController *controllers.WilayahController,
+	heroSectionController *controllers.HeroSectionController,
+	bannerEventPromoController *controllers.BannerEventPromoController,
 ) {
 	// Health check
 	router.GET("/health", func(c *gin.Context) {
@@ -84,6 +81,7 @@ func SetupRoutes(
 		}
 
 		// Alamat Buyer Routes (Protected)
+		// Data wilayah dari Google Maps API (frontend)
 		alamatBuyer := v1.Group("/alamat-buyer")
 		alamatBuyer.Use(middleware.AuthMiddleware())
 		{
@@ -93,59 +91,6 @@ func SetupRoutes(
 			alamatBuyer.PUT("/:id", alamatBuyerController.Update)
 			alamatBuyer.DELETE("/:id", alamatBuyerController.Delete)
 			alamatBuyer.PATCH("/:id/set-default", alamatBuyerController.SetDefault)
-		}
-
-		// Wilayah Dropdown Routes (Public - no auth)
-		wilayah := v1.Group("/wilayah")
-		{
-			wilayah.GET("/provinsi", wilayahController.DropdownProvinsi)
-			wilayah.GET("/kota", wilayahController.DropdownKota)
-			wilayah.GET("/kecamatan", wilayahController.DropdownKecamatan)
-			wilayah.GET("/kelurahan", wilayahController.DropdownKelurahan)
-		}
-
-		// Provinsi CRUD Routes (Protected)
-		provinsi := v1.Group("/provinsi")
-		provinsi.Use(middleware.AuthMiddleware())
-		{
-			provinsi.GET("", provinsiController.FindAll)
-			provinsi.GET("/:id", provinsiController.FindByID)
-			provinsi.POST("", provinsiController.Create)
-			provinsi.PUT("/:id", provinsiController.Update)
-			provinsi.DELETE("/:id", provinsiController.Delete)
-		}
-
-		// Kota CRUD Routes (Protected)
-		kota := v1.Group("/kota")
-		kota.Use(middleware.AuthMiddleware())
-		{
-			kota.GET("", kotaController.FindAll)
-			kota.GET("/:id", kotaController.FindByID)
-			kota.POST("", kotaController.Create)
-			kota.PUT("/:id", kotaController.Update)
-			kota.DELETE("/:id", kotaController.Delete)
-		}
-
-		// Kecamatan CRUD Routes (Protected)
-		kecamatan := v1.Group("/kecamatan")
-		kecamatan.Use(middleware.AuthMiddleware())
-		{
-			kecamatan.GET("", kecamatanController.FindAll)
-			kecamatan.GET("/:id", kecamatanController.FindByID)
-			kecamatan.POST("", kecamatanController.Create)
-			kecamatan.PUT("/:id", kecamatanController.Update)
-			kecamatan.DELETE("/:id", kecamatanController.Delete)
-		}
-
-		// Kelurahan CRUD Routes (Protected)
-		kelurahan := v1.Group("/kelurahan")
-		kelurahan.Use(middleware.AuthMiddleware())
-		{
-			kelurahan.GET("", kelurahanController.FindAll)
-			kelurahan.GET("/:id", kelurahanController.FindByID)
-			kelurahan.POST("", kelurahanController.Create)
-			kelurahan.PUT("/:id", kelurahanController.Update)
-			kelurahan.DELETE("/:id", kelurahanController.Delete)
 		}
 
 		// Kategori Produk
@@ -282,6 +227,44 @@ func SetupRoutes(
 		master := v1.Group("/master")
 		{
 			master.GET("/dropdown", masterController.GetDropdown)
+		}
+
+		// Hero Section (Admin)
+		heroSectionAdmin := v1.Group("/admin/hero-section")
+		heroSectionAdmin.Use(middleware.AuthMiddleware())
+		{
+			heroSectionAdmin.GET("", heroSectionController.FindAll)
+			heroSectionAdmin.GET("/:id", heroSectionController.FindByID)
+			heroSectionAdmin.POST("", heroSectionController.Create)
+			heroSectionAdmin.PUT("/:id", heroSectionController.Update)
+			heroSectionAdmin.DELETE("/:id", heroSectionController.Delete)
+			heroSectionAdmin.PATCH("/:id/toggle-status", heroSectionController.ToggleStatus)
+			heroSectionAdmin.PUT("/reorder", heroSectionController.Reorder)
+		}
+
+		// Hero Section (Public)
+		heroSectionPublic := v1.Group("/hero-section")
+		{
+			heroSectionPublic.GET("/active", heroSectionController.GetActive)
+		}
+
+		// Banner Event Promo (Admin)
+		bannerEventPromoAdmin := v1.Group("/admin/banner-event-promo")
+		bannerEventPromoAdmin.Use(middleware.AuthMiddleware())
+		{
+			bannerEventPromoAdmin.GET("", bannerEventPromoController.FindAll)
+			bannerEventPromoAdmin.GET("/:id", bannerEventPromoController.FindByID)
+			bannerEventPromoAdmin.POST("", bannerEventPromoController.Create)
+			bannerEventPromoAdmin.PUT("/:id", bannerEventPromoController.Update)
+			bannerEventPromoAdmin.DELETE("/:id", bannerEventPromoController.Delete)
+			bannerEventPromoAdmin.PATCH("/:id/toggle-status", bannerEventPromoController.ToggleStatus)
+			bannerEventPromoAdmin.PUT("/reorder", bannerEventPromoController.Reorder)
+		}
+
+		// Banner Event Promo (Public)
+		bannerEventPromoPublic := v1.Group("/banner-event-promo")
+		{
+			bannerEventPromoPublic.GET("/active", bannerEventPromoController.GetActive)
 		}
 	}
 

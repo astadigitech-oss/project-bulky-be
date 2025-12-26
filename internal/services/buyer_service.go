@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
@@ -179,39 +180,18 @@ func (s *buyerService) toDetailResponse(b *models.Buyer) *models.BuyerDetailResp
 }
 
 func (s *buyerService) toAlamatResponse(a *models.AlamatBuyer) models.AlamatBuyerResponse {
-	kode := func(k *string) string {
-		if k == nil {
-			return ""
-		}
-		return *k
+	// Build formatted address
+	alamatFormatted := a.AlamatLengkap
+	if a.Kelurahan != nil && *a.Kelurahan != "" {
+		alamatFormatted = fmt.Sprintf("%s, %s", alamatFormatted, *a.Kelurahan)
 	}
-
-	wilayah := models.WilayahResponse{
-		Kelurahan: models.WilayahItemResponse{
-			ID:   a.Kelurahan.ID.String(),
-			Nama: a.Kelurahan.Nama,
-			Kode: kode(a.Kelurahan.Kode),
-		},
-		Kecamatan: models.WilayahItemResponse{
-			ID:   a.Kelurahan.Kecamatan.ID.String(),
-			Nama: a.Kelurahan.Kecamatan.Nama,
-			Kode: kode(a.Kelurahan.Kecamatan.Kode),
-		},
-		Kota: models.WilayahItemResponse{
-			ID:   a.Kelurahan.Kecamatan.Kota.ID.String(),
-			Nama: a.Kelurahan.Kecamatan.Kota.Nama,
-			Kode: kode(a.Kelurahan.Kecamatan.Kota.Kode),
-		},
-		Provinsi: models.WilayahItemResponse{
-			ID:   a.Kelurahan.Kecamatan.Kota.Provinsi.ID.String(),
-			Nama: a.Kelurahan.Kecamatan.Kota.Provinsi.Nama,
-			Kode: kode(a.Kelurahan.Kecamatan.Kota.Provinsi.Kode),
-		},
+	if a.Kecamatan != nil && *a.Kecamatan != "" {
+		alamatFormatted = fmt.Sprintf("%s, %s", alamatFormatted, *a.Kecamatan)
 	}
-
-	formatted := a.AlamatLengkap + ", " + a.Kelurahan.Nama + ", " +
-		a.Kelurahan.Kecamatan.Nama + ", " + a.Kelurahan.Kecamatan.Kota.Nama + ", " +
-		a.Kelurahan.Kecamatan.Kota.Provinsi.Nama + " " + a.KodePos
+	alamatFormatted = fmt.Sprintf("%s, %s, %s", alamatFormatted, a.Kota, a.Provinsi)
+	if a.KodePos != nil && *a.KodePos != "" {
+		alamatFormatted = fmt.Sprintf("%s %s", alamatFormatted, *a.KodePos)
+	}
 
 	return models.AlamatBuyerResponse{
 		ID:              a.ID.String(),
@@ -219,11 +199,17 @@ func (s *buyerService) toAlamatResponse(a *models.AlamatBuyer) models.AlamatBuye
 		Label:           a.Label,
 		NamaPenerima:    a.NamaPenerima,
 		TeleponPenerima: a.TeleponPenerima,
-		Wilayah:         wilayah,
+		Provinsi:        a.Provinsi,
+		Kota:            a.Kota,
+		Kecamatan:       a.Kecamatan,
+		Kelurahan:       a.Kelurahan,
 		KodePos:         a.KodePos,
 		AlamatLengkap:   a.AlamatLengkap,
-		AlamatFormatted: formatted,
+		AlamatFormatted: alamatFormatted,
 		Catatan:         a.Catatan,
+		Latitude:        a.Latitude,
+		Longitude:       a.Longitude,
+		GooglePlaceID:   a.GooglePlaceID,
 		IsDefault:       a.IsDefault,
 		CreatedAt:       a.CreatedAt,
 		UpdatedAt:       a.UpdatedAt,

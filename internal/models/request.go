@@ -374,30 +374,42 @@ type BuyerFilterRequest struct {
 }
 
 // ========================================
-// Alamat Buyer Request
+// Alamat Buyer Request (Google Maps API)
 // ========================================
 
 type CreateAlamatBuyerRequest struct {
-	BuyerID         string  `json:"buyer_id" binding:"required,uuid"`
-	KelurahanID     string  `json:"kelurahan_id" binding:"required,uuid"`
-	Label           string  `json:"label" binding:"required,min=1,max=50"`
-	NamaPenerima    string  `json:"nama_penerima" binding:"required,min=2,max=100"`
-	TeleponPenerima string  `json:"telepon_penerima" binding:"required,max=20"`
-	KodePos         string  `json:"kode_pos" binding:"required,max=10"`
-	AlamatLengkap   string  `json:"alamat_lengkap" binding:"required,max=500"`
-	Catatan         *string `json:"catatan" binding:"omitempty,max=500"`
-	IsDefault       bool    `json:"is_default"`
+	BuyerID         string   `json:"buyer_id" binding:"required,uuid"`
+	Label           string   `json:"label" binding:"required,min=1,max=50"`
+	NamaPenerima    string   `json:"nama_penerima" binding:"required,min=2,max=100"`
+	TeleponPenerima string   `json:"telepon_penerima" binding:"required,max=20"`
+	Provinsi        string   `json:"provinsi" binding:"required,max=100"`
+	Kota            string   `json:"kota" binding:"required,max=100"`
+	Kecamatan       *string  `json:"kecamatan" binding:"omitempty,max=100"`
+	Kelurahan       *string  `json:"kelurahan" binding:"omitempty,max=100"`
+	KodePos         *string  `json:"kode_pos" binding:"omitempty,max=10"`
+	AlamatLengkap   string   `json:"alamat_lengkap" binding:"required,max=500"`
+	Catatan         *string  `json:"catatan" binding:"omitempty,max=500"`
+	Latitude        *float64 `json:"latitude"`
+	Longitude       *float64 `json:"longitude"`
+	GooglePlaceID   *string  `json:"google_place_id" binding:"omitempty,max=255"`
+	IsDefault       bool     `json:"is_default"`
 }
 
 type UpdateAlamatBuyerRequest struct {
-	KelurahanID     *string `json:"kelurahan_id" binding:"omitempty,uuid"`
-	Label           *string `json:"label" binding:"omitempty,min=1,max=50"`
-	NamaPenerima    *string `json:"nama_penerima" binding:"omitempty,min=2,max=100"`
-	TeleponPenerima *string `json:"telepon_penerima" binding:"omitempty,max=20"`
-	KodePos         *string `json:"kode_pos" binding:"omitempty,max=10"`
-	AlamatLengkap   *string `json:"alamat_lengkap" binding:"omitempty,max=500"`
-	Catatan         *string `json:"catatan" binding:"omitempty,max=500"`
-	IsDefault       *bool   `json:"is_default"`
+	Label           *string  `json:"label" binding:"omitempty,min=1,max=50"`
+	NamaPenerima    *string  `json:"nama_penerima" binding:"omitempty,min=2,max=100"`
+	TeleponPenerima *string  `json:"telepon_penerima" binding:"omitempty,max=20"`
+	Provinsi        *string  `json:"provinsi" binding:"omitempty,max=100"`
+	Kota            *string  `json:"kota" binding:"omitempty,max=100"`
+	Kecamatan       *string  `json:"kecamatan" binding:"omitempty,max=100"`
+	Kelurahan       *string  `json:"kelurahan" binding:"omitempty,max=100"`
+	KodePos         *string  `json:"kode_pos" binding:"omitempty,max=10"`
+	AlamatLengkap   *string  `json:"alamat_lengkap" binding:"omitempty,max=500"`
+	Catatan         *string  `json:"catatan" binding:"omitempty,max=500"`
+	Latitude        *float64 `json:"latitude"`
+	Longitude       *float64 `json:"longitude"`
+	GooglePlaceID   *string  `json:"google_place_id" binding:"omitempty,max=255"`
+	IsDefault       *bool    `json:"is_default"`
 }
 
 type AlamatBuyerFilterRequest struct {
@@ -405,79 +417,49 @@ type AlamatBuyerFilterRequest struct {
 	BuyerID string `form:"buyer_id" binding:"required,uuid"`
 }
 
-// ========================================
-// Provinsi Request
-// ========================================
-
-type CreateProvinsiRequest struct {
-	Nama string  `json:"nama" binding:"required,min=2,max=100"`
-	Kode *string `json:"kode" binding:"omitempty,max=10"`
-}
-
-type UpdateProvinsiRequest struct {
-	Nama *string `json:"nama" binding:"omitempty,min=2,max=100"`
-	Kode *string `json:"kode" binding:"omitempty,max=10"`
-}
 
 // ========================================
-// Kota Request
+// Hero Section Request
 // ========================================
 
-type CreateKotaRequest struct {
-	ProvinsiID string  `json:"provinsi_id" binding:"required,uuid"`
-	Nama       string  `json:"nama" binding:"required,min=2,max=100"`
-	Kode       *string `json:"kode" binding:"omitempty,max=10"`
+type CreateHeroSectionRequest struct {
+	Nama           string  `json:"nama" binding:"required,min=1,max=100"`
+	Gambar         string  `json:"gambar" binding:"required,max=255"`
+	Urutan         int     `json:"urutan"`
+	IsActive       bool    `json:"is_active"`
+	TanggalMulai   *string `json:"tanggal_mulai"`
+	TanggalSelesai *string `json:"tanggal_selesai"`
 }
 
-type UpdateKotaRequest struct {
-	ProvinsiID *string `json:"provinsi_id" binding:"omitempty,uuid"`
-	Nama       *string `json:"nama" binding:"omitempty,min=2,max=100"`
-	Kode       *string `json:"kode" binding:"omitempty,max=10"`
-}
-
-type KotaFilterRequest struct {
-	PaginationRequest
-	ProvinsiID string `form:"provinsi_id" binding:"required,uuid"`
+type UpdateHeroSectionRequest struct {
+	Nama           *string `json:"nama" binding:"omitempty,min=1,max=100"`
+	Gambar         *string `json:"gambar" binding:"omitempty,max=255"`
+	Urutan         *int    `json:"urutan"`
+	IsActive       *bool   `json:"is_active"`
+	TanggalMulai   *string `json:"tanggal_mulai"`
+	TanggalSelesai *string `json:"tanggal_selesai"`
 }
 
 // ========================================
-// Kecamatan Request
+// Banner Event Promo Request
 // ========================================
 
-type CreateKecamatanRequest struct {
-	KotaID string  `json:"kota_id" binding:"required,uuid"`
-	Nama   string  `json:"nama" binding:"required,min=2,max=100"`
-	Kode   *string `json:"kode" binding:"omitempty,max=10"`
+type CreateBannerEventPromoRequest struct {
+	Nama           string  `json:"nama" binding:"required,min=1,max=100"`
+	Gambar         string  `json:"gambar" binding:"required,max=255"`
+	UrlTujuan      *string `json:"url_tujuan" binding:"omitempty,max=255"`
+	Urutan         int     `json:"urutan"`
+	IsActive       bool    `json:"is_active"`
+	TanggalMulai   *string `json:"tanggal_mulai"`
+	TanggalSelesai *string `json:"tanggal_selesai"`
 }
 
-type UpdateKecamatanRequest struct {
-	KotaID *string `json:"kota_id" binding:"omitempty,uuid"`
-	Nama   *string `json:"nama" binding:"omitempty,min=2,max=100"`
-	Kode   *string `json:"kode" binding:"omitempty,max=10"`
-}
-
-type KecamatanFilterRequest struct {
-	PaginationRequest
-	KotaID string `form:"kota_id" binding:"required,uuid"`
-}
-
-// ========================================
-// Kelurahan Request
-// ========================================
-
-type CreateKelurahanRequest struct {
-	KecamatanID string  `json:"kecamatan_id" binding:"required,uuid"`
-	Nama        string  `json:"nama" binding:"required,min=2,max=100"`
-	Kode        *string `json:"kode" binding:"omitempty,max=15"`
-}
-
-type UpdateKelurahanRequest struct {
-	KecamatanID *string `json:"kecamatan_id" binding:"omitempty,uuid"`
-	Nama        *string `json:"nama" binding:"omitempty,min=2,max=100"`
-	Kode        *string `json:"kode" binding:"omitempty,max=15"`
-}
-
-type KelurahanFilterRequest struct {
-	PaginationRequest
-	KecamatanID string `form:"kecamatan_id" binding:"required,uuid"`
+type UpdateBannerEventPromoRequest struct {
+	Nama           *string `json:"nama" binding:"omitempty,min=1,max=100"`
+	Gambar         *string `json:"gambar" binding:"omitempty,max=255"`
+	UrlTujuan      *string `json:"url_tujuan" binding:"omitempty,max=255"`
+	Urutan         *int    `json:"urutan"`
+	IsActive       *bool   `json:"is_active"`
+	TanggalMulai   *string `json:"tanggal_mulai"`
+	TanggalSelesai *string `json:"tanggal_selesai"`
 }

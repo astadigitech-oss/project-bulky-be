@@ -402,149 +402,78 @@ type BuyerStatistikResponse struct {
 }
 
 // ========================================
-// Alamat Buyer Response
+// Alamat Buyer Response (Google Maps API)
 // ========================================
 
 type AlamatBuyerResponse struct {
-	ID              string          `json:"id"`
-	BuyerID         string          `json:"buyer_id"`
-	Label           string          `json:"label"`
-	NamaPenerima    string          `json:"nama_penerima"`
-	TeleponPenerima string          `json:"telepon_penerima"`
-	Wilayah         WilayahResponse `json:"wilayah"`
-	KodePos         string          `json:"kode_pos"`
-	AlamatLengkap   string          `json:"alamat_lengkap"`
-	AlamatFormatted string          `json:"alamat_formatted"`
-	Catatan         *string         `json:"catatan"`
-	IsDefault       bool            `json:"is_default"`
-	CreatedAt       time.Time       `json:"created_at"`
-	UpdatedAt       time.Time       `json:"updated_at"`
+	ID              string    `json:"id"`
+	BuyerID         string    `json:"buyer_id"`
+	Label           string    `json:"label"`
+	NamaPenerima    string    `json:"nama_penerima"`
+	TeleponPenerima string    `json:"telepon_penerima"`
+	Provinsi        string    `json:"provinsi"`
+	Kota            string    `json:"kota"`
+	Kecamatan       *string   `json:"kecamatan"`
+	Kelurahan       *string   `json:"kelurahan"`
+	KodePos         *string   `json:"kode_pos"`
+	AlamatLengkap   string    `json:"alamat_lengkap"`
+	AlamatFormatted string    `json:"alamat_formatted"`
+	Catatan         *string   `json:"catatan"`
+	Latitude        *float64  `json:"latitude"`
+	Longitude       *float64  `json:"longitude"`
+	GooglePlaceID   *string   `json:"google_place_id"`
+	IsDefault       bool      `json:"is_default"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
-type WilayahResponse struct {
-	Kelurahan WilayahItemResponse `json:"kelurahan"`
-	Kecamatan WilayahItemResponse `json:"kecamatan"`
-	Kota      WilayahItemResponse `json:"kota"`
-	Provinsi  WilayahItemResponse `json:"provinsi"`
+
+// ========================================
+// Hero Section Response
+// ========================================
+
+type HeroSectionResponse struct {
+	ID             string     `json:"id"`
+	Nama           string     `json:"nama"`
+	Gambar         string     `json:"gambar"`
+	Urutan         int        `json:"urutan"`
+	IsActive       bool       `json:"is_active"`
+	IsVisible      bool       `json:"is_visible"`
+	TanggalMulai   *time.Time `json:"tanggal_mulai"`
+	TanggalSelesai *time.Time `json:"tanggal_selesai"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
-type WilayahItemResponse struct {
-	ID   string `json:"id"`
-	Nama string `json:"nama"`
-	Kode string `json:"kode"`
+// Public response (minimal data)
+type HeroSectionPublicResponse struct {
+	ID     string `json:"id"`
+	Nama   string `json:"nama"`
+	Gambar string `json:"gambar"`
 }
 
 // ========================================
-// Provinsi Response
+// Banner Event Promo Response
 // ========================================
 
-type ProvinsiListResponse struct {
-	ID         string `json:"id"`
-	Nama       string `json:"nama"`
-	Kode       string `json:"kode"`
-	JumlahKota int    `json:"jumlah_kota"`
+type BannerEventPromoResponse struct {
+	ID             string     `json:"id"`
+	Nama           string     `json:"nama"`
+	Gambar         string     `json:"gambar"`
+	UrlTujuan      *string    `json:"url_tujuan"`
+	Urutan         int        `json:"urutan"`
+	IsActive       bool       `json:"is_active"`
+	IsVisible      bool       `json:"is_visible"`
+	TanggalMulai   *time.Time `json:"tanggal_mulai"`
+	TanggalSelesai *time.Time `json:"tanggal_selesai"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
-type ProvinsiDetailResponse struct {
-	ID        string    `json:"id"`
-	Nama      string    `json:"nama"`
-	Kode      string    `json:"kode"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
-// ========================================
-// Kota Response
-// ========================================
-
-type KotaListResponse struct {
-	ID              string         `json:"id"`
-	Nama            string         `json:"nama"`
-	Kode            string         `json:"kode"`
-	Provinsi        ProvinsiSimple `json:"provinsi"`
-	JumlahKecamatan int            `json:"jumlah_kecamatan"`
-}
-
-type KotaDetailResponse struct {
-	ID        string         `json:"id"`
-	Nama      string         `json:"nama"`
-	Kode      string         `json:"kode"`
-	Provinsi  ProvinsiSimple `json:"provinsi"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
-}
-
-// ========================================
-// Kecamatan Response
-// ========================================
-
-type KecamatanListResponse struct {
-	ID              string     `json:"id"`
-	Nama            string     `json:"nama"`
-	Kode            string     `json:"kode"`
-	Kota            KotaSimple `json:"kota"`
-	JumlahKelurahan int        `json:"jumlah_kelurahan"`
-}
-
-type KecamatanDetailResponse struct {
-	ID        string     `json:"id"`
-	Nama      string     `json:"nama"`
-	Kode      string     `json:"kode"`
-	Kota      KotaSimple `json:"kota"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
-}
-
-// ========================================
-// Kelurahan Response
-// ========================================
-
-type KelurahanListResponse struct {
-	ID        string          `json:"id"`
-	Nama      string          `json:"nama"`
-	Kode      string          `json:"kode"`
-	Kecamatan KecamatanSimple `json:"kecamatan"`
-}
-
-type KelurahanDetailResponse struct {
-	ID        string          `json:"id"`
-	Nama      string          `json:"nama"`
-	Kode      string          `json:"kode"`
-	Kecamatan KecamatanSimple `json:"kecamatan"`
-	CreatedAt time.Time       `json:"created_at"`
-	UpdatedAt time.Time       `json:"updated_at"`
-}
-
-// ========================================
-// Simple Response (for nested)
-// ========================================
-
-type ProvinsiSimple struct {
-	ID   string `json:"id"`
-	Nama string `json:"nama"`
-	Kode string `json:"kode"`
-}
-
-type KotaSimple struct {
-	ID       string         `json:"id"`
-	Nama     string         `json:"nama"`
-	Kode     string         `json:"kode"`
-	Provinsi ProvinsiSimple `json:"provinsi"`
-}
-
-type KecamatanSimple struct {
-	ID   string     `json:"id"`
-	Nama string     `json:"nama"`
-	Kode string     `json:"kode"`
-	Kota KotaSimple `json:"kota"`
-}
-
-// ========================================
-// Wilayah Dropdown Response
-// ========================================
-
-type WilayahDropdownItem struct {
-	ID   string `json:"id"`
-	Nama string `json:"nama"`
-	Kode string `json:"kode"`
+// Public response (minimal data)
+type BannerEventPromoPublicResponse struct {
+	ID        string  `json:"id"`
+	Nama      string  `json:"nama"`
+	Gambar    string  `json:"gambar"`
+	UrlTujuan *string `json:"url_tujuan"`
 }

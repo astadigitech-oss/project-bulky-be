@@ -48,10 +48,8 @@ func main() {
 	adminSessionRepo := repositories.NewAdminSessionRepository(db)
 	buyerRepo := repositories.NewBuyerRepository(db)
 	alamatBuyerRepo := repositories.NewAlamatBuyerRepository(db)
-	provinsiRepo := repositories.NewProvinsiRepository(db)
-	kotaRepo := repositories.NewKotaRepository(db)
-	kecamatanRepo := repositories.NewKecamatanRepository(db)
-	kelurahanRepo := repositories.NewKelurahanRepository(db)
+	heroSectionRepo := repositories.NewHeroSectionRepository(db)
+	bannerEventPromoRepo := repositories.NewBannerEventPromoRepository(db)
 
 	// Initialize services
 	kategoriService := services.NewKategoriProdukService(kategoriRepo)
@@ -70,11 +68,9 @@ func main() {
 	adminService := services.NewAdminService(adminRepo, adminSessionRepo)
 	masterService := services.NewMasterService(kategoriRepo, merekRepo, kondisiRepo, kondisiPaketRepo, sumberRepo)
 	buyerService := services.NewBuyerService(buyerRepo, alamatBuyerRepo)
-	alamatBuyerService := services.NewAlamatBuyerService(alamatBuyerRepo, buyerRepo, kelurahanRepo)
-	provinsiService := services.NewProvinsiService(provinsiRepo)
-	kotaService := services.NewKotaService(kotaRepo, provinsiRepo)
-	kecamatanService := services.NewKecamatanService(kecamatanRepo, kotaRepo)
-	kelurahanService := services.NewKelurahanService(kelurahanRepo, kecamatanRepo)
+	alamatBuyerService := services.NewAlamatBuyerService(alamatBuyerRepo, buyerRepo)
+	heroSectionService := services.NewHeroSectionService(heroSectionRepo)
+	bannerEventPromoService := services.NewBannerEventPromoService(bannerEventPromoRepo)
 
 	// Initialize controllers
 	kategoriController := controllers.NewKategoriProdukController(kategoriService)
@@ -92,11 +88,8 @@ func main() {
 	masterController := controllers.NewMasterController(masterService)
 	buyerController := controllers.NewBuyerController(buyerService)
 	alamatBuyerController := controllers.NewAlamatBuyerController(alamatBuyerService)
-	provinsiController := controllers.NewProvinsiController(provinsiService)
-	kotaController := controllers.NewKotaController(kotaService)
-	kecamatanController := controllers.NewKecamatanController(kecamatanService)
-	kelurahanController := controllers.NewKelurahanController(kelurahanService)
-	wilayahController := controllers.NewWilayahController(provinsiService, kotaService, kecamatanService, kelurahanService)
+	heroSectionController := controllers.NewHeroSectionController(heroSectionService)
+	bannerEventPromoController := controllers.NewBannerEventPromoController(bannerEventPromoService)
 
 	router := gin.Default()
 
@@ -106,7 +99,7 @@ func main() {
 		warehouseController, tipeProdukController, diskonKategoriController, bannerTipeProdukController,
 		produkController, authController, adminController, masterController,
 		buyerController, alamatBuyerController,
-		provinsiController, kotaController, kecamatanController, kelurahanController, wilayahController,
+		heroSectionController, bannerEventPromoController,
 	)
 
 	port := os.Getenv("APP_PORT")
