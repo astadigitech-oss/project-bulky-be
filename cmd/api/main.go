@@ -50,6 +50,9 @@ func main() {
 	alamatBuyerRepo := repositories.NewAlamatBuyerRepository(db)
 	heroSectionRepo := repositories.NewHeroSectionRepository(db)
 	bannerEventPromoRepo := repositories.NewBannerEventPromoRepository(db)
+	pesananRepo := repositories.NewPesananRepository(db)
+	pesananItemRepo := repositories.NewPesananItemRepository(db)
+	ulasanRepo := repositories.NewUlasanRepository(db)
 
 	// Initialize services
 	kategoriService := services.NewKategoriProdukService(kategoriRepo)
@@ -71,6 +74,7 @@ func main() {
 	alamatBuyerService := services.NewAlamatBuyerService(alamatBuyerRepo, buyerRepo)
 	heroSectionService := services.NewHeroSectionService(heroSectionRepo)
 	bannerEventPromoService := services.NewBannerEventPromoService(bannerEventPromoRepo)
+	ulasanService := services.NewUlasanService(ulasanRepo, pesananItemRepo, pesananRepo, cfg.UploadPath, cfg.BaseURL)
 
 	// Initialize controllers
 	kategoriController := controllers.NewKategoriProdukController(kategoriService)
@@ -90,6 +94,7 @@ func main() {
 	alamatBuyerController := controllers.NewAlamatBuyerController(alamatBuyerService)
 	heroSectionController := controllers.NewHeroSectionController(heroSectionService)
 	bannerEventPromoController := controllers.NewBannerEventPromoController(bannerEventPromoService)
+	ulasanController := controllers.NewUlasanController(ulasanService)
 
 	router := gin.Default()
 
@@ -100,6 +105,7 @@ func main() {
 		produkController, authController, adminController, masterController,
 		buyerController, alamatBuyerController,
 		heroSectionController, bannerEventPromoController,
+		ulasanController,
 	)
 
 	port := os.Getenv("APP_PORT")

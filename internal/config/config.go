@@ -11,6 +11,8 @@ type Config struct {
 	DBPassword string
 	DBName     string
 	JWTSecret  string
+	UploadPath string
+	BaseURL    string
 }
 
 func LoadConfig() *Config {
@@ -23,6 +25,8 @@ func LoadConfig() *Config {
 		DBPassword: getEnv("DB_PASSWORD", ""),
 		DBName:     getEnv("DB_NAME", "bulky_db"),
 		JWTSecret:  getEnv("JWT_SECRET", "your-secret-key"),
+		UploadPath: getEnv("UPLOAD_PATH", "./uploads"),
+		BaseURL:    getEnv("BASE_URL", "http://localhost:8080/uploads"),
 	}
 }
 

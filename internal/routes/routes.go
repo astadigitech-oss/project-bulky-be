@@ -28,6 +28,7 @@ func SetupRoutes(
 	alamatBuyerController *controllers.AlamatBuyerController,
 	heroSectionController *controllers.HeroSectionController,
 	bannerEventPromoController *controllers.BannerEventPromoController,
+	ulasanController *controllers.UlasanController,
 ) {
 	// Health check
 	router.GET("/health", func(c *gin.Context) {
@@ -265,6 +266,33 @@ func SetupRoutes(
 		bannerEventPromoPublic := v1.Group("/banner-event-promo")
 		{
 			bannerEventPromoPublic.GET("/active", bannerEventPromoController.GetActive)
+		}
+
+		// Ulasan - Admin
+		ulasanAdmin := v1.Group("/admin/ulasan")
+		ulasanAdmin.Use(middleware.AuthMiddleware())
+		{
+			ulasanAdmin.GET("", ulasanController.AdminFindAll)
+			ulasanAdmin.GET("/:id", ulasanController.AdminFindByID)
+			ulasanAdmin.PATCH("/:id/approve", ulasanController.Approve)
+			ulasanAdmin.PATCH("/bulk-approve", ulasanController.BulkApprove)
+			ulasanAdmin.DELETE("/:id", ulasanController.Delete)
+		}
+
+		// Ulasan - Buyer
+		ulasanBuyer := v1.Group("/buyer/ulasan")
+		ulasanBuyer.Use(middleware.AuthMiddleware())
+		{
+			ulasanBuyer.GET("/pending", ulasanController.GetPendingReviews)
+			ulasanBuyer.GET("", ulasanController.BuyerFindAll)
+			ulasanBuyer.POST("", ulasanController.Create)
+		}
+
+		// Ulasan - Public
+		ulasanPublic := v1.Group("/public/produk")
+		{
+			ulasanPublic.GET("/:produk_id/ulasan", ulasanController.GetProdukUlasan)
+			ulasanPublic.GET("/:produk_id/rating", ulasanController.GetProdukRating)
 		}
 	}
 

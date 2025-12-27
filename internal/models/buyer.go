@@ -44,3 +44,11 @@ type BuyerResponse struct {
 	CreatedAt       time.Time  `json:"created_at"`
 	UpdatedAt       time.Time  `json:"updated_at"`
 }
+
+// Simple response for nested objects
+type BuyerSimpleResponse struct {
+	ID      string  `json:"id"`
+	Nama    string  `json:"nama"`
+	Email   string  `json:"email"`
+	Telepon *string `json:"telepon"`
+}

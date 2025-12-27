@@ -21,7 +21,8 @@ type PesananItem struct {
 	UpdatedAt    time.Time       `gorm:"autoUpdateTime" json:"updated_at"`
 
 	// Relations
-	Produk Produk `gorm:"foreignKey:ProdukID" json:"produk,omitempty"`
+	Pesanan Pesanan `gorm:"foreignKey:PesananID" json:"pesanan,omitempty"`
+	Produk  Produk  `gorm:"foreignKey:ProdukID" json:"produk,omitempty"`
 }
 
 func (PesananItem) TableName() string {
