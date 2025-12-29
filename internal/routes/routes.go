@@ -29,6 +29,9 @@ func SetupRoutes(
 	heroSectionController *controllers.HeroSectionController,
 	bannerEventPromoController *controllers.BannerEventPromoController,
 	ulasanController *controllers.UlasanController,
+	forceUpdateController *controllers.ForceUpdateController,
+	modeMaintenanceController *controllers.ModeMaintenanceController,
+	appStatusController *controllers.AppStatusController,
 ) {
 	// Health check
 	router.GET("/health", func(c *gin.Context) {
@@ -293,6 +296,39 @@ func SetupRoutes(
 		{
 			ulasanPublic.GET("/:produk_id/ulasan", ulasanController.GetProdukUlasan)
 			ulasanPublic.GET("/:produk_id/rating", ulasanController.GetProdukRating)
+		}
+
+		// Force Update - Admin
+		forceUpdateAdmin := v1.Group("/admin/force-update")
+		forceUpdateAdmin.Use(middleware.AuthMiddleware())
+		{
+			forceUpdateAdmin.GET("", forceUpdateController.GetAllForceUpdates)
+			forceUpdateAdmin.GET("/:id", forceUpdateController.GetForceUpdateByID)
+			forceUpdateAdmin.POST("", forceUpdateController.CreateForceUpdate)
+			forceUpdateAdmin.PUT("/:id", forceUpdateController.UpdateForceUpdate)
+			forceUpdateAdmin.DELETE("/:id", forceUpdateController.DeleteForceUpdate)
+			forceUpdateAdmin.POST("/:id/set-active", forceUpdateController.SetActiveForceUpdate)
+		}
+
+		// Mode Maintenance - Admin
+		modeMaintenanceAdmin := v1.Group("/admin/mode-maintenance")
+		modeMaintenanceAdmin.Use(middleware.AuthMiddleware())
+		{
+			modeMaintenanceAdmin.GET("", modeMaintenanceController.GetAllMaintenances)
+			modeMaintenanceAdmin.GET("/:id", modeMaintenanceController.GetMaintenanceByID)
+			modeMaintenanceAdmin.POST("", modeMaintenanceController.CreateMaintenance)
+			modeMaintenanceAdmin.PUT("/:id", modeMaintenanceController.UpdateMaintenance)
+			modeMaintenanceAdmin.DELETE("/:id", modeMaintenanceController.DeleteMaintenance)
+			modeMaintenanceAdmin.POST("/:id/activate", modeMaintenanceController.ActivateMaintenance)
+			modeMaintenanceAdmin.POST("/:id/deactivate", modeMaintenanceController.DeactivateMaintenance)
+		}
+
+		// App Status - Public
+		appStatus := v1.Group("/public")
+		{
+			appStatus.GET("/check-version", appStatusController.CheckVersion)
+			appStatus.GET("/check-maintenance", appStatusController.CheckMaintenance)
+			appStatus.GET("/app-status", appStatusController.AppStatus)
 		}
 	}
 

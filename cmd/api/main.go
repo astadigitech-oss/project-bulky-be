@@ -22,7 +22,9 @@ func main() {
 	}
 
 	cfg := config.LoadConfig()
-	utils.SetJWTSecret(cfg.JWTSecret)
+
+	// Initialize JWT config with durations
+	utils.SetJWTConfig(cfg.JWTSecret, cfg.JWTAccessDuration, cfg.JWTRefreshDuration)
 
 	database.InitDB(cfg)
 	db := database.GetDB()
@@ -53,6 +55,14 @@ func main() {
 	pesananRepo := repositories.NewPesananRepository(db)
 	pesananItemRepo := repositories.NewPesananItemRepository(db)
 	ulasanRepo := repositories.NewUlasanRepository(db)
+	forceUpdateRepo := repositories.NewForceUpdateRepository(db)
+	modeMaintenanceRepo := repositories.NewModeMaintenanceRepository(db)
+
+	// Auth V2 repositories
+	authRepo := repositories.NewAuthRepository(db)
+	activityLogRepo := repositories.NewActivityLogRepository(db)
+	roleRepo := repositories.NewRoleRepository(db)
+	permissionRepo := repositories.NewPermissionRepository(db)
 
 	// Initialize services
 	kategoriService := services.NewKategoriProdukService(kategoriRepo)
@@ -75,6 +85,14 @@ func main() {
 	heroSectionService := services.NewHeroSectionService(heroSectionRepo)
 	bannerEventPromoService := services.NewBannerEventPromoService(bannerEventPromoRepo)
 	ulasanService := services.NewUlasanService(ulasanRepo, pesananItemRepo, pesananRepo, cfg.UploadPath, cfg.BaseURL)
+	forceUpdateService := services.NewForceUpdateService(forceUpdateRepo, cfg.PlayStoreURL, cfg.AppStoreURL)
+	modeMaintenanceService := services.NewModeMaintenanceService(modeMaintenanceRepo)
+
+	// Auth V2 services
+	authV2Service := services.NewAuthV2Service(authRepo, activityLogRepo)
+	activityLogService := services.NewActivityLogService(activityLogRepo)
+	roleService := services.NewRoleService(roleRepo)
+	permissionService := services.NewPermissionService(permissionRepo)
 
 	// Initialize controllers
 	kategoriController := controllers.NewKategoriProdukController(kategoriService)
@@ -95,6 +113,15 @@ func main() {
 	heroSectionController := controllers.NewHeroSectionController(heroSectionService)
 	bannerEventPromoController := controllers.NewBannerEventPromoController(bannerEventPromoService)
 	ulasanController := controllers.NewUlasanController(ulasanService)
+	forceUpdateController := controllers.NewForceUpdateController(forceUpdateService)
+	modeMaintenanceController := controllers.NewModeMaintenanceController(modeMaintenanceService)
+	appStatusController := controllers.NewAppStatusController(forceUpdateService, modeMaintenanceService)
+
+	// Auth V2 controllers
+	authV2Controller := controllers.NewAuthV2Controller(authV2Service)
+	activityLogController := controllers.NewActivityLogController(activityLogService)
+	roleController := controllers.NewRoleController(roleService)
+	permissionController := controllers.NewPermissionController(permissionService)
 
 	router := gin.Default()
 
@@ -106,6 +133,16 @@ func main() {
 		buyerController, alamatBuyerController,
 		heroSectionController, bannerEventPromoController,
 		ulasanController,
+		forceUpdateController, modeMaintenanceController, appStatusController,
+	)
+
+	// Setup Auth V2 routes (new authentication system with roles & permissions)
+	routes.SetupAuthV2Routes(
+		router,
+		authV2Controller,
+		roleController,
+		permissionController,
+		activityLogController,
 	)
 
 	port := os.Getenv("APP_PORT")

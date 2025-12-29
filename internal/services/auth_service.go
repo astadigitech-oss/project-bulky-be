@@ -8,6 +8,8 @@ import (
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
 	"project-bulky-be/pkg/utils"
+
+	"github.com/google/uuid"
 )
 
 type AuthService interface {
@@ -42,13 +44,20 @@ func (s *authService) Login(ctx context.Context, req *models.LoginRequest, ipAdd
 		return nil, errors.New("akun Anda telah dinonaktifkan. Hubungi administrator")
 	}
 
-	// Generate tokens
-	accessToken, err := utils.GenerateAccessToken(admin.ID.String(), admin.Email)
+	// Generate tokens (using simplified API for backward compatibility)
+	// For new code, use AuthV2Service which supports roles & permissions
+	accessToken, err := utils.GenerateAccessToken(
+		admin.ID,
+		"ADMIN",
+		admin.Email,
+		"",  // role will be empty for legacy auth
+		nil, // no permissions for legacy auth
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	refreshToken, expiresAt, err := utils.GenerateRefreshToken(admin.ID.String(), admin.Email)
+	refreshToken, expiresAt, err := utils.GenerateRefreshToken(admin.ID, "ADMIN")
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +86,6 @@ func (s *authService) Login(ctx context.Context, req *models.LoginRequest, ipAdd
 	}, nil
 }
 
-
 func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*models.RefreshTokenResponse, error) {
 	// Validate refresh token
 	claims, err := utils.ValidateJWT(refreshToken)
@@ -98,7 +106,22 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*m
 	}
 
 	// Generate new access token
-	accessToken, err := utils.GenerateAccessToken(claims.AdminID, claims.Email)
+	adminID, err := uuid.Parse(claims.UserID)
+	if err != nil {
+		// Try legacy AdminID field
+		adminID, err = uuid.Parse(claims.AdminID)
+		if err != nil {
+			return nil, errors.New("invalid admin ID")
+		}
+	}
+
+	accessToken, err := utils.GenerateAccessToken(
+		adminID,
+		"ADMIN",
+		claims.Email,
+		"",
+		nil,
+	)
 	if err != nil {
 		return nil, err
 	}
