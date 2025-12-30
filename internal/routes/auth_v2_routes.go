@@ -30,8 +30,8 @@ func SetupAuthV2Routes(
 		{
 			authV2Protected.POST("/logout", authV2Controller.Logout)
 			authV2Protected.GET("/me", authV2Controller.GetMe)
-			// authV2Protected.PUT("/profile", authV2Controller.UpdateProfile) // TODO
-			// authV2Protected.PUT("/change-password", authV2Controller.ChangePassword) // TODO
+			authV2Protected.PUT("/profile", authV2Controller.UpdateProfile)
+			authV2Protected.PUT("/change-password", authV2Controller.ChangePassword)
 		}
 
 		// Role Management Routes (Admin Only)

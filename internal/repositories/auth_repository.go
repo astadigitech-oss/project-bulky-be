@@ -14,11 +14,13 @@ type AuthRepository interface {
 	FindAdminByID(id uuid.UUID) (*models.Admin, error)
 	FindAdminWithRole(id uuid.UUID) (*models.Admin, error)
 	UpdateAdminLastLogin(id uuid.UUID) error
+	UpdateAdmin(admin *models.Admin) error
 
 	// Buyer
 	FindBuyerByEmail(email string) (*models.Buyer, error)
 	FindBuyerByID(id uuid.UUID) (*models.Buyer, error)
 	UpdateBuyerLastLogin(id uuid.UUID) error
+	UpdateBuyer(buyer *models.Buyer) error
 
 	// Refresh Token
 	CreateRefreshToken(token *models.RefreshToken) error
@@ -68,6 +70,10 @@ func (r *authRepository) UpdateAdminLastLogin(id uuid.UUID) error {
 		Update("last_login_at", now).Error
 }
 
+func (r *authRepository) UpdateAdmin(admin *models.Admin) error {
+	return r.db.Save(admin).Error
+}
+
 // Buyer methods
 func (r *authRepository) FindBuyerByEmail(email string) (*models.Buyer, error) {
 	var buyer models.Buyer
@@ -86,6 +92,10 @@ func (r *authRepository) UpdateBuyerLastLogin(id uuid.UUID) error {
 	return r.db.Model(&models.Buyer{}).
 		Where("id = ?", id).
 		Update("last_login_at", now).Error
+}
+
+func (r *authRepository) UpdateBuyer(buyer *models.Buyer) error {
+	return r.db.Save(buyer).Error
 }
 
 // Refresh Token methods

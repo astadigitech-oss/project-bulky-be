@@ -22,6 +22,8 @@ type AuthV2Service interface {
 
 	// Profile
 	GetCurrentUser(ctx context.Context, userID uuid.UUID, userType string) (interface{}, error)
+	UpdateProfile(ctx context.Context, userID uuid.UUID, userType, nama string) (interface{}, error)
+	ChangePassword(ctx context.Context, userID uuid.UUID, userType, currentPassword, newPassword string) error
 }
 
 type LoginResult struct {
@@ -383,4 +385,172 @@ func (s *authV2Service) logActivity(ctx context.Context, userID *uuid.UUID, user
 
 	// Log asynchronously
 	go s.activityRepo.Create(log)
+}
+
+// UpdateProfile updates user profile (nama)
+func (s *authV2Service) UpdateProfile(ctx context.Context, userID uuid.UUID, userType, nama string) (interface{}, error) {
+	if userType == "ADMIN" {
+		admin, err := s.authRepo.FindAdminByID(userID)
+		if err != nil {
+			return nil, errors.New("admin tidak ditemukan")
+		}
+
+		// Update nama
+		oldNama := admin.Nama
+		admin.Nama = nama
+
+		// Save to database (need to add Update method to repository)
+		if err := s.authRepo.UpdateAdmin(admin); err != nil {
+			return nil, err
+		}
+
+		// Log activity
+		ipAddress := ""
+		if ginCtx, ok := ctx.(*gin.Context); ok {
+			ipAddress = ginCtx.ClientIP()
+		}
+		s.logActivity(ctx, &userID, "ADMIN", models.ActionUpdate, "profile",
+			"Mengupdate profile dari '"+oldNama+"' ke '"+nama+"'", ipAddress)
+
+		// Get full data with role
+		adminWithRole, _ := s.authRepo.FindAdminWithRole(userID)
+		if adminWithRole != nil {
+			admin = adminWithRole
+		}
+
+		permissions := []string{}
+		if admin.Role != nil {
+			for _, p := range admin.Role.Permissions {
+				permissions = append(permissions, p.Kode)
+			}
+		}
+
+		return map[string]interface{}{
+			"id":    admin.ID,
+			"nama":  admin.Nama,
+			"email": admin.Email,
+			"role": map[string]interface{}{
+				"id":   admin.Role.ID,
+				"nama": admin.Role.Nama,
+				"kode": admin.Role.Kode,
+			},
+			"permissions": permissions,
+		}, nil
+
+	} else if userType == "BUYER" {
+		buyer, err := s.authRepo.FindBuyerByID(userID)
+		if err != nil {
+			return nil, errors.New("buyer tidak ditemukan")
+		}
+
+		// Update nama
+		oldNama := buyer.Nama
+		buyer.Nama = nama
+
+		// Save to database
+		if err := s.authRepo.UpdateBuyer(buyer); err != nil {
+			return nil, err
+		}
+
+		// Log activity
+		ipAddress := ""
+		if ginCtx, ok := ctx.(*gin.Context); ok {
+			ipAddress = ginCtx.ClientIP()
+		}
+		s.logActivity(ctx, &userID, "BUYER", models.ActionUpdate, "profile",
+			"Mengupdate profile dari '"+oldNama+"' ke '"+nama+"'", ipAddress)
+
+		return map[string]interface{}{
+			"id":      buyer.ID,
+			"nama":    buyer.Nama,
+			"email":   buyer.Email,
+			"telepon": buyer.Telepon,
+		}, nil
+	}
+
+	return nil, errors.New("tipe user tidak valid")
+}
+
+// ChangePassword changes user password
+func (s *authV2Service) ChangePassword(ctx context.Context, userID uuid.UUID, userType, currentPassword, newPassword string) error {
+	if userType == "ADMIN" {
+		admin, err := s.authRepo.FindAdminByID(userID)
+		if err != nil {
+			return errors.New("admin tidak ditemukan")
+		}
+
+		// Verify current password
+		if !utils.CheckPassword(currentPassword, admin.Password) {
+			return errors.New("password lama tidak sesuai")
+		}
+
+		// Check if new password is same as old
+		if utils.CheckPassword(newPassword, admin.Password) {
+			return errors.New("password baru tidak boleh sama dengan password lama")
+		}
+
+		// Hash new password
+		hashedPassword, err := utils.HashPassword(newPassword)
+		if err != nil {
+			return errors.New("gagal meng-hash password")
+		}
+
+		admin.Password = hashedPassword
+
+		// Save to database
+		if err := s.authRepo.UpdateAdmin(admin); err != nil {
+			return err
+		}
+
+		// Log activity
+		ipAddress := ""
+		if ginCtx, ok := ctx.(*gin.Context); ok {
+			ipAddress = ginCtx.ClientIP()
+		}
+		s.logActivity(ctx, &userID, "ADMIN", models.ActionUpdate, "security",
+			"Mengubah password", ipAddress)
+
+		return nil
+
+	} else if userType == "BUYER" {
+		buyer, err := s.authRepo.FindBuyerByID(userID)
+		if err != nil {
+			return errors.New("buyer tidak ditemukan")
+		}
+
+		// Verify current password
+		if !utils.CheckPassword(currentPassword, buyer.Password) {
+			return errors.New("password lama tidak sesuai")
+		}
+
+		// Check if new password is same as old
+		if utils.CheckPassword(newPassword, buyer.Password) {
+			return errors.New("password baru tidak boleh sama dengan password lama")
+		}
+
+		// Hash new password
+		hashedPassword, err := utils.HashPassword(newPassword)
+		if err != nil {
+			return errors.New("gagal meng-hash password")
+		}
+
+		buyer.Password = hashedPassword
+
+		// Save to database
+		if err := s.authRepo.UpdateBuyer(buyer); err != nil {
+			return err
+		}
+
+		// Log activity
+		ipAddress := ""
+		if ginCtx, ok := ctx.(*gin.Context); ok {
+			ipAddress = ginCtx.ClientIP()
+		}
+		s.logActivity(ctx, &userID, "BUYER", models.ActionUpdate, "security",
+			"Mengubah password", ipAddress)
+
+		return nil
+	}
+
+	return errors.New("tipe user tidak valid")
 }

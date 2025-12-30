@@ -41,22 +41,27 @@ func SetupRoutes(
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 	{
-		// Public Auth Routes
-		auth := v1.Group("/auth")
-		{
-			auth.POST("/login", authController.Login)
-			auth.POST("/refresh", authController.RefreshToken)
-		}
+		// Public Auth Routes (Legacy - Commented out, using AuthV2 instead)
+		// Uncomment if you want to use old auth system
+		/*
+			auth := v1.Group("/auth")
+			{
+				auth.POST("/login", authController.Login)
+				auth.POST("/refresh", authController.RefreshToken)
+			}
+		*/
 
-		// Protected Auth Routes
-		authProtected := v1.Group("/auth")
-		authProtected.Use(middleware.AuthMiddleware())
-		{
-			authProtected.POST("/logout", authController.Logout)
-			authProtected.GET("/me", authController.Me)
-			authProtected.PUT("/profile", authController.UpdateProfile)
-			authProtected.PUT("/change-password", authController.ChangePassword)
-		}
+		// Protected Auth Routes (Legacy - Commented out, using AuthV2 instead)
+		/*
+			authProtected := v1.Group("/auth")
+			authProtected.Use(middleware.AuthMiddleware())
+			{
+				authProtected.POST("/logout", authController.Logout)
+				authProtected.GET("/me", authController.Me)
+				authProtected.PUT("/profile", authController.UpdateProfile)
+				authProtected.PUT("/change-password", authController.ChangePassword)
+			}
+		*/
 
 		// Admin Management Routes (Protected)
 		admin := v1.Group("/admin")

@@ -168,6 +168,132 @@ func (c *AuthV2Controller) GetMe(ctx *gin.Context) {
 	})
 }
 
+type UpdateProfileRequest struct {
+	Nama  string `json:"nama" binding:"required"`
+	Email string `json:"email" binding:"omitempty,email"`
+}
+
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required,min=6"`
+	ConfirmPassword string `json:"confirm_password" binding:"required"`
+}
+
+// PUT /api/v1/auth/profile
+func (c *AuthV2Controller) UpdateProfile(ctx *gin.Context) {
+	userID, exists := ctx.Get("user_id")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "User ID tidak ditemukan",
+		})
+		return
+	}
+
+	userType, exists := ctx.Get("user_type")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "User type tidak ditemukan",
+		})
+		return
+	}
+
+	var req UpdateProfileRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Data tidak valid: " + err.Error(),
+		})
+		return
+	}
+
+	uid, err := uuid.Parse(userID.(string))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "User ID tidak valid",
+		})
+		return
+	}
+
+	user, err := c.authService.UpdateProfile(ctx, uid, userType.(string), req.Nama)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Profile berhasil diperbarui",
+		"data":    user,
+	})
+}
+
+// PUT /api/v1/auth/change-password
+func (c *AuthV2Controller) ChangePassword(ctx *gin.Context) {
+	userID, exists := ctx.Get("user_id")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "User ID tidak ditemukan",
+		})
+		return
+	}
+
+	userType, exists := ctx.Get("user_type")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "User type tidak ditemukan",
+		})
+		return
+	}
+
+	var req ChangePasswordRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Data tidak valid: " + err.Error(),
+		})
+		return
+	}
+
+	if req.NewPassword != req.ConfirmPassword {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Password baru dan konfirmasi password tidak sama",
+		})
+		return
+	}
+
+	uid, err := uuid.Parse(userID.(string))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "User ID tidak valid",
+		})
+		return
+	}
+
+	err = c.authService.ChangePassword(ctx, uid, userType.(string), req.CurrentPassword, req.NewPassword)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Password berhasil diubah",
+	})
+}
+
 type ActivityLogController struct {
 	service services.ActivityLogService
 }

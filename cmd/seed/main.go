@@ -71,12 +71,19 @@ func main() {
 		log.Fatal("Gagal hash password:", err)
 	}
 
+	// Set role_id to super admin role
+	var adminRole models.Role
+	if err := db.Where("kode = ?", "SUPER_ADMIN").First(&adminRole).Error; err != nil {
+		log.Fatal("Gagal mendapatkan role SUPER_ADMIN:", err)
+	}
+
 	// Create admin
 	admin := &models.Admin{
 		ID:       uuid.New(),
 		Nama:     nama,
 		Email:    email,
 		Password: hashedPassword,
+		RoleID:   adminRole.ID,
 		IsActive: true,
 	}
 
