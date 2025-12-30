@@ -4,19 +4,27 @@ import (
 	"net/http"
 	"strconv"
 
+	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/repositories"
 	"project-bulky-be/internal/services"
+	"project-bulky-be/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 type AuthV2Controller struct {
-	authService services.AuthV2Service
+	authService  services.AuthV2Service
+	adminService services.AdminService
+	buyerService services.BuyerService
 }
 
-func NewAuthV2Controller(authService services.AuthV2Service) *AuthV2Controller {
-	return &AuthV2Controller{authService: authService}
+func NewAuthV2Controller(authService services.AuthV2Service, adminService services.AdminService, buyerService services.BuyerService) *AuthV2Controller {
+	return &AuthV2Controller{
+		authService:  authService,
+		adminService: adminService,
+		buyerService: buyerService,
+	}
 }
 
 type LoginRequest struct {
@@ -168,19 +176,9 @@ func (c *AuthV2Controller) GetMe(ctx *gin.Context) {
 	})
 }
 
-type UpdateProfileRequest struct {
-	Nama  string `json:"nama" binding:"required"`
-	Email string `json:"email" binding:"omitempty,email"`
-}
-
-type ChangePasswordRequest struct {
-	CurrentPassword string `json:"current_password" binding:"required"`
-	NewPassword     string `json:"new_password" binding:"required,min=6"`
-	ConfirmPassword string `json:"confirm_password" binding:"required"`
-}
-
 // PUT /api/v1/auth/profile
 func (c *AuthV2Controller) UpdateProfile(ctx *gin.Context) {
+	// Get user info from JWT context
 	userID, exists := ctx.Get("user_id")
 	if !exists {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
@@ -199,38 +197,169 @@ func (c *AuthV2Controller) UpdateProfile(ctx *gin.Context) {
 		return
 	}
 
-	var req UpdateProfileRequest
+	// Route to appropriate handler based on user type
+	switch userType.(string) {
+	case "ADMIN":
+		c.updateAdminProfile(ctx, userID.(string))
+	case "BUYER":
+		c.updateBuyerProfile(ctx, userID.(string))
+	default:
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "User type tidak valid",
+		})
+	}
+}
+
+func (c *AuthV2Controller) updateAdminProfile(ctx *gin.Context, userID string) {
+	var req dto.AdminUpdateProfileRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": "Data tidak valid: " + err.Error(),
+			"message": "Validasi gagal",
+			"errors":  err.Error(),
 		})
 		return
 	}
 
-	uid, err := uuid.Parse(userID.(string))
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "User ID tidak valid",
-		})
-		return
-	}
-
-	user, err := c.authService.UpdateProfile(ctx, uid, userType.(string), req.Nama)
+	// Check email unique (exclude current user)
+	exists, err := c.adminService.IsEmailExistExcludeID(ctx, req.Email, userID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": err.Error(),
+			"message": "Gagal memeriksa email",
+		})
+		return
+	}
+	if exists {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Email sudah digunakan oleh user lain",
+		})
+		return
+	}
+
+	// Update profile
+	admin, err := c.adminService.UpdateProfile(ctx, userID, req.Nama, req.Email)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Gagal mengupdate profile",
+		})
+		return
+	}
+
+	// Get full data with role and permissions (using auth service)
+	uid, _ := uuid.Parse(userID)
+	result, err := c.authService.GetCurrentUser(ctx, uid, "ADMIN")
+	if err != nil {
+		// Fallback to basic response
+		ctx.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "Profile berhasil diupdate",
+			"data": gin.H{
+				"id":         admin.ID.String(),
+				"nama":       admin.Nama,
+				"email":      admin.Email,
+				"is_active":  admin.IsActive,
+				"created_at": admin.CreatedAt,
+				"updated_at": admin.UpdatedAt,
+			},
 		})
 		return
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Profile berhasil diperbarui",
-		"data":    user,
+		"message": "Profile berhasil diupdate",
+		"data":    result,
 	})
+}
+
+func (c *AuthV2Controller) updateBuyerProfile(ctx *gin.Context, userID string) {
+	var req dto.BuyerUpdateProfileRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Validasi gagal",
+			"errors":  err.Error(),
+		})
+		return
+	}
+
+	// Check email unique (exclude current user)
+	emailExists, err := c.buyerService.IsEmailExistExcludeID(ctx, req.Email, userID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Gagal memeriksa email",
+		})
+		return
+	}
+	if emailExists {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Email sudah digunakan oleh user lain",
+		})
+		return
+	}
+
+	// Check username unique (exclude current user)
+	usernameExists, err := c.buyerService.IsUsernameExistExcludeID(ctx, req.Username, userID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Gagal memeriksa username",
+		})
+		return
+	}
+	if usernameExists {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Username sudah digunakan oleh user lain",
+		})
+		return
+	}
+
+	// Validate phone format
+	if !utils.IsValidIndonesianPhone(req.Telepon) {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Format telepon tidak valid",
+		})
+		return
+	}
+
+	// Update profile
+	buyer, err := c.buyerService.UpdateProfile(ctx, userID, req.Nama, req.Username, req.Email, req.Telepon)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Gagal mengupdate profile",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Profile berhasil diupdate",
+		"data": gin.H{
+			"id":         buyer.ID.String(),
+			"nama":       buyer.Nama,
+			"username":   buyer.Username,
+			"email":      buyer.Email,
+			"telepon":    buyer.Telepon,
+			"is_active":  buyer.IsActive,
+			"created_at": buyer.CreatedAt,
+			"updated_at": buyer.UpdatedAt,
+		},
+	})
+}
+
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required,min=6"`
+	ConfirmPassword string `json:"confirm_password" binding:"required"`
 }
 
 // PUT /api/v1/auth/change-password

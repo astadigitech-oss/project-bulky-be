@@ -18,6 +18,9 @@ type BuyerService interface {
 	ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error)
 	ResetPassword(ctx context.Context, id string, req *models.ResetBuyerPasswordRequest) error
 	GetStatistik(ctx context.Context) (*models.BuyerStatistikResponse, error)
+	UpdateProfile(ctx context.Context, id, nama, username, email, telepon string) (*models.Buyer, error)
+	IsEmailExistExcludeID(ctx context.Context, email, excludeID string) (bool, error)
+	IsUsernameExistExcludeID(ctx context.Context, username, excludeID string) (bool, error)
 }
 
 type buyerService struct {
@@ -214,4 +217,33 @@ func (s *buyerService) toAlamatResponse(a *models.AlamatBuyer) models.AlamatBuye
 		CreatedAt:       a.CreatedAt,
 		UpdatedAt:       a.UpdatedAt,
 	}
+}
+
+// UpdateProfile updates buyer profile (nama, username, email, telepon)
+func (s *buyerService) UpdateProfile(ctx context.Context, id, nama, username, email, telepon string) (*models.Buyer, error) {
+	buyer, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, errors.New("buyer tidak ditemukan")
+	}
+
+	buyer.Nama = nama
+	buyer.Username = username
+	buyer.Email = email
+	buyer.Telepon = &telepon
+
+	if err := s.repo.Update(ctx, buyer); err != nil {
+		return nil, err
+	}
+
+	return buyer, nil
+}
+
+// IsEmailExistExcludeID checks if email exists excluding specific ID
+func (s *buyerService) IsEmailExistExcludeID(ctx context.Context, email, excludeID string) (bool, error) {
+	return s.repo.ExistsByEmail(ctx, email, &excludeID)
+}
+
+// IsUsernameExistExcludeID checks if username exists excluding specific ID
+func (s *buyerService) IsUsernameExistExcludeID(ctx context.Context, username, excludeID string) (bool, error) {
+	return s.repo.ExistsByUsername(ctx, username, &excludeID)
 }

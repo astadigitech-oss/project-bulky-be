@@ -26,6 +26,9 @@ func main() {
 	// Initialize JWT config with durations
 	utils.SetJWTConfig(cfg.JWTSecret, cfg.JWTAccessDuration, cfg.JWTRefreshDuration)
 
+	// Initialize custom validators
+	utils.InitCustomValidators()
+
 	database.InitDB(cfg)
 	db := database.GetDB()
 
@@ -118,7 +121,7 @@ func main() {
 	appStatusController := controllers.NewAppStatusController(forceUpdateService, modeMaintenanceService)
 
 	// Auth V2 controllers
-	authV2Controller := controllers.NewAuthV2Controller(authV2Service)
+	authV2Controller := controllers.NewAuthV2Controller(authV2Service, adminService, buyerService)
 	activityLogController := controllers.NewActivityLogController(activityLogService)
 	roleController := controllers.NewRoleController(roleService)
 	permissionController := controllers.NewPermissionController(permissionService)

@@ -19,6 +19,8 @@ type AdminService interface {
 	Delete(ctx context.Context, id, currentAdminID string) error
 	ToggleStatus(ctx context.Context, id, currentAdminID string) (*models.ToggleStatusResponse, error)
 	ResetPassword(ctx context.Context, id string, req *models.ResetPasswordRequest) error
+	UpdateProfile(ctx context.Context, id string, nama, email string) (*models.Admin, error)
+	IsEmailExistExcludeID(ctx context.Context, email, excludeID string) (bool, error)
 }
 
 type adminService struct {
@@ -63,7 +65,6 @@ func (s *adminService) FindByID(ctx context.Context, id string) (*models.AdminRe
 	}
 	return s.toResponse(admin), nil
 }
-
 
 func (s *adminService) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.AdminListResponse, *models.PaginationMeta, error) {
 	params.SetDefaults()
@@ -204,4 +205,26 @@ func (s *adminService) toResponse(a *models.Admin) *models.AdminResponse {
 		CreatedAt:   a.CreatedAt,
 		UpdatedAt:   a.UpdatedAt,
 	}
+}
+
+// UpdateProfile updates admin profile (nama and email)
+func (s *adminService) UpdateProfile(ctx context.Context, id string, nama, email string) (*models.Admin, error) {
+	admin, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, errors.New("admin tidak ditemukan")
+	}
+
+	admin.Nama = nama
+	admin.Email = email
+
+	if err := s.repo.Update(ctx, admin); err != nil {
+		return nil, err
+	}
+
+	return admin, nil
+}
+
+// IsEmailExistExcludeID checks if email exists excluding specific ID
+func (s *adminService) IsEmailExistExcludeID(ctx context.Context, email, excludeID string) (bool, error) {
+	return s.repo.ExistsByEmail(ctx, email, &excludeID)
 }
