@@ -137,7 +137,6 @@ type ReorderRequest struct {
 	Items []ReorderItem `json:"items" binding:"required,min=1,dive"`
 }
 
-
 // ========================================
 // Warehouse Request
 // ========================================
@@ -175,7 +174,6 @@ type UpdateTipeProdukRequest struct {
 	Urutan    *int    `json:"urutan"`
 	IsActive  *bool   `json:"is_active"`
 }
-
 
 // ========================================
 // Diskon Kategori Request
@@ -216,7 +214,6 @@ type UpdateBannerTipeProdukRequest struct {
 	Urutan       *int    `json:"urutan"`
 	IsActive     *bool   `json:"is_active"`
 }
-
 
 // ========================================
 // Produk Request
@@ -303,7 +300,6 @@ type CreateProdukDokumenRequest struct {
 	UkuranFile  *int   `json:"ukuran_file"`
 }
 
-
 // ========================================
 // Auth Request
 // ========================================
@@ -332,6 +328,7 @@ type CreateAdminRequest struct {
 	Email           string `json:"email" binding:"required,email,max=255"`
 	Password        string `json:"password" binding:"required,min=6"`
 	ConfirmPassword string `json:"confirm_password" binding:"required,eqfield=Password"`
+	RoleID          string `json:"role_id" binding:"required,uuid"`
 }
 
 type UpdateAdminRequest struct {
@@ -349,7 +346,6 @@ type ResetPasswordRequest struct {
 	NewPassword     string `json:"new_password" binding:"required,min=6"`
 	ConfirmPassword string `json:"confirm_password" binding:"required,eqfield=NewPassword"`
 }
-
 
 // ========================================
 // Buyer Request (Admin: RUD only, no Create)
@@ -416,7 +412,6 @@ type AlamatBuyerFilterRequest struct {
 	PaginationRequest
 	BuyerID string `form:"buyer_id" binding:"required,uuid"`
 }
-
 
 // ========================================
 // Hero Section Request

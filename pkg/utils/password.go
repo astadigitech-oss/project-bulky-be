@@ -7,9 +7,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// HashPassword hashes a password using bcrypt
+// HashPassword hashes a password using bcrypt with configurable cost
 func HashPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return HashPasswordWithCost(password, bcrypt.DefaultCost)
+}
+
+// HashPasswordWithCost hashes a password using bcrypt with specified cost
+func HashPasswordWithCost(password string, cost int) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), cost)
 	return string(bytes), err
 }
 

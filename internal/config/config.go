@@ -17,6 +17,7 @@ type Config struct {
 	JWTSecret          string
 	JWTAccessDuration  time.Duration
 	JWTRefreshDuration time.Duration
+	BcryptCost         int
 	UploadPath         string
 	BaseURL            string
 	PlayStoreURL       string
@@ -27,6 +28,9 @@ func LoadConfig() *Config {
 	// Parse JWT durations
 	accessDuration := parseDuration(getEnv("JWT_ACCESS_EXPIRY", "1h"), time.Hour)
 	refreshDuration := parseDuration(getEnv("JWT_REFRESH_EXPIRY", "168h"), 168*time.Hour) // 7 days
+
+	// Get bcrypt cost based on environment
+	bcryptCost := getBcryptCost(getEnv("APP_ENV", "development"))
 
 	return &Config{
 		AppEnv:             getEnv("APP_ENV", "development"),
@@ -39,6 +43,7 @@ func LoadConfig() *Config {
 		JWTSecret:          getEnv("JWT_SECRET", "your-secret-key-minimum-32-characters-long"),
 		JWTAccessDuration:  accessDuration,
 		JWTRefreshDuration: refreshDuration,
+		BcryptCost:         bcryptCost,
 		UploadPath:         getEnv("UPLOAD_PATH", "./uploads"),
 		BaseURL:            getEnv("BASE_URL", "http://localhost:8080/uploads"),
 		PlayStoreURL:       getEnv("PLAY_STORE_URL", "https://play.google.com/store/apps/details?id=com.bulky"),
@@ -66,4 +71,24 @@ func parseDuration(durationStr string, defaultDuration time.Duration) time.Durat
 	}
 
 	return defaultDuration
+}
+
+// getBcryptCost returns the bcrypt cost based on environment
+func getBcryptCost(env string) int {
+	// Allow override via environment variable
+	if costStr := os.Getenv("BCRYPT_COST"); costStr != "" {
+		if cost, err := strconv.Atoi(costStr); err == nil && cost >= 4 && cost <= 31 {
+			return cost
+		}
+	}
+
+	// Default based on environment
+	switch env {
+	case "production":
+		return 12 // ~400ms
+	case "staging":
+		return 11 // ~200ms
+	default: // development, testing
+		return 10 // ~100ms
+	}
 }

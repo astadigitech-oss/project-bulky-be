@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
 	"project-bulky-be/pkg/utils"
@@ -44,6 +45,7 @@ type TokenPair struct {
 type authV2Service struct {
 	authRepo     repositories.AuthRepository
 	activityRepo repositories.ActivityLogRepository
+	cfg          *config.Config
 }
 
 func NewAuthV2Service(
@@ -53,6 +55,7 @@ func NewAuthV2Service(
 	return &authV2Service{
 		authRepo:     authRepo,
 		activityRepo: activityRepo,
+		cfg:          config.LoadConfig(),
 	}
 }
 
@@ -489,8 +492,8 @@ func (s *authV2Service) ChangePassword(ctx context.Context, userID uuid.UUID, us
 			return errors.New("password baru tidak boleh sama dengan password lama")
 		}
 
-		// Hash new password
-		hashedPassword, err := utils.HashPassword(newPassword)
+		// Hash new password with configured cost
+		hashedPassword, err := utils.HashPasswordWithCost(newPassword, s.cfg.BcryptCost)
 		if err != nil {
 			return errors.New("gagal meng-hash password")
 		}
@@ -528,8 +531,8 @@ func (s *authV2Service) ChangePassword(ctx context.Context, userID uuid.UUID, us
 			return errors.New("password baru tidak boleh sama dengan password lama")
 		}
 
-		// Hash new password
-		hashedPassword, err := utils.HashPassword(newPassword)
+		// Hash new password with configured cost
+		hashedPassword, err := utils.HashPasswordWithCost(newPassword, s.cfg.BcryptCost)
 		if err != nil {
 			return errors.New("gagal meng-hash password")
 		}

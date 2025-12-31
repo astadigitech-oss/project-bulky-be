@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
 	"project-bulky-be/pkg/utils"
@@ -26,10 +27,15 @@ type AdminService interface {
 type adminService struct {
 	repo        repositories.AdminRepository
 	sessionRepo repositories.AdminSessionRepository
+	cfg         *config.Config
 }
 
 func NewAdminService(repo repositories.AdminRepository, sessionRepo repositories.AdminSessionRepository) AdminService {
-	return &adminService{repo: repo, sessionRepo: sessionRepo}
+	return &adminService{
+		repo:        repo,
+		sessionRepo: sessionRepo,
+		cfg:         config.LoadConfig(),
+	}
 }
 
 func (s *adminService) Create(ctx context.Context, req *models.CreateAdminRequest) (*models.AdminResponse, error) {
@@ -38,7 +44,14 @@ func (s *adminService) Create(ctx context.Context, req *models.CreateAdminReques
 		return nil, errors.New("email sudah terdaftar")
 	}
 
-	hashedPassword, err := utils.HashPassword(req.Password)
+	// Parse RoleID
+	roleID, err := uuid.Parse(req.RoleID)
+	if err != nil {
+		return nil, errors.New("role_id tidak valid")
+	}
+
+	// Use configured bcrypt cost
+	hashedPassword, err := utils.HashPasswordWithCost(req.Password, s.cfg.BcryptCost)
 	if err != nil {
 		return nil, err
 	}
@@ -48,6 +61,7 @@ func (s *adminService) Create(ctx context.Context, req *models.CreateAdminReques
 		Nama:     req.Nama,
 		Email:    req.Email,
 		Password: hashedPassword,
+		RoleID:   roleID,
 		IsActive: true,
 	}
 
@@ -179,7 +193,8 @@ func (s *adminService) ResetPassword(ctx context.Context, id string, req *models
 		return errors.New("admin tidak ditemukan")
 	}
 
-	hashedPassword, err := utils.HashPassword(req.NewPassword)
+	// Use configured bcrypt cost
+	hashedPassword, err := utils.HashPasswordWithCost(req.NewPassword, s.cfg.BcryptCost)
 	if err != nil {
 		return err
 	}

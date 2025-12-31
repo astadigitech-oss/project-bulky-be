@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
 	"project-bulky-be/pkg/utils"
@@ -24,10 +25,15 @@ type AuthService interface {
 type authService struct {
 	adminRepo   repositories.AdminRepository
 	sessionRepo repositories.AdminSessionRepository
+	cfg         *config.Config
 }
 
 func NewAuthService(adminRepo repositories.AdminRepository, sessionRepo repositories.AdminSessionRepository) AuthService {
-	return &authService{adminRepo: adminRepo, sessionRepo: sessionRepo}
+	return &authService{
+		adminRepo:   adminRepo,
+		sessionRepo: sessionRepo,
+		cfg:         config.LoadConfig(),
+	}
 }
 
 func (s *authService) Login(ctx context.Context, req *models.LoginRequest, ipAddress, userAgent string) (*models.LoginResponse, error) {
@@ -138,7 +144,8 @@ func (s *authService) Logout(ctx context.Context, refreshToken string) error {
 }
 
 func (s *authService) GetProfile(ctx context.Context, adminID string) (*models.AdminResponse, error) {
-	admin, err := s.adminRepo.FindByID(ctx, adminID)
+	// Use FindByIDWithRole to optimize query with Preload
+	admin, err := s.adminRepo.FindByIDWithRole(ctx, adminID)
 	if err != nil {
 		return nil, errors.New("admin tidak ditemukan")
 	}
@@ -184,7 +191,8 @@ func (s *authService) ChangePassword(ctx context.Context, adminID string, req *m
 		return errors.New("password baru tidak boleh sama dengan password lama")
 	}
 
-	hashedPassword, err := utils.HashPassword(req.NewPassword)
+	// Use configured bcrypt cost
+	hashedPassword, err := utils.HashPasswordWithCost(req.NewPassword, s.cfg.BcryptCost)
 	if err != nil {
 		return err
 	}

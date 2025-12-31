@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
 	"project-bulky-be/pkg/utils"
@@ -26,10 +27,15 @@ type BuyerService interface {
 type buyerService struct {
 	repo       repositories.BuyerRepository
 	alamatRepo repositories.AlamatBuyerRepository
+	cfg        *config.Config
 }
 
 func NewBuyerService(repo repositories.BuyerRepository, alamatRepo repositories.AlamatBuyerRepository) BuyerService {
-	return &buyerService{repo: repo, alamatRepo: alamatRepo}
+	return &buyerService{
+		repo:       repo,
+		alamatRepo: alamatRepo,
+		cfg:        config.LoadConfig(),
+	}
 }
 
 func (s *buyerService) FindByID(ctx context.Context, id string) (*models.BuyerDetailResponse, error) {
@@ -147,7 +153,8 @@ func (s *buyerService) ResetPassword(ctx context.Context, id string, req *models
 		return errors.New("buyer tidak ditemukan")
 	}
 
-	hashedPassword, err := utils.HashPassword(req.NewPassword)
+	// Use configured bcrypt cost
+	hashedPassword, err := utils.HashPasswordWithCost(req.NewPassword, s.cfg.BcryptCost)
 	if err != nil {
 		return err
 	}
