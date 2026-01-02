@@ -39,10 +39,6 @@ func (r *buyerRepository) FindByIDWithAlamat(ctx context.Context, id string) (*m
 	var buyer models.Buyer
 	err := r.db.WithContext(ctx).
 		Preload("Alamat", "deleted_at IS NULL").
-		Preload("Alamat.Kelurahan").
-		Preload("Alamat.Kelurahan.Kecamatan").
-		Preload("Alamat.Kelurahan.Kecamatan.Kota").
-		Preload("Alamat.Kelurahan.Kecamatan.Kota.Provinsi").
 		Where("id = ?", id).First(&buyer).Error
 	return &buyer, err
 }
