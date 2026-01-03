@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/models"
 
 	"github.com/google/uuid"
@@ -9,9 +10,12 @@ import (
 
 type RoleRepository interface {
 	FindAll() ([]models.Role, error)
+	FindAllWithParams(params dto.RoleQueryParams) ([]models.Role, int64, error)
 	FindByID(id uuid.UUID) (*models.Role, error)
 	FindByIDWithPermissions(id uuid.UUID) (*models.Role, error)
 	FindByKode(kode string) (*models.Role, error)
+	FindByKodeExcludeID(kode string, excludeID uuid.UUID) (*models.Role, error)
+	CountAdminByRoleID(roleID uuid.UUID) (int64, error)
 	Create(role *models.Role) error
 	Update(role *models.Role) error
 	Delete(id uuid.UUID) error
@@ -35,6 +39,65 @@ func (r *roleRepository) FindAll() ([]models.Role, error) {
 		Order("created_at DESC").
 		Find(&roles).Error
 	return roles, err
+}
+
+func (r *roleRepository) FindAllWithParams(params dto.RoleQueryParams) ([]models.Role, int64, error) {
+	var roles []models.Role
+	var total int64
+
+	query := r.db.Model(&models.Role{}).Where("deleted_at IS NULL")
+
+	// Filter by search
+	if params.Cari != "" {
+		query = query.Where("nama ILIKE ? OR kode ILIKE ?", "%"+params.Cari+"%", "%"+params.Cari+"%")
+	}
+
+	// Filter by is_active
+	if params.IsActive != nil {
+		query = query.Where("is_active = ?", *params.IsActive)
+	}
+
+	// Count total
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Set default values
+	if params.Halaman == 0 {
+		params.Halaman = 1
+	}
+	if params.PerHalaman == 0 {
+		params.PerHalaman = 10
+	}
+	if params.UrutBerdasarkan == "" {
+		params.UrutBerdasarkan = "created_at"
+	}
+	if params.Urutan == "" {
+		params.Urutan = "desc"
+	}
+
+	// Sort
+	orderClause := params.UrutBerdasarkan + " " + params.Urutan
+	query = query.Order(orderClause)
+
+	// Pagination
+	offset := (params.Halaman - 1) * params.PerHalaman
+	query = query.Offset(offset).Limit(params.PerHalaman)
+
+	err := query.Find(&roles).Error
+	return roles, total, err
+}
+
+func (r *roleRepository) FindByKodeExcludeID(kode string, excludeID uuid.UUID) (*models.Role, error) {
+	var role models.Role
+	err := r.db.Where("kode = ? AND id != ? AND deleted_at IS NULL", kode, excludeID).First(&role).Error
+	return &role, err
+}
+
+func (r *roleRepository) CountAdminByRoleID(roleID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.db.Model(&models.Admin{}).Where("role_id = ? AND deleted_at IS NULL", roleID).Count(&count).Error
+	return count, err
 }
 
 func (r *roleRepository) FindByID(id uuid.UUID) (*models.Role, error) {

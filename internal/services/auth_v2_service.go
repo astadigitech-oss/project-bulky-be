@@ -16,30 +16,19 @@ import (
 )
 
 type AuthV2Service interface {
-	// Authentication
-	Login(ctx context.Context, email, password, userType, deviceInfo, ipAddress string) (*LoginResult, error)
-	RefreshToken(ctx context.Context, refreshToken string) (*TokenPair, error)
-	Logout(ctx context.Context, refreshToken string) error
+	// Authentication - Separated by user type
+	AdminLogin(ctx context.Context, email, password string) (*LoginResultSimplified, error)
+	BuyerLogin(ctx context.Context, email, password string) (*LoginResultSimplified, error)
 
 	// Profile
-	GetCurrentUser(ctx context.Context, userID uuid.UUID, userType string) (interface{}, error)
-	UpdateProfile(ctx context.Context, userID uuid.UUID, userType, nama string) (interface{}, error)
+	GetAdminWithPermissions(ctx context.Context, userID uuid.UUID) (interface{}, error)
+	GetBuyer(ctx context.Context, userID uuid.UUID) (interface{}, error)
 	ChangePassword(ctx context.Context, userID uuid.UUID, userType, currentPassword, newPassword string) error
 }
 
-type LoginResult struct {
-	User         interface{} `json:"user"`
-	AccessToken  string      `json:"access_token"`
-	RefreshToken string      `json:"refresh_token"`
-	TokenType    string      `json:"token_type"`
-	ExpiresIn    int         `json:"expires_in"`
-}
-
-type TokenPair struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int    `json:"expires_in"`
+type LoginResultSimplified struct {
+	User        interface{} `json:"user"`
+	AccessToken string      `json:"access_token"`
 }
 
 type authV2Service struct {
@@ -59,16 +48,12 @@ func NewAuthV2Service(
 	}
 }
 
-func (s *authV2Service) Login(ctx context.Context, email, password, userType, deviceInfo, ipAddress string) (*LoginResult, error) {
-	if userType == "ADMIN" {
-		return s.loginAdmin(ctx, email, password, deviceInfo, ipAddress)
-	} else if userType == "BUYER" {
-		return s.loginBuyer(ctx, email, password, deviceInfo, ipAddress)
+func (s *authV2Service) AdminLogin(ctx context.Context, email, password string) (*LoginResultSimplified, error) {
+	ipAddress := ""
+	if ginCtx, ok := ctx.(*gin.Context); ok {
+		ipAddress = ginCtx.ClientIP()
 	}
-	return nil, errors.New("tipe user tidak valid")
-}
 
-func (s *authV2Service) loginAdmin(ctx context.Context, email, password, deviceInfo, ipAddress string) (*LoginResult, error) {
 	// Find admin by email
 	admin, err := s.authRepo.FindAdminByEmail(email)
 	if err != nil {
@@ -107,34 +92,16 @@ func (s *authV2Service) loginAdmin(ctx context.Context, email, password, deviceI
 		}
 	}
 
-	// Generate tokens
+	// Generate token (24 hours)
 	accessToken, err := utils.GenerateAccessToken(
 		admin.ID,
 		"ADMIN",
 		admin.Email,
+		admin.Role.ID.String(),
 		admin.Role.Kode,
 		permissions,
 	)
 	if err != nil {
-		return nil, err
-	}
-
-	refreshTokenStr, expiresAt, err := utils.GenerateRefreshToken(admin.ID, "ADMIN")
-	if err != nil {
-		return nil, err
-	}
-
-	// Hash and store refresh token
-	hashedToken := utils.HashToken(refreshTokenStr)
-	refreshToken := &models.RefreshToken{
-		UserType:   models.UserTypeAdmin,
-		UserID:     admin.ID,
-		Token:      hashedToken,
-		DeviceInfo: &deviceInfo,
-		IPAddress:  &ipAddress,
-		ExpiredAt:  expiresAt,
-	}
-	if err := s.authRepo.CreateRefreshToken(refreshToken); err != nil {
 		return nil, err
 	}
 
@@ -144,29 +111,25 @@ func (s *authV2Service) loginAdmin(ctx context.Context, email, password, deviceI
 	// Log successful login
 	s.logActivity(ctx, &admin.ID, "ADMIN", models.ActionLogin, "auth", "Login berhasil", ipAddress)
 
-	// Prepare response
-	result := &LoginResult{
+	// Simplified response
+	result := &LoginResultSimplified{
 		User: map[string]interface{}{
-			"id":    admin.ID,
+			"id":    admin.ID.String(),
 			"nama":  admin.Nama,
 			"email": admin.Email,
-			"role": map[string]interface{}{
-				"id":   admin.Role.ID,
-				"nama": admin.Role.Nama,
-				"kode": admin.Role.Kode,
-			},
-			"permissions": permissions,
 		},
-		AccessToken:  accessToken,
-		RefreshToken: refreshTokenStr,
-		TokenType:    "Bearer",
-		ExpiresIn:    utils.GetAccessTokenDuration(),
+		AccessToken: accessToken,
 	}
 
 	return result, nil
 }
 
-func (s *authV2Service) loginBuyer(ctx context.Context, email, password, deviceInfo, ipAddress string) (*LoginResult, error) {
+func (s *authV2Service) BuyerLogin(ctx context.Context, email, password string) (*LoginResultSimplified, error) {
+	ipAddress := ""
+	if ginCtx, ok := ctx.(*gin.Context); ok {
+		ipAddress = ginCtx.ClientIP()
+	}
+
 	// Find buyer by email
 	buyer, err := s.authRepo.FindBuyerByEmail(email)
 	if err != nil {
@@ -191,34 +154,16 @@ func (s *authV2Service) loginBuyer(ctx context.Context, email, password, deviceI
 		return nil, errors.New("akun Anda tidak aktif. Silakan hubungi admin")
 	}
 
-	// Generate tokens
+	// Generate token (24 hours)
 	accessToken, err := utils.GenerateAccessToken(
 		buyer.ID,
 		"BUYER",
 		buyer.Email,
 		"",
+		"",
 		nil,
 	)
 	if err != nil {
-		return nil, err
-	}
-
-	refreshTokenStr, expiresAt, err := utils.GenerateRefreshToken(buyer.ID, "BUYER")
-	if err != nil {
-		return nil, err
-	}
-
-	// Hash and store refresh token
-	hashedToken := utils.HashToken(refreshTokenStr)
-	refreshToken := &models.RefreshToken{
-		UserType:   models.UserTypeBuyer,
-		UserID:     buyer.ID,
-		Token:      hashedToken,
-		DeviceInfo: &deviceInfo,
-		IPAddress:  &ipAddress,
-		ExpiredAt:  expiresAt,
-	}
-	if err := s.authRepo.CreateRefreshToken(refreshToken); err != nil {
 		return nil, err
 	}
 
@@ -228,144 +173,56 @@ func (s *authV2Service) loginBuyer(ctx context.Context, email, password, deviceI
 	// Log successful login
 	s.logActivity(ctx, &buyer.ID, "BUYER", models.ActionLogin, "auth", "Login berhasil", ipAddress)
 
-	// Prepare response
-	result := &LoginResult{
+	// Simplified response
+	result := &LoginResultSimplified{
 		User: map[string]interface{}{
-			"id":      buyer.ID,
-			"nama":    buyer.Nama,
-			"email":   buyer.Email,
-			"telepon": buyer.Telepon,
+			"id":    buyer.ID.String(),
+			"nama":  buyer.Nama,
+			"email": buyer.Email,
 		},
-		AccessToken:  accessToken,
-		RefreshToken: refreshTokenStr,
-		TokenType:    "Bearer",
-		ExpiresIn:    utils.GetAccessTokenDuration(),
+		AccessToken: accessToken,
 	}
 
 	return result, nil
 }
 
-func (s *authV2Service) RefreshToken(ctx context.Context, refreshToken string) (*TokenPair, error) {
-	// Validate token format
-	claims, err := utils.ValidateJWT(refreshToken)
+func (s *authV2Service) GetAdminWithPermissions(ctx context.Context, userID uuid.UUID) (interface{}, error) {
+	admin, err := s.authRepo.FindAdminWithRole(userID)
 	if err != nil {
-		return nil, errors.New("refresh token tidak valid")
+		return nil, err
 	}
 
-	// Check if token exists in database
-	hashedToken := utils.HashToken(refreshToken)
-	storedToken, err := s.authRepo.FindRefreshToken(hashedToken)
-	if err != nil {
-		return nil, errors.New("refresh token tidak valid atau sudah expired")
-	}
-
-	// Get user ID
-	userID, err := uuid.Parse(claims.UserID)
-	if err != nil {
-		return nil, errors.New("user ID tidak valid")
-	}
-
-	var newAccessToken string
 	var permissions []string
-
-	// Generate new access token based on user type
-	if storedToken.UserType == models.UserTypeAdmin {
-		admin, err := s.authRepo.FindAdminWithRole(userID)
-		if err != nil {
-			return nil, errors.New("user tidak ditemukan")
-		}
-
-		// Extract permissions
-		if admin.Role != nil {
-			for _, perm := range admin.Role.Permissions {
-				permissions = append(permissions, perm.Kode)
-			}
-		}
-
-		newAccessToken, err = utils.GenerateAccessToken(
-			admin.ID,
-			"ADMIN",
-			admin.Email,
-			admin.Role.Kode,
-			permissions,
-		)
-		if err != nil {
-			return nil, err
-		}
-	} else if storedToken.UserType == models.UserTypeBuyer {
-		buyer, err := s.authRepo.FindBuyerByID(userID)
-		if err != nil {
-			return nil, errors.New("user tidak ditemukan")
-		}
-
-		newAccessToken, err = utils.GenerateAccessToken(
-			buyer.ID,
-			"BUYER",
-			buyer.Email,
-			"",
-			nil,
-		)
-		if err != nil {
-			return nil, err
+	if admin.Role != nil {
+		for _, perm := range admin.Role.Permissions {
+			permissions = append(permissions, perm.Kode)
 		}
 	}
 
-	// Optionally rotate refresh token (for better security)
-	// For now, we'll keep the same refresh token
-
-	return &TokenPair{
-		AccessToken:  newAccessToken,
-		RefreshToken: refreshToken,
-		TokenType:    "Bearer",
-		ExpiresIn:    utils.GetAccessTokenDuration(),
+	return map[string]interface{}{
+		"id":    admin.ID.String(),
+		"nama":  admin.Nama,
+		"email": admin.Email,
+		"role": map[string]interface{}{
+			"nama": admin.Role.Nama,
+		},
+		"permissions": permissions,
 	}, nil
 }
 
-func (s *authV2Service) Logout(ctx context.Context, refreshToken string) error {
-	hashedToken := utils.HashToken(refreshToken)
-	return s.authRepo.RevokeRefreshToken(hashedToken)
-}
-
-func (s *authV2Service) GetCurrentUser(ctx context.Context, userID uuid.UUID, userType string) (interface{}, error) {
-	if userType == "ADMIN" {
-		admin, err := s.authRepo.FindAdminWithRole(userID)
-		if err != nil {
-			return nil, err
-		}
-
-		var permissions []string
-		if admin.Role != nil {
-			for _, perm := range admin.Role.Permissions {
-				permissions = append(permissions, perm.Kode)
-			}
-		}
-
-		return map[string]interface{}{
-			"id":    admin.ID,
-			"nama":  admin.Nama,
-			"email": admin.Email,
-			"role": map[string]interface{}{
-				"id":   admin.Role.ID,
-				"nama": admin.Role.Nama,
-				"kode": admin.Role.Kode,
-			},
-			"permissions": permissions,
-		}, nil
-	} else if userType == "BUYER" {
-		buyer, err := s.authRepo.FindBuyerByID(userID)
-		if err != nil {
-			return nil, err
-		}
-
-		return map[string]interface{}{
-			"id":      buyer.ID,
-			"nama":    buyer.Nama,
-			"email":   buyer.Email,
-			"telepon": buyer.Telepon,
-		}, nil
+func (s *authV2Service) GetBuyer(ctx context.Context, userID uuid.UUID) (interface{}, error) {
+	buyer, err := s.authRepo.FindBuyerByID(userID)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, errors.New("tipe user tidak valid")
+	return map[string]interface{}{
+		"id":       buyer.ID.String(),
+		"nama":     buyer.Nama,
+		"username": buyer.Username,
+		"email":    buyer.Email,
+		"telepon":  buyer.Telepon,
+	}, nil
 }
 
 // Helper to log activity
@@ -390,92 +247,13 @@ func (s *authV2Service) logActivity(ctx context.Context, userID *uuid.UUID, user
 	go s.activityRepo.Create(log)
 }
 
-// UpdateProfile updates user profile (nama)
-func (s *authV2Service) UpdateProfile(ctx context.Context, userID uuid.UUID, userType, nama string) (interface{}, error) {
-	if userType == "ADMIN" {
-		admin, err := s.authRepo.FindAdminByID(userID)
-		if err != nil {
-			return nil, errors.New("admin tidak ditemukan")
-		}
-
-		// Update nama
-		oldNama := admin.Nama
-		admin.Nama = nama
-
-		// Save to database (need to add Update method to repository)
-		if err := s.authRepo.UpdateAdmin(admin); err != nil {
-			return nil, err
-		}
-
-		// Log activity
-		ipAddress := ""
-		if ginCtx, ok := ctx.(*gin.Context); ok {
-			ipAddress = ginCtx.ClientIP()
-		}
-		s.logActivity(ctx, &userID, "ADMIN", models.ActionUpdate, "profile",
-			"Mengupdate profile dari '"+oldNama+"' ke '"+nama+"'", ipAddress)
-
-		// Get full data with role
-		adminWithRole, _ := s.authRepo.FindAdminWithRole(userID)
-		if adminWithRole != nil {
-			admin = adminWithRole
-		}
-
-		permissions := []string{}
-		if admin.Role != nil {
-			for _, p := range admin.Role.Permissions {
-				permissions = append(permissions, p.Kode)
-			}
-		}
-
-		return map[string]interface{}{
-			"id":    admin.ID,
-			"nama":  admin.Nama,
-			"email": admin.Email,
-			"role": map[string]interface{}{
-				"id":   admin.Role.ID,
-				"nama": admin.Role.Nama,
-				"kode": admin.Role.Kode,
-			},
-			"permissions": permissions,
-		}, nil
-
-	} else if userType == "BUYER" {
-		buyer, err := s.authRepo.FindBuyerByID(userID)
-		if err != nil {
-			return nil, errors.New("buyer tidak ditemukan")
-		}
-
-		// Update nama
-		oldNama := buyer.Nama
-		buyer.Nama = nama
-
-		// Save to database
-		if err := s.authRepo.UpdateBuyer(buyer); err != nil {
-			return nil, err
-		}
-
-		// Log activity
-		ipAddress := ""
-		if ginCtx, ok := ctx.(*gin.Context); ok {
-			ipAddress = ginCtx.ClientIP()
-		}
-		s.logActivity(ctx, &userID, "BUYER", models.ActionUpdate, "profile",
-			"Mengupdate profile dari '"+oldNama+"' ke '"+nama+"'", ipAddress)
-
-		return map[string]interface{}{
-			"id":      buyer.ID,
-			"nama":    buyer.Nama,
-			"email":   buyer.Email,
-			"telepon": buyer.Telepon,
-		}, nil
-	}
-
-	return nil, errors.New("tipe user tidak valid")
-}
-
 // ChangePassword changes user password
 func (s *authV2Service) ChangePassword(ctx context.Context, userID uuid.UUID, userType, currentPassword, newPassword string) error {
+	ipAddress := ""
+	if ginCtx, ok := ctx.(*gin.Context); ok {
+		ipAddress = ginCtx.ClientIP()
+	}
+
 	if userType == "ADMIN" {
 		admin, err := s.authRepo.FindAdminByID(userID)
 		if err != nil {
@@ -484,7 +262,7 @@ func (s *authV2Service) ChangePassword(ctx context.Context, userID uuid.UUID, us
 
 		// Verify current password
 		if !utils.CheckPassword(currentPassword, admin.Password) {
-			return errors.New("password lama tidak sesuai")
+			return errors.New("password saat ini salah")
 		}
 
 		// Check if new password is same as old
@@ -506,10 +284,6 @@ func (s *authV2Service) ChangePassword(ctx context.Context, userID uuid.UUID, us
 		}
 
 		// Log activity
-		ipAddress := ""
-		if ginCtx, ok := ctx.(*gin.Context); ok {
-			ipAddress = ginCtx.ClientIP()
-		}
 		s.logActivity(ctx, &userID, "ADMIN", models.ActionUpdate, "security",
 			"Mengubah password", ipAddress)
 
@@ -523,7 +297,7 @@ func (s *authV2Service) ChangePassword(ctx context.Context, userID uuid.UUID, us
 
 		// Verify current password
 		if !utils.CheckPassword(currentPassword, buyer.Password) {
-			return errors.New("password lama tidak sesuai")
+			return errors.New("password saat ini salah")
 		}
 
 		// Check if new password is same as old
@@ -545,10 +319,6 @@ func (s *authV2Service) ChangePassword(ctx context.Context, userID uuid.UUID, us
 		}
 
 		// Log activity
-		ipAddress := ""
-		if ginCtx, ok := ctx.(*gin.Context); ok {
-			ipAddress = ginCtx.ClientIP()
-		}
 		s.logActivity(ctx, &userID, "BUYER", models.ActionUpdate, "security",
 			"Mengubah password", ipAddress)
 

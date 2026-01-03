@@ -28,18 +28,12 @@ func NewAuthV2Controller(authService services.AuthV2Service, adminService servic
 }
 
 type LoginRequest struct {
-	Email      string `json:"email" binding:"required,email"`
-	Password   string `json:"password" binding:"required"`
-	Type       string `json:"type" binding:"required,oneof=admin buyer ADMIN BUYER"`
-	DeviceInfo string `json:"device_info"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=6"`
 }
 
-type RefreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
-}
-
-// POST /api/v1/auth/login
-func (c *AuthV2Controller) Login(ctx *gin.Context) {
+// POST /api/auth/admin/login
+func (c *AuthV2Controller) AdminLogin(ctx *gin.Context) {
 	var req LoginRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
@@ -49,17 +43,16 @@ func (c *AuthV2Controller) Login(ctx *gin.Context) {
 		return
 	}
 
-	// Normalize type to uppercase
-	userType := req.Type
-	if userType == "admin" {
-		userType = "ADMIN"
-	} else if userType == "buyer" {
-		userType = "BUYER"
-	}
-
-	ipAddress := ctx.ClientIP()
-	result, err := c.authService.Login(ctx, req.Email, req.Password, userType, req.DeviceInfo, ipAddress)
+	result, err := c.authService.AdminLogin(ctx, req.Email, req.Password)
 	if err != nil {
+		// Check error type for proper status code
+		if err.Error() == "akun Anda tidak aktif. Silakan hubungi admin" {
+			ctx.JSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
 		ctx.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
 			"message": err.Error(),
@@ -74,9 +67,9 @@ func (c *AuthV2Controller) Login(ctx *gin.Context) {
 	})
 }
 
-// POST /api/v1/auth/refresh
-func (c *AuthV2Controller) RefreshToken(ctx *gin.Context) {
-	var req RefreshTokenRequest
+// POST /api/auth/buyer/login
+func (c *AuthV2Controller) BuyerLogin(ctx *gin.Context) {
+	var req LoginRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -85,8 +78,16 @@ func (c *AuthV2Controller) RefreshToken(ctx *gin.Context) {
 		return
 	}
 
-	result, err := c.authService.RefreshToken(ctx, req.RefreshToken)
+	result, err := c.authService.BuyerLogin(ctx, req.Email, req.Password)
 	if err != nil {
+		// Check error type for proper status code
+		if err.Error() == "akun Anda tidak aktif. Silakan hubungi admin" {
+			ctx.JSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
 		ctx.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
 			"message": err.Error(),
@@ -96,49 +97,26 @@ func (c *AuthV2Controller) RefreshToken(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Token berhasil diperbarui",
+		"message": "Login berhasil",
 		"data":    result,
 	})
 }
 
-// POST /api/v1/auth/logout
+// POST /api/auth/logout
 func (c *AuthV2Controller) Logout(ctx *gin.Context) {
-	var req RefreshTokenRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		// Try to get from header as fallback
-		refreshToken := ctx.GetHeader("X-Refresh-Token")
-		if refreshToken == "" {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"message": "Refresh token diperlukan",
-			})
-			return
-		}
-		req.RefreshToken = refreshToken
-	}
-
-	err := c.authService.Logout(ctx, req.RefreshToken)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "Logout gagal: " + err.Error(),
-		})
-		return
-	}
-
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Logout berhasil",
 	})
 }
 
-// GET /api/v1/auth/me
+// GET /api/auth/me
 func (c *AuthV2Controller) GetMe(ctx *gin.Context) {
 	userID, exists := ctx.Get("user_id")
 	if !exists {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
-			"message": "User ID tidak ditemukan",
+			"message": "Token tidak valid atau sudah expired",
 		})
 		return
 	}
@@ -147,7 +125,7 @@ func (c *AuthV2Controller) GetMe(ctx *gin.Context) {
 	if !exists {
 		ctx.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
-			"message": "User type tidak ditemukan",
+			"message": "Token tidak valid atau sudah expired",
 		})
 		return
 	}
@@ -161,19 +139,42 @@ func (c *AuthV2Controller) GetMe(ctx *gin.Context) {
 		return
 	}
 
-	user, err := c.authService.GetCurrentUser(ctx, uid, userType.(string))
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": err.Error(),
+	// Handle based on user type
+	switch userType.(string) {
+	case "ADMIN":
+		admin, err := c.authService.GetAdminWithPermissions(ctx, uid)
+		if err != nil {
+			ctx.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": "Admin tidak ditemukan",
+			})
+			return
+		}
+		ctx.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"data":    admin,
 		})
-		return
-	}
 
-	ctx.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    user,
-	})
+	case "BUYER":
+		buyer, err := c.authService.GetBuyer(ctx, uid)
+		if err != nil {
+			ctx.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": "Buyer tidak ditemukan",
+			})
+			return
+		}
+		ctx.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"data":    buyer,
+		})
+
+	default:
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "User type tidak valid",
+		})
+	}
 }
 
 // PUT /api/v1/auth/profile
@@ -249,30 +250,15 @@ func (c *AuthV2Controller) updateAdminProfile(ctx *gin.Context, userID string) {
 		return
 	}
 
-	// Get full data with role and permissions (using auth service)
-	uid, _ := uuid.Parse(userID)
-	result, err := c.authService.GetCurrentUser(ctx, uid, "ADMIN")
-	if err != nil {
-		// Fallback to basic response
-		ctx.JSON(http.StatusOK, gin.H{
-			"success": true,
-			"message": "Profile berhasil diupdate",
-			"data": gin.H{
-				"id":         admin.ID.String(),
-				"nama":       admin.Nama,
-				"email":      admin.Email,
-				"is_active":  admin.IsActive,
-				"created_at": admin.CreatedAt,
-				"updated_at": admin.UpdatedAt,
-			},
-		})
-		return
-	}
-
+	// Simplified response (tanpa permissions & role)
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Profile berhasil diupdate",
-		"data":    result,
+		"data": gin.H{
+			"id":    admin.ID.String(),
+			"nama":  admin.Nama,
+			"email": admin.Email,
+		},
 	})
 }
 
@@ -340,18 +326,16 @@ func (c *AuthV2Controller) updateBuyerProfile(ctx *gin.Context, userID string) {
 		return
 	}
 
+	// Simplified response
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Profile berhasil diupdate",
 		"data": gin.H{
-			"id":         buyer.ID.String(),
-			"nama":       buyer.Nama,
-			"username":   buyer.Username,
-			"email":      buyer.Email,
-			"telepon":    buyer.Telepon,
-			"is_active":  buyer.IsActive,
-			"created_at": buyer.CreatedAt,
-			"updated_at": buyer.UpdatedAt,
+			"id":       buyer.ID.String(),
+			"nama":     buyer.Nama,
+			"username": buyer.Username,
+			"email":    buyer.Email,
+			"telepon":  buyer.Telepon,
 		},
 	})
 }
@@ -362,7 +346,7 @@ type ChangePasswordRequest struct {
 	ConfirmPassword string `json:"confirm_password" binding:"required"`
 }
 
-// PUT /api/v1/auth/change-password
+// PUT /api/auth/change-password
 func (c *AuthV2Controller) ChangePassword(ctx *gin.Context) {
 	userID, exists := ctx.Get("user_id")
 	if !exists {
@@ -394,7 +378,7 @@ func (c *AuthV2Controller) ChangePassword(ctx *gin.Context) {
 	if req.NewPassword != req.ConfirmPassword {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": "Password baru dan konfirmasi password tidak sama",
+			"message": "Konfirmasi password tidak cocok",
 		})
 		return
 	}
@@ -410,6 +394,14 @@ func (c *AuthV2Controller) ChangePassword(ctx *gin.Context) {
 
 	err = c.authService.ChangePassword(ctx, uid, userType.(string), req.CurrentPassword, req.NewPassword)
 	if err != nil {
+		// Check for specific error messages
+		if err.Error() == "password saat ini salah" {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "Password saat ini salah",
+			})
+			return
+		}
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"message": err.Error(),

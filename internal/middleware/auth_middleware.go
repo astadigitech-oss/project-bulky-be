@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -49,8 +50,13 @@ func AuthMiddleware() gin.HandlerFunc {
 		c.Set("user_id", claims.UserID)
 		c.Set("user_type", claims.UserType)
 		c.Set("user_email", claims.Email)
-		c.Set("user_role", claims.Role)
-		c.Set("user_permissions", claims.Permissions)
+
+		// Set permissions dan role untuk Admin
+		if claims.UserType == "ADMIN" {
+			c.Set("user_role_id", claims.RoleID)
+			c.Set("user_role_kode", claims.RoleKode)
+			c.Set("user_permissions", claims.Permissions)
+		}
 
 		// Set legacy context for backward compatibility
 		if claims.AdminID != "" {
@@ -79,9 +85,17 @@ func RequireUserType(userType string) gin.HandlerFunc {
 		}
 
 		if currentUserType != userType {
+			var message string
+			if userType == "ADMIN" {
+				message = "Akses ditolak. Endpoint ini hanya dapat diakses oleh Admin."
+			} else if userType == "BUYER" {
+				message = "Akses ditolak. Endpoint ini hanya dapat diakses oleh Buyer."
+			} else {
+				message = "Akses ditolak"
+			}
 			c.JSON(http.StatusForbidden, gin.H{
 				"success": false,
-				"message": "Akses ditolak",
+				"message": message,
 			})
 			c.Abort()
 			return
@@ -94,27 +108,49 @@ func RequireUserType(userType string) gin.HandlerFunc {
 // RequirePermission checks if user has specific permission
 func RequirePermission(permission string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// 1. Cek user type - harus ADMIN
+		userType, exists := c.Get("user_type")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"message": "User tidak terautentikasi",
+			})
+			c.Abort()
+			return
+		}
+
+		if userType.(string) != "ADMIN" {
+			c.JSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"message": "Akses ditolak. Endpoint ini hanya dapat diakses oleh Admin.",
+			})
+			c.Abort()
+			return
+		}
+
+		// 2. Get permissions dari context
 		permissions, exists := c.Get("user_permissions")
 		if !exists {
 			c.JSON(http.StatusForbidden, gin.H{
 				"success": false,
-				"message": "Permission tidak ditemukan",
+				"message": "Akses ditolak. Permission tidak ditemukan.",
 			})
 			c.Abort()
 			return
 		}
 
+		// 3. Cek apakah punya permission yang dibutuhkan
 		perms, ok := permissions.([]string)
 		if !ok {
-			c.JSON(http.StatusForbidden, gin.H{
+			c.JSON(http.StatusInternalServerError, gin.H{
 				"success": false,
-				"message": "Format permission tidak valid",
+				"message": "Error parsing permissions",
 			})
 			c.Abort()
 			return
 		}
 
-		// Check if user has the required permission
+		// 4. Loop cek permission
 		hasPermission := false
 		for _, p := range perms {
 			if p == permission {
@@ -123,10 +159,11 @@ func RequirePermission(permission string) gin.HandlerFunc {
 			}
 		}
 
+		// 5. Permission tidak ditemukan
 		if !hasPermission {
 			c.JSON(http.StatusForbidden, gin.H{
 				"success": false,
-				"message": "Anda tidak memiliki akses untuk melakukan aksi ini",
+				"message": fmt.Sprintf("Akses ditolak. Anda tidak memiliki permission: %s", permission),
 			})
 			c.Abort()
 			return
@@ -139,27 +176,31 @@ func RequirePermission(permission string) gin.HandlerFunc {
 // RequireAnyPermission checks if user has at least one of the specified permissions
 func RequireAnyPermission(permissions ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// 1. Cek user type - harus ADMIN
+		userType, exists := c.Get("user_type")
+		if !exists || userType.(string) != "ADMIN" {
+			c.JSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"message": "Akses ditolak. Endpoint ini hanya dapat diakses oleh Admin.",
+			})
+			c.Abort()
+			return
+		}
+
+		// 2. Get permissions dari context
 		userPermissions, exists := c.Get("user_permissions")
 		if !exists {
 			c.JSON(http.StatusForbidden, gin.H{
 				"success": false,
-				"message": "Permission tidak ditemukan",
+				"message": "Akses ditolak. Permission tidak ditemukan.",
 			})
 			c.Abort()
 			return
 		}
 
-		perms, ok := userPermissions.([]string)
-		if !ok {
-			c.JSON(http.StatusForbidden, gin.H{
-				"success": false,
-				"message": "Format permission tidak valid",
-			})
-			c.Abort()
-			return
-		}
+		perms := userPermissions.([]string)
 
-		// Check if user has at least one of the required permissions
+		// 3. Cek apakah punya salah satu permission
 		hasPermission := false
 		for _, requiredPerm := range permissions {
 			for _, userPerm := range perms {
@@ -173,10 +214,11 @@ func RequireAnyPermission(permissions ...string) gin.HandlerFunc {
 			}
 		}
 
+		// 4. Tidak punya permission apapun
 		if !hasPermission {
 			c.JSON(http.StatusForbidden, gin.H{
 				"success": false,
-				"message": "Anda tidak memiliki akses untuk melakukan aksi ini",
+				"message": fmt.Sprintf("Akses ditolak. Anda memerlukan salah satu permission: %v", permissions),
 			})
 			c.Abort()
 			return
@@ -194,4 +236,83 @@ func AdminOnly() gin.HandlerFunc {
 // BuyerOnly is a convenience middleware that requires BUYER user type
 func BuyerOnly() gin.HandlerFunc {
 	return RequireUserType("BUYER")
+}
+
+// RequireAllPermissions memastikan user punya SEMUA permissions
+func RequireAllPermissions(requiredPermissions ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 1. Cek user type - harus ADMIN
+		userType, exists := c.Get("user_type")
+		if !exists || userType.(string) != "ADMIN" {
+			c.JSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"message": "Akses ditolak. Endpoint ini hanya dapat diakses oleh Admin.",
+			})
+			c.Abort()
+			return
+		}
+
+		// 2. Get permissions dari context
+		permissions, exists := c.Get("user_permissions")
+		if !exists {
+			c.JSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"message": "Akses ditolak. Permission tidak ditemukan.",
+			})
+			c.Abort()
+			return
+		}
+
+		perms := permissions.([]string)
+		permMap := make(map[string]bool)
+		for _, p := range perms {
+			permMap[p] = true
+		}
+
+		// 3. Cek semua permission harus ada
+		missingPerms := []string{}
+		for _, required := range requiredPermissions {
+			if !permMap[required] {
+				missingPerms = append(missingPerms, required)
+			}
+		}
+
+		if len(missingPerms) > 0 {
+			c.JSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"message": fmt.Sprintf("Akses ditolak. Permission yang kurang: %v", missingPerms),
+			})
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
+
+// SuperAdminOnly memastikan hanya Super Admin yang bisa akses
+func SuperAdminOnly() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userType, exists := c.Get("user_type")
+		if !exists || userType.(string) != "ADMIN" {
+			c.JSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"message": "Akses ditolak. Endpoint ini hanya dapat diakses oleh Admin.",
+			})
+			c.Abort()
+			return
+		}
+
+		roleKode, exists := c.Get("user_role_kode")
+		if !exists || roleKode.(string) != "SUPER_ADMIN" {
+			c.JSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"message": "Akses ditolak. Endpoint ini hanya dapat diakses oleh Super Admin.",
+			})
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
 }

@@ -9,8 +9,6 @@ import (
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
 	"project-bulky-be/pkg/utils"
-
-	"github.com/google/uuid"
 )
 
 type AuthService interface {
@@ -50,33 +48,21 @@ func (s *authService) Login(ctx context.Context, req *models.LoginRequest, ipAdd
 		return nil, errors.New("akun Anda telah dinonaktifkan. Hubungi administrator")
 	}
 
-	// Generate tokens (using simplified API for backward compatibility)
-	// For new code, use AuthV2Service which supports roles & permissions
+	// LEGACY AUTH SERVICE - NOT RECOMMENDED FOR NEW CODE
+	// Use AuthV2Service instead which supports roles & permissions
+	// This service no longer supports refresh tokens (single 24h token only)
+
 	accessToken, err := utils.GenerateAccessToken(
 		admin.ID,
 		"ADMIN",
 		admin.Email,
-		"",  // role will be empty for legacy auth
+		"",  // roleID empty for legacy auth
+		"",  // roleKode empty for legacy auth
 		nil, // no permissions for legacy auth
 	)
 	if err != nil {
 		return nil, err
 	}
-
-	refreshToken, expiresAt, err := utils.GenerateRefreshToken(admin.ID, "ADMIN")
-	if err != nil {
-		return nil, err
-	}
-
-	// Save session
-	session := &models.AdminSession{
-		AdminID:   admin.ID,
-		Token:     refreshToken,
-		IPAddress: &ipAddress,
-		UserAgent: &userAgent,
-		ExpiresAt: expiresAt,
-	}
-	s.sessionRepo.Create(ctx, session)
 
 	// Update last login
 	now := time.Now()
@@ -85,62 +71,23 @@ func (s *authService) Login(ctx context.Context, req *models.LoginRequest, ipAdd
 
 	return &models.LoginResponse{
 		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+		RefreshToken: "", // No longer used - single 24h token
 		TokenType:    "Bearer",
-		ExpiresIn:    3600,
+		ExpiresIn:    86400, // 24 hours in seconds
 		Admin:        *s.toAdminResponse(admin),
 	}, nil
 }
 
 func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*models.RefreshTokenResponse, error) {
-	// Validate refresh token
-	claims, err := utils.ValidateJWT(refreshToken)
-	if err != nil {
-		return nil, errors.New("refresh token tidak valid atau sudah expired. Silakan login ulang")
-	}
-
-	// Check if session exists
-	session, err := s.sessionRepo.FindByToken(ctx, refreshToken)
-	if err != nil {
-		return nil, errors.New("refresh token tidak valid atau sudah expired. Silakan login ulang")
-	}
-
-	// Check if expired
-	if session.ExpiresAt.Before(time.Now()) {
-		s.sessionRepo.DeleteByToken(ctx, refreshToken)
-		return nil, errors.New("refresh token tidak valid atau sudah expired. Silakan login ulang")
-	}
-
-	// Generate new access token
-	adminID, err := uuid.Parse(claims.UserID)
-	if err != nil {
-		// Try legacy AdminID field
-		adminID, err = uuid.Parse(claims.AdminID)
-		if err != nil {
-			return nil, errors.New("invalid admin ID")
-		}
-	}
-
-	accessToken, err := utils.GenerateAccessToken(
-		adminID,
-		"ADMIN",
-		claims.Email,
-		"",
-		nil,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return &models.RefreshTokenResponse{
-		AccessToken: accessToken,
-		TokenType:   "Bearer",
-		ExpiresIn:   3600,
-	}, nil
+	// DEPRECATED: Refresh token mechanism removed
+	// Return error to force re-login
+	return nil, errors.New("refresh token tidak lagi didukung. Silakan login ulang")
 }
 
 func (s *authService) Logout(ctx context.Context, refreshToken string) error {
-	return s.sessionRepo.DeleteByToken(ctx, refreshToken)
+	// DEPRECATED: Refresh token mechanism removed
+	// Logout is now handled by client (remove token from storage)
+	return nil
 }
 
 func (s *authService) GetProfile(ctx context.Context, adminID string) (*models.AdminResponse, error) {

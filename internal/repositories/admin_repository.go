@@ -5,6 +5,7 @@ import (
 
 	"project-bulky-be/internal/models"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -13,6 +14,7 @@ type AdminRepository interface {
 	FindByID(ctx context.Context, id string) (*models.Admin, error)
 	FindByIDWithRole(ctx context.Context, id string) (*models.Admin, error)
 	FindByEmail(ctx context.Context, email string) (*models.Admin, error)
+	FindByRoleID(roleID uuid.UUID) ([]models.Admin, error)
 	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.Admin, int64, error)
 	Update(ctx context.Context, admin *models.Admin) error
 	Delete(ctx context.Context, id string) error
@@ -65,6 +67,12 @@ func (r *adminRepository) FindByEmail(ctx context.Context, email string) (*model
 		return nil, err
 	}
 	return &admin, nil
+}
+
+func (r *adminRepository) FindByRoleID(roleID uuid.UUID) ([]models.Admin, error) {
+	var admins []models.Admin
+	err := r.db.Where("role_id = ? AND deleted_at IS NULL", roleID).Find(&admins).Error
+	return admins, err
 }
 
 func (r *adminRepository) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.Admin, int64, error) {

@@ -12,12 +12,20 @@ func InitCustomValidators() {
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
 		// Register alphanumund validator (alphanumeric + underscore)
 		v.RegisterValidation("alphanumund", validateAlphaNumUnderscore)
+
+		// Register uppercase_snake validator untuk kode role (UPPER_CASE_SNAKE)
+		v.RegisterValidation("uppercase_snake", validateUppercaseSnake)
 	}
 }
 
 // validateAlphaNumUnderscore validates that a string contains only alphanumeric characters and underscores
 func validateAlphaNumUnderscore(fl validator.FieldLevel) bool {
 	return regexp.MustCompile(`^[a-zA-Z0-9_]+$`).MatchString(fl.Field().String())
+}
+
+// validateUppercaseSnake validates that a string is UPPERCASE with underscores (LIKE_THIS)
+func validateUppercaseSnake(fl validator.FieldLevel) bool {
+	return regexp.MustCompile(`^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$`).MatchString(fl.Field().String())
 }
 
 // IsValidIndonesianPhone validates Indonesian phone number format

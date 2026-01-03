@@ -15,17 +15,17 @@ func SetupAuthV2Routes(
 	permissionController *controllers.PermissionController,
 	activityLogController *controllers.ActivityLogController,
 ) {
-	v1 := router.Group("/api/v1")
+	api := router.Group("/api")
 	{
 		// Public Auth Routes (v2)
-		authV2 := v1.Group("/auth")
+		authV2 := api.Group("/auth")
 		{
-			authV2.POST("/login", authV2Controller.Login)
-			authV2.POST("/refresh", authV2Controller.RefreshToken)
+			authV2.POST("/admin/login", authV2Controller.AdminLogin)
+			authV2.POST("/buyer/login", authV2Controller.BuyerLogin)
 		}
 
 		// Protected Auth Routes (v2)
-		authV2Protected := v1.Group("/auth")
+		authV2Protected := api.Group("/auth")
 		authV2Protected.Use(middleware.AuthMiddleware())
 		{
 			authV2Protected.POST("/logout", authV2Controller.Logout)
@@ -35,7 +35,7 @@ func SetupAuthV2Routes(
 		}
 
 		// Role Management Routes (Admin Only)
-		roleAdmin := v1.Group("/admin/role")
+		roleAdmin := api.Group("/admin/role")
 		roleAdmin.Use(middleware.AuthMiddleware(), middleware.AdminOnly(), middleware.RequirePermission("role:manage"))
 		{
 			roleAdmin.GET("", roleController.GetAll)
@@ -46,14 +46,14 @@ func SetupAuthV2Routes(
 		}
 
 		// Permission Routes (Admin Only)
-		permissionAdmin := v1.Group("/admin/permission")
+		permissionAdmin := api.Group("/admin/permission")
 		permissionAdmin.Use(middleware.AuthMiddleware(), middleware.AdminOnly(), middleware.RequirePermission("role:manage"))
 		{
 			permissionAdmin.GET("", permissionController.GetAll)
 		}
 
 		// Activity Log Routes (Admin Only)
-		activityLogAdmin := v1.Group("/admin/activity-log")
+		activityLogAdmin := api.Group("/admin/activity-log")
 		activityLogAdmin.Use(middleware.AuthMiddleware(), middleware.AdminOnly(), middleware.RequirePermission("activity_log:read"))
 		{
 			activityLogAdmin.GET("", activityLogController.GetLogs)

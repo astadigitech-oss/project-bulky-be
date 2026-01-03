@@ -23,8 +23,8 @@ func main() {
 
 	cfg := config.LoadConfig()
 
-	// Initialize JWT config with durations
-	utils.SetJWTConfig(cfg.JWTSecret, cfg.JWTAccessDuration, cfg.JWTRefreshDuration)
+	// Initialize JWT config with 24 hour access token (single token)
+	utils.SetJWTConfig(cfg.JWTSecret, cfg.JWTAccessDuration)
 
 	// Initialize custom validators
 	utils.InitCustomValidators()
