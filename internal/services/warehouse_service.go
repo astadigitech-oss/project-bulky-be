@@ -51,7 +51,6 @@ func (s *warehouseService) Create(ctx context.Context, req *models.CreateWarehou
 	return s.toResponse(warehouse), nil
 }
 
-
 func (s *warehouseService) FindByID(ctx context.Context, id string) (*models.WarehouseResponse, error) {
 	warehouse, err := s.repo.FindByID(ctx, id)
 	if err != nil {
@@ -73,16 +72,9 @@ func (s *warehouseService) FindAll(ctx context.Context, params *models.Paginatio
 		items = append(items, *s.toResponse(&w))
 	}
 
-	totalHalaman := (total + int64(params.PerHalaman) - 1) / int64(params.PerHalaman)
+	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
 
-	meta := &models.PaginationMeta{
-		Halaman:      params.Halaman,
-		PerHalaman:   params.PerHalaman,
-		TotalData:    total,
-		TotalHalaman: totalHalaman,
-	}
-
-	return items, meta, nil
+	return items, &meta, nil
 }
 
 func (s *warehouseService) Update(ctx context.Context, id string, req *models.UpdateWarehouseRequest) (*models.WarehouseResponse, error) {

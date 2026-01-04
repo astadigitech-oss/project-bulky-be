@@ -39,7 +39,6 @@ func (r *bannerTipeProdukRepository) FindByID(ctx context.Context, id string) (*
 	return &banner, nil
 }
 
-
 func (r *bannerTipeProdukRepository) FindAll(ctx context.Context, params *models.PaginationRequest, tipeProdukID string) ([]models.BannerTipeProduk, int64, error) {
 	var banners []models.BannerTipeProduk
 	var total int64
@@ -54,17 +53,17 @@ func (r *bannerTipeProdukRepository) FindAll(ctx context.Context, params *models
 		query = query.Where("is_active = ?", *params.IsActive)
 	}
 
-	if params.Cari != "" {
-		query = query.Where("nama ILIKE ?", "%"+params.Cari+"%")
+	if params.Search != "" {
+		query = query.Where("nama ILIKE ?", "%"+params.Search+"%")
 	}
 
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	orderClause := params.UrutBerdasarkan + " " + params.Urutan
+	orderClause := params.SortBy + " " + params.Order
 	query = query.Order(orderClause)
-	query = query.Offset(params.GetOffset()).Limit(params.PerHalaman)
+	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
 
 	if err := query.Find(&banners).Error; err != nil {
 		return nil, 0, err

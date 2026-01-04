@@ -49,15 +49,14 @@ func (r *warehouseRepository) FindBySlug(ctx context.Context, slug string) (*mod
 	return &warehouse, nil
 }
 
-
 func (r *warehouseRepository) FindAll(ctx context.Context, params *models.PaginationRequest, kota string) ([]models.Warehouse, int64, error) {
 	var warehouses []models.Warehouse
 	var total int64
 
 	query := r.db.WithContext(ctx).Model(&models.Warehouse{})
 
-	if params.Cari != "" {
-		query = query.Where("nama ILIKE ? OR kota ILIKE ?", "%"+params.Cari+"%", "%"+params.Cari+"%")
+	if params.Search != "" {
+		query = query.Where("nama ILIKE ? OR kota ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")
 	}
 
 	if kota != "" {
@@ -72,9 +71,9 @@ func (r *warehouseRepository) FindAll(ctx context.Context, params *models.Pagina
 		return nil, 0, err
 	}
 
-	orderClause := params.UrutBerdasarkan + " " + params.Urutan
+	orderClause := params.SortBy + " " + params.Order
 	query = query.Order(orderClause)
-	query = query.Offset(params.GetOffset()).Limit(params.PerHalaman)
+	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
 
 	if err := query.Find(&warehouses).Error; err != nil {
 		return nil, 0, err

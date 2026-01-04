@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"project-bulky-be/internal/dto"
+	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
@@ -434,8 +435,8 @@ func NewActivityLogController(service services.ActivityLogService) *ActivityLogC
 
 // GET /api/v1/admin/activity-log
 func (c *ActivityLogController) GetLogs(ctx *gin.Context) {
-	page, _ := strconv.Atoi(ctx.DefaultQuery("halaman", "1"))
-	perPage, _ := strconv.Atoi(ctx.DefaultQuery("per_halaman", "20"))
+	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(ctx.DefaultQuery("per_page", "20"))
 	userType := ctx.Query("user_type")
 	action := ctx.Query("action")
 	modul := ctx.Query("modul")
@@ -469,17 +470,12 @@ func (c *ActivityLogController) GetLogs(ctx *gin.Context) {
 		return
 	}
 
-	totalPages := (int(total) + perPage - 1) / perPage
+	meta := models.NewPaginationMeta(page, perPage, total)
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    logs,
-		"meta": gin.H{
-			"halaman":       page,
-			"per_halaman":   perPage,
-			"total":         total,
-			"total_halaman": totalPages,
-		},
+		"meta":    meta,
 	})
 }
 

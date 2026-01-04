@@ -52,8 +52,8 @@ func (r *buyerRepository) FindAll(ctx context.Context, params *models.BuyerFilte
 
 	query := r.db.WithContext(ctx).Model(&models.Buyer{})
 
-	if params.Cari != "" {
-		search := "%" + params.Cari + "%"
+	if params.Search != "" {
+		search := "%" + params.Search + "%"
 		query = query.Where("nama ILIKE ? OR username ILIKE ? OR email ILIKE ? OR telepon ILIKE ?", search, search, search, search)
 	}
 
@@ -67,10 +67,10 @@ func (r *buyerRepository) FindAll(ctx context.Context, params *models.BuyerFilte
 
 	query.Count(&total)
 
-	orderClause := params.UrutBerdasarkan + " " + params.Urutan
+	orderClause := params.SortBy + " " + params.Order
 	err := query.Order(orderClause).
 		Offset(params.GetOffset()).
-		Limit(params.PerHalaman).
+		Limit(params.PerPage).
 		Find(&buyers).Error
 
 	return buyers, total, err

@@ -56,8 +56,8 @@ func (r *kondisiPaketRepository) FindAll(ctx context.Context, params *models.Pag
 
 	query := r.db.WithContext(ctx).Model(&models.KondisiPaket{})
 
-	if params.Cari != "" {
-		query = query.Where("nama ILIKE ?", "%"+params.Cari+"%")
+	if params.Search != "" {
+		query = query.Where("nama ILIKE ?", "%"+params.Search+"%")
 	}
 
 	if params.IsActive != nil {
@@ -68,9 +68,9 @@ func (r *kondisiPaketRepository) FindAll(ctx context.Context, params *models.Pag
 		return nil, 0, err
 	}
 
-	orderClause := params.UrutBerdasarkan + " " + params.Urutan
+	orderClause := params.SortBy + " " + params.Order
 	query = query.Order(orderClause)
-	query = query.Offset(params.GetOffset()).Limit(params.PerHalaman)
+	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
 
 	if err := query.Find(&kondisis).Error; err != nil {
 		return nil, 0, err

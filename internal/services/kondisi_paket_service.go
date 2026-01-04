@@ -83,16 +83,9 @@ func (s *kondisiPaketService) FindAll(ctx context.Context, params *models.Pagina
 		items = append(items, *s.toResponse(&k))
 	}
 
-	totalHalaman := (total + int64(params.PerHalaman) - 1) / int64(params.PerHalaman)
+	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
 
-	meta := &models.PaginationMeta{
-		Halaman:      params.Halaman,
-		PerHalaman:   params.PerHalaman,
-		TotalData:    total,
-		TotalHalaman: totalHalaman,
-	}
-
-	return items, meta, nil
+	return items, &meta, nil
 }
 
 func (s *kondisiPaketService) Update(ctx context.Context, id string, req *models.UpdateKondisiPaketRequest) (*models.KondisiPaketResponse, error) {

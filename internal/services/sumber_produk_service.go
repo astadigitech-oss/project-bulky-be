@@ -78,16 +78,9 @@ func (s *sumberProdukService) FindAll(ctx context.Context, params *models.Pagina
 		items = append(items, *s.toResponse(&sb))
 	}
 
-	totalHalaman := (total + int64(params.PerHalaman) - 1) / int64(params.PerHalaman)
+	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
 
-	meta := &models.PaginationMeta{
-		Halaman:      params.Halaman,
-		PerHalaman:   params.PerHalaman,
-		TotalData:    total,
-		TotalHalaman: totalHalaman,
-	}
-
-	return items, meta, nil
+	return items, &meta, nil
 }
 
 func (s *sumberProdukService) Update(ctx context.Context, id string, req *models.UpdateSumberProdukRequest) (*models.SumberProdukResponse, error) {

@@ -81,8 +81,8 @@ func (r *adminRepository) FindAll(ctx context.Context, params *models.Pagination
 
 	query := r.db.WithContext(ctx).Model(&models.Admin{})
 
-	if params.Cari != "" {
-		query = query.Where("nama ILIKE ? OR email ILIKE ?", "%"+params.Cari+"%", "%"+params.Cari+"%")
+	if params.Search != "" {
+		query = query.Where("nama ILIKE ? OR email ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")
 	}
 
 	if params.IsActive != nil {
@@ -93,9 +93,9 @@ func (r *adminRepository) FindAll(ctx context.Context, params *models.Pagination
 		return nil, 0, err
 	}
 
-	orderClause := params.UrutBerdasarkan + " " + params.Urutan
+	orderClause := params.SortBy + " " + params.Order
 	query = query.Order(orderClause)
-	query = query.Offset(params.GetOffset()).Limit(params.PerHalaman)
+	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
 
 	if err := query.Find(&admins).Error; err != nil {
 		return nil, 0, err

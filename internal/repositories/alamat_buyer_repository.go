@@ -57,7 +57,7 @@ func (r *alamatBuyerRepository) FindAll(ctx context.Context, params *models.Alam
 	offset := params.GetOffset()
 	query = query.Order("is_default DESC, created_at DESC").
 		Offset(offset).
-		Limit(params.PerHalaman)
+		Limit(params.PerPage)
 
 	if err := query.Find(&alamat).Error; err != nil {
 		return nil, 0, err

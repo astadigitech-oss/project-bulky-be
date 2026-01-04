@@ -75,7 +75,6 @@ func (r *produkRepository) FindBySlug(ctx context.Context, slug string) (*models
 	return &produk, nil
 }
 
-
 func (r *produkRepository) FindAll(ctx context.Context, params *models.ProdukFilterRequest) ([]models.Produk, int64, error) {
 	var produks []models.Produk
 	var total int64
@@ -93,8 +92,8 @@ func (r *produkRepository) FindAll(ctx context.Context, params *models.ProdukFil
 		})
 
 	// Apply filters
-	if params.Cari != "" {
-		query = query.Where("nama ILIKE ? OR id_cargo ILIKE ?", "%"+params.Cari+"%", "%"+params.Cari+"%")
+	if params.Search != "" {
+		query = query.Where("nama ILIKE ? OR id_cargo ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")
 	}
 	if params.KategoriID != "" {
 		query = query.Where("kategori_id = ?", params.KategoriID)
@@ -131,9 +130,9 @@ func (r *produkRepository) FindAll(ctx context.Context, params *models.ProdukFil
 		return nil, 0, err
 	}
 
-	orderClause := params.UrutBerdasarkan + " " + params.Urutan
+	orderClause := params.SortBy + " " + params.Order
 	query = query.Order(orderClause)
-	query = query.Offset(params.GetOffset()).Limit(params.PerHalaman)
+	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
 
 	if err := query.Find(&produks).Error; err != nil {
 		return nil, 0, err

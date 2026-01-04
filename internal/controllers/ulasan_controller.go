@@ -28,8 +28,8 @@ func NewUlasanController(service services.UlasanService) *UlasanController {
 // @Summary List all ulasan for admin
 // @Tags Admin - Ulasan
 // @Security BearerAuth
-// @Param halaman query int false "Page number" default(1)
-// @Param per_halaman query int false "Items per page" default(10)
+// @Param page query int false "Page number" default(1)
+// @Param per_page query int false "Items per page" default(10)
 // @Param is_approved query string false "Filter by approval status (true/false/all)"
 // @Param rating query int false "Filter by rating (1-5)"
 // @Param cari query string false "Search by buyer name, order code, or product name"
@@ -42,8 +42,8 @@ func NewUlasanController(service services.UlasanService) *UlasanController {
 // @Router /admin/ulasan [get]
 func (ctrl *UlasanController) AdminFindAll(c *gin.Context) {
 	// Parse pagination
-	page, _ := strconv.Atoi(c.DefaultQuery("halaman", "1"))
-	perPage, _ := strconv.Atoi(c.DefaultQuery("per_halaman", "10"))
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "10"))
 
 	// Parse filters
 	filters := make(map[string]interface{})
@@ -89,13 +89,8 @@ func (ctrl *UlasanController) AdminFindAll(c *gin.Context) {
 	}
 
 	// Response
-	totalPages := int((total + int64(perPage) - 1) / int64(perPage))
-	utils.PaginatedSuccessResponseWithSummary(c, "Data ulasan berhasil diambil", data, models.PaginationMeta{
-		Halaman:      page,
-		PerHalaman:   perPage,
-		TotalData:    total,
-		TotalHalaman: int64(totalPages),
-	}, summary)
+	meta := models.NewPaginationMeta(page, perPage, total)
+	utils.PaginatedSuccessResponseWithSummary(c, "Data ulasan berhasil diambil", data, meta, summary)
 }
 
 // AdminFindByID godoc
@@ -268,8 +263,8 @@ func (ctrl *UlasanController) GetPendingReviews(c *gin.Context) {
 // @Summary Get buyer's ulasan list
 // @Tags Buyer - Ulasan
 // @Security BearerAuth
-// @Param halaman query int false "Page number" default(1)
-// @Param per_halaman query int false "Items per page" default(10)
+// @Param page query int false "Page number" default(1)
+// @Param per_page query int false "Items per page" default(10)
 // @Success 200 {object} utils.SuccessResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /buyer/ulasan [get]
@@ -288,8 +283,8 @@ func (ctrl *UlasanController) BuyerFindAll(c *gin.Context) {
 	}
 
 	// Parse pagination
-	page, _ := strconv.Atoi(c.DefaultQuery("halaman", "1"))
-	perPage, _ := strconv.Atoi(c.DefaultQuery("per_halaman", "10"))
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "10"))
 
 	data, total, err := ctrl.service.BuyerFindAll(buyerUUID, page, perPage)
 	if err != nil {
@@ -297,13 +292,8 @@ func (ctrl *UlasanController) BuyerFindAll(c *gin.Context) {
 		return
 	}
 
-	totalPages := int((total + int64(perPage) - 1) / int64(perPage))
-	utils.PaginatedSuccessResponse(c, "Data ulasan berhasil diambil", data, models.PaginationMeta{
-		Halaman:      page,
-		PerHalaman:   perPage,
-		TotalData:    total,
-		TotalHalaman: int64(totalPages),
-	})
+	meta := models.NewPaginationMeta(page, perPage, total)
+	utils.PaginatedSuccessResponse(c, "Data ulasan berhasil diambil", data, meta)
 }
 
 // Create godoc
@@ -381,8 +371,8 @@ func (ctrl *UlasanController) Create(c *gin.Context) {
 // @Summary Get product reviews (public)
 // @Tags Public - Ulasan
 // @Param produk_id path string true "Produk ID"
-// @Param halaman query int false "Page number" default(1)
-// @Param per_halaman query int false "Items per page" default(5)
+// @Param page query int false "Page number" default(1)
+// @Param per_page query int false "Items per page" default(5)
 // @Param rating query int false "Filter by rating (1-5)"
 // @Param with_photo query bool false "Filter only with photo"
 // @Param sort_by query string false "Sort by field" default(created_at)
@@ -394,8 +384,8 @@ func (ctrl *UlasanController) GetProdukUlasan(c *gin.Context) {
 	produkID := c.Param("produk_id")
 
 	// Parse pagination
-	page, _ := strconv.Atoi(c.DefaultQuery("halaman", "1"))
-	perPage, _ := strconv.Atoi(c.DefaultQuery("per_halaman", "5"))
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "5"))
 
 	// Parse filters
 	filters := make(map[string]interface{})
@@ -420,13 +410,8 @@ func (ctrl *UlasanController) GetProdukUlasan(c *gin.Context) {
 		return
 	}
 
-	totalPages := int((total + int64(perPage) - 1) / int64(perPage))
-	utils.PaginatedSuccessResponse(c, "Data ulasan berhasil diambil", data, models.PaginationMeta{
-		Halaman:      page,
-		PerHalaman:   perPage,
-		TotalData:    total,
-		TotalHalaman: int64(totalPages),
-	})
+	meta := models.NewPaginationMeta(page, perPage, total)
+	utils.PaginatedSuccessResponse(c, "Data ulasan berhasil diambil", data, meta)
 }
 
 // GetProdukRating godoc

@@ -163,12 +163,7 @@ func (c *ForceUpdateController) GetAllForceUpdates(ctx *gin.Context) {
 		})
 	}
 
-	meta := models.PaginationMeta{
-		Halaman:      page,
-		PerHalaman:   limit,
-		TotalData:    total,
-		TotalHalaman: int64((int(total) + limit - 1) / limit),
-	}
+	meta := models.NewPaginationMeta(page, limit, total)
 
 	utils.PaginatedSuccessResponse(ctx, "Force updates retrieved successfully", response, meta)
 }

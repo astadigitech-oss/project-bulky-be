@@ -7,10 +7,50 @@ import "time"
 // ========================================
 
 type PaginationMeta struct {
-	Halaman      int   `json:"halaman"`
-	PerHalaman   int   `json:"per_halaman"`
-	TotalData    int64 `json:"total_data"`
-	TotalHalaman int64 `json:"total_halaman"`
+	FirstPage   int   `json:"first_page"`
+	LastPage    int   `json:"last_page"`
+	CurrentPage int   `json:"current_page"`
+	From        int   `json:"from"`
+	Last        int   `json:"last"`
+	Total       int64 `json:"total"`
+	PerPage     int   `json:"per_page"`
+}
+
+// NewPaginationMeta creates a new pagination meta with calculated fields
+func NewPaginationMeta(currentPage, perPage int, total int64) PaginationMeta {
+	// Calculate last_page
+	lastPage := int(float64(total) / float64(perPage))
+	if total%int64(perPage) != 0 {
+		lastPage++
+	}
+	if lastPage < 1 {
+		lastPage = 1
+	}
+
+	// Calculate from
+	from := ((currentPage - 1) * perPage) + 1
+	if total == 0 {
+		from = 0
+	}
+
+	// Calculate last
+	last := from + perPage - 1
+	if int64(last) > total {
+		last = int(total)
+	}
+	if total == 0 {
+		last = 0
+	}
+
+	return PaginationMeta{
+		FirstPage:   1,
+		LastPage:    lastPage,
+		CurrentPage: currentPage,
+		From:        from,
+		Last:        last,
+		Total:       total,
+		PerPage:     perPage,
+	}
 }
 
 // ========================================

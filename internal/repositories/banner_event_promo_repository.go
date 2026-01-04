@@ -44,8 +44,8 @@ func (r *bannerEventPromoRepository) FindAll(ctx context.Context, params *models
 	query := r.db.WithContext(ctx).Model(&models.BannerEventPromo{})
 
 	// Search
-	if params.Cari != "" {
-		query = query.Where("nama ILIKE ?", "%"+params.Cari+"%")
+	if params.Search != "" {
+		query = query.Where("nama ILIKE ?", "%"+params.Search+"%")
 	}
 
 	// Filter is_active
@@ -60,8 +60,8 @@ func (r *bannerEventPromoRepository) FindAll(ctx context.Context, params *models
 
 	// Pagination & ordering
 	offset := params.GetOffset()
-	orderBy := params.UrutBerdasarkan + " " + params.Urutan
-	query = query.Order(orderBy).Offset(offset).Limit(params.PerHalaman)
+	orderBy := params.SortBy + " " + params.Order
+	query = query.Order(orderBy).Offset(offset).Limit(params.PerPage)
 
 	if err := query.Find(&banners).Error; err != nil {
 		return nil, 0, err

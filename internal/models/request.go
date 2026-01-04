@@ -7,34 +7,34 @@ import "time"
 // ========================================
 
 type PaginationRequest struct {
-	Halaman         int    `form:"halaman"`
-	PerHalaman      int    `form:"per_halaman"`
-	Cari            string `form:"cari"`
-	UrutBerdasarkan string `form:"urut_berdasarkan"`
-	Urutan          string `form:"urutan"`
-	IsActive        *bool  `form:"is_active"`
+	Page     int    `form:"page" binding:"min=1"`
+	PerPage  int    `form:"per_page" binding:"min=1,max=100"`
+	Search   string `form:"search"`
+	SortBy   string `form:"sort_by"`
+	Order    string `form:"order" binding:"omitempty,oneof=asc desc"`
+	IsActive *bool  `form:"is_active"`
 }
 
 func (p *PaginationRequest) SetDefaults() {
-	if p.Halaman <= 0 {
-		p.Halaman = 1
+	if p.Page <= 0 {
+		p.Page = 1
 	}
-	if p.PerHalaman <= 0 {
-		p.PerHalaman = 10
+	if p.PerPage <= 0 {
+		p.PerPage = 10
 	}
-	if p.PerHalaman > 100 {
-		p.PerHalaman = 100
+	if p.PerPage > 100 {
+		p.PerPage = 100
 	}
-	if p.UrutBerdasarkan == "" {
-		p.UrutBerdasarkan = "created_at"
+	if p.SortBy == "" {
+		p.SortBy = "created_at"
 	}
-	if p.Urutan == "" {
-		p.Urutan = "desc"
+	if p.Order == "" {
+		p.Order = "desc"
 	}
 }
 
 func (p *PaginationRequest) GetOffset() int {
-	return (p.Halaman - 1) * p.PerHalaman
+	return (p.Page - 1) * p.PerPage
 }
 
 // ========================================

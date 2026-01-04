@@ -48,8 +48,8 @@ func (r *roleRepository) FindAllWithParams(params dto.RoleQueryParams) ([]models
 	query := r.db.Model(&models.Role{}).Where("deleted_at IS NULL")
 
 	// Filter by search
-	if params.Cari != "" {
-		query = query.Where("nama ILIKE ? OR kode ILIKE ?", "%"+params.Cari+"%", "%"+params.Cari+"%")
+	if params.Search != "" {
+		query = query.Where("nama ILIKE ? OR kode ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")
 	}
 
 	// Filter by is_active
@@ -63,26 +63,26 @@ func (r *roleRepository) FindAllWithParams(params dto.RoleQueryParams) ([]models
 	}
 
 	// Set default values
-	if params.Halaman == 0 {
-		params.Halaman = 1
+	if params.Page == 0 {
+		params.Page = 1
 	}
-	if params.PerHalaman == 0 {
-		params.PerHalaman = 10
+	if params.PerPage == 0 {
+		params.PerPage = 10
 	}
-	if params.UrutBerdasarkan == "" {
-		params.UrutBerdasarkan = "created_at"
+	if params.SortBy == "" {
+		params.SortBy = "created_at"
 	}
-	if params.Urutan == "" {
-		params.Urutan = "desc"
+	if params.Order == "" {
+		params.Order = "desc"
 	}
 
 	// Sort
-	orderClause := params.UrutBerdasarkan + " " + params.Urutan
+	orderClause := params.SortBy + " " + params.Order
 	query = query.Order(orderClause)
 
 	// Pagination
-	offset := (params.Halaman - 1) * params.PerHalaman
-	query = query.Offset(offset).Limit(params.PerHalaman)
+	offset := (params.Page - 1) * params.PerPage
+	query = query.Offset(offset).Limit(params.PerPage)
 
 	err := query.Find(&roles).Error
 	return roles, total, err

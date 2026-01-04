@@ -54,7 +54,6 @@ func (s *tipeProdukService) Create(ctx context.Context, req *models.CreateTipePr
 	return s.toResponse(tipe), nil
 }
 
-
 func (s *tipeProdukService) FindByID(ctx context.Context, id string) (*models.TipeProdukResponse, error) {
 	tipe, err := s.repo.FindByID(ctx, id)
 	if err != nil {
@@ -84,16 +83,9 @@ func (s *tipeProdukService) FindAll(ctx context.Context, params *models.Paginati
 		items = append(items, *s.toResponse(&t))
 	}
 
-	totalHalaman := (total + int64(params.PerHalaman) - 1) / int64(params.PerHalaman)
+	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
 
-	meta := &models.PaginationMeta{
-		Halaman:      params.Halaman,
-		PerHalaman:   params.PerHalaman,
-		TotalData:    total,
-		TotalHalaman: totalHalaman,
-	}
-
-	return items, meta, nil
+	return items, &meta, nil
 }
 
 func (s *tipeProdukService) Update(ctx context.Context, id string, req *models.UpdateTipeProdukRequest) (*models.TipeProdukResponse, error) {

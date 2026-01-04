@@ -55,8 +55,8 @@ func (r *merekProdukRepository) FindAll(ctx context.Context, params *models.Pagi
 
 	query := r.db.WithContext(ctx).Model(&models.MerekProduk{})
 
-	if params.Cari != "" {
-		query = query.Where("nama ILIKE ?", "%"+params.Cari+"%")
+	if params.Search != "" {
+		query = query.Where("nama ILIKE ?", "%"+params.Search+"%")
 	}
 
 	if params.IsActive != nil {
@@ -67,9 +67,9 @@ func (r *merekProdukRepository) FindAll(ctx context.Context, params *models.Pagi
 		return nil, 0, err
 	}
 
-	orderClause := params.UrutBerdasarkan + " " + params.Urutan
+	orderClause := params.SortBy + " " + params.Order
 	query = query.Order(orderClause)
-	query = query.Offset(params.GetOffset()).Limit(params.PerHalaman)
+	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
 
 	if err := query.Find(&mereks).Error; err != nil {
 		return nil, 0, err

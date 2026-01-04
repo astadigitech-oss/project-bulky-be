@@ -26,12 +26,12 @@ type UpdateRoleRequest struct {
 
 // RoleQueryParams untuk query parameter list role
 type RoleQueryParams struct {
-	Halaman         int    `form:"halaman" binding:"omitempty,min=1"`
-	PerHalaman      int    `form:"per_halaman" binding:"omitempty,min=1,max=100"`
-	Cari            string `form:"cari"`
-	IsActive        *bool  `form:"is_active"`
-	UrutBerdasarkan string `form:"urut_berdasarkan" binding:"omitempty,oneof=created_at updated_at nama"`
-	Urutan          string `form:"urutan" binding:"omitempty,oneof=asc desc"`
+	Page     int    `form:"page" binding:"omitempty,min=1"`
+	PerPage  int    `form:"per_page" binding:"omitempty,min=1,max=100"`
+	Search   string `form:"search"`
+	IsActive *bool  `form:"is_active"`
+	SortBy   string `form:"sort_by" binding:"omitempty,oneof=created_at updated_at nama"`
+	Order    string `form:"order" binding:"omitempty,oneof=asc desc"`
 }
 
 // RoleResponse DTO response untuk role

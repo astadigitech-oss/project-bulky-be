@@ -85,16 +85,9 @@ func (s *alamatBuyerService) FindAll(ctx context.Context, params *models.AlamatB
 		responses = append(responses, *s.toResponse(&item))
 	}
 
-	totalHalaman := (total + int64(params.PerHalaman) - 1) / int64(params.PerHalaman)
+	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
 
-	meta := &models.PaginationMeta{
-		Halaman:      params.Halaman,
-		PerHalaman:   params.PerHalaman,
-		TotalData:    total,
-		TotalHalaman: totalHalaman,
-	}
-
-	return responses, meta, nil
+	return responses, &meta, nil
 }
 
 func (s *alamatBuyerService) Update(ctx context.Context, id string, req *models.UpdateAlamatBuyerRequest) (*models.AlamatBuyerResponse, error) {

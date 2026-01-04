@@ -98,7 +98,6 @@ func (s *produkService) Create(ctx context.Context, req *models.CreateProdukRequ
 	return s.FindByID(ctx, produk.ID.String())
 }
 
-
 func (s *produkService) FindByID(ctx context.Context, id string) (*models.ProdukDetailResponse, error) {
 	produk, err := s.repo.FindByID(ctx, id)
 	if err != nil {
@@ -128,16 +127,9 @@ func (s *produkService) FindAll(ctx context.Context, params *models.ProdukFilter
 		items = append(items, *s.toListResponse(&p))
 	}
 
-	totalHalaman := (total + int64(params.PerHalaman) - 1) / int64(params.PerHalaman)
+	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
 
-	meta := &models.PaginationMeta{
-		Halaman:      params.Halaman,
-		PerHalaman:   params.PerHalaman,
-		TotalData:    total,
-		TotalHalaman: totalHalaman,
-	}
-
-	return items, meta, nil
+	return items, &meta, nil
 }
 
 func (s *produkService) Update(ctx context.Context, id string, req *models.UpdateProdukRequest) (*models.ProdukDetailResponse, error) {
@@ -258,7 +250,6 @@ func (s *produkService) UpdateStock(ctx context.Context, id string, req *models.
 
 	return s.FindByID(ctx, id)
 }
-
 
 func (s *produkService) toListResponse(p *models.Produk) *models.ProdukListResponse {
 	resp := &models.ProdukListResponse{

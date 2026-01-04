@@ -50,15 +50,14 @@ func (r *tipeProdukRepository) FindBySlug(ctx context.Context, slug string) (*mo
 	return &tipe, nil
 }
 
-
 func (r *tipeProdukRepository) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.TipeProduk, int64, error) {
 	var tipes []models.TipeProduk
 	var total int64
 
 	query := r.db.WithContext(ctx).Model(&models.TipeProduk{})
 
-	if params.Cari != "" {
-		query = query.Where("nama ILIKE ?", "%"+params.Cari+"%")
+	if params.Search != "" {
+		query = query.Where("nama ILIKE ?", "%"+params.Search+"%")
 	}
 
 	if params.IsActive != nil {
@@ -69,9 +68,9 @@ func (r *tipeProdukRepository) FindAll(ctx context.Context, params *models.Pagin
 		return nil, 0, err
 	}
 
-	orderClause := params.UrutBerdasarkan + " " + params.Urutan
+	orderClause := params.SortBy + " " + params.Order
 	query = query.Order(orderClause)
-	query = query.Offset(params.GetOffset()).Limit(params.PerHalaman)
+	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
 
 	if err := query.Find(&tipes).Error; err != nil {
 		return nil, 0, err

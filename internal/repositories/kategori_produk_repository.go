@@ -56,8 +56,8 @@ func (r *kategoriProdukRepository) FindAll(ctx context.Context, params *models.P
 	query := r.db.WithContext(ctx).Model(&models.KategoriProduk{})
 
 	// Search filter
-	if params.Cari != "" {
-		query = query.Where("nama ILIKE ?", "%"+params.Cari+"%")
+	if params.Search != "" {
+		query = query.Where("nama ILIKE ?", "%"+params.Search+"%")
 	}
 
 	// Active filter
@@ -71,11 +71,11 @@ func (r *kategoriProdukRepository) FindAll(ctx context.Context, params *models.P
 	}
 
 	// Sorting
-	orderClause := params.UrutBerdasarkan + " " + params.Urutan
+	orderClause := params.SortBy + " " + params.Order
 	query = query.Order(orderClause)
 
 	// Pagination
-	query = query.Offset(params.GetOffset()).Limit(params.PerHalaman)
+	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
 
 	if err := query.Find(&kategoris).Error; err != nil {
 		return nil, 0, err

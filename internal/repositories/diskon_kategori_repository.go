@@ -39,7 +39,6 @@ func (r *diskonKategoriRepository) FindByID(ctx context.Context, id string) (*mo
 	return &diskon, nil
 }
 
-
 func (r *diskonKategoriRepository) FindAll(ctx context.Context, params *models.PaginationRequest, kategoriID string, berlakuHariIni bool) ([]models.DiskonKategori, int64, error) {
 	var diskons []models.DiskonKategori
 	var total int64
@@ -63,9 +62,9 @@ func (r *diskonKategoriRepository) FindAll(ctx context.Context, params *models.P
 		return nil, 0, err
 	}
 
-	orderClause := params.UrutBerdasarkan + " " + params.Urutan
+	orderClause := params.SortBy + " " + params.Order
 	query = query.Order(orderClause)
-	query = query.Offset(params.GetOffset()).Limit(params.PerHalaman)
+	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
 
 	if err := query.Find(&diskons).Error; err != nil {
 		return nil, 0, err

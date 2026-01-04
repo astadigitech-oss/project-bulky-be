@@ -68,15 +68,9 @@ func (s *buyerService) FindAll(ctx context.Context, params *models.BuyerFilterRe
 		})
 	}
 
-	totalHalaman := (total + int64(params.PerHalaman) - 1) / int64(params.PerHalaman)
-	meta := &models.PaginationMeta{
-		Halaman:      params.Halaman,
-		PerHalaman:   params.PerHalaman,
-		TotalData:    total,
-		TotalHalaman: totalHalaman,
-	}
+	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
 
-	return items, meta, nil
+	return items, &meta, nil
 }
 
 func (s *buyerService) Update(ctx context.Context, id string, req *models.UpdateBuyerRequest) (*models.BuyerDetailResponse, error) {
