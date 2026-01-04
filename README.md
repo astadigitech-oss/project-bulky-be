@@ -615,7 +615,7 @@ Project ini mendukung fitur-fitur berikut:
 ## HTTP Status Codes
 
 | Code | Deskripsi |
-|------|-----------||
+|------|-----------|
 | 200 | OK - Request berhasil |
 | 201 | Created - Data berhasil dibuat |
 | 400 | Bad Request - Validasi gagal |
