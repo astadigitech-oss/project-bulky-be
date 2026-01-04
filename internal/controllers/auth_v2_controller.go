@@ -110,6 +110,15 @@ func (c *AuthV2Controller) Logout(ctx *gin.Context) {
 	})
 }
 
+// GET /api/auth/check
+func (c *AuthV2Controller) Check(ctx *gin.Context) {
+	// Jika sampai sini, berarti token sudah valid (lolos AuthMiddleware)
+	ctx.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Token valid",
+	})
+}
+
 // GET /api/auth/me
 func (c *AuthV2Controller) GetMe(ctx *gin.Context) {
 	userID, exists := ctx.Get("user_id")

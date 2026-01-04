@@ -14,6 +14,7 @@ type Buyer struct {
 	Email           string         `gorm:"type:varchar(255);uniqueIndex;not null" json:"email"`
 	Password        string         `gorm:"type:varchar(255);not null" json:"-"`
 	Telepon         *string        `gorm:"type:varchar(20)" json:"telepon"`
+	FotoURL         *string        `gorm:"type:text" json:"foto_url"`
 	IsActive        bool           `gorm:"default:true" json:"is_active"`
 	IsVerified      bool           `gorm:"default:false" json:"is_verified"`
 	EmailVerifiedAt *time.Time     `json:"email_verified_at"`

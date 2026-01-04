@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 // ========================================
 // Pagination Request
 // ========================================
@@ -367,6 +369,15 @@ type ResetBuyerPasswordRequest struct {
 type BuyerFilterRequest struct {
 	PaginationRequest
 	IsVerified *bool `form:"is_verified"`
+}
+
+type ChartParams struct {
+	Filter        string    `form:"filter"`                                  // year, month, week, custom
+	Tahun         int       `form:"tahun"`                                   // Year
+	Bulan         int       `form:"bulan"`                                   // Month (1-12)
+	Minggu        int       `form:"minggu"`                                  // Week (1-5)
+	TanggalDari   time.Time `form:"tanggal_dari" time_format:"2006-01-02"`   // Start date for custom
+	TanggalSampai time.Time `form:"tanggal_sampai" time_format:"2006-01-02"` // End date for custom
 }
 
 // ========================================

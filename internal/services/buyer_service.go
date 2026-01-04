@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/models"
@@ -19,6 +20,7 @@ type BuyerService interface {
 	ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error)
 	ResetPassword(ctx context.Context, id string, req *models.ResetBuyerPasswordRequest) error
 	GetStatistik(ctx context.Context) (*models.BuyerStatistikResponse, error)
+	GetChart(ctx context.Context, params *models.ChartParams) (*models.ChartResponse, error)
 	UpdateProfile(ctx context.Context, id, nama, username, email, telepon string) (*models.Buyer, error)
 	IsEmailExistExcludeID(ctx context.Context, email, excludeID string) (bool, error)
 	IsUsernameExistExcludeID(ctx context.Context, username, excludeID string) (bool, error)
@@ -56,18 +58,13 @@ func (s *buyerService) FindAll(ctx context.Context, params *models.BuyerFilterRe
 
 	var items []models.BuyerListResponse
 	for _, b := range buyers {
-		count, _ := s.repo.CountAlamat(ctx, b.ID.String())
 		items = append(items, models.BuyerListResponse{
-			ID:           b.ID.String(),
-			Nama:         b.Nama,
-			Username:     b.Username,
-			Email:        b.Email,
-			Telepon:      b.Telepon,
-			IsActive:     b.IsActive,
-			IsVerified:   b.IsVerified,
-			JumlahAlamat: int(count),
-			LastLoginAt:  b.LastLoginAt,
-			CreatedAt:    b.CreatedAt,
+			ID:        b.ID.String(),
+			Nama:      b.Nama,
+			Username:  b.Username,
+			Email:     b.Email,
+			Telepon:   b.Telepon,
+			CreatedAt: b.CreatedAt,
 		})
 	}
 
@@ -167,6 +164,102 @@ func (s *buyerService) GetStatistik(ctx context.Context) (*models.BuyerStatistik
 	return s.repo.GetStatistik(ctx)
 }
 
+func (s *buyerService) GetChart(ctx context.Context, params *models.ChartParams) (*models.ChartResponse, error) {
+	now := time.Now()
+	var startDate, endDate time.Time
+	var mode string
+
+	// Default filter to "year" if empty
+	if params.Filter == "" {
+		params.Filter = "year"
+	}
+
+	switch params.Filter {
+	case "year":
+		mode = "year"
+		year := params.Tahun
+		if year == 0 {
+			year = now.Year()
+		}
+		startDate = time.Date(year, 1, 1, 0, 0, 0, 0, now.Location())
+		endDate = time.Date(year, 12, 31, 23, 59, 59, 0, now.Location())
+
+	case "month":
+		mode = "month"
+		year := params.Tahun
+		month := params.Bulan
+		if year == 0 {
+			year = now.Year()
+		}
+		if month == 0 {
+			month = int(now.Month())
+		}
+		startDate = time.Date(year, time.Month(month), 1, 0, 0, 0, 0, now.Location())
+		// Get last day of month
+		endDate = startDate.AddDate(0, 1, -1)
+		endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 0, now.Location())
+
+	case "week":
+		mode = "month"
+		year := params.Tahun
+		month := params.Bulan
+		week := params.Minggu
+		if year == 0 {
+			year = now.Year()
+		}
+		if month == 0 {
+			month = int(now.Month())
+		}
+		if week == 0 {
+			week = 1
+		}
+		startDate = time.Date(year, time.Month(month), (week-1)*7+1, 0, 0, 0, 0, now.Location())
+		endDate = startDate.AddDate(0, 0, 6)
+		endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 0, now.Location())
+
+	case "custom":
+		mode = "month"
+		if !params.TanggalDari.IsZero() && !params.TanggalSampai.IsZero() {
+			startDate = params.TanggalDari
+			endDate = params.TanggalSampai
+		} else {
+			// Default to current month if dates not provided
+			startDate = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+			endDate = now
+		}
+		endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 0, now.Location())
+
+	default:
+		// Default: year
+		mode = "year"
+		startDate = time.Date(now.Year(), 1, 1, 0, 0, 0, 0, now.Location())
+		endDate = time.Date(now.Year(), 12, 31, 23, 59, 59, 0, now.Location())
+	}
+
+	// Get data from repository
+	var chart []models.ChartData
+	var total int64
+	var err error
+
+	if mode == "year" {
+		// Group by month
+		chart, total, err = s.repo.GetRegistrationByMonth(ctx, startDate, endDate)
+	} else {
+		// Group by day
+		chart, total, err = s.repo.GetRegistrationByDay(ctx, startDate, endDate)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.ChartResponse{
+		Mode:  mode,
+		Chart: chart,
+		Total: total,
+	}, nil
+}
+
 func (s *buyerService) toDetailResponse(b *models.Buyer) *models.BuyerDetailResponse {
 	var alamatResponses []models.AlamatBuyerResponse
 	for _, a := range b.Alamat {
@@ -174,18 +267,15 @@ func (s *buyerService) toDetailResponse(b *models.Buyer) *models.BuyerDetailResp
 	}
 
 	return &models.BuyerDetailResponse{
-		ID:              b.ID.String(),
-		Nama:            b.Nama,
-		Username:        b.Username,
-		Email:           b.Email,
-		Telepon:         b.Telepon,
-		IsActive:        b.IsActive,
-		IsVerified:      b.IsVerified,
-		EmailVerifiedAt: b.EmailVerifiedAt,
-		LastLoginAt:     b.LastLoginAt,
-		Alamat:          alamatResponses,
-		CreatedAt:       b.CreatedAt,
-		UpdatedAt:       b.UpdatedAt,
+		ID:        b.ID.String(),
+		Nama:      b.Nama,
+		Username:  b.Username,
+		Email:     b.Email,
+		Telepon:   b.Telepon,
+		FotoURL:   b.FotoURL,
+		Alamat:    alamatResponses,
+		CreatedAt: b.CreatedAt,
+		UpdatedAt: b.UpdatedAt,
 	}
 }
 

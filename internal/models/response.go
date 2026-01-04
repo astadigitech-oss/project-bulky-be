@@ -131,7 +131,6 @@ type MasterDropdownResponse struct {
 	SumberProduk   []DropdownItem `json:"sumber_produk"`
 }
 
-
 // ========================================
 // Warehouse Response
 // ========================================
@@ -165,7 +164,6 @@ type TipeProdukResponse struct {
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
-
 
 // ========================================
 // Diskon Kategori Response
@@ -225,7 +223,6 @@ type BannerSimpleResponse struct {
 	Urutan    int    `json:"urutan"`
 }
 
-
 // ========================================
 // Produk Response
 // ========================================
@@ -259,53 +256,52 @@ type ProdukDokumenResponse struct {
 }
 
 type ProdukListResponse struct {
-	ID                   string              `json:"id"`
-	Nama                 string              `json:"nama"`
-	Slug                 string              `json:"slug"`
-	IDCargo              *string             `json:"id_cargo"`
-	Kategori             ProdukRelationInfo  `json:"kategori"`
-	Merek                *ProdukRelationInfo `json:"merek"`
-	Kondisi              ProdukRelationInfo  `json:"kondisi"`
-	KondisiPaket         ProdukRelationInfo  `json:"kondisi_paket"`
-	Sumber               *ProdukRelationInfo `json:"sumber"`
-	Warehouse            ProdukRelationInfo  `json:"warehouse"`
-	TipeProduk           ProdukRelationInfo  `json:"tipe_produk"`
-	HargaSebelumDiskon   float64             `json:"harga_sebelum_diskon"`
-	PersentaseDiskon     float64             `json:"persentase_diskon"`
-	HargaSesudahDiskon   float64             `json:"harga_sesudah_diskon"`
-	Quantity             int                 `json:"quantity"`
-	QuantityTerjual      int                 `json:"quantity_terjual"`
-	GambarUtama          *string             `json:"gambar_utama"`
-	IsActive             bool                `json:"is_active"`
-	CreatedAt            time.Time           `json:"created_at"`
-	UpdatedAt            time.Time           `json:"updated_at"`
+	ID                 string              `json:"id"`
+	Nama               string              `json:"nama"`
+	Slug               string              `json:"slug"`
+	IDCargo            *string             `json:"id_cargo"`
+	Kategori           ProdukRelationInfo  `json:"kategori"`
+	Merek              *ProdukRelationInfo `json:"merek"`
+	Kondisi            ProdukRelationInfo  `json:"kondisi"`
+	KondisiPaket       ProdukRelationInfo  `json:"kondisi_paket"`
+	Sumber             *ProdukRelationInfo `json:"sumber"`
+	Warehouse          ProdukRelationInfo  `json:"warehouse"`
+	TipeProduk         ProdukRelationInfo  `json:"tipe_produk"`
+	HargaSebelumDiskon float64             `json:"harga_sebelum_diskon"`
+	PersentaseDiskon   float64             `json:"persentase_diskon"`
+	HargaSesudahDiskon float64             `json:"harga_sesudah_diskon"`
+	Quantity           int                 `json:"quantity"`
+	QuantityTerjual    int                 `json:"quantity_terjual"`
+	GambarUtama        *string             `json:"gambar_utama"`
+	IsActive           bool                `json:"is_active"`
+	CreatedAt          time.Time           `json:"created_at"`
+	UpdatedAt          time.Time           `json:"updated_at"`
 }
 
 type ProdukDetailResponse struct {
-	ID                   string                  `json:"id"`
-	Nama                 string                  `json:"nama"`
-	Slug                 string                  `json:"slug"`
-	IDCargo              *string                 `json:"id_cargo"`
-	Kategori             ProdukRelationInfo      `json:"kategori"`
-	Merek                *ProdukRelationInfo     `json:"merek"`
-	Kondisi              ProdukRelationInfo      `json:"kondisi"`
-	KondisiPaket         ProdukRelationInfo      `json:"kondisi_paket"`
-	Sumber               *ProdukRelationInfo     `json:"sumber"`
-	Warehouse            ProdukWarehouseInfo     `json:"warehouse"`
-	TipeProduk           ProdukRelationInfo      `json:"tipe_produk"`
-	HargaSebelumDiskon   float64                 `json:"harga_sebelum_diskon"`
-	PersentaseDiskon     float64                 `json:"persentase_diskon"`
-	HargaSesudahDiskon   float64                 `json:"harga_sesudah_diskon"`
-	Quantity             int                     `json:"quantity"`
-	QuantityTerjual      int                     `json:"quantity_terjual"`
-	Discrepancy          *string                 `json:"discrepancy"`
-	Gambar               []ProdukGambarResponse  `json:"gambar"`
-	Dokumen              []ProdukDokumenResponse `json:"dokumen"`
-	IsActive             bool                    `json:"is_active"`
-	CreatedAt            time.Time               `json:"created_at"`
-	UpdatedAt            time.Time               `json:"updated_at"`
+	ID                 string                  `json:"id"`
+	Nama               string                  `json:"nama"`
+	Slug               string                  `json:"slug"`
+	IDCargo            *string                 `json:"id_cargo"`
+	Kategori           ProdukRelationInfo      `json:"kategori"`
+	Merek              *ProdukRelationInfo     `json:"merek"`
+	Kondisi            ProdukRelationInfo      `json:"kondisi"`
+	KondisiPaket       ProdukRelationInfo      `json:"kondisi_paket"`
+	Sumber             *ProdukRelationInfo     `json:"sumber"`
+	Warehouse          ProdukWarehouseInfo     `json:"warehouse"`
+	TipeProduk         ProdukRelationInfo      `json:"tipe_produk"`
+	HargaSebelumDiskon float64                 `json:"harga_sebelum_diskon"`
+	PersentaseDiskon   float64                 `json:"persentase_diskon"`
+	HargaSesudahDiskon float64                 `json:"harga_sesudah_diskon"`
+	Quantity           int                     `json:"quantity"`
+	QuantityTerjual    int                     `json:"quantity_terjual"`
+	Discrepancy        *string                 `json:"discrepancy"`
+	Gambar             []ProdukGambarResponse  `json:"gambar"`
+	Dokumen            []ProdukDokumenResponse `json:"dokumen"`
+	IsActive           bool                    `json:"is_active"`
+	CreatedAt          time.Time               `json:"created_at"`
+	UpdatedAt          time.Time               `json:"updated_at"`
 }
-
 
 // ========================================
 // Auth Response
@@ -357,48 +353,56 @@ type AdminSessionResponse struct {
 	IsCurrent bool      `json:"is_current"`
 }
 
-
 // ========================================
 // Buyer Response
 // ========================================
 
 type BuyerListResponse struct {
-	ID           string     `json:"id"`
-	Nama         string     `json:"nama"`
-	Username     string     `json:"username"`
-	Email        string     `json:"email"`
-	Telepon      *string    `json:"telepon"`
-	IsActive     bool       `json:"is_active"`
-	IsVerified   bool       `json:"is_verified"`
-	JumlahAlamat int        `json:"jumlah_alamat"`
-	LastLoginAt  *time.Time `json:"last_login_at"`
-	CreatedAt    time.Time  `json:"created_at"`
+	ID        string    `json:"id"`
+	Nama      string    `json:"nama"`
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
+	Telepon   *string   `json:"telepon"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type BuyerDetailResponse struct {
-	ID              string                `json:"id"`
-	Nama            string                `json:"nama"`
-	Username        string                `json:"username"`
-	Email           string                `json:"email"`
-	Telepon         *string               `json:"telepon"`
-	IsActive        bool                  `json:"is_active"`
-	IsVerified      bool                  `json:"is_verified"`
-	EmailVerifiedAt *time.Time            `json:"email_verified_at"`
-	LastLoginAt     *time.Time            `json:"last_login_at"`
-	Alamat          []AlamatBuyerResponse `json:"alamat"`
-	CreatedAt       time.Time             `json:"created_at"`
-	UpdatedAt       time.Time             `json:"updated_at"`
+	ID        string                `json:"id"`
+	Nama      string                `json:"nama"`
+	Username  string                `json:"username"`
+	Email     string                `json:"email"`
+	Telepon   *string               `json:"telepon"`
+	FotoURL   *string               `json:"foto_url"`
+	Alamat    []AlamatBuyerResponse `json:"alamat"`
+	CreatedAt time.Time             `json:"created_at"`
+	UpdatedAt time.Time             `json:"updated_at"`
 }
 
 type BuyerStatistikResponse struct {
-	TotalBuyer          int64 `json:"total_buyer"`
-	BuyerAktif          int64 `json:"buyer_aktif"`
-	BuyerNonaktif       int64 `json:"buyer_nonaktif"`
-	BuyerVerified       int64 `json:"buyer_verified"`
-	BuyerUnverified     int64 `json:"buyer_unverified"`
-	RegistrasiHariIni   int64 `json:"registrasi_hari_ini"`
-	RegistrasiMingguIni int64 `json:"registrasi_minggu_ini"`
-	RegistrasiBulanIni  int64 `json:"registrasi_bulan_ini"`
+	TotalBuyer         int64          `json:"total_buyer"`
+	BuyerVerified      int64          `json:"buyer_verified"`
+	PersentaseBulanIni PersentaseData `json:"persentase_bulan_ini"`
+	PersentaseTahunIni PersentaseData `json:"persentase_tahun_ini"`
+	RegistrasiBulanIni int64          `json:"registrasi_bulan_ini"`
+	RegistrasiTahunIni int64          `json:"registrasi_tahun_ini"`
+}
+
+type PersentaseData struct {
+	Value    float64 `json:"value"`
+	Trend    string  `json:"trend"` // "up", "down", "stable"
+	Current  int64   `json:"current"`
+	Previous int64   `json:"previous"`
+}
+
+type ChartData struct {
+	Date time.Time `json:"date"`
+	User int       `json:"user"`
+}
+
+type ChartResponse struct {
+	Mode  string      `json:"mode"`
+	Chart []ChartData `json:"chart"`
+	Total int64       `json:"total"`
 }
 
 // ========================================
@@ -426,7 +430,6 @@ type AlamatBuyerResponse struct {
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
 }
-
 
 // ========================================
 // Hero Section Response

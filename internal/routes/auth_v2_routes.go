@@ -28,6 +28,7 @@ func SetupAuthV2Routes(
 		authV2Protected := api.Group("/auth")
 		authV2Protected.Use(middleware.AuthMiddleware())
 		{
+			authV2Protected.GET("/check", authV2Controller.Check)
 			authV2Protected.POST("/logout", authV2Controller.Logout)
 			authV2Protected.GET("/me", authV2Controller.GetMe)
 			authV2Protected.PUT("/profile", authV2Controller.UpdateProfile)

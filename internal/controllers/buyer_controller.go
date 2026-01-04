@@ -44,23 +44,6 @@ func (c *BuyerController) FindByID(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, "Detail buyer berhasil diambil", result)
 }
 
-func (c *BuyerController) Update(ctx *gin.Context) {
-	id := ctx.Param("id")
-	var req models.UpdateBuyerRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
-	}
-
-	result, err := c.service.Update(ctx.Request.Context(), id, &req)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, "Buyer berhasil diupdate", result)
-}
-
 func (c *BuyerController) Delete(ctx *gin.Context) {
 	id := ctx.Param("id")
 	if err := c.service.Delete(ctx.Request.Context(), id); err != nil {
@@ -72,16 +55,6 @@ func (c *BuyerController) Delete(ctx *gin.Context) {
 		return
 	}
 	utils.SuccessResponse(ctx, "Buyer berhasil dihapus", nil)
-}
-
-func (c *BuyerController) ToggleStatus(ctx *gin.Context) {
-	id := ctx.Param("id")
-	result, err := c.service.ToggleStatus(ctx.Request.Context(), id)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-	utils.SuccessResponse(ctx, "Status buyer berhasil diubah", result)
 }
 
 func (c *BuyerController) ResetPassword(ctx *gin.Context) {
@@ -107,4 +80,19 @@ func (c *BuyerController) GetStatistik(ctx *gin.Context) {
 		return
 	}
 	utils.SuccessResponse(ctx, "Statistik buyer berhasil diambil", result)
+}
+
+func (c *BuyerController) GetChart(ctx *gin.Context) {
+	var params models.ChartParams
+	if err := ctx.ShouldBindQuery(&params); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
+		return
+	}
+
+	result, err := c.service.GetChart(ctx.Request.Context(), &params)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
+		return
+	}
+	utils.SuccessResponse(ctx, "Data chart berhasil diambil", result)
 }

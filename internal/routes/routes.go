@@ -38,8 +38,8 @@ func SetupRoutes(
 		c.JSON(200, gin.H{"status": "OK", "message": "Server is running"})
 	})
 
-	// API v1 routes
-	v1 := router.Group("/api/v1")
+	// API routes (tanpa versioning)
+	v1 := router.Group("/api")
 	{
 		// Public Auth Routes (Legacy - Commented out, using AuthV2 instead)
 		// Uncomment if you want to use old auth system
@@ -78,19 +78,20 @@ func SetupRoutes(
 			admin.PUT("/:id/reset-password", adminController.ResetPassword)
 		}
 
-		// Buyer Management Routes (Protected - RUD only)
-		buyerManagement := v1.Group("/buyer")
+		// Buyer Management Routes (Admin Side)
+		buyerManagement := v1.Group("/admin/buyer")
 		buyerManagement.Use(middleware.AuthMiddleware())
 		buyerManagement.Use(middleware.AdminOnly())
-		buyerManagement.Use(middleware.RequirePermission("buyer:manage"))
 		{
-			buyerManagement.GET("", buyerController.FindAll)
-			buyerManagement.GET("/statistik", buyerController.GetStatistik)
-			buyerManagement.GET("/:id", buyerController.FindByID)
-			buyerManagement.PUT("/:id", buyerController.Update)
-			buyerManagement.DELETE("/:id", buyerController.Delete)
-			buyerManagement.PATCH("/:id/toggle-status", buyerController.ToggleStatus)
-			buyerManagement.PUT("/:id/reset-password", buyerController.ResetPassword)
+			// Read permission untuk list, detail, statistik, chart
+			buyerManagement.GET("", middleware.RequirePermission("buyer:read"), buyerController.FindAll)
+			buyerManagement.GET("/statistik", middleware.RequirePermission("buyer:read"), buyerController.GetStatistik)
+			buyerManagement.GET("/chart", middleware.RequirePermission("buyer:read"), buyerController.GetChart)
+			buyerManagement.GET("/:id", middleware.RequirePermission("buyer:read"), buyerController.FindByID)
+
+			// Manage permission untuk delete dan reset password
+			buyerManagement.DELETE("/:id", middleware.RequirePermission("buyer:manage"), buyerController.Delete)
+			buyerManagement.PUT("/:id/reset-password", middleware.RequirePermission("buyer:manage"), buyerController.ResetPassword)
 		}
 
 		// Alamat Buyer Routes (Buyer Only)
