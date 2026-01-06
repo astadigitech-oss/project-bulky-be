@@ -34,7 +34,7 @@ func SetupRoutes(
 	appStatusController *controllers.AppStatusController,
 ) {
 	// Health check
-	router.GET("/health", func(c *gin.Context) {
+	router.GET("/api/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "OK", "message": "Server is running"})
 	})
 
@@ -64,7 +64,7 @@ func SetupRoutes(
 		*/
 
 		// Admin Management Routes (Protected)
-		admin := v1.Group("/admin")
+		admin := v1.Group("/panel/admin")
 		admin.Use(middleware.AuthMiddleware())
 		admin.Use(middleware.AdminOnly())
 		admin.Use(middleware.RequirePermission("admin:manage"))
@@ -79,7 +79,7 @@ func SetupRoutes(
 		}
 
 		// Buyer Management Routes (Admin Side)
-		buyerManagement := v1.Group("/admin/buyer")
+		buyerManagement := v1.Group("/panel/buyer")
 		buyerManagement.Use(middleware.AuthMiddleware())
 		buyerManagement.Use(middleware.AdminOnly())
 		{
@@ -117,7 +117,7 @@ func SetupRoutes(
 		}
 
 		// Kategori Produk - Admin (Write)
-		kategoriAdmin := v1.Group("/admin/kategori-produk")
+		kategoriAdmin := v1.Group("/panel/kategori-produk")
 		kategoriAdmin.Use(middleware.AuthMiddleware())
 		kategoriAdmin.Use(middleware.AdminOnly())
 		kategoriAdmin.Use(middleware.RequirePermission("kategori:manage"))
@@ -137,7 +137,7 @@ func SetupRoutes(
 		}
 
 		// Merek Produk - Admin (Write)
-		merekAdmin := v1.Group("/admin/merek-produk")
+		merekAdmin := v1.Group("/panel/merek-produk")
 		merekAdmin.Use(middleware.AuthMiddleware())
 		merekAdmin.Use(middleware.AdminOnly())
 		merekAdmin.Use(middleware.RequirePermission("merek:manage"))
@@ -157,7 +157,7 @@ func SetupRoutes(
 		}
 
 		// Kondisi Produk - Admin (Write)
-		kondisiAdmin := v1.Group("/admin/kondisi-produk")
+		kondisiAdmin := v1.Group("/panel/kondisi-produk")
 		kondisiAdmin.Use(middleware.AuthMiddleware())
 		kondisiAdmin.Use(middleware.AdminOnly())
 		kondisiAdmin.Use(middleware.RequirePermission("kondisi:manage"))
@@ -178,7 +178,7 @@ func SetupRoutes(
 		}
 
 		// Kondisi Paket - Admin (Write)
-		paketAdmin := v1.Group("/admin/kondisi-paket")
+		paketAdmin := v1.Group("/panel/kondisi-paket")
 		paketAdmin.Use(middleware.AuthMiddleware())
 		paketAdmin.Use(middleware.AdminOnly())
 		paketAdmin.Use(middleware.RequirePermission("kondisi:manage"))
@@ -199,7 +199,7 @@ func SetupRoutes(
 		}
 
 		// Sumber Produk - Admin (Write)
-		sumberAdmin := v1.Group("/admin/sumber-produk")
+		sumberAdmin := v1.Group("/panel/sumber-produk")
 		sumberAdmin.Use(middleware.AuthMiddleware())
 		sumberAdmin.Use(middleware.AdminOnly())
 		sumberAdmin.Use(middleware.RequirePermission("sumber:manage"))
@@ -218,7 +218,7 @@ func SetupRoutes(
 		}
 
 		// Warehouse - Admin (Write)
-		warehouseAdmin := v1.Group("/admin/warehouse")
+		warehouseAdmin := v1.Group("/panel/warehouse")
 		warehouseAdmin.Use(middleware.AuthMiddleware())
 		warehouseAdmin.Use(middleware.AdminOnly())
 		warehouseAdmin.Use(middleware.RequirePermission("warehouse:manage"))
@@ -238,7 +238,7 @@ func SetupRoutes(
 		}
 
 		// Tipe Produk - Admin (Write)
-		tipeProdukAdmin := v1.Group("/admin/tipe-produk")
+		tipeProdukAdmin := v1.Group("/panel/tipe-produk")
 		tipeProdukAdmin.Use(middleware.AuthMiddleware())
 		tipeProdukAdmin.Use(middleware.AdminOnly())
 		tipeProdukAdmin.Use(middleware.RequirePermission("tipe_produk:manage"))
@@ -259,7 +259,7 @@ func SetupRoutes(
 		}
 
 		// Diskon Kategori - Admin (Write)
-		diskonKategoriAdmin := v1.Group("/admin/diskon-kategori")
+		diskonKategoriAdmin := v1.Group("/panel/diskon-kategori")
 		diskonKategoriAdmin.Use(middleware.AuthMiddleware())
 		diskonKategoriAdmin.Use(middleware.AdminOnly())
 		diskonKategoriAdmin.Use(middleware.RequirePermission("diskon:manage"))
@@ -279,7 +279,7 @@ func SetupRoutes(
 		}
 
 		// Banner Tipe Produk - Admin (Write)
-		bannerTipeProdukAdmin := v1.Group("/admin/banner-tipe-produk")
+		bannerTipeProdukAdmin := v1.Group("/panel/banner-tipe-produk")
 		bannerTipeProdukAdmin.Use(middleware.AuthMiddleware())
 		bannerTipeProdukAdmin.Use(middleware.AdminOnly())
 		bannerTipeProdukAdmin.Use(middleware.RequirePermission("banner:manage"))
@@ -300,7 +300,7 @@ func SetupRoutes(
 		}
 
 		// Produk - Admin (Write)
-		produkAdmin := v1.Group("/admin/produk")
+		produkAdmin := v1.Group("/panel/produk")
 		produkAdmin.Use(middleware.AuthMiddleware())
 		produkAdmin.Use(middleware.AdminOnly())
 		{
@@ -333,7 +333,7 @@ func SetupRoutes(
 		}
 
 		// Hero Section (Admin)
-		heroSectionAdmin := v1.Group("/admin/hero-section")
+		heroSectionAdmin := v1.Group("/panel/hero-section")
 		heroSectionAdmin.Use(middleware.AuthMiddleware())
 		heroSectionAdmin.Use(middleware.AdminOnly())
 		{
@@ -353,7 +353,7 @@ func SetupRoutes(
 		}
 
 		// Banner Event Promo (Admin)
-		bannerEventPromoAdmin := v1.Group("/admin/banner-event-promo")
+		bannerEventPromoAdmin := v1.Group("/panel/banner-event-promo")
 		bannerEventPromoAdmin.Use(middleware.AuthMiddleware())
 		bannerEventPromoAdmin.Use(middleware.AdminOnly())
 		{
@@ -373,7 +373,7 @@ func SetupRoutes(
 		}
 
 		// Ulasan - Admin
-		ulasanAdmin := v1.Group("/admin/ulasan")
+		ulasanAdmin := v1.Group("/panel/ulasan")
 		ulasanAdmin.Use(middleware.AuthMiddleware())
 		ulasanAdmin.Use(middleware.AdminOnly())
 		{
@@ -402,7 +402,7 @@ func SetupRoutes(
 		}
 
 		// Force Update - Super Admin Only
-		forceUpdateAdmin := v1.Group("/admin/force-update")
+		forceUpdateAdmin := v1.Group("/panel/force-update")
 		forceUpdateAdmin.Use(middleware.AuthMiddleware())
 		forceUpdateAdmin.Use(middleware.SuperAdminOnly())
 		{
@@ -415,7 +415,7 @@ func SetupRoutes(
 		}
 
 		// Mode Maintenance - Super Admin Only
-		modeMaintenanceAdmin := v1.Group("/admin/mode-maintenance")
+		modeMaintenanceAdmin := v1.Group("/panel/mode-maintenance")
 		modeMaintenanceAdmin.Use(middleware.AuthMiddleware())
 		modeMaintenanceAdmin.Use(middleware.SuperAdminOnly())
 		{
@@ -438,7 +438,7 @@ func SetupRoutes(
 	}
 
 	// Endpoint to list all registered routes
-	router.GET("/routes", func(c *gin.Context) {
+	router.GET("/api/routes", func(c *gin.Context) {
 		var endpointList []gin.H
 		for _, route := range router.Routes() {
 			endpointList = append(endpointList, gin.H{"method": route.Method, "path": route.Path})

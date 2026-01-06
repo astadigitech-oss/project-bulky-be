@@ -17,26 +17,38 @@ func SetupAuthV2Routes(
 ) {
 	api := router.Group("/api")
 	{
-		// Public Auth Routes (v2)
-		authV2 := api.Group("/auth")
+		// ============================================================
+		// PANEL AUTH ROUTES (Admin Panel)
+		// ============================================================
+		panelAuth := api.Group("/panel/auth")
 		{
-			authV2.POST("/admin/login", authV2Controller.AdminLogin)
-			authV2.POST("/buyer/login", authV2Controller.BuyerLogin)
+			// Public - Admin Login
+			panelAuth.POST("/login", authV2Controller.AdminLogin)
 		}
 
-		// Protected Auth Routes (v2)
-		authV2Protected := api.Group("/auth")
-		authV2Protected.Use(middleware.AuthMiddleware())
+		// Protected Panel Auth Routes
+		panelAuthProtected := api.Group("/panel/auth")
+		panelAuthProtected.Use(middleware.AuthMiddleware())
+		panelAuthProtected.Use(middleware.AdminOnly())
 		{
-			authV2Protected.GET("/check", authV2Controller.Check)
-			authV2Protected.POST("/logout", authV2Controller.Logout)
-			authV2Protected.GET("/me", authV2Controller.GetMe)
-			authV2Protected.PUT("/profile", authV2Controller.UpdateProfile)
-			authV2Protected.PUT("/change-password", authV2Controller.ChangePassword)
+			panelAuthProtected.GET("/check", authV2Controller.Check)
+			panelAuthProtected.GET("/me", authV2Controller.GetMe)
+			panelAuthProtected.POST("/logout", authV2Controller.Logout)
+			panelAuthProtected.PUT("/profile", authV2Controller.UpdateProfile)
+			panelAuthProtected.PUT("/change-password", authV2Controller.ChangePassword)
 		}
+
+		// ============================================================
+		// BUYER AUTH ROUTES (Future - Buyer App)
+		// ============================================================
+		// Uncomment when implementing Buyer App
+		// buyerAuth := api.Group("/buyer/auth")
+		// {
+		// 	buyerAuth.POST("/login", authV2Controller.BuyerLogin)
+		// }
 
 		// Role Management Routes (Admin Only)
-		roleAdmin := api.Group("/admin/role")
+		roleAdmin := api.Group("/panel/role")
 		roleAdmin.Use(middleware.AuthMiddleware(), middleware.AdminOnly(), middleware.RequirePermission("role:manage"))
 		{
 			roleAdmin.GET("", roleController.GetAll)
@@ -47,14 +59,14 @@ func SetupAuthV2Routes(
 		}
 
 		// Permission Routes (Admin Only)
-		permissionAdmin := api.Group("/admin/permission")
+		permissionAdmin := api.Group("/panel/permission")
 		permissionAdmin.Use(middleware.AuthMiddleware(), middleware.AdminOnly(), middleware.RequirePermission("role:manage"))
 		{
 			permissionAdmin.GET("", permissionController.GetAll)
 		}
 
 		// Activity Log Routes (Admin Only)
-		activityLogAdmin := api.Group("/admin/activity-log")
+		activityLogAdmin := api.Group("/panel/activity-log")
 		activityLogAdmin.Use(middleware.AuthMiddleware(), middleware.AdminOnly(), middleware.RequirePermission("activity_log:read"))
 		{
 			activityLogAdmin.GET("", activityLogController.GetLogs)
