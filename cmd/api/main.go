@@ -6,6 +6,7 @@ import (
 
 	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/controllers"
+	"project-bulky-be/internal/middleware"
 	"project-bulky-be/internal/repositories"
 	"project-bulky-be/internal/routes"
 	"project-bulky-be/internal/services"
@@ -127,6 +128,7 @@ func main() {
 	permissionController := controllers.NewPermissionController(permissionService)
 
 	router := gin.Default()
+	router.Use(middleware.CORSMiddleware())
 
 	routes.SetupRoutes(
 		router,
