@@ -27,8 +27,7 @@ CREATE INDEX IF NOT EXISTS idx_admin_session_admin_id
     ON admin_session(admin_id);
 
 CREATE INDEX IF NOT EXISTS idx_admin_session_expires 
-    ON admin_session(expires_at) 
-    WHERE revoked_at IS NULL;
+    ON admin_session(expires_at);
 
 -- Role Permission lookup
 CREATE INDEX IF NOT EXISTS idx_role_permission_role 
