@@ -112,7 +112,10 @@ func (s *adminService) Update(ctx context.Context, id string, req *models.Update
 	}
 
 	if req.Email != nil && *req.Email != admin.Email {
-		exists, _ := s.repo.ExistsByEmail(ctx, *req.Email, &id)
+		exists, err := s.repo.ExistsByEmail(ctx, *req.Email, &id)
+		if err != nil {
+			return nil, err
+		}
 		if exists {
 			return nil, errors.New("email sudah digunakan oleh admin lain")
 		}

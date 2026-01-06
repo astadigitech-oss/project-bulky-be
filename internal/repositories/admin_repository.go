@@ -2,6 +2,8 @@ package repositories
 
 import (
 	"context"
+	"errors"
+	"strings"
 
 	"project-bulky-be/internal/models"
 
@@ -105,7 +107,15 @@ func (r *adminRepository) FindAll(ctx context.Context, params *models.Pagination
 }
 
 func (r *adminRepository) Update(ctx context.Context, admin *models.Admin) error {
-	return r.db.WithContext(ctx).Save(admin).Error
+	err := r.db.WithContext(ctx).Save(admin).Error
+	if err != nil {
+		// Check for unique constraint violation
+		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "23505") {
+			return errors.New("email sudah digunakan oleh admin lain")
+		}
+		return err
+	}
+	return nil
 }
 
 func (r *adminRepository) Delete(ctx context.Context, id string) error {
