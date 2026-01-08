@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"net/http"
+	"strings"
 
+	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
@@ -12,14 +14,61 @@ import (
 
 type MerekProdukController struct {
 	service services.MerekProdukService
+	cfg     *config.Config
 }
 
-func NewMerekProdukController(service services.MerekProdukService) *MerekProdukController {
-	return &MerekProdukController{service: service}
+func NewMerekProdukController(service services.MerekProdukService, cfg *config.Config) *MerekProdukController {
+	return &MerekProdukController{
+		service: service,
+		cfg:     cfg,
+	}
 }
 
 func (c *MerekProdukController) Create(ctx *gin.Context) {
 	var req models.CreateMerekProdukRequest
+	var logoURL *string
+
+	// Check content type
+	contentType := ctx.GetHeader("Content-Type")
+
+	// Handle multipart/form-data (with file upload)
+	if strings.Contains(contentType, "multipart/form-data") {
+		// Parse form data
+		req.Nama = ctx.PostForm("nama")
+
+		// Validate required field
+		if req.Nama == "" {
+			utils.ErrorResponse(ctx, http.StatusBadRequest, "Nama merek wajib diisi", nil)
+			return
+		}
+
+		// Handle logo upload or URL
+		if file, err := ctx.FormFile("logo"); err == nil {
+			if !utils.IsValidImageType(file) {
+				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file logo tidak didukung", nil)
+				return
+			}
+			savedPath, err := utils.SaveUploadedFile(file, "product-brands", c.cfg)
+			if err != nil {
+				utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan logo: "+err.Error(), nil)
+				return
+			}
+			logoURL = &savedPath
+		} else if logoStr := ctx.PostForm("logo"); logoStr != "" {
+			logoURL = &logoStr
+		}
+
+		// Create with logo
+		result, err := c.service.CreateWithLogo(ctx.Request.Context(), &req, logoURL)
+		if err != nil {
+			utils.ErrorResponse(ctx, http.StatusConflict, err.Error(), nil)
+			return
+		}
+		utils.CreatedResponse(ctx, "Merek produk berhasil dibuat", result)
+		return
+	}
+
+	// Handle application/json (no file upload)
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 		return
@@ -78,6 +127,49 @@ func (c *MerekProdukController) Update(ctx *gin.Context) {
 	id := ctx.Param("id")
 
 	var req models.UpdateMerekProdukRequest
+	var logoURL *string
+
+	// Check content type
+	contentType := ctx.GetHeader("Content-Type")
+
+	// Handle multipart/form-data (with file upload)
+	if strings.Contains(contentType, "multipart/form-data") {
+		// Parse form data
+		if nama := ctx.PostForm("nama"); nama != "" {
+			req.Nama = &nama
+		}
+		if isActiveStr := ctx.PostForm("is_active"); isActiveStr != "" {
+			isActive := isActiveStr == "true"
+			req.IsActive = &isActive
+		}
+
+		// Handle logo upload or URL
+		if file, err := ctx.FormFile("logo"); err == nil {
+			if !utils.IsValidImageType(file) {
+				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file logo tidak didukung", nil)
+				return
+			}
+			savedPath, err := utils.SaveUploadedFile(file, "product-brands", c.cfg)
+			if err != nil {
+				utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan logo: "+err.Error(), nil)
+				return
+			}
+			logoURL = &savedPath
+		} else if logoStr := ctx.PostForm("logo"); logoStr != "" {
+			logoURL = &logoStr
+		}
+
+		// Use UpdateWithLogo for multipart
+		result, err := c.service.UpdateWithLogo(ctx.Request.Context(), id, &req, logoURL)
+		if err != nil {
+			utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
+			return
+		}
+		utils.SuccessResponse(ctx, "Merek produk berhasil diupdate", result)
+		return
+	}
+
+	// Handle application/json (no file upload)
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 		return

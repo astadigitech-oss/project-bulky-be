@@ -123,7 +123,7 @@ func SetupRoutes(
 		kategoriAdmin.Use(middleware.RequirePermission("kategori:manage"))
 		{
 			kategoriAdmin.POST("", kategoriController.Create)
-			kategoriAdmin.PUT("/:id", kategoriController.Update)
+			kategoriAdmin.PUT("/:id", kategoriController.Update) // Support JSON & multipart/form-data
 			kategoriAdmin.DELETE("/:id", kategoriController.Delete)
 			kategoriAdmin.PATCH("/:id/toggle-status", kategoriController.ToggleStatus)
 		}
@@ -140,7 +140,7 @@ func SetupRoutes(
 		merekAdmin := v1.Group("/panel/merek-produk")
 		merekAdmin.Use(middleware.AuthMiddleware())
 		merekAdmin.Use(middleware.AdminOnly())
-		merekAdmin.Use(middleware.RequirePermission("merek:manage"))
+		merekAdmin.Use(middleware.RequirePermission("brand:manage"))
 		{
 			merekAdmin.POST("", merekController.Create)
 			merekAdmin.PUT("/:id", merekController.Update)

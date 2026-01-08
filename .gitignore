@@ -40,3 +40,4 @@ tmp/
 build-errors.log
 .air.toml.bak
 /docs
+uploads/*

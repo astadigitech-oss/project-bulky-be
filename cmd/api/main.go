@@ -69,8 +69,8 @@ func main() {
 	permissionRepo := repositories.NewPermissionRepository(db)
 
 	// Initialize services
-	kategoriService := services.NewKategoriProdukService(kategoriRepo)
-	merekService := services.NewMerekProdukService(merekRepo)
+	kategoriService := services.NewKategoriProdukService(kategoriRepo, cfg)
+	merekService := services.NewMerekProdukService(merekRepo, cfg)
 	kondisiService := services.NewKondisiProdukService(kondisiRepo)
 	kondisiPaketService := services.NewKondisiPaketService(kondisiPaketRepo)
 	sumberService := services.NewSumberProdukService(sumberRepo)
@@ -99,8 +99,8 @@ func main() {
 	permissionService := services.NewPermissionService(permissionRepo)
 
 	// Initialize controllers
-	kategoriController := controllers.NewKategoriProdukController(kategoriService)
-	merekController := controllers.NewMerekProdukController(merekService)
+	kategoriController := controllers.NewKategoriProdukController(kategoriService, cfg)
+	merekController := controllers.NewMerekProdukController(merekService, cfg)
 	kondisiController := controllers.NewKondisiProdukController(kondisiService)
 	kondisiPaketController := controllers.NewKondisiPaketController(kondisiPaketService)
 	sumberController := controllers.NewSumberProdukController(sumberService)
