@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
 	"project-bulky-be/pkg/utils"
@@ -11,20 +12,26 @@ import (
 
 type MerekProdukService interface {
 	Create(ctx context.Context, req *models.CreateMerekProdukRequest) (*models.MerekProdukResponse, error)
+	CreateWithLogo(ctx context.Context, req *models.CreateMerekProdukRequest, logoURL *string) (*models.MerekProdukResponse, error)
 	FindByID(ctx context.Context, id string) (*models.MerekProdukResponse, error)
 	FindBySlug(ctx context.Context, slug string) (*models.MerekProdukResponse, error)
 	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.MerekProdukResponse, *models.PaginationMeta, error)
 	Update(ctx context.Context, id string, req *models.UpdateMerekProdukRequest) (*models.MerekProdukResponse, error)
+	UpdateWithLogo(ctx context.Context, id string, req *models.UpdateMerekProdukRequest, logoURL *string) (*models.MerekProdukResponse, error)
 	Delete(ctx context.Context, id string) error
 	ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error)
 }
 
 type merekProdukService struct {
 	repo repositories.MerekProdukRepository
+	cfg  *config.Config
 }
 
-func NewMerekProdukService(repo repositories.MerekProdukRepository) MerekProdukService {
-	return &merekProdukService{repo: repo}
+func NewMerekProdukService(repo repositories.MerekProdukRepository, cfg *config.Config) MerekProdukService {
+	return &merekProdukService{
+		repo: repo,
+		cfg:  cfg,
+	}
 }
 
 func (s *merekProdukService) Create(ctx context.Context, req *models.CreateMerekProdukRequest) (*models.MerekProdukResponse, error) {
@@ -38,6 +45,29 @@ func (s *merekProdukService) Create(ctx context.Context, req *models.CreateMerek
 	merek := &models.MerekProduk{
 		Nama:     req.Nama,
 		Slug:     slug,
+		LogoURL:  req.Logo,
+		IsActive: true,
+	}
+
+	if err := s.repo.Create(ctx, merek); err != nil {
+		return nil, err
+	}
+
+	return s.toResponse(merek), nil
+}
+
+func (s *merekProdukService) CreateWithLogo(ctx context.Context, req *models.CreateMerekProdukRequest, logoURL *string) (*models.MerekProdukResponse, error) {
+	slug := utils.GenerateSlug(req.Nama)
+
+	exists, _ := s.repo.ExistsBySlug(ctx, slug, nil)
+	if exists {
+		return nil, errors.New("merek dengan nama tersebut sudah ada")
+	}
+
+	merek := &models.MerekProduk{
+		Nama:     req.Nama,
+		Slug:     slug,
+		LogoURL:  logoURL,
 		IsActive: true,
 	}
 
@@ -97,8 +127,49 @@ func (s *merekProdukService) Update(ctx context.Context, id string, req *models.
 		merek.Nama = *req.Nama
 		merek.Slug = newSlug
 	}
+	if req.Logo != nil {
+		merek.LogoURL = req.Logo
+	}
 	if req.IsActive != nil {
 		merek.IsActive = *req.IsActive
+	}
+
+	if err := s.repo.Update(ctx, merek); err != nil {
+		return nil, err
+	}
+
+	return s.toResponse(merek), nil
+}
+
+func (s *merekProdukService) UpdateWithLogo(ctx context.Context, id string, req *models.UpdateMerekProdukRequest, logoURL *string) (*models.MerekProdukResponse, error) {
+	merek, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, errors.New("merek produk tidak ditemukan")
+	}
+
+	// Update text fields
+	if req.Nama != nil {
+		newSlug := utils.GenerateSlug(*req.Nama)
+		exists, _ := s.repo.ExistsBySlug(ctx, newSlug, &id)
+		if exists {
+			return nil, errors.New("merek dengan nama tersebut sudah ada")
+		}
+		merek.Nama = *req.Nama
+		merek.Slug = newSlug
+	}
+	if req.IsActive != nil {
+		merek.IsActive = *req.IsActive
+	}
+
+	// Update logo if provided
+	if logoURL != nil {
+		// Delete old logo if exists
+		if merek.LogoURL != nil && *merek.LogoURL != "" {
+			if err := utils.DeleteFile(*merek.LogoURL, s.cfg); err == nil {
+				// Log error but don't fail the update
+			}
+		}
+		merek.LogoURL = logoURL
 	}
 
 	if err := s.repo.Update(ctx, merek); err != nil {

@@ -70,7 +70,7 @@ func main() {
 
 	// Initialize services
 	kategoriService := services.NewKategoriProdukService(kategoriRepo, cfg)
-	merekService := services.NewMerekProdukService(merekRepo)
+	merekService := services.NewMerekProdukService(merekRepo, cfg)
 	kondisiService := services.NewKondisiProdukService(kondisiRepo)
 	kondisiPaketService := services.NewKondisiPaketService(kondisiPaketRepo)
 	sumberService := services.NewSumberProdukService(sumberRepo)
@@ -100,7 +100,7 @@ func main() {
 
 	// Initialize controllers
 	kategoriController := controllers.NewKategoriProdukController(kategoriService, cfg)
-	merekController := controllers.NewMerekProdukController(merekService)
+	merekController := controllers.NewMerekProdukController(merekService, cfg)
 	kondisiController := controllers.NewKondisiProdukController(kondisiService)
 	kondisiPaketController := controllers.NewKondisiPaketController(kondisiPaketService)
 	sumberController := controllers.NewSumberProdukController(sumberService)

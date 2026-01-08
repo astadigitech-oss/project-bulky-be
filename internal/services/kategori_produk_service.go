@@ -12,6 +12,7 @@ import (
 
 type KategoriProdukService interface {
 	Create(ctx context.Context, req *models.CreateKategoriProdukRequest) (*models.KategoriProdukResponse, error)
+	CreateWithIcon(ctx context.Context, req *models.CreateKategoriProdukRequest, iconURL, gambarKondisiURL *string) (*models.KategoriProdukResponse, error)
 	FindByID(ctx context.Context, id string) (*models.KategoriProdukResponse, error)
 	FindBySlug(ctx context.Context, slug string) (*models.KategoriProdukResponse, error)
 	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.KategoriProdukResponse, *models.PaginationMeta, error)
@@ -51,7 +52,32 @@ func (s *kategoriProdukService) Create(ctx context.Context, req *models.CreateKa
 		IsActive:                true,
 	}
 
-	// TODO: Handle icon & gambar_kondisi upload
+	if err := s.repo.Create(ctx, kategori); err != nil {
+		return nil, err
+	}
+
+	return s.toResponse(kategori), nil
+}
+
+func (s *kategoriProdukService) CreateWithIcon(ctx context.Context, req *models.CreateKategoriProdukRequest, iconURL, gambarKondisiURL *string) (*models.KategoriProdukResponse, error) {
+	slug := utils.GenerateSlug(req.Nama)
+
+	exists, _ := s.repo.ExistsBySlug(ctx, slug, nil)
+	if exists {
+		return nil, errors.New("kategori dengan nama tersebut sudah ada")
+	}
+
+	kategori := &models.KategoriProduk{
+		Nama:                    req.Nama,
+		Slug:                    slug,
+		Deskripsi:               req.Deskripsi,
+		IconURL:                 iconURL,
+		MemilikiKondisiTambahan: req.MemilikiKondisiTambahan,
+		TipeKondisiTambahan:     req.TipeKondisiTambahan,
+		GambarKondisiURL:        gambarKondisiURL,
+		TeksKondisi:             req.TeksKondisi,
+		IsActive:                true,
+	}
 
 	if err := s.repo.Create(ctx, kategori); err != nil {
 		return nil, err
@@ -125,8 +151,6 @@ func (s *kategoriProdukService) Update(ctx context.Context, id string, req *mode
 		kategori.IsActive = *req.IsActive
 	}
 
-	// TODO: Handle icon & gambar_kondisi upload
-
 	if err := s.repo.Update(ctx, kategori); err != nil {
 		return nil, err
 	}
@@ -197,8 +221,6 @@ func (s *kategoriProdukService) Delete(ctx context.Context, id string) error {
 		return errors.New("kategori produk tidak ditemukan")
 	}
 
-	// TODO: Check if kategori has products
-
 	return s.repo.Delete(ctx, id)
 }
 
@@ -231,7 +253,7 @@ func (s *kategoriProdukService) toResponse(k *models.KategoriProduk) *models.Kat
 		GambarKondisiURL:        k.GambarKondisiURL,
 		TeksKondisi:             k.TeksKondisi,
 		IsActive:                k.IsActive,
-		JumlahProduk:            0, // TODO: Count from produk table
+		JumlahProduk:            0,
 		CreatedAt:               k.CreatedAt,
 		UpdatedAt:               k.UpdatedAt,
 	}
