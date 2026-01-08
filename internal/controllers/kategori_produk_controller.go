@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 
+	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
@@ -12,10 +13,14 @@ import (
 
 type KategoriProdukController struct {
 	service services.KategoriProdukService
+	cfg     *config.Config
 }
 
-func NewKategoriProdukController(service services.KategoriProdukService) *KategoriProdukController {
-	return &KategoriProdukController{service: service}
+func NewKategoriProdukController(service services.KategoriProdukService, cfg *config.Config) *KategoriProdukController {
+	return &KategoriProdukController{
+		service: service,
+		cfg:     cfg,
+	}
 }
 
 func (c *KategoriProdukController) Create(ctx *gin.Context) {
@@ -117,4 +122,78 @@ func (c *KategoriProdukController) ToggleStatus(ctx *gin.Context) {
 	}
 
 	utils.SuccessResponse(ctx, "Status kategori berhasil diubah", result)
+}
+
+func (c *KategoriProdukController) UpdateWithIcon(ctx *gin.Context) {
+	id := ctx.Param("id")
+
+	// Parse form data
+	var req models.UpdateKategoriProdukRequest
+
+	// Get text fields
+	if nama := ctx.PostForm("nama"); nama != "" {
+		req.Nama = &nama
+	}
+	if deskripsi := ctx.PostForm("deskripsi"); deskripsi != "" {
+		req.Deskripsi = &deskripsi
+	}
+	if isActiveStr := ctx.PostForm("is_active"); isActiveStr != "" {
+		isActive := isActiveStr == "true"
+		req.IsActive = &isActive
+	}
+	if memilikiKondisi := ctx.PostForm("memiliki_kondisi_tambahan"); memilikiKondisi != "" {
+		hasKondisi := memilikiKondisi == "true"
+		req.MemilikiKondisiTambahan = &hasKondisi
+	}
+	if tipeKondisi := ctx.PostForm("tipe_kondisi_tambahan"); tipeKondisi != "" {
+		req.TipeKondisiTambahan = &tipeKondisi
+	}
+	if teksKondisi := ctx.PostForm("teks_kondisi"); teksKondisi != "" {
+		req.TeksKondisi = &teksKondisi
+	}
+
+	var iconURL *string
+	var gambarKondisiURL *string
+
+	// Handle icon upload
+	if file, err := ctx.FormFile("icon"); err == nil {
+		// Validate file type
+		if !utils.IsValidImageType(file) {
+			utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file icon tidak didukung", nil)
+			return
+		}
+
+		// Save file
+		savedPath, err := utils.SaveUploadedFile(file, "product-categories", c.cfg)
+		if err != nil {
+			utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan icon: "+err.Error(), nil)
+			return
+		}
+		iconURL = &savedPath
+	}
+
+	// Handle gambar kondisi upload
+	if file, err := ctx.FormFile("gambar_kondisi"); err == nil {
+		// Validate file type
+		if !utils.IsValidImageType(file) {
+			utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar kondisi tidak didukung", nil)
+			return
+		}
+
+		// Save file
+		savedPath, err := utils.SaveUploadedFile(file, "product-categories/kondisi", c.cfg)
+		if err != nil {
+			utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan gambar kondisi: "+err.Error(), nil)
+			return
+		}
+		gambarKondisiURL = &savedPath
+	}
+
+	result, err := c.service.UpdateWithIcon(ctx.Request.Context(), id, &req, iconURL, gambarKondisiURL)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Kategori produk berhasil diupdate", result)
 }

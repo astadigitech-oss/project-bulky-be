@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
 	"project-bulky-be/pkg/utils"
@@ -15,16 +16,21 @@ type KategoriProdukService interface {
 	FindBySlug(ctx context.Context, slug string) (*models.KategoriProdukResponse, error)
 	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.KategoriProdukResponse, *models.PaginationMeta, error)
 	Update(ctx context.Context, id string, req *models.UpdateKategoriProdukRequest) (*models.KategoriProdukResponse, error)
+	UpdateWithIcon(ctx context.Context, id string, req *models.UpdateKategoriProdukRequest, iconURL, gambarKondisiURL *string) (*models.KategoriProdukResponse, error)
 	Delete(ctx context.Context, id string) error
 	ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error)
 }
 
 type kategoriProdukService struct {
 	repo repositories.KategoriProdukRepository
+	cfg  *config.Config
 }
 
-func NewKategoriProdukService(repo repositories.KategoriProdukRepository) KategoriProdukService {
-	return &kategoriProdukService{repo: repo}
+func NewKategoriProdukService(repo repositories.KategoriProdukRepository, cfg *config.Config) KategoriProdukService {
+	return &kategoriProdukService{
+		repo: repo,
+		cfg:  cfg,
+	}
 }
 
 func (s *kategoriProdukService) Create(ctx context.Context, req *models.CreateKategoriProdukRequest) (*models.KategoriProdukResponse, error) {
@@ -120,6 +126,63 @@ func (s *kategoriProdukService) Update(ctx context.Context, id string, req *mode
 	}
 
 	// TODO: Handle icon & gambar_kondisi upload
+
+	if err := s.repo.Update(ctx, kategori); err != nil {
+		return nil, err
+	}
+
+	return s.toResponse(kategori), nil
+}
+
+func (s *kategoriProdukService) UpdateWithIcon(ctx context.Context, id string, req *models.UpdateKategoriProdukRequest, iconURL, gambarKondisiURL *string) (*models.KategoriProdukResponse, error) {
+	kategori, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, errors.New("kategori produk tidak ditemukan")
+	}
+
+	// Update text fields
+	if req.Nama != nil {
+		newSlug := utils.GenerateSlug(*req.Nama)
+		exists, _ := s.repo.ExistsBySlug(ctx, newSlug, &id)
+		if exists {
+			return nil, errors.New("kategori dengan nama tersebut sudah ada")
+		}
+		kategori.Nama = *req.Nama
+		kategori.Slug = newSlug
+	}
+	if req.Deskripsi != nil {
+		kategori.Deskripsi = req.Deskripsi
+	}
+	if req.MemilikiKondisiTambahan != nil {
+		kategori.MemilikiKondisiTambahan = *req.MemilikiKondisiTambahan
+	}
+	if req.TipeKondisiTambahan != nil {
+		kategori.TipeKondisiTambahan = req.TipeKondisiTambahan
+	}
+	if req.TeksKondisi != nil {
+		kategori.TeksKondisi = req.TeksKondisi
+	}
+	if req.IsActive != nil {
+		kategori.IsActive = *req.IsActive
+	}
+
+	// Update icon if uploaded
+	if iconURL != nil {
+		// Delete old icon if exists
+		if kategori.IconURL != nil && *kategori.IconURL != "" {
+			utils.DeleteFile(*kategori.IconURL, s.cfg)
+		}
+		kategori.IconURL = iconURL
+	}
+
+	// Update gambar kondisi if uploaded
+	if gambarKondisiURL != nil {
+		// Delete old gambar kondisi if exists
+		if kategori.GambarKondisiURL != nil && *kategori.GambarKondisiURL != "" {
+			utils.DeleteFile(*kategori.GambarKondisiURL, s.cfg)
+		}
+		kategori.GambarKondisiURL = gambarKondisiURL
+	}
 
 	if err := s.repo.Update(ctx, kategori); err != nil {
 		return nil, err

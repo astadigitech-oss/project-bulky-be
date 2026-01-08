@@ -124,6 +124,7 @@ func SetupRoutes(
 		{
 			kategoriAdmin.POST("", kategoriController.Create)
 			kategoriAdmin.PUT("/:id", kategoriController.Update)
+			kategoriAdmin.PUT("/:id/upload", kategoriController.UpdateWithIcon) // Upload icon & gambar kondisi
 			kategoriAdmin.DELETE("/:id", kategoriController.Delete)
 			kategoriAdmin.PATCH("/:id/toggle-status", kategoriController.ToggleStatus)
 		}
