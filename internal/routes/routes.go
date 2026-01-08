@@ -230,24 +230,12 @@ func SetupRoutes(
 		}
 
 		// Tipe Produk - Public (Read Only)
+		// Note: Tipe produk is read-only (Paletbox, Container, Truckload) - managed via migration only
 		tipeProdukPublic := v1.Group("/tipe-produk")
 		{
 			tipeProdukPublic.GET("", tipeProdukController.FindAll)
 			tipeProdukPublic.GET("/:id", tipeProdukController.FindByID)
 			tipeProdukPublic.GET("/slug/:slug", tipeProdukController.FindBySlug)
-		}
-
-		// Tipe Produk - Admin (Write)
-		tipeProdukAdmin := v1.Group("/panel/tipe-produk")
-		tipeProdukAdmin.Use(middleware.AuthMiddleware())
-		tipeProdukAdmin.Use(middleware.AdminOnly())
-		tipeProdukAdmin.Use(middleware.RequirePermission("tipe_produk:manage"))
-		{
-			tipeProdukAdmin.POST("", tipeProdukController.Create)
-			tipeProdukAdmin.PUT("/:id", tipeProdukController.Update)
-			tipeProdukAdmin.DELETE("/:id", tipeProdukController.Delete)
-			tipeProdukAdmin.PATCH("/:id/toggle-status", tipeProdukController.ToggleStatus)
-			tipeProdukAdmin.PUT("/reorder", tipeProdukController.Reorder)
 		}
 
 		// Diskon Kategori - Public (Read Only)

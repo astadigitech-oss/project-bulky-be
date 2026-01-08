@@ -18,22 +18,7 @@ func NewTipeProdukController(service services.TipeProdukService) *TipeProdukCont
 	return &TipeProdukController{service: service}
 }
 
-func (c *TipeProdukController) Create(ctx *gin.Context) {
-	var req models.CreateTipeProdukRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
-	}
-
-	result, err := c.service.Create(ctx.Request.Context(), &req)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusConflict, err.Error(), nil)
-		return
-	}
-
-	utils.CreatedResponse(ctx, "Tipe produk berhasil dibuat", result)
-}
-
+// FindAll retrieves all tipe produk with pagination
 func (c *TipeProdukController) FindAll(ctx *gin.Context) {
 	var params models.PaginationRequest
 	if err := ctx.ShouldBindQuery(&params); err != nil {
@@ -50,7 +35,7 @@ func (c *TipeProdukController) FindAll(ctx *gin.Context) {
 	utils.PaginatedSuccessResponse(ctx, "Data tipe produk berhasil diambil", items, *meta)
 }
 
-
+// FindByID retrieves a single tipe produk by ID
 func (c *TipeProdukController) FindByID(ctx *gin.Context) {
 	id := ctx.Param("id")
 
@@ -63,6 +48,7 @@ func (c *TipeProdukController) FindByID(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, "Detail tipe produk berhasil diambil", result)
 }
 
+// FindBySlug retrieves a single tipe produk by slug
 func (c *TipeProdukController) FindBySlug(ctx *gin.Context) {
 	slug := ctx.Param("slug")
 
@@ -73,64 +59,4 @@ func (c *TipeProdukController) FindBySlug(ctx *gin.Context) {
 	}
 
 	utils.SuccessResponse(ctx, "Detail tipe produk berhasil diambil", result)
-}
-
-func (c *TipeProdukController) Update(ctx *gin.Context) {
-	id := ctx.Param("id")
-
-	var req models.UpdateTipeProdukRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
-	}
-
-	result, err := c.service.Update(ctx.Request.Context(), id, &req)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, "Tipe produk berhasil diupdate", result)
-}
-
-func (c *TipeProdukController) Delete(ctx *gin.Context) {
-	id := ctx.Param("id")
-
-	if err := c.service.Delete(ctx.Request.Context(), id); err != nil {
-		status := http.StatusBadRequest
-		if err.Error() == "tipe produk tidak ditemukan" {
-			status = http.StatusNotFound
-		}
-		utils.ErrorResponse(ctx, status, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, "Tipe produk berhasil dihapus", nil)
-}
-
-func (c *TipeProdukController) ToggleStatus(ctx *gin.Context) {
-	id := ctx.Param("id")
-
-	result, err := c.service.ToggleStatus(ctx.Request.Context(), id)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, "Status tipe produk berhasil diubah", result)
-}
-
-func (c *TipeProdukController) Reorder(ctx *gin.Context) {
-	var req models.ReorderRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
-	}
-
-	if err := c.service.Reorder(ctx.Request.Context(), &req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, "Urutan tipe produk berhasil diubah", nil)
 }
