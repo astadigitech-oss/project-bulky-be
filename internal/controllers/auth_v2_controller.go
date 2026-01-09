@@ -437,28 +437,32 @@ func NewActivityLogController(service services.ActivityLogService) *ActivityLogC
 func (c *ActivityLogController) GetLogs(ctx *gin.Context) {
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	perPage, _ := strconv.Atoi(ctx.DefaultQuery("per_page", "20"))
-	userType := ctx.Query("user_type")
-	action := ctx.Query("action")
-	modul := ctx.Query("modul")
-	tanggalDari := ctx.Query("tanggal_dari")
-	tanggalSampai := ctx.Query("tanggal_sampai")
+	search := ctx.Query("search")  // ADMIN, BUYER, SYSTEM
+	sortBy := ctx.Query("sort_by") // field untuk sorting
+	order := ctx.Query("order")    // asc atau desc
 
-	var userID *uuid.UUID
-	if userIDStr := ctx.Query("user_id"); userIDStr != "" {
-		if uid, err := uuid.Parse(userIDStr); err == nil {
-			userID = &uid
-		}
+	// Validasi sort_by - hanya allow field yang aman
+	validSortFields := map[string]bool{
+		"created_at": true,
+		"user_type":  true,
+		"action":     true,
+		"modul":      true,
+	}
+	if sortBy != "" && !validSortFields[sortBy] {
+		sortBy = "created_at" // fallback ke default
+	}
+
+	// Validasi order - hanya allow asc atau desc
+	if order != "asc" && order != "desc" {
+		order = "desc" // fallback ke default
 	}
 
 	filter := repositories.ActivityLogFilter{
-		Page:          page,
-		PerPage:       perPage,
-		UserType:      userType,
-		UserID:        userID,
-		Action:        action,
-		Modul:         modul,
-		TanggalDari:   tanggalDari,
-		TanggalSampai: tanggalSampai,
+		Page:    page,
+		PerPage: perPage,
+		Search:  search,
+		SortBy:  sortBy,
+		Order:   order,
 	}
 
 	logs, total, err := c.service.GetLogs(filter)

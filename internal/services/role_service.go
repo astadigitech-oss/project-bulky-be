@@ -10,9 +10,9 @@ import (
 )
 
 type RoleService interface {
-	GetAll() ([]models.Role, error)
+	GetAll() ([]models.RoleResponseFormat, error)
 	GetByID(id uuid.UUID) (*models.Role, error)
-	GetByIDWithPermissions(id uuid.UUID) (*models.Role, error)
+	GetByIDWithPermissions(id uuid.UUID) (*models.RoleDetailResponse, error)
 	Create(role *models.Role, permissionIDs []uuid.UUID) error
 	Update(role *models.Role, permissionIDs []uuid.UUID) error
 	Delete(id uuid.UUID) error
@@ -26,7 +26,7 @@ func NewRoleService(repo repositories.RoleRepository) RoleService {
 	return &roleService{repo: repo}
 }
 
-func (s *roleService) GetAll() ([]models.Role, error) {
+func (s *roleService) GetAll() ([]models.RoleResponseFormat, error) {
 	return s.repo.FindAll()
 }
 
@@ -34,8 +34,29 @@ func (s *roleService) GetByID(id uuid.UUID) (*models.Role, error) {
 	return s.repo.FindByID(id)
 }
 
-func (s *roleService) GetByIDWithPermissions(id uuid.UUID) (*models.Role, error) {
-	return s.repo.FindByIDWithPermissions(id)
+func (s *roleService) GetByIDWithPermissions(id uuid.UUID) (*models.RoleDetailResponse, error) {
+	role, err := s.repo.FindByIDWithPermissions(id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Map permissions to simple response
+	var permissions []models.PermissionSimpleResponse
+	for _, p := range role.Permissions {
+		permissions = append(permissions, models.PermissionSimpleResponse{
+			ID:        p.ID.String(),
+			Nama:      p.Nama,
+			Deskripsi: p.Deskripsi,
+		})
+	}
+
+	return &models.RoleDetailResponse{
+		ID:          role.ID.String(),
+		Nama:        role.Nama,
+		Kode:        role.Kode,
+		Deskripsi:   role.Deskripsi,
+		Permissions: permissions,
+	}, nil
 }
 
 func (s *roleService) Create(role *models.Role, permissionIDs []uuid.UUID) error {

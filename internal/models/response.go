@@ -91,6 +91,9 @@ type KategoriProdukResponse struct {
 	UpdatedAt               time.Time `json:"updated_at"`
 }
 
+// Simple response untuk GET All Data (array)
+//
+
 // ========================================
 // Merek Produk Response
 // ========================================
@@ -203,6 +206,13 @@ type TipeProdukResponse struct {
 	JumlahProduk int64     `json:"jumlah_produk"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+type TipeProdukSimpleResponse struct {
+	ID           string `json:"id"`
+	Nama         string `json:"nama"`
+	Slug         string `json:"slug"`
+	JumlahProduk int64  `json:"jumlah_produk"`
 }
 
 // ========================================

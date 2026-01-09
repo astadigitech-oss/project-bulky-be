@@ -61,9 +61,9 @@ func (r *buyerRepository) FindAll(ctx context.Context, params *models.BuyerFilte
 		query = query.Where("is_active = ?", *params.IsActive)
 	}
 
-	if params.IsVerified != nil {
-		query = query.Where("is_verified = ?", *params.IsVerified)
-	}
+	// if params.IsVerified != nil {
+	// 	query = query.Where("is_verified = ?", *params.IsVerified)
+	// }
 
 	query.Count(&total)
 

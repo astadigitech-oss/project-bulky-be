@@ -243,7 +243,7 @@ func SetupRoutes(
 		{
 			tipeProdukPublic.GET("", tipeProdukController.FindAll)
 			tipeProdukPublic.GET("/:id", tipeProdukController.FindByID)
-			tipeProdukPublic.GET("/slug/:slug", tipeProdukController.FindBySlug)
+			// tipeProdukPublic.GET("/slug/:slug", tipeProdukController.FindBySlug)
 		}
 
 		// Diskon Kategori - Public (Read Only)

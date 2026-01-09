@@ -168,6 +168,11 @@ type UpdateWarehouseRequest struct {
 // Note: Tipe produk is read-only (Paletbox, Container, Truckload)
 // Data managed via migration only
 
+type TipeProdukFilterRequest struct {
+	PaginationRequest
+	JumlahProduk *int `form:"jumlah_produk"`
+}
+
 // Deprecated: CreateTipeProdukRequest is no longer used - tipe produk is read-only
 type CreateTipeProdukRequest struct {
 	Nama      string  `json:"nama" binding:"required,min=2,max=100"`
@@ -331,6 +336,12 @@ type ChangePasswordRequest struct {
 // Admin CRUD Request
 // ========================================
 
+type AdminFilterRequest struct {
+	PaginationRequest
+	IsActive  *bool   `form:"is_active"`
+	CreatedAt *string `form:"created_at"`
+}
+
 type CreateAdminRequest struct {
 	Nama            string `json:"nama" binding:"required,min=2,max=100"`
 	Email           string `json:"email" binding:"required,email,max=255"`
@@ -374,7 +385,7 @@ type ResetBuyerPasswordRequest struct {
 
 type BuyerFilterRequest struct {
 	PaginationRequest
-	IsVerified *bool `form:"is_verified"`
+	CreatedAt *bool `form:"created_at"`
 }
 
 type ChartParams struct {

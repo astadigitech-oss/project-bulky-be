@@ -15,14 +15,11 @@ type ActivityLogRepository interface {
 }
 
 type ActivityLogFilter struct {
-	Page          int
-	PerPage       int
-	UserType      string
-	UserID        *uuid.UUID
-	Action        string
-	Modul         string
-	TanggalDari   string
-	TanggalSampai string
+	Page    int
+	PerPage int
+	Search  string // ADMIN, BUYER, SYSTEM (user_type)
+	SortBy  string // field untuk sorting
+	Order   string // asc atau desc
 }
 
 type activityLogRepository struct {
@@ -43,24 +40,9 @@ func (r *activityLogRepository) FindAll(filter ActivityLogFilter) ([]models.Acti
 
 	query := r.db.Model(&models.ActivityLog{})
 
-	// Apply filters
-	if filter.UserType != "" {
-		query = query.Where("user_type = ?", filter.UserType)
-	}
-	if filter.UserID != nil {
-		query = query.Where("user_id = ?", filter.UserID)
-	}
-	if filter.Action != "" {
-		query = query.Where("action = ?", filter.Action)
-	}
-	if filter.Modul != "" {
-		query = query.Where("modul = ?", filter.Modul)
-	}
-	if filter.TanggalDari != "" {
-		query = query.Where("created_at >= ?", filter.TanggalDari)
-	}
-	if filter.TanggalSampai != "" {
-		query = query.Where("created_at <= ?", filter.TanggalSampai)
+	// Apply search filter (user_type: ADMIN, BUYER, SYSTEM)
+	if filter.Search != "" {
+		query = query.Where("user_type = ?", filter.Search)
 	}
 
 	// Get total count
@@ -68,9 +50,20 @@ func (r *activityLogRepository) FindAll(filter ActivityLogFilter) ([]models.Acti
 		return nil, 0, err
 	}
 
+	// Apply sorting
+	sortBy := filter.SortBy
+	if sortBy == "" {
+		sortBy = "created_at" // default sort by created_at
+	}
+	order := filter.Order
+	if order == "" {
+		order = "desc" // default descending
+	}
+	orderClause := sortBy + " " + order
+
 	// Apply pagination
 	offset := (filter.Page - 1) * filter.PerPage
-	query = query.Order("created_at DESC").Limit(filter.PerPage).Offset(offset)
+	query = query.Order(orderClause).Limit(filter.PerPage).Offset(offset)
 
 	// Execute query
 	err := query.Find(&logs).Error

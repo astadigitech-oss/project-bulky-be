@@ -22,6 +22,23 @@ type Role struct {
 	Permissions []Permission `gorm:"many2many:role_permission;" json:"permissions,omitempty"`
 }
 
+// Response format untuk role (array sederhana)
+type RoleResponseFormat struct {
+	ID        string  `json:"id"`
+	Nama      string  `json:"nama"`
+	Kode      string  `json:"kode"`
+	Deskripsi *string `json:"deskripsi"`
+}
+
+// Response format untuk role detail dengan permissions
+type RoleDetailResponse struct {
+	ID          string                     `json:"id"`
+	Nama        string                     `json:"nama"`
+	Kode        string                     `json:"kode"`
+	Deskripsi   *string                    `json:"deskripsi"`
+	Permissions []PermissionSimpleResponse `json:"permissions"`
+}
+
 func (Role) TableName() string {
 	return "role"
 }
