@@ -149,6 +149,14 @@ func (s *kondisiProdukService) ToggleStatus(ctx context.Context, id string) (*mo
 }
 
 func (s *kondisiProdukService) Reorder(ctx context.Context, req *models.ReorderRequest) error {
+	// Validasi: pastikan semua ID yang diberikan valid
+	for _, item := range req.Items {
+		_, err := s.repo.FindByID(ctx, item.ID)
+		if err != nil {
+			return errors.New("Data kondisi produk tidak ditemukan")
+		}
+	}
+
 	return s.repo.UpdateOrder(ctx, req.Items)
 }
 

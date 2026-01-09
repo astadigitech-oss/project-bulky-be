@@ -127,6 +127,10 @@ func (c *KondisiProdukController) Reorder(ctx *gin.Context) {
 	}
 
 	if err := c.service.Reorder(ctx.Request.Context(), &req); err != nil {
+		if err.Error() == "Data kondisi produk tidak ditemukan" {
+			utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
+			return
+		}
 		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 		return
 	}

@@ -202,7 +202,7 @@ func SetupRoutes(
 		sumberAdmin := v1.Group("/panel/sumber-produk")
 		sumberAdmin.Use(middleware.AuthMiddleware())
 		sumberAdmin.Use(middleware.AdminOnly())
-		sumberAdmin.Use(middleware.RequirePermission("sumber:manage"))
+		sumberAdmin.Use(middleware.RequirePermission("kondisi:manage"))
 		{
 			sumberAdmin.POST("", sumberController.Create)
 			sumberAdmin.PUT("/:id", sumberController.Update)
@@ -221,7 +221,7 @@ func SetupRoutes(
 		warehouseAdmin := v1.Group("/panel/warehouse")
 		warehouseAdmin.Use(middleware.AuthMiddleware())
 		warehouseAdmin.Use(middleware.AdminOnly())
-		warehouseAdmin.Use(middleware.RequirePermission("warehouse:manage"))
+		warehouseAdmin.Use(middleware.RequirePermission("kondisi:manage"))
 		{
 			warehouseAdmin.POST("", warehouseController.Create)
 			warehouseAdmin.PUT("/:id", warehouseController.Update)
