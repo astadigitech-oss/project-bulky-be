@@ -163,13 +163,19 @@ type UpdateWarehouseRequest struct {
 // ========================================
 // Tipe Produk Request
 // ========================================
+// Tipe Produk Request (DEPRECATED - Read Only)
+// ========================================
+// Note: Tipe produk is read-only (Paletbox, Container, Truckload)
+// Data managed via migration only
 
+// Deprecated: CreateTipeProdukRequest is no longer used - tipe produk is read-only
 type CreateTipeProdukRequest struct {
 	Nama      string  `json:"nama" binding:"required,min=2,max=100"`
 	Deskripsi *string `json:"deskripsi" binding:"omitempty,max=500"`
 	Urutan    *int    `json:"urutan"`
 }
 
+// Deprecated: UpdateTipeProdukRequest is no longer used - tipe produk is read-only
 type UpdateTipeProdukRequest struct {
 	Nama      *string `json:"nama" binding:"omitempty,min=2,max=100"`
 	Deskripsi *string `json:"deskripsi" binding:"omitempty,max=500"`

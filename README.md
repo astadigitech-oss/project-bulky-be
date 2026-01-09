@@ -339,7 +339,9 @@ Authorization: Bearer <access-token>
 - `GET /api/v1/kondisi-produk` - List kondisi produk
 - `GET /api/v1/kondisi-paket` - List kondisi paket
 - `GET /api/v1/sumber-produk` - List sumber produk
-- `GET /api/v1/tipe-produk` - List tipe produk
+- `GET /api/v1/tipe-produk` - List tipe produk (Read-only: Paletbox, Container, Truckload)
+- `GET /api/v1/tipe-produk/:id` - Get detail tipe produk by ID
+- `GET /api/v1/tipe-produk/slug/:slug` - Get detail tipe produk by slug
 
 #### 3. Produk
 - `GET /api/v1/produk` - List produk dengan filter & pagination
