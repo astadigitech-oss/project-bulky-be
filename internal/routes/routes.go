@@ -2,6 +2,7 @@ package routes
 
 import (
 	"net/http"
+	"os"
 
 	"project-bulky-be/internal/controllers"
 	"project-bulky-be/internal/middleware"
@@ -37,6 +38,13 @@ func SetupRoutes(
 	router.GET("/api/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "OK", "message": "Server is running"})
 	})
+
+	// Serve static files from uploads folder
+	uploadPath := os.Getenv("UPLOAD_PATH")
+	if uploadPath == "" {
+		uploadPath = "./uploads"
+	}
+	router.Static("/uploads", uploadPath)
 
 	// API routes (tanpa versioning)
 	v1 := router.Group("/api")
