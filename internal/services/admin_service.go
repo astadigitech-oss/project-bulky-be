@@ -90,10 +90,16 @@ func (s *adminService) FindAll(ctx context.Context, params *models.PaginationReq
 
 	var items []models.AdminListResponse
 	for _, a := range admins {
+		roleName := ""
+		if a.Role != nil {
+			roleName = a.Role.Nama
+		}
+
 		items = append(items, models.AdminListResponse{
 			ID:          a.ID.String(),
 			Nama:        a.Nama,
 			Email:       a.Email,
+			Role:        roleName,
 			IsActive:    a.IsActive,
 			LastLoginAt: a.LastLoginAt,
 			CreatedAt:   a.CreatedAt,
