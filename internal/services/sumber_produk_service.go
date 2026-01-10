@@ -13,7 +13,7 @@ type SumberProdukService interface {
 	Create(ctx context.Context, req *models.CreateSumberProdukRequest) (*models.SumberProdukResponse, error)
 	FindByID(ctx context.Context, id string) (*models.SumberProdukResponse, error)
 	FindBySlug(ctx context.Context, slug string) (*models.SumberProdukResponse, error)
-	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.SumberProdukResponse, *models.PaginationMeta, error)
+	FindAll(ctx context.Context, params *models.SumberProdukFilterRequest) ([]models.SumberProdukSimpleResponse, *models.PaginationMeta, error)
 	Update(ctx context.Context, id string, req *models.UpdateSumberProdukRequest) (*models.SumberProdukResponse, error)
 	Delete(ctx context.Context, id string) error
 	ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error)
@@ -65,7 +65,7 @@ func (s *sumberProdukService) FindBySlug(ctx context.Context, slug string) (*mod
 	return s.toResponse(sumber), nil
 }
 
-func (s *sumberProdukService) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.SumberProdukResponse, *models.PaginationMeta, error) {
+func (s *sumberProdukService) FindAll(ctx context.Context, params *models.SumberProdukFilterRequest) ([]models.SumberProdukSimpleResponse, *models.PaginationMeta, error) {
 	params.SetDefaults()
 
 	sumbers, total, err := s.repo.FindAll(ctx, params)
@@ -73,9 +73,9 @@ func (s *sumberProdukService) FindAll(ctx context.Context, params *models.Pagina
 		return nil, nil, err
 	}
 
-	var items []models.SumberProdukResponse
+	var items []models.SumberProdukSimpleResponse
 	for _, sb := range sumbers {
-		items = append(items, *s.toResponse(&sb))
+		items = append(items, *s.toSimpleResponse(&sb))
 	}
 
 	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
@@ -142,13 +142,24 @@ func (s *sumberProdukService) ToggleStatus(ctx context.Context, id string) (*mod
 
 func (s *sumberProdukService) toResponse(sb *models.SumberProduk) *models.SumberProdukResponse {
 	return &models.SumberProdukResponse{
-		ID:           sb.ID.String(),
-		Nama:         sb.Nama,
-		Slug:         sb.Slug,
-		Deskripsi:    sb.Deskripsi,
-		IsActive:     sb.IsActive,
-		JumlahProduk: 0, // TODO: Count from produk table
-		CreatedAt:    sb.CreatedAt,
-		UpdatedAt:    sb.UpdatedAt,
+		ID:        sb.ID.String(),
+		Nama:      sb.Nama,
+		Slug:      sb.Slug,
+		Deskripsi: sb.Deskripsi,
+		IsActive:  sb.IsActive,
+		CreatedAt: sb.CreatedAt,
+		UpdatedAt: sb.UpdatedAt,
+	}
+}
+
+func (s *sumberProdukService) toSimpleResponse(sb *models.SumberProduk) *models.SumberProdukSimpleResponse {
+	return &models.SumberProdukSimpleResponse{
+		ID:   sb.ID.String(),
+		Nama: sb.Nama,
+		// Slug:      sb.Slug,
+		// Deskripsi: sb.Deskripsi,
+		IsActive: sb.IsActive,
+		// CreatedAt: sb.CreatedAt,
+		UpdatedAt: sb.UpdatedAt,
 	}
 }

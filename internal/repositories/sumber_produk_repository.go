@@ -12,7 +12,7 @@ type SumberProdukRepository interface {
 	Create(ctx context.Context, sumber *models.SumberProduk) error
 	FindByID(ctx context.Context, id string) (*models.SumberProduk, error)
 	FindBySlug(ctx context.Context, slug string) (*models.SumberProduk, error)
-	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.SumberProduk, int64, error)
+	FindAll(ctx context.Context, params *models.SumberProdukFilterRequest) ([]models.SumberProduk, int64, error)
 	Update(ctx context.Context, sumber *models.SumberProduk) error
 	Delete(ctx context.Context, id string) error
 	ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error)
@@ -49,7 +49,7 @@ func (r *sumberProdukRepository) FindBySlug(ctx context.Context, slug string) (*
 	return &sumber, nil
 }
 
-func (r *sumberProdukRepository) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.SumberProduk, int64, error) {
+func (r *sumberProdukRepository) FindAll(ctx context.Context, params *models.SumberProdukFilterRequest) ([]models.SumberProduk, int64, error) {
 	var sumbers []models.SumberProduk
 	var total int64
 

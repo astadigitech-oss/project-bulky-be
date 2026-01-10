@@ -248,7 +248,6 @@ func (s *kategoriProdukService) toResponse(k *models.KategoriProduk) *models.Kat
 		GambarKondisiURL:        k.GambarKondisiURL,
 		TeksKondisi:             k.TeksKondisi,
 		IsActive:                k.IsActive,
-		JumlahProduk:            0,
 		CreatedAt:               k.CreatedAt,
 		UpdatedAt:               k.UpdatedAt,
 	}

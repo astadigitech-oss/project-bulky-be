@@ -84,6 +84,12 @@ type UpdateMerekProdukRequest struct {
 	IsActive *bool   `json:"is_active"`
 }
 
+type MerekProdukFilterRequest struct {
+	PaginationRequest
+	IsActive  *bool   `form:"is_active"`
+	UpdatedAt *string `form:"updated_at"`
+}
+
 // ========================================
 // Kondisi Produk Request
 // ========================================
@@ -99,6 +105,12 @@ type UpdateKondisiProdukRequest struct {
 	Deskripsi *string `json:"deskripsi" binding:"omitempty,max=500"`
 	Urutan    *int    `json:"urutan"`
 	IsActive  *bool   `json:"is_active"`
+}
+
+type KondisiProdukFilterRequest struct {
+	PaginationRequest
+	IsActive  *bool   `form:"is_active"`
+	UpdatedAt *string `form:"updated_at"`
 }
 
 // ========================================
@@ -131,6 +143,12 @@ type UpdateSumberProdukRequest struct {
 	Nama      *string `json:"nama" binding:"omitempty,min=2,max=100"`
 	Deskripsi *string `json:"deskripsi" binding:"omitempty,max=500"`
 	IsActive  *bool   `json:"is_active"`
+}
+
+type SumberProdukFilterRequest struct {
+	PaginationRequest
+	IsActive  *bool   `form:"is_active"`
+	UpdatedAt *string `form:"updated_at"`
 }
 
 // ========================================
