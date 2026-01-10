@@ -114,7 +114,7 @@ func (c *KategoriProdukController) Create(ctx *gin.Context) {
 }
 
 func (c *KategoriProdukController) FindAll(ctx *gin.Context) {
-	var params models.PaginationRequest
+	var params models.KategoriProdukFilterRequest
 	if err := ctx.ShouldBindQuery(&params); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
 		return

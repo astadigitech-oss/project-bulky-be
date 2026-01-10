@@ -62,6 +62,13 @@ type UpdateKategoriProdukRequest struct {
 	IsActive                *bool   `json:"is_active"`
 }
 
+type KategoriProdukFilterRequest struct {
+	PaginationRequest
+	IsActive                *bool   `form:"is_active"`
+	MemilikiKondisiTambahan *bool   `form:"memiliki_kondisi_tambahan"`
+	UpdatedAt               *string `form:"updated_at"`
+}
+
 // ========================================
 // Merek Produk Request
 // ========================================
