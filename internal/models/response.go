@@ -301,6 +301,12 @@ type BannerTipeProdukTipeInfo struct {
 	Slug string `json:"slug"`
 }
 
+type BannerTipeProdukSimpleInfo struct {
+	// ID   string `json:"id"`
+	Nama string `json:"nama"`
+	// Slug string `json:"slug"`
+}
+
 type BannerTipeProdukResponse struct {
 	ID         string                   `json:"id"`
 	TipeProduk BannerTipeProdukTipeInfo `json:"tipe_produk"`
@@ -310,6 +316,17 @@ type BannerTipeProdukResponse struct {
 	IsActive   bool                     `json:"is_active"`
 	CreatedAt  time.Time                `json:"created_at"`
 	UpdatedAt  time.Time                `json:"updated_at"`
+}
+
+type BannerTipeProdukSimpleResponse struct {
+	ID         string                     `json:"id"`
+	TipeProduk BannerTipeProdukSimpleInfo `json:"tipe_produk"`
+	Nama       string                     `json:"nama"`
+	GambarURL  string                     `json:"gambar_url"`
+	Urutan     int                        `json:"urutan"`
+	IsActive   bool                       `json:"is_active"`
+	// CreatedAt  time.Time                `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type BannerSimpleResponse struct {
@@ -533,16 +550,29 @@ type AlamatBuyerResponse struct {
 // ========================================
 
 type HeroSectionResponse struct {
-	ID             string     `json:"id"`
-	Nama           string     `json:"nama"`
-	Gambar         string     `json:"gambar"`
-	Urutan         int        `json:"urutan"`
-	IsActive       bool       `json:"is_active"`
-	IsVisible      bool       `json:"is_visible"`
+	ID       string `json:"id"`
+	Nama     string `json:"nama"`
+	Gambar   string `json:"gambar"`
+	Urutan   int    `json:"urutan"`
+	IsActive bool   `json:"is_active"`
+	// IsVisible      bool       `json:"is_visible"`
 	TanggalMulai   *time.Time `json:"tanggal_mulai"`
 	TanggalSelesai *time.Time `json:"tanggal_selesai"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
+}
+
+type HeroSectionSimpleResponse struct {
+	ID       string `json:"id"`
+	Nama     string `json:"nama"`
+	Gambar   string `json:"gambar"`
+	Urutan   int    `json:"urutan"`
+	IsActive bool   `json:"is_active"`
+	// IsVisible      bool       `json:"is_visible"`
+	// TanggalMulai   *time.Time `json:"tanggal_mulai"`
+	// TanggalSelesai *time.Time `json:"tanggal_selesai"`
+	// CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // Public response (minimal data)

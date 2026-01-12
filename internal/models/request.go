@@ -253,6 +253,13 @@ type UpdateBannerTipeProdukRequest struct {
 	IsActive     *bool   `json:"is_active"`
 }
 
+type BannerTipeProdukFilterRequest struct {
+	PaginationRequest
+	// TipeProdukID *string `form:"tipe_produk_id"`
+	IsActive  *bool   `form:"is_active"`
+	UpdatedAt *string `form:"updated_at"`
+}
+
 // ========================================
 // Produk Request
 // ========================================
@@ -486,6 +493,12 @@ type UpdateHeroSectionRequest struct {
 	IsActive       *bool   `json:"is_active"`
 	TanggalMulai   *string `json:"tanggal_mulai"`
 	TanggalSelesai *string `json:"tanggal_selesai"`
+}
+
+type HeroSectionFilterRequest struct {
+	PaginationRequest
+	IsActive  *bool   `form:"is_active"`
+	UpdatedAt *string `form:"updated_at"`
 }
 
 // ========================================

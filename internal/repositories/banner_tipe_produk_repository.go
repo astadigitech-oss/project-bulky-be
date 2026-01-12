@@ -11,7 +11,7 @@ import (
 type BannerTipeProdukRepository interface {
 	Create(ctx context.Context, banner *models.BannerTipeProduk) error
 	FindByID(ctx context.Context, id string) (*models.BannerTipeProduk, error)
-	FindAll(ctx context.Context, params *models.PaginationRequest, tipeProdukID string) ([]models.BannerTipeProduk, int64, error)
+	FindAll(ctx context.Context, params *models.BannerTipeProdukFilterRequest, tipeProdukID string) ([]models.BannerTipeProduk, int64, error)
 	FindByTipeProdukID(ctx context.Context, tipeProdukID string) ([]models.BannerTipeProduk, error)
 	Update(ctx context.Context, banner *models.BannerTipeProduk) error
 	Delete(ctx context.Context, id string) error
@@ -39,7 +39,7 @@ func (r *bannerTipeProdukRepository) FindByID(ctx context.Context, id string) (*
 	return &banner, nil
 }
 
-func (r *bannerTipeProdukRepository) FindAll(ctx context.Context, params *models.PaginationRequest, tipeProdukID string) ([]models.BannerTipeProduk, int64, error) {
+func (r *bannerTipeProdukRepository) FindAll(ctx context.Context, params *models.BannerTipeProdukFilterRequest, tipeProdukID string) ([]models.BannerTipeProduk, int64, error) {
 	var banners []models.BannerTipeProduk
 	var total int64
 
@@ -93,10 +93,29 @@ func (r *bannerTipeProdukRepository) Delete(ctx context.Context, id string) erro
 func (r *bannerTipeProdukRepository) UpdateOrder(ctx context.Context, items []models.ReorderItem) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		for _, item := range items {
+			// Check if banner exists first
+			var count int64
 			if err := tx.Model(&models.BannerTipeProduk{}).
 				Where("id = ?", item.ID).
-				Update("urutan", item.Urutan).Error; err != nil {
+				Count(&count).Error; err != nil {
 				return err
+			}
+
+			if count == 0 {
+				return gorm.ErrRecordNotFound
+			}
+
+			// Update urutan
+			result := tx.Model(&models.BannerTipeProduk{}).
+				Where("id = ?", item.ID).
+				Update("urutan", item.Urutan)
+
+			if result.Error != nil {
+				return result.Error
+			}
+
+			if result.RowsAffected == 0 {
+				return gorm.ErrRecordNotFound
 			}
 		}
 		return nil
