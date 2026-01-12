@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 
 	"project-bulky-be/internal/config"
@@ -45,11 +44,11 @@ func (c *HeroSectionController) Create(ctx *gin.Context) {
 		}
 
 		// Parse urutan (optional, default 0)
-		if urutanStr := ctx.PostForm("urutan"); urutanStr != "" {
-			if urutan, err := strconv.Atoi(urutanStr); err == nil {
-				req.Urutan = urutan
-			}
-		}
+		// if urutanStr := ctx.PostForm("urutan"); urutanStr != "" {
+		// 	if urutan, err := strconv.Atoi(urutanStr); err == nil {
+		// 		req.Urutan = urutan
+		// 	}
+		// }
 
 		// Parse is_active (optional, default false)
 		if isActiveStr := ctx.PostForm("is_active"); isActiveStr != "" {
@@ -167,11 +166,11 @@ func (c *HeroSectionController) Update(ctx *gin.Context) {
 		if ts := ctx.PostForm("tanggal_selesai"); ts != "" {
 			req.TanggalSelesai = &ts
 		}
-		if urutanStr := ctx.PostForm("urutan"); urutanStr != "" {
-			if urutan, err := strconv.Atoi(urutanStr); err == nil {
-				req.Urutan = &urutan
-			}
-		}
+		// if urutanStr := ctx.PostForm("urutan"); urutanStr != "" {
+		// 	if urutan, err := strconv.Atoi(urutanStr); err == nil {
+		// 		req.Urutan = &urutan
+		// 	}
+		// }
 		if isActiveStr := ctx.PostForm("is_active"); isActiveStr != "" {
 			isActive := isActiveStr == "true" || isActiveStr == "1"
 			req.IsActive = &isActive

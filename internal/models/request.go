@@ -478,18 +478,18 @@ type AlamatBuyerFilterRequest struct {
 // ========================================
 
 type CreateHeroSectionRequest struct {
-	Nama           string  `json:"nama" binding:"required,min=1,max=100"`
-	Gambar         string  `json:"gambar" binding:"required,max=255"`
-	Urutan         int     `json:"urutan"`
+	Nama   string `json:"nama" binding:"required,min=1,max=100"`
+	Gambar string `json:"gambar" binding:"required,max=255"`
+	// Urutan         int     `json:"urutan"`
 	IsActive       bool    `json:"is_active"`
 	TanggalMulai   *string `json:"tanggal_mulai"`
 	TanggalSelesai *string `json:"tanggal_selesai"`
 }
 
 type UpdateHeroSectionRequest struct {
-	Nama           *string `json:"nama" binding:"omitempty,min=1,max=100"`
-	Gambar         *string `json:"gambar" binding:"omitempty,max=255"`
-	Urutan         *int    `json:"urutan"`
+	Nama   *string `json:"nama" binding:"omitempty,min=1,max=100"`
+	Gambar *string `json:"gambar" binding:"omitempty,max=255"`
+	// Urutan         *int    `json:"urutan"`
 	IsActive       *bool   `json:"is_active"`
 	TanggalMulai   *string `json:"tanggal_mulai"`
 	TanggalSelesai *string `json:"tanggal_selesai"`

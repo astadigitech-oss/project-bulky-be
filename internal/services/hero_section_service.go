@@ -32,10 +32,10 @@ func NewHeroSectionService(repo repositories.HeroSectionRepository) HeroSectionS
 
 func (s *heroSectionService) Create(ctx context.Context, req *models.CreateHeroSectionRequest) (*models.HeroSectionResponse, error) {
 	hero := &models.HeroSection{
-		ID:       uuid.New(),
-		Nama:     req.Nama,
-		Gambar:   req.Gambar,
-		Urutan:   req.Urutan,
+		ID:     uuid.New(),
+		Nama:   req.Nama,
+		Gambar: req.Gambar,
+		// Urutan:   req.Urutan,
 		IsActive: req.IsActive,
 		// IsActive: true,
 	}
@@ -97,9 +97,9 @@ func (s *heroSectionService) Update(ctx context.Context, id string, req *models.
 	if req.Gambar != nil {
 		hero.Gambar = *req.Gambar
 	}
-	if req.Urutan != nil {
-		hero.Urutan = *req.Urutan
-	}
+	// if req.Urutan != nil {
+	// 	hero.Urutan = *req.Urutan
+	// }
 	if req.IsActive != nil {
 		hero.IsActive = *req.IsActive
 	}
@@ -165,10 +165,10 @@ func (s *heroSectionService) GetVisibleHero(ctx context.Context) (*models.HeroSe
 
 func (s *heroSectionService) toResponse(h *models.HeroSection) *models.HeroSectionResponse {
 	return &models.HeroSectionResponse{
-		ID:       h.ID.String(),
-		Nama:     h.Nama,
-		Gambar:   h.Gambar,
-		Urutan:   h.Urutan,
+		ID:     h.ID.String(),
+		Nama:   h.Nama,
+		Gambar: h.Gambar,
+		// Urutan:   h.Urutan,
 		IsActive: h.IsActive,
 		// IsVisible:      h.IsCurrentlyVisible(),
 		TanggalMulai:   h.TanggalMulai,
@@ -180,10 +180,10 @@ func (s *heroSectionService) toResponse(h *models.HeroSection) *models.HeroSecti
 
 func (s *heroSectionService) toSimpleResponse(h *models.HeroSection) *models.HeroSectionSimpleResponse {
 	return &models.HeroSectionSimpleResponse{
-		ID:       h.ID.String(),
-		Nama:     h.Nama,
-		Gambar:   h.Gambar,
-		Urutan:   h.Urutan,
+		ID:     h.ID.String(),
+		Nama:   h.Nama,
+		Gambar: h.Gambar,
+		// Urutan:   h.Urutan,
 		IsActive: h.IsActive,
 		// IsVisible:      h.IsCurrentlyVisible(),
 		// TanggalMulai:   h.TanggalMulai,

@@ -550,11 +550,11 @@ type AlamatBuyerResponse struct {
 // ========================================
 
 type HeroSectionResponse struct {
-	ID       string `json:"id"`
-	Nama     string `json:"nama"`
-	Gambar   string `json:"gambar"`
-	Urutan   int    `json:"urutan"`
-	IsActive bool   `json:"is_active"`
+	ID     string `json:"id"`
+	Nama   string `json:"nama"`
+	Gambar string `json:"gambar"`
+	// Urutan   int    `json:"urutan"`
+	IsActive bool `json:"is_active"`
 	// IsVisible      bool       `json:"is_visible"`
 	TanggalMulai   *time.Time `json:"tanggal_mulai"`
 	TanggalSelesai *time.Time `json:"tanggal_selesai"`
@@ -563,11 +563,11 @@ type HeroSectionResponse struct {
 }
 
 type HeroSectionSimpleResponse struct {
-	ID       string `json:"id"`
-	Nama     string `json:"nama"`
-	Gambar   string `json:"gambar"`
-	Urutan   int    `json:"urutan"`
-	IsActive bool   `json:"is_active"`
+	ID     string `json:"id"`
+	Nama   string `json:"nama"`
+	Gambar string `json:"gambar"`
+	// Urutan   int    `json:"urutan"`
+	IsActive bool `json:"is_active"`
 	// IsVisible      bool       `json:"is_visible"`
 	// TanggalMulai   *time.Time `json:"tanggal_mulai"`
 	// TanggalSelesai *time.Time `json:"tanggal_selesai"`
