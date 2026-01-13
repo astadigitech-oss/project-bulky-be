@@ -12,7 +12,7 @@ type KondisiPaketRepository interface {
 	Create(ctx context.Context, kondisi *models.KondisiPaket) error
 	FindByID(ctx context.Context, id string) (*models.KondisiPaket, error)
 	FindBySlug(ctx context.Context, slug string) (*models.KondisiPaket, error)
-	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.KondisiPaket, int64, error)
+	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.KondisiPaketSimpleResponse, int64, error)
 	Update(ctx context.Context, kondisi *models.KondisiPaket) error
 	Delete(ctx context.Context, id string) error
 	ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error)
@@ -50,11 +50,19 @@ func (r *kondisiPaketRepository) FindBySlug(ctx context.Context, slug string) (*
 	return &kondisi, nil
 }
 
-func (r *kondisiPaketRepository) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.KondisiPaket, int64, error) {
-	var kondisis []models.KondisiPaket
+func (r *kondisiPaketRepository) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.KondisiPaketSimpleResponse, int64, error) {
+	var kondisis []models.KondisiPaketSimpleResponse
 	var total int64
 
-	query := r.db.WithContext(ctx).Model(&models.KondisiPaket{})
+	// query := r.db.WithContext(ctx).Model(&models.KondisiPaket{})
+	query := r.db.WithContext(ctx).Model(&models.KondisiPaket{}).
+		Select(`
+			id,
+			nama,
+			urutan,
+			is_active,
+			updated_at
+		`)
 
 	if params.Search != "" {
 		query = query.Where("nama ILIKE ?", "%"+params.Search+"%")
@@ -68,11 +76,29 @@ func (r *kondisiPaketRepository) FindAll(ctx context.Context, params *models.Pag
 		return nil, 0, err
 	}
 
-	orderClause := params.SortBy + " " + params.Order
+	validSortFields := map[string]bool{
+		"nama":       true,
+		"urutan":     true,
+		"is_active":  true,
+		"updated_at": true,
+	}
+
+	sortBy := params.SortBy
+	if !validSortFields[sortBy] {
+		sortBy = "nama"
+	}
+
+	// Validate order direction
+	order := params.Order
+	if order != "asc" && order != "desc" {
+		order = "asc" // Default order
+	}
+
+	orderClause := sortBy + " " + order
 	query = query.Order(orderClause)
 	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
 
-	if err := query.Find(&kondisis).Error; err != nil {
+	if err := query.Scan(&kondisis).Error; err != nil {
 		return nil, 0, err
 	}
 

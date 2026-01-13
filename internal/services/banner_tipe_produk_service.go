@@ -4,29 +4,38 @@ import (
 	"context"
 	"errors"
 
+	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
+	"project-bulky-be/pkg/utils"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type BannerTipeProdukService interface {
 	Create(ctx context.Context, req *models.CreateBannerTipeProdukRequest) (*models.BannerTipeProdukResponse, error)
 	FindByID(ctx context.Context, id string) (*models.BannerTipeProdukResponse, error)
-	FindAll(ctx context.Context, params *models.PaginationRequest, tipeProdukID string) ([]models.BannerTipeProdukResponse, *models.PaginationMeta, error)
+	FindAll(ctx context.Context, params *models.BannerTipeProdukFilterRequest, tipeProdukID string) ([]models.BannerTipeProdukSimpleResponse, *models.PaginationMeta, error)
 	FindByTipeProdukID(ctx context.Context, tipeProdukID string) ([]models.BannerSimpleResponse, error)
 	Update(ctx context.Context, id string, req *models.UpdateBannerTipeProdukRequest) (*models.BannerTipeProdukResponse, error)
+	UpdateWithFile(ctx context.Context, id string, req *models.UpdateBannerTipeProdukRequest, newGambarURL *string) (*models.BannerTipeProdukResponse, error)
 	Delete(ctx context.Context, id string) error
+	DeleteWithFile(ctx context.Context, id string) error
 	ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error)
 	Reorder(ctx context.Context, req *models.ReorderRequest) error
 }
 
 type bannerTipeProdukService struct {
 	repo repositories.BannerTipeProdukRepository
+	cfg  *config.Config
 }
 
-func NewBannerTipeProdukService(repo repositories.BannerTipeProdukRepository) BannerTipeProdukService {
-	return &bannerTipeProdukService{repo: repo}
+func NewBannerTipeProdukService(repo repositories.BannerTipeProdukRepository, cfg *config.Config) BannerTipeProdukService {
+	return &bannerTipeProdukService{
+		repo: repo,
+		cfg:  cfg,
+	}
 }
 
 func (s *bannerTipeProdukService) Create(ctx context.Context, req *models.CreateBannerTipeProdukRequest) (*models.BannerTipeProdukResponse, error) {
@@ -61,7 +70,7 @@ func (s *bannerTipeProdukService) FindByID(ctx context.Context, id string) (*mod
 	return s.toResponse(banner), nil
 }
 
-func (s *bannerTipeProdukService) FindAll(ctx context.Context, params *models.PaginationRequest, tipeProdukID string) ([]models.BannerTipeProdukResponse, *models.PaginationMeta, error) {
+func (s *bannerTipeProdukService) FindAll(ctx context.Context, params *models.BannerTipeProdukFilterRequest, tipeProdukID string) ([]models.BannerTipeProdukSimpleResponse, *models.PaginationMeta, error) {
 	params.SetDefaults()
 
 	banners, total, err := s.repo.FindAll(ctx, params, tipeProdukID)
@@ -69,9 +78,9 @@ func (s *bannerTipeProdukService) FindAll(ctx context.Context, params *models.Pa
 		return nil, nil, err
 	}
 
-	var items []models.BannerTipeProdukResponse
+	items := []models.BannerTipeProdukSimpleResponse{}
 	for _, b := range banners {
-		items = append(items, *s.toResponse(&b))
+		items = append(items, *s.toSimpleResponse(&b))
 	}
 
 	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
@@ -90,7 +99,7 @@ func (s *bannerTipeProdukService) FindByTipeProdukID(ctx context.Context, tipePr
 		return nil, err
 	}
 
-	var items []models.BannerSimpleResponse
+	items := []models.BannerSimpleResponse{}
 	for _, b := range banners {
 		items = append(items, models.BannerSimpleResponse{
 			ID:        b.ID.String(),
@@ -136,6 +145,47 @@ func (s *bannerTipeProdukService) Update(ctx context.Context, id string, req *mo
 	return s.FindByID(ctx, id)
 }
 
+func (s *bannerTipeProdukService) UpdateWithFile(ctx context.Context, id string, req *models.UpdateBannerTipeProdukRequest, newGambarURL *string) (*models.BannerTipeProdukResponse, error) {
+	banner, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, errors.New("banner tidak ditemukan")
+	}
+
+	// Store old gambar URL for deletion if update successful
+	oldGambarURL := banner.GambarURL
+
+	if req.TipeProdukID != nil {
+		tipeProdukUUID, err := uuid.Parse(*req.TipeProdukID)
+		if err != nil {
+			return nil, errors.New("tipe_produk_id tidak valid")
+		}
+		banner.TipeProdukID = tipeProdukUUID
+	}
+	if req.Nama != nil {
+		banner.Nama = *req.Nama
+	}
+	if req.GambarURL != nil {
+		banner.GambarURL = *req.GambarURL
+	}
+	if req.Urutan != nil {
+		banner.Urutan = *req.Urutan
+	}
+	if req.IsActive != nil {
+		banner.IsActive = *req.IsActive
+	}
+
+	if err := s.repo.Update(ctx, banner); err != nil {
+		return nil, err
+	}
+
+	// Delete old file if new file was uploaded
+	if newGambarURL != nil && oldGambarURL != "" {
+		utils.DeleteFile(oldGambarURL, s.cfg)
+	}
+
+	return s.FindByID(ctx, id)
+}
+
 func (s *bannerTipeProdukService) Delete(ctx context.Context, id string) error {
 	_, err := s.repo.FindByID(ctx, id)
 	if err != nil {
@@ -143,6 +193,25 @@ func (s *bannerTipeProdukService) Delete(ctx context.Context, id string) error {
 	}
 
 	return s.repo.Delete(ctx, id)
+}
+
+func (s *bannerTipeProdukService) DeleteWithFile(ctx context.Context, id string) error {
+	banner, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return errors.New("banner tidak ditemukan")
+	}
+
+	// Delete from database first
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return err
+	}
+
+	// Delete file from storage
+	if banner.GambarURL != "" {
+		utils.DeleteFile(banner.GambarURL, s.cfg)
+	}
+
+	return nil
 }
 
 func (s *bannerTipeProdukService) ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error) {
@@ -163,7 +232,19 @@ func (s *bannerTipeProdukService) ToggleStatus(ctx context.Context, id string) (
 }
 
 func (s *bannerTipeProdukService) Reorder(ctx context.Context, req *models.ReorderRequest) error {
-	return s.repo.UpdateOrder(ctx, req.Items)
+	if len(req.Items) == 0 {
+		return errors.New("items tidak boleh kosong")
+	}
+
+	err := s.repo.UpdateOrder(ctx, req.Items)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("salah satu atau lebih banner tidak ditemukan")
+		}
+		return err
+	}
+
+	return nil
 }
 
 func (s *bannerTipeProdukService) toResponse(b *models.BannerTipeProduk) *models.BannerTipeProdukResponse {
@@ -179,6 +260,23 @@ func (s *bannerTipeProdukService) toResponse(b *models.BannerTipeProduk) *models
 		Urutan:    b.Urutan,
 		IsActive:  b.IsActive,
 		CreatedAt: b.CreatedAt,
+		UpdatedAt: b.UpdatedAt,
+	}
+}
+
+func (s *bannerTipeProdukService) toSimpleResponse(b *models.BannerTipeProduk) *models.BannerTipeProdukSimpleResponse {
+	return &models.BannerTipeProdukSimpleResponse{
+		ID: b.ID.String(),
+		TipeProduk: models.BannerTipeProdukSimpleInfo{
+			// ID:   b.TipeProduk.ID.String(),
+			Nama: b.TipeProduk.Nama,
+			// Slug: b.TipeProduk.Slug,
+		},
+		Nama:      b.Nama,
+		GambarURL: b.GambarURL,
+		Urutan:    b.Urutan,
+		IsActive:  b.IsActive,
+		// CreatedAt: b.CreatedAt,
 		UpdatedAt: b.UpdatedAt,
 	}
 }

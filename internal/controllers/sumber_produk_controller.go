@@ -35,7 +35,7 @@ func (c *SumberProdukController) Create(ctx *gin.Context) {
 }
 
 func (c *SumberProdukController) FindAll(ctx *gin.Context) {
-	var params models.PaginationRequest
+	var params models.SumberProdukFilterRequest
 	if err := ctx.ShouldBindQuery(&params); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
 		return

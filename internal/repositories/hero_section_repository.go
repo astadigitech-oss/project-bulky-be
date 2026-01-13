@@ -12,7 +12,7 @@ import (
 type HeroSectionRepository interface {
 	Create(ctx context.Context, hero *models.HeroSection) error
 	FindByID(ctx context.Context, id string) (*models.HeroSection, error)
-	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.HeroSection, int64, error)
+	FindAll(ctx context.Context, params *models.HeroSectionFilterRequest) ([]models.HeroSection, int64, error)
 	Update(ctx context.Context, hero *models.HeroSection) error
 	Delete(ctx context.Context, id string) error
 	UpdateOrder(ctx context.Context, items []models.ReorderItem) error
@@ -37,7 +37,7 @@ func (r *heroSectionRepository) FindByID(ctx context.Context, id string) (*model
 	return &hero, err
 }
 
-func (r *heroSectionRepository) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.HeroSection, int64, error) {
+func (r *heroSectionRepository) FindAll(ctx context.Context, params *models.HeroSectionFilterRequest) ([]models.HeroSection, int64, error) {
 	var heroes []models.HeroSection
 	var total int64
 

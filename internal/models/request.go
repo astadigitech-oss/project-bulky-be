@@ -62,6 +62,13 @@ type UpdateKategoriProdukRequest struct {
 	IsActive                *bool   `json:"is_active"`
 }
 
+type KategoriProdukFilterRequest struct {
+	PaginationRequest
+	IsActive                *bool   `form:"is_active"`
+	MemilikiKondisiTambahan *bool   `form:"memiliki_kondisi_tambahan"`
+	UpdatedAt               *string `form:"updated_at"`
+}
+
 // ========================================
 // Merek Produk Request
 // ========================================
@@ -75,6 +82,12 @@ type UpdateMerekProdukRequest struct {
 	Nama     *string `json:"nama" binding:"omitempty,min=2,max=100"`
 	Logo     *string `json:"logo"`
 	IsActive *bool   `json:"is_active"`
+}
+
+type MerekProdukFilterRequest struct {
+	PaginationRequest
+	IsActive  *bool   `form:"is_active"`
+	UpdatedAt *string `form:"updated_at"`
 }
 
 // ========================================
@@ -92,6 +105,12 @@ type UpdateKondisiProdukRequest struct {
 	Deskripsi *string `json:"deskripsi" binding:"omitempty,max=500"`
 	Urutan    *int    `json:"urutan"`
 	IsActive  *bool   `json:"is_active"`
+}
+
+type KondisiProdukFilterRequest struct {
+	PaginationRequest
+	IsActive  *bool   `form:"is_active"`
+	UpdatedAt *string `form:"updated_at"`
 }
 
 // ========================================
@@ -124,6 +143,12 @@ type UpdateSumberProdukRequest struct {
 	Nama      *string `json:"nama" binding:"omitempty,min=2,max=100"`
 	Deskripsi *string `json:"deskripsi" binding:"omitempty,max=500"`
 	IsActive  *bool   `json:"is_active"`
+}
+
+type SumberProdukFilterRequest struct {
+	PaginationRequest
+	IsActive  *bool   `form:"is_active"`
+	UpdatedAt *string `form:"updated_at"`
 }
 
 // ========================================
@@ -167,6 +192,11 @@ type UpdateWarehouseRequest struct {
 // ========================================
 // Note: Tipe produk is read-only (Paletbox, Container, Truckload)
 // Data managed via migration only
+
+type TipeProdukFilterRequest struct {
+	PaginationRequest
+	JumlahProduk *int `form:"jumlah_produk"`
+}
 
 // Deprecated: CreateTipeProdukRequest is no longer used - tipe produk is read-only
 type CreateTipeProdukRequest struct {
@@ -221,6 +251,13 @@ type UpdateBannerTipeProdukRequest struct {
 	GambarURL    *string `json:"gambar_url" binding:"omitempty,max=500"`
 	Urutan       *int    `json:"urutan"`
 	IsActive     *bool   `json:"is_active"`
+}
+
+type BannerTipeProdukFilterRequest struct {
+	PaginationRequest
+	// TipeProdukID *string `form:"tipe_produk_id"`
+	IsActive  *bool   `form:"is_active"`
+	UpdatedAt *string `form:"updated_at"`
 }
 
 // ========================================
@@ -331,6 +368,12 @@ type ChangePasswordRequest struct {
 // Admin CRUD Request
 // ========================================
 
+type AdminFilterRequest struct {
+	PaginationRequest
+	IsActive  *bool   `form:"is_active"`
+	CreatedAt *string `form:"created_at"`
+}
+
 type CreateAdminRequest struct {
 	Nama            string `json:"nama" binding:"required,min=2,max=100"`
 	Email           string `json:"email" binding:"required,email,max=255"`
@@ -374,7 +417,7 @@ type ResetBuyerPasswordRequest struct {
 
 type BuyerFilterRequest struct {
 	PaginationRequest
-	IsVerified *bool `form:"is_verified"`
+	CreatedAt *bool `form:"created_at"`
 }
 
 type ChartParams struct {
@@ -435,21 +478,27 @@ type AlamatBuyerFilterRequest struct {
 // ========================================
 
 type CreateHeroSectionRequest struct {
-	Nama           string  `json:"nama" binding:"required,min=1,max=100"`
-	Gambar         string  `json:"gambar" binding:"required,max=255"`
-	Urutan         int     `json:"urutan"`
+	Nama   string `json:"nama" binding:"required,min=1,max=100"`
+	Gambar string `json:"gambar" binding:"required,max=255"`
+	// Urutan         int     `json:"urutan"`
 	IsActive       bool    `json:"is_active"`
 	TanggalMulai   *string `json:"tanggal_mulai"`
 	TanggalSelesai *string `json:"tanggal_selesai"`
 }
 
 type UpdateHeroSectionRequest struct {
-	Nama           *string `json:"nama" binding:"omitempty,min=1,max=100"`
-	Gambar         *string `json:"gambar" binding:"omitempty,max=255"`
-	Urutan         *int    `json:"urutan"`
+	Nama   *string `json:"nama" binding:"omitempty,min=1,max=100"`
+	Gambar *string `json:"gambar" binding:"omitempty,max=255"`
+	// Urutan         *int    `json:"urutan"`
 	IsActive       *bool   `json:"is_active"`
 	TanggalMulai   *string `json:"tanggal_mulai"`
 	TanggalSelesai *string `json:"tanggal_selesai"`
+}
+
+type HeroSectionFilterRequest struct {
+	PaginationRequest
+	IsActive  *bool   `form:"is_active"`
+	UpdatedAt *string `form:"updated_at"`
 }
 
 // ========================================
@@ -474,4 +523,10 @@ type UpdateBannerEventPromoRequest struct {
 	IsActive       *bool   `json:"is_active"`
 	TanggalMulai   *string `json:"tanggal_mulai"`
 	TanggalSelesai *string `json:"tanggal_selesai"`
+}
+
+type BannerEventPromoFilterRequest struct {
+	PaginationRequest
+	IsActive  *bool   `form:"is_active"`
+	UpdatedAt *string `form:"updated_at"`
 }

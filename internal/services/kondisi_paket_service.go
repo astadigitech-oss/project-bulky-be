@@ -13,7 +13,7 @@ type KondisiPaketService interface {
 	Create(ctx context.Context, req *models.CreateKondisiPaketRequest) (*models.KondisiPaketResponse, error)
 	FindByID(ctx context.Context, id string) (*models.KondisiPaketResponse, error)
 	FindBySlug(ctx context.Context, slug string) (*models.KondisiPaketResponse, error)
-	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.KondisiPaketResponse, *models.PaginationMeta, error)
+	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.KondisiPaketSimpleResponse, *models.PaginationMeta, error)
 	Update(ctx context.Context, id string, req *models.UpdateKondisiPaketRequest) (*models.KondisiPaketResponse, error)
 	Delete(ctx context.Context, id string) error
 	ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error)
@@ -70,7 +70,7 @@ func (s *kondisiPaketService) FindBySlug(ctx context.Context, slug string) (*mod
 	return s.toResponse(kondisi), nil
 }
 
-func (s *kondisiPaketService) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.KondisiPaketResponse, *models.PaginationMeta, error) {
+func (s *kondisiPaketService) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.KondisiPaketSimpleResponse, *models.PaginationMeta, error) {
 	params.SetDefaults()
 
 	kondisis, total, err := s.repo.FindAll(ctx, params)
@@ -78,14 +78,14 @@ func (s *kondisiPaketService) FindAll(ctx context.Context, params *models.Pagina
 		return nil, nil, err
 	}
 
-	var items []models.KondisiPaketResponse
-	for _, k := range kondisis {
-		items = append(items, *s.toResponse(&k))
+	// Ensure empty array instead of null
+	if kondisis == nil {
+		kondisis = []models.KondisiPaketSimpleResponse{}
 	}
 
 	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
 
-	return items, &meta, nil
+	return kondisis, &meta, nil
 }
 
 func (s *kondisiPaketService) Update(ctx context.Context, id string, req *models.UpdateKondisiPaketRequest) (*models.KondisiPaketResponse, error) {
@@ -154,14 +154,26 @@ func (s *kondisiPaketService) Reorder(ctx context.Context, req *models.ReorderRe
 
 func (s *kondisiPaketService) toResponse(k *models.KondisiPaket) *models.KondisiPaketResponse {
 	return &models.KondisiPaketResponse{
-		ID:           k.ID.String(),
-		Nama:         k.Nama,
-		Slug:         k.Slug,
-		Deskripsi:    k.Deskripsi,
-		Urutan:       k.Urutan,
-		IsActive:     k.IsActive,
-		JumlahProduk: 0, // TODO: Count from produk table
-		CreatedAt:    k.CreatedAt,
-		UpdatedAt:    k.UpdatedAt,
+		ID:        k.ID.String(),
+		Nama:      k.Nama,
+		Slug:      k.Slug,
+		Deskripsi: k.Deskripsi,
+		Urutan:    k.Urutan,
+		IsActive:  k.IsActive,
+		CreatedAt: k.CreatedAt,
+		UpdatedAt: k.UpdatedAt,
+	}
+}
+
+func (s *kondisiPaketService) toSimpleResponse(k *models.KondisiPaket) *models.KondisiPaketSimpleResponse {
+	return &models.KondisiPaketSimpleResponse{
+		ID:   k.ID.String(),
+		Nama: k.Nama,
+		// Slug:         k.Slug,
+		// Deskripsi:    k.Deskripsi,
+		Urutan:   k.Urutan,
+		IsActive: k.IsActive,
+		// CreatedAt:    k.CreatedAt,
+		UpdatedAt: k.UpdatedAt,
 	}
 }

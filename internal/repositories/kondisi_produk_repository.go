@@ -12,7 +12,7 @@ type KondisiProdukRepository interface {
 	Create(ctx context.Context, kondisi *models.KondisiProduk) error
 	FindByID(ctx context.Context, id string) (*models.KondisiProduk, error)
 	FindBySlug(ctx context.Context, slug string) (*models.KondisiProduk, error)
-	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.KondisiProduk, int64, error)
+	FindAll(ctx context.Context, params *models.KondisiProdukFilterRequest) ([]models.KondisiProduk, int64, error)
 	Update(ctx context.Context, kondisi *models.KondisiProduk) error
 	Delete(ctx context.Context, id string) error
 	ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error)
@@ -50,7 +50,7 @@ func (r *kondisiProdukRepository) FindBySlug(ctx context.Context, slug string) (
 	return &kondisi, nil
 }
 
-func (r *kondisiProdukRepository) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.KondisiProduk, int64, error) {
+func (r *kondisiProdukRepository) FindAll(ctx context.Context, params *models.KondisiProdukFilterRequest) ([]models.KondisiProduk, int64, error) {
 	var kondisis []models.KondisiProduk
 	var total int64
 

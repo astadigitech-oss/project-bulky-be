@@ -39,7 +39,7 @@ func (c *AdminController) Create(ctx *gin.Context) {
 }
 
 func (c *AdminController) FindAll(ctx *gin.Context) {
-	var params models.PaginationRequest
+	var params models.AdminFilterRequest
 	if err := ctx.ShouldBindQuery(&params); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
 		return
@@ -65,7 +65,6 @@ func (c *AdminController) FindByID(ctx *gin.Context) {
 
 	utils.SuccessResponse(ctx, "Detail admin berhasil diambil", result)
 }
-
 
 func (c *AdminController) Update(ctx *gin.Context) {
 	id := ctx.Param("id")

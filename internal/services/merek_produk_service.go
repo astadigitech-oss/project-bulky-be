@@ -15,7 +15,7 @@ type MerekProdukService interface {
 	CreateWithLogo(ctx context.Context, req *models.CreateMerekProdukRequest, logoURL *string) (*models.MerekProdukResponse, error)
 	FindByID(ctx context.Context, id string) (*models.MerekProdukResponse, error)
 	FindBySlug(ctx context.Context, slug string) (*models.MerekProdukResponse, error)
-	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.MerekProdukResponse, *models.PaginationMeta, error)
+	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.MerekProdukSimpleResponse, *models.PaginationMeta, error)
 	Update(ctx context.Context, id string, req *models.UpdateMerekProdukRequest) (*models.MerekProdukResponse, error)
 	UpdateWithLogo(ctx context.Context, id string, req *models.UpdateMerekProdukRequest, logoURL *string) (*models.MerekProdukResponse, error)
 	Delete(ctx context.Context, id string) error
@@ -94,7 +94,7 @@ func (s *merekProdukService) FindBySlug(ctx context.Context, slug string) (*mode
 	return s.toResponse(merek), nil
 }
 
-func (s *merekProdukService) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.MerekProdukResponse, *models.PaginationMeta, error) {
+func (s *merekProdukService) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.MerekProdukSimpleResponse, *models.PaginationMeta, error) {
 	params.SetDefaults()
 
 	mereks, total, err := s.repo.FindAll(ctx, params)
@@ -102,14 +102,14 @@ func (s *merekProdukService) FindAll(ctx context.Context, params *models.Paginat
 		return nil, nil, err
 	}
 
-	var items []models.MerekProdukResponse
-	for _, m := range mereks {
-		items = append(items, *s.toResponse(&m))
+	// Ensure empty array instead of null
+	if mereks == nil {
+		mereks = []models.MerekProdukSimpleResponse{}
 	}
 
 	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
 
-	return items, &meta, nil
+	return mereks, &meta, nil
 }
 
 func (s *merekProdukService) Update(ctx context.Context, id string, req *models.UpdateMerekProdukRequest) (*models.MerekProdukResponse, error) {
@@ -206,13 +206,12 @@ func (s *merekProdukService) ToggleStatus(ctx context.Context, id string) (*mode
 
 func (s *merekProdukService) toResponse(m *models.MerekProduk) *models.MerekProdukResponse {
 	return &models.MerekProdukResponse{
-		ID:           m.ID.String(),
-		Nama:         m.Nama,
-		Slug:         m.Slug,
-		LogoURL:      m.LogoURL,
-		IsActive:     m.IsActive,
-		JumlahProduk: 0,
-		CreatedAt:    m.CreatedAt,
-		UpdatedAt:    m.UpdatedAt,
+		ID:        m.ID.String(),
+		Nama:      m.Nama,
+		Slug:      m.Slug,
+		LogoURL:   m.LogoURL,
+		IsActive:  m.IsActive,
+		CreatedAt: m.CreatedAt,
+		UpdatedAt: m.UpdatedAt,
 	}
 }

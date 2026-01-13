@@ -394,6 +394,26 @@ Authorization: Bearer <access-token>
 GET /health
 ```
 
+### Static File Serving
+
+File upload (gambar, dokumen, dll) di-serve secara langsung oleh aplikasi melalui endpoint:
+
+```
+GET /uploads/{path}
+```
+
+**Contoh:**
+- Icon kategori: `GET /uploads/product-categories/abc-123.png`
+- Gambar produk: `GET /uploads/products/def-456.jpg`
+- Dokumen: `GET /uploads/documents/ghi-789.pdf`
+- Banner: `GET /uploads/banners/jkl-012.png`
+
+**Konfigurasi:**
+- Lokasi folder ditentukan oleh environment variable `UPLOAD_PATH` (default: `./uploads`)
+- URL base ditentukan oleh environment variable `BASE_URL` (default: `http://localhost:8080/uploads`)
+- File diakses secara publik tanpa autentikasi
+- Support untuk semua tipe file (images, PDF, dll)
+
 ## Development
 
 ### Menambahkan Endpoint Baru
@@ -650,3 +670,106 @@ Hot reload dikonfigurasi untuk:
 | JWT_ACCESS_EXPIRY | JWT access token expiry | 24h |
 | JWT_SECRET | JWT secret key | - |
 
+## Docker Deployment
+
+### Volume Setup untuk Folder `uploads/`
+
+Saat deploy menggunakan Docker-based hosting (seperti Dokploy, Coolify, Railway, dll), folder `uploads/` perlu di-mount sebagai **persistent volume** agar file upload tidak hilang saat container di-redeploy atau restart.
+
+#### 1. Environment Variables untuk Production
+
+Tambahkan environment variables berikut:
+
+```env
+UPLOAD_PATH=/app/uploads
+BASE_URL=https://api.yourdomain.com/uploads
+```
+
+**Keterangan:**
+- `UPLOAD_PATH`: Path di dalam container untuk menyimpan file upload
+- `BASE_URL`: URL publik untuk mengakses file yang di-upload
+
+#### 2. Volume Mapping
+
+**Dokploy/Coolify:**
+```yaml
+Host Path: /var/lib/dokploy/volumes/project-bulky-uploads
+Container Path: /app/uploads
+```
+
+**Docker Compose:**
+```yaml
+version: '3.8'
+services:
+  api:
+    image: your-image:latest
+    volumes:
+      - uploads-data:/app/uploads
+    environment:
+      - UPLOAD_PATH=/app/uploads
+      - BASE_URL=https://api.yourdomain.com/uploads
+    ports:
+      - "8080:8080"
+
+volumes:
+  uploads-data:
+    driver: local
+```
+
+**Docker Run:**
+```bash
+docker run -d \
+  -v /var/lib/docker/volumes/bulky-uploads:/app/uploads \
+  -e UPLOAD_PATH=/app/uploads \
+  -e BASE_URL=https://api.yourdomain.com/uploads \
+  -p 8080:8080 \
+  your-image:latest
+```
+
+#### 3. Struktur Folder Uploads
+
+```
+/app/uploads/                          (di dalam container)
+├── product-categories/
+│   ├── {uuid}.png                     # Icon kategori produk
+│   └── kondisi/
+│       └── {uuid}.jpg                 # Gambar kondisi produk
+├── products/
+│   └── {uuid}.jpg                     # Gambar produk
+├── documents/
+│   └── {uuid}.pdf                     # Dokumen produk (spec sheet, dll)
+├── banners/
+│   └── {uuid}.png                     # Banner marketing
+└── hero-sections/
+    └── {uuid}.jpg                     # Hero section images
+```
+
+#### 4. Backup & Restore
+
+**Backup Volume:**
+```bash
+# Untuk named volume
+docker run --rm -v bulky-uploads:/data -v $(pwd):/backup ubuntu tar czf /backup/uploads-backup.tar.gz -C /data .
+
+# Untuk bind mount
+tar czf uploads-backup.tar.gz -C /var/lib/dokploy/volumes/project-bulky-uploads .
+```
+
+**Restore Volume:**
+```bash
+# Untuk named volume
+docker run --rm -v bulky-uploads:/data -v $(pwd):/backup ubuntu tar xzf /backup/uploads-backup.tar.gz -C /data
+
+# Untuk bind mount
+tar xzf uploads-backup.tar.gz -C /var/lib/dokploy/volumes/project-bulky-uploads
+```
+
+#### 5. Catatan Penting
+
+- ⚠️ **Jangan** set `UPLOAD_PATH` ke path yang sama dengan application code
+- ⚠️ Pastikan volume memiliki permission yang benar (readable & writable oleh user container)
+- ✅ File di-serve langsung oleh aplikasi Go via endpoint `/uploads/*`
+- ✅ Untuk performa lebih baik, gunakan CDN atau object storage (S3, MinIO) di production
+- ✅ Set proper file size limit di environment variable (default: 10MB)
+
+Untuk dokumentasi lengkap tentang persistent storage setup di Dokploy, lihat [DOKPLOY-PERSISTENT-STORAGE.md](/DOKPLOY-PERSISTENT-STORAGE.md).

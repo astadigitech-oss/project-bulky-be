@@ -15,7 +15,7 @@ import (
 type AdminService interface {
 	Create(ctx context.Context, req *models.CreateAdminRequest) (*models.AdminResponse, error)
 	FindByID(ctx context.Context, id string) (*models.AdminResponse, error)
-	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.AdminListResponse, *models.PaginationMeta, error)
+	FindAll(ctx context.Context, params *models.AdminFilterRequest) ([]models.AdminListResponse, *models.PaginationMeta, error)
 	Update(ctx context.Context, id string, req *models.UpdateAdminRequest) (*models.AdminResponse, error)
 	Delete(ctx context.Context, id, currentAdminID string) error
 	ToggleStatus(ctx context.Context, id, currentAdminID string) (*models.ToggleStatusResponse, error)
@@ -80,20 +80,26 @@ func (s *adminService) FindByID(ctx context.Context, id string) (*models.AdminRe
 	return s.toResponse(admin), nil
 }
 
-func (s *adminService) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.AdminListResponse, *models.PaginationMeta, error) {
+func (s *adminService) FindAll(ctx context.Context, params *models.AdminFilterRequest) ([]models.AdminListResponse, *models.PaginationMeta, error) {
 	params.SetDefaults()
 
-	admins, total, err := s.repo.FindAll(ctx, params)
+	admins, total, err := s.repo.FindAll(ctx, &params.PaginationRequest)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	var items []models.AdminListResponse
+	items := []models.AdminListResponse{}
 	for _, a := range admins {
+		roleName := ""
+		if a.Role != nil {
+			roleName = a.Role.Nama
+		}
+
 		items = append(items, models.AdminListResponse{
 			ID:          a.ID.String(),
 			Nama:        a.Nama,
 			Email:       a.Email,
+			Role:        roleName,
 			IsActive:    a.IsActive,
 			LastLoginAt: a.LastLoginAt,
 			CreatedAt:   a.CreatedAt,

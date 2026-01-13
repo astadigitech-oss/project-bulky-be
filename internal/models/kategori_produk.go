@@ -23,6 +23,15 @@ type KategoriProduk struct {
 	DeletedAt               gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
+type KategoriProdukSimpleResponse struct {
+	ID                      string    `json:"id"`
+	Nama                    string    `json:"nama"`
+	IconURL                 *string   `json:"icon_url"`
+	IsActive                bool      `json:"is_active"`
+	MemilikiKondisiTambahan bool      `json:"memiliki_kondisi_tambahan"`
+	UpdatedAt               time.Time `json:"updated_at"`
+}
+
 func (KategoriProduk) TableName() string {
 	return "kategori_produk"
 }

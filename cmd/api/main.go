@@ -61,6 +61,7 @@ func main() {
 	ulasanRepo := repositories.NewUlasanRepository(db)
 	forceUpdateRepo := repositories.NewForceUpdateRepository(db)
 	modeMaintenanceRepo := repositories.NewModeMaintenanceRepository(db)
+	ppnRepo := repositories.NewPPNRepository(db)
 
 	// Auth V2 repositories
 	authRepo := repositories.NewAuthRepository(db)
@@ -77,7 +78,7 @@ func main() {
 	warehouseService := services.NewWarehouseService(warehouseRepo)
 	tipeProdukService := services.NewTipeProdukService(tipeProdukRepo)
 	diskonKategoriService := services.NewDiskonKategoriService(diskonKategoriRepo)
-	bannerTipeProdukService := services.NewBannerTipeProdukService(bannerTipeProdukRepo)
+	bannerTipeProdukService := services.NewBannerTipeProdukService(bannerTipeProdukRepo, cfg)
 	produkGambarService := services.NewProdukGambarService(produkGambarRepo)
 	produkDokumenService := services.NewProdukDokumenService(produkDokumenRepo)
 	produkService := services.NewProdukService(produkRepo, produkGambarRepo)
@@ -91,6 +92,7 @@ func main() {
 	ulasanService := services.NewUlasanService(ulasanRepo, pesananItemRepo, pesananRepo, cfg.UploadPath, cfg.BaseURL)
 	forceUpdateService := services.NewForceUpdateService(forceUpdateRepo, cfg.PlayStoreURL, cfg.AppStoreURL)
 	modeMaintenanceService := services.NewModeMaintenanceService(modeMaintenanceRepo)
+	ppnService := services.NewPPNService(ppnRepo)
 
 	// Auth V2 services
 	authV2Service := services.NewAuthV2Service(authRepo, activityLogRepo)
@@ -107,19 +109,20 @@ func main() {
 	warehouseController := controllers.NewWarehouseController(warehouseService)
 	tipeProdukController := controllers.NewTipeProdukController(tipeProdukService)
 	diskonKategoriController := controllers.NewDiskonKategoriController(diskonKategoriService)
-	bannerTipeProdukController := controllers.NewBannerTipeProdukController(bannerTipeProdukService)
+	bannerTipeProdukController := controllers.NewBannerTipeProdukController(bannerTipeProdukService, cfg)
 	produkController := controllers.NewProdukController(produkService, produkGambarService, produkDokumenService)
 	authController := controllers.NewAuthController(authService)
 	adminController := controllers.NewAdminController(adminService)
 	masterController := controllers.NewMasterController(masterService)
 	buyerController := controllers.NewBuyerController(buyerService)
 	alamatBuyerController := controllers.NewAlamatBuyerController(alamatBuyerService)
-	heroSectionController := controllers.NewHeroSectionController(heroSectionService)
-	bannerEventPromoController := controllers.NewBannerEventPromoController(bannerEventPromoService)
+	heroSectionController := controllers.NewHeroSectionController(heroSectionService, cfg)
+	bannerEventPromoController := controllers.NewBannerEventPromoController(bannerEventPromoService, cfg)
 	ulasanController := controllers.NewUlasanController(ulasanService)
 	forceUpdateController := controllers.NewForceUpdateController(forceUpdateService)
 	modeMaintenanceController := controllers.NewModeMaintenanceController(modeMaintenanceService)
 	appStatusController := controllers.NewAppStatusController(forceUpdateService, modeMaintenanceService)
+	ppnController := controllers.NewPPNController(ppnService)
 
 	// Auth V2 controllers
 	authV2Controller := controllers.NewAuthV2Controller(authV2Service, adminService, buyerService)
@@ -139,6 +142,7 @@ func main() {
 		heroSectionController, bannerEventPromoController,
 		ulasanController,
 		forceUpdateController, modeMaintenanceController, appStatusController,
+		ppnController,
 	)
 
 	// Setup Auth V2 routes (new authentication system with roles & permissions)

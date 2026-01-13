@@ -21,6 +21,13 @@ func (Permission) TableName() string {
 	return "permission"
 }
 
+// PermissionSimpleResponse untuk response sederhana permission
+type PermissionSimpleResponse struct {
+	ID        string  `json:"id"`
+	Nama      string  `json:"nama"`
+	Deskripsi *string `json:"deskripsi"`
+}
+
 // RolePermission adalah pivot table
 type RolePermission struct {
 	ID           uuid.UUID `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`

@@ -49,14 +49,14 @@ func (c *TipeProdukController) FindByID(ctx *gin.Context) {
 }
 
 // FindBySlug retrieves a single tipe produk by slug
-func (c *TipeProdukController) FindBySlug(ctx *gin.Context) {
-	slug := ctx.Param("slug")
+// func (c *TipeProdukController) FindBySlug(ctx *gin.Context) {
+// 	slug := ctx.Param("slug")
 
-	result, err := c.service.FindBySlug(ctx.Request.Context(), slug)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
-	}
+// 	result, err := c.service.FindBySlug(ctx.Request.Context(), slug)
+// 	if err != nil {
+// 		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
+// 		return
+// 	}
 
-	utils.SuccessResponse(ctx, "Detail tipe produk berhasil diambil", result)
-}
+// 	utils.SuccessResponse(ctx, "Detail tipe produk berhasil diambil", result)
+// }

@@ -67,7 +67,7 @@ func (s *warehouseService) FindAll(ctx context.Context, params *models.Paginatio
 		return nil, nil, err
 	}
 
-	var items []models.WarehouseResponse
+	items := []models.WarehouseResponse{}
 	for _, w := range warehouses {
 		items = append(items, *s.toResponse(&w))
 	}

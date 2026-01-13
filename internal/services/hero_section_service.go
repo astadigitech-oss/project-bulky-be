@@ -14,7 +14,7 @@ import (
 type HeroSectionService interface {
 	Create(ctx context.Context, req *models.CreateHeroSectionRequest) (*models.HeroSectionResponse, error)
 	FindByID(ctx context.Context, id string) (*models.HeroSectionResponse, error)
-	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.HeroSectionResponse, *models.PaginationMeta, error)
+	FindAll(ctx context.Context, params *models.HeroSectionFilterRequest) ([]models.HeroSectionSimpleResponse, *models.PaginationMeta, error)
 	Update(ctx context.Context, id string, req *models.UpdateHeroSectionRequest) (*models.HeroSectionResponse, error)
 	Delete(ctx context.Context, id string) error
 	ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error)
@@ -32,23 +32,22 @@ func NewHeroSectionService(repo repositories.HeroSectionRepository) HeroSectionS
 
 func (s *heroSectionService) Create(ctx context.Context, req *models.CreateHeroSectionRequest) (*models.HeroSectionResponse, error) {
 	hero := &models.HeroSection{
-		ID:       uuid.New(),
-		Nama:     req.Nama,
-		Gambar:   req.Gambar,
-		Urutan:   req.Urutan,
+		ID:     uuid.New(),
+		Nama:   req.Nama,
+		Gambar: req.Gambar,
+		// Urutan:   req.Urutan,
 		IsActive: req.IsActive,
+		// IsActive: true,
 	}
 
 	if req.TanggalMulai != nil {
-		t, err := time.Parse(time.RFC3339, *req.TanggalMulai)
-		if err == nil {
+		if t, err := parseFlexibleDate(*req.TanggalMulai); err == nil {
 			hero.TanggalMulai = &t
 		}
 	}
 
 	if req.TanggalSelesai != nil {
-		t, err := time.Parse(time.RFC3339, *req.TanggalSelesai)
-		if err == nil {
+		if t, err := parseFlexibleDate(*req.TanggalSelesai); err == nil {
 			hero.TanggalSelesai = &t
 		}
 	}
@@ -68,7 +67,7 @@ func (s *heroSectionService) FindByID(ctx context.Context, id string) (*models.H
 	return s.toResponse(hero), nil
 }
 
-func (s *heroSectionService) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.HeroSectionResponse, *models.PaginationMeta, error) {
+func (s *heroSectionService) FindAll(ctx context.Context, params *models.HeroSectionFilterRequest) ([]models.HeroSectionSimpleResponse, *models.PaginationMeta, error) {
 	params.SetDefaults()
 
 	heroes, total, err := s.repo.FindAll(ctx, params)
@@ -76,9 +75,9 @@ func (s *heroSectionService) FindAll(ctx context.Context, params *models.Paginat
 		return nil, nil, err
 	}
 
-	var items []models.HeroSectionResponse
+	items := []models.HeroSectionSimpleResponse{}
 	for _, h := range heroes {
-		items = append(items, *s.toResponse(&h))
+		items = append(items, *s.toSimpleResponse(&h))
 	}
 
 	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
@@ -98,21 +97,19 @@ func (s *heroSectionService) Update(ctx context.Context, id string, req *models.
 	if req.Gambar != nil {
 		hero.Gambar = *req.Gambar
 	}
-	if req.Urutan != nil {
-		hero.Urutan = *req.Urutan
-	}
+	// if req.Urutan != nil {
+	// 	hero.Urutan = *req.Urutan
+	// }
 	if req.IsActive != nil {
 		hero.IsActive = *req.IsActive
 	}
 	if req.TanggalMulai != nil {
-		t, err := time.Parse(time.RFC3339, *req.TanggalMulai)
-		if err == nil {
+		if t, err := parseFlexibleDate(*req.TanggalMulai); err == nil {
 			hero.TanggalMulai = &t
 		}
 	}
 	if req.TanggalSelesai != nil {
-		t, err := time.Parse(time.RFC3339, *req.TanggalSelesai)
-		if err == nil {
+		if t, err := parseFlexibleDate(*req.TanggalSelesai); err == nil {
 			hero.TanggalSelesai = &t
 		}
 	}
@@ -168,15 +165,51 @@ func (s *heroSectionService) GetVisibleHero(ctx context.Context) (*models.HeroSe
 
 func (s *heroSectionService) toResponse(h *models.HeroSection) *models.HeroSectionResponse {
 	return &models.HeroSectionResponse{
-		ID:             h.ID.String(),
-		Nama:           h.Nama,
-		Gambar:         h.Gambar,
-		Urutan:         h.Urutan,
-		IsActive:       h.IsActive,
-		IsVisible:      h.IsCurrentlyVisible(),
+		ID:     h.ID.String(),
+		Nama:   h.Nama,
+		Gambar: h.Gambar,
+		// Urutan:   h.Urutan,
+		IsActive: h.IsActive,
+		// IsVisible:      h.IsCurrentlyVisible(),
 		TanggalMulai:   h.TanggalMulai,
 		TanggalSelesai: h.TanggalSelesai,
 		CreatedAt:      h.CreatedAt,
 		UpdatedAt:      h.UpdatedAt,
 	}
+}
+
+func (s *heroSectionService) toSimpleResponse(h *models.HeroSection) *models.HeroSectionSimpleResponse {
+	return &models.HeroSectionSimpleResponse{
+		ID:     h.ID.String(),
+		Nama:   h.Nama,
+		Gambar: h.Gambar,
+		// Urutan:   h.Urutan,
+		IsActive: h.IsActive,
+		// IsVisible:      h.IsCurrentlyVisible(),
+		// TanggalMulai:   h.TanggalMulai,
+		// TanggalSelesai: h.TanggalSelesai,
+		// CreatedAt:      h.CreatedAt,
+		UpdatedAt: h.UpdatedAt,
+	}
+}
+
+// parseFlexibleDate parses date string in multiple formats
+// Supports: "2026-01-10" (date only) or "2026-01-10T00:00:00Z" (RFC3339)
+func parseFlexibleDate(dateStr string) (time.Time, error) {
+	// Try RFC3339 first (full datetime with timezone)
+	if t, err := time.Parse(time.RFC3339, dateStr); err == nil {
+		return t, nil
+	}
+
+	// Try date only format (yyyy-mm-dd)
+	if t, err := time.Parse("2006-01-02", dateStr); err == nil {
+		return t, nil
+	}
+
+	// Try datetime without timezone
+	if t, err := time.Parse("2006-01-02T15:04:05", dateStr); err == nil {
+		return t, nil
+	}
+
+	return time.Time{}, errors.New("format tanggal tidak valid, gunakan yyyy-mm-dd atau RFC3339")
 }

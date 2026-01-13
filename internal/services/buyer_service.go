@@ -56,7 +56,7 @@ func (s *buyerService) FindAll(ctx context.Context, params *models.BuyerFilterRe
 		return nil, nil, err
 	}
 
-	var items []models.BuyerListResponse
+	items := []models.BuyerListResponse{}
 	for _, b := range buyers {
 		items = append(items, models.BuyerListResponse{
 			ID:        b.ID.String(),

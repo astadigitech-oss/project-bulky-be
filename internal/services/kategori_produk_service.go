@@ -15,7 +15,7 @@ type KategoriProdukService interface {
 	CreateWithIcon(ctx context.Context, req *models.CreateKategoriProdukRequest, iconURL, gambarKondisiURL *string) (*models.KategoriProdukResponse, error)
 	FindByID(ctx context.Context, id string) (*models.KategoriProdukResponse, error)
 	FindBySlug(ctx context.Context, slug string) (*models.KategoriProdukResponse, error)
-	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.KategoriProdukResponse, *models.PaginationMeta, error)
+	FindAll(ctx context.Context, params *models.KategoriProdukFilterRequest) ([]models.KategoriProdukSimpleResponse, *models.PaginationMeta, error)
 	Update(ctx context.Context, id string, req *models.UpdateKategoriProdukRequest) (*models.KategoriProdukResponse, error)
 	UpdateWithIcon(ctx context.Context, id string, req *models.UpdateKategoriProdukRequest, iconURL, gambarKondisiURL *string) (*models.KategoriProdukResponse, error)
 	Delete(ctx context.Context, id string) error
@@ -102,7 +102,7 @@ func (s *kategoriProdukService) FindBySlug(ctx context.Context, slug string) (*m
 	return s.toResponse(kategori), nil
 }
 
-func (s *kategoriProdukService) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.KategoriProdukResponse, *models.PaginationMeta, error) {
+func (s *kategoriProdukService) FindAll(ctx context.Context, params *models.KategoriProdukFilterRequest) ([]models.KategoriProdukSimpleResponse, *models.PaginationMeta, error) {
 	params.SetDefaults()
 
 	kategoris, total, err := s.repo.FindAll(ctx, params)
@@ -110,14 +110,14 @@ func (s *kategoriProdukService) FindAll(ctx context.Context, params *models.Pagi
 		return nil, nil, err
 	}
 
-	var items []models.KategoriProdukResponse
-	for _, k := range kategoris {
-		items = append(items, *s.toResponse(&k))
+	// Ensure empty array instead of null
+	if kategoris == nil {
+		kategoris = []models.KategoriProdukSimpleResponse{}
 	}
 
 	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
 
-	return items, &meta, nil
+	return kategoris, &meta, nil
 }
 
 func (s *kategoriProdukService) Update(ctx context.Context, id string, req *models.UpdateKategoriProdukRequest) (*models.KategoriProdukResponse, error) {
@@ -253,7 +253,6 @@ func (s *kategoriProdukService) toResponse(k *models.KategoriProduk) *models.Kat
 		GambarKondisiURL:        k.GambarKondisiURL,
 		TeksKondisi:             k.TeksKondisi,
 		IsActive:                k.IsActive,
-		JumlahProduk:            0,
 		CreatedAt:               k.CreatedAt,
 		UpdatedAt:               k.UpdatedAt,
 	}

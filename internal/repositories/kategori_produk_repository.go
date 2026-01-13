@@ -12,7 +12,7 @@ type KategoriProdukRepository interface {
 	Create(ctx context.Context, kategori *models.KategoriProduk) error
 	FindByID(ctx context.Context, id string) (*models.KategoriProduk, error)
 	FindBySlug(ctx context.Context, slug string) (*models.KategoriProduk, error)
-	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.KategoriProduk, int64, error)
+	FindAll(ctx context.Context, params *models.KategoriProdukFilterRequest) ([]models.KategoriProdukSimpleResponse, int64, error)
 	Update(ctx context.Context, kategori *models.KategoriProduk) error
 	Delete(ctx context.Context, id string) error
 	ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error)
@@ -49,11 +49,21 @@ func (r *kategoriProdukRepository) FindBySlug(ctx context.Context, slug string) 
 	return &kategori, nil
 }
 
-func (r *kategoriProdukRepository) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.KategoriProduk, int64, error) {
-	var kategoris []models.KategoriProduk
+func (r *kategoriProdukRepository) FindAll(ctx context.Context, params *models.KategoriProdukFilterRequest) ([]models.KategoriProdukSimpleResponse, int64, error) {
+	var kategoris []models.KategoriProdukSimpleResponse
 	var total int64
 
-	query := r.db.WithContext(ctx).Model(&models.KategoriProduk{})
+	// query := r.db.WithContext(ctx).Model(&models.KategoriProduk{})
+	query := r.db.WithContext(ctx).Model(&models.KategoriProduk{}).
+		Select(`
+			id,
+			nama,
+			slug,
+			icon_url,
+			is_active,
+			memiliki_kondisi_tambahan,
+			updated_at
+		`)
 
 	// Search filter
 	if params.Search != "" {
@@ -63,6 +73,11 @@ func (r *kategoriProdukRepository) FindAll(ctx context.Context, params *models.P
 	// Active filter
 	if params.IsActive != nil {
 		query = query.Where("is_active = ?", *params.IsActive)
+	}
+
+	// MemilikiKondisiTambahan filter
+	if params.MemilikiKondisiTambahan != nil {
+		query = query.Where("memiliki_kondisi_tambahan = ?", *params.MemilikiKondisiTambahan)
 	}
 
 	// Count total

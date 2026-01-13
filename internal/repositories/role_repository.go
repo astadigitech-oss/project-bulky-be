@@ -9,7 +9,7 @@ import (
 )
 
 type RoleRepository interface {
-	FindAll() ([]models.Role, error)
+	FindAll() ([]models.RoleResponseFormat, error)
 	FindAllWithParams(params dto.RoleQueryParams) ([]models.Role, int64, error)
 	FindByID(id uuid.UUID) (*models.Role, error)
 	FindByIDWithPermissions(id uuid.UUID) (*models.Role, error)
@@ -33,12 +33,28 @@ func NewRoleRepository(db *gorm.DB) RoleRepository {
 	return &roleRepository{db: db}
 }
 
-func (r *roleRepository) FindAll() ([]models.Role, error) {
+func (r *roleRepository) FindAll() ([]models.RoleResponseFormat, error) {
 	var roles []models.Role
 	err := r.db.Where("deleted_at IS NULL").
 		Order("created_at DESC").
 		Find(&roles).Error
-	return roles, err
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Manual mapping to RoleResponseFormat
+	var result []models.RoleResponseFormat
+	for _, role := range roles {
+		result = append(result, models.RoleResponseFormat{
+			ID:        role.ID.String(),
+			Nama:      role.Nama,
+			Kode:      role.Kode,
+			Deskripsi: role.Deskripsi,
+		})
+	}
+
+	return result, nil
 }
 
 func (r *roleRepository) FindAllWithParams(params dto.RoleQueryParams) ([]models.Role, int64, error) {

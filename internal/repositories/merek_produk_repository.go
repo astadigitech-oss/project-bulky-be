@@ -12,7 +12,7 @@ type MerekProdukRepository interface {
 	Create(ctx context.Context, merek *models.MerekProduk) error
 	FindByID(ctx context.Context, id string) (*models.MerekProduk, error)
 	FindBySlug(ctx context.Context, slug string) (*models.MerekProduk, error)
-	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.MerekProduk, int64, error)
+	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.MerekProdukSimpleResponse, int64, error)
 	Update(ctx context.Context, merek *models.MerekProduk) error
 	Delete(ctx context.Context, id string) error
 	ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error)
@@ -49,29 +49,62 @@ func (r *merekProdukRepository) FindBySlug(ctx context.Context, slug string) (*m
 	return &merek, nil
 }
 
-func (r *merekProdukRepository) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.MerekProduk, int64, error) {
-	var mereks []models.MerekProduk
+func (r *merekProdukRepository) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.MerekProdukSimpleResponse, int64, error) {
+	var mereks []models.MerekProdukSimpleResponse
 	var total int64
 
-	query := r.db.WithContext(ctx).Model(&models.MerekProduk{})
+	// Base query with simplified fields for list view
+	query := r.db.WithContext(ctx).
+		Model(&models.MerekProduk{}).
+		Select(`
+			id,
+			nama,
+			logo_url,
+			is_active,
+			updated_at
+		`)
 
+	// Search filter
 	if params.Search != "" {
 		query = query.Where("nama ILIKE ?", "%"+params.Search+"%")
 	}
 
+	// IsActive filter
 	if params.IsActive != nil {
 		query = query.Where("is_active = ?", *params.IsActive)
 	}
 
+	// Count total
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	orderClause := params.SortBy + " " + params.Order
+	// Valid sort fields for list response
+	validSortFields := map[string]bool{
+		"id":         true,
+		"nama":       true,
+		"logo_url":   true,
+		"is_active":  true,
+		"updated_at": true,
+	}
+
+	// Validate sort_by field
+	sortBy := params.SortBy
+	if !validSortFields[sortBy] {
+		sortBy = "nama" // Default sort field
+	}
+
+	// Validate order direction
+	order := params.Order
+	if order != "asc" && order != "desc" {
+		order = "asc" // Default order
+	}
+
+	orderClause := sortBy + " " + order
 	query = query.Order(orderClause)
 	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
 
-	if err := query.Find(&mereks).Error; err != nil {
+	if err := query.Scan(&mereks).Error; err != nil {
 		return nil, 0, err
 	}
 

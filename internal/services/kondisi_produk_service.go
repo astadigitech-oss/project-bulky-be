@@ -13,7 +13,7 @@ type KondisiProdukService interface {
 	Create(ctx context.Context, req *models.CreateKondisiProdukRequest) (*models.KondisiProdukResponse, error)
 	FindByID(ctx context.Context, id string) (*models.KondisiProdukResponse, error)
 	FindBySlug(ctx context.Context, slug string) (*models.KondisiProdukResponse, error)
-	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.KondisiProdukResponse, *models.PaginationMeta, error)
+	FindAll(ctx context.Context, params *models.KondisiProdukFilterRequest) ([]models.KondisiProdukSimpleResponse, *models.PaginationMeta, error)
 	Update(ctx context.Context, id string, req *models.UpdateKondisiProdukRequest) (*models.KondisiProdukResponse, error)
 	Delete(ctx context.Context, id string) error
 	ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error)
@@ -70,7 +70,7 @@ func (s *kondisiProdukService) FindBySlug(ctx context.Context, slug string) (*mo
 	return s.toResponse(kondisi), nil
 }
 
-func (s *kondisiProdukService) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.KondisiProdukResponse, *models.PaginationMeta, error) {
+func (s *kondisiProdukService) FindAll(ctx context.Context, params *models.KondisiProdukFilterRequest) ([]models.KondisiProdukSimpleResponse, *models.PaginationMeta, error) {
 	params.SetDefaults()
 
 	kondisis, total, err := s.repo.FindAll(ctx, params)
@@ -78,9 +78,9 @@ func (s *kondisiProdukService) FindAll(ctx context.Context, params *models.Pagin
 		return nil, nil, err
 	}
 
-	var items []models.KondisiProdukResponse
+	items := []models.KondisiProdukSimpleResponse{}
 	for _, k := range kondisis {
-		items = append(items, *s.toResponse(&k))
+		items = append(items, *s.toSimpleResponse(&k))
 	}
 
 	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
@@ -162,14 +162,28 @@ func (s *kondisiProdukService) Reorder(ctx context.Context, req *models.ReorderR
 
 func (s *kondisiProdukService) toResponse(k *models.KondisiProduk) *models.KondisiProdukResponse {
 	return &models.KondisiProdukResponse{
-		ID:           k.ID.String(),
-		Nama:         k.Nama,
-		Slug:         k.Slug,
-		Deskripsi:    k.Deskripsi,
-		Urutan:       k.Urutan,
-		IsActive:     k.IsActive,
-		JumlahProduk: 0, // TODO: Count from produk table
-		CreatedAt:    k.CreatedAt,
-		UpdatedAt:    k.UpdatedAt,
+		ID:        k.ID.String(),
+		Nama:      k.Nama,
+		Slug:      k.Slug,
+		Deskripsi: k.Deskripsi,
+		Urutan:    k.Urutan,
+		IsActive:  k.IsActive,
+		// JumlahProduk: 0, // TODO: Count from produk table
+		CreatedAt: k.CreatedAt,
+		UpdatedAt: k.UpdatedAt,
+	}
+}
+
+func (s *kondisiProdukService) toSimpleResponse(k *models.KondisiProduk) *models.KondisiProdukSimpleResponse {
+	return &models.KondisiProdukSimpleResponse{
+		ID:   k.ID.String(),
+		Nama: k.Nama,
+		// Slug:         k.Slug,
+		// Deskripsi:    k.Deskripsi,
+		Urutan:   k.Urutan,
+		IsActive: k.IsActive,
+		// JumlahProduk: 0, // TODO: Count from produk table
+		// CreatedAt:    k.CreatedAt,
+		UpdatedAt: k.UpdatedAt,
 	}
 }

@@ -98,6 +98,7 @@ func (r *adminRepository) FindAll(ctx context.Context, params *models.Pagination
 	orderClause := params.SortBy + " " + params.Order
 	query = query.Order(orderClause)
 	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
+	query = query.Preload("Role")
 
 	if err := query.Find(&admins).Error; err != nil {
 		return nil, 0, err

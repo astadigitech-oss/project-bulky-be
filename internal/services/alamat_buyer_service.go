@@ -80,7 +80,7 @@ func (s *alamatBuyerService) FindAll(ctx context.Context, params *models.AlamatB
 		return nil, nil, err
 	}
 
-	var responses []models.AlamatBuyerResponse
+	responses := []models.AlamatBuyerResponse{}
 	for _, item := range items {
 		responses = append(responses, *s.toResponse(&item))
 	}

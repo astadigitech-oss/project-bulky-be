@@ -2,6 +2,7 @@ package routes
 
 import (
 	"net/http"
+	"os"
 
 	"project-bulky-be/internal/controllers"
 	"project-bulky-be/internal/middleware"
@@ -32,11 +33,19 @@ func SetupRoutes(
 	forceUpdateController *controllers.ForceUpdateController,
 	modeMaintenanceController *controllers.ModeMaintenanceController,
 	appStatusController *controllers.AppStatusController,
+	ppnController *controllers.PPNController,
 ) {
 	// Health check
 	router.GET("/api/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "OK", "message": "Server is running"})
 	})
+
+	// Serve static files from uploads folder
+	uploadPath := os.Getenv("UPLOAD_PATH")
+	if uploadPath == "" {
+		uploadPath = "./uploads"
+	}
+	router.Static("/uploads", uploadPath)
 
 	// API routes (tanpa versioning)
 	v1 := router.Group("/api")
@@ -235,7 +244,7 @@ func SetupRoutes(
 		{
 			tipeProdukPublic.GET("", tipeProdukController.FindAll)
 			tipeProdukPublic.GET("/:id", tipeProdukController.FindByID)
-			tipeProdukPublic.GET("/slug/:slug", tipeProdukController.FindBySlug)
+			// tipeProdukPublic.GET("/slug/:slug", tipeProdukController.FindBySlug)
 		}
 
 		// Diskon Kategori - Public (Read Only)
@@ -270,7 +279,7 @@ func SetupRoutes(
 		bannerTipeProdukAdmin := v1.Group("/panel/banner-tipe-produk")
 		bannerTipeProdukAdmin.Use(middleware.AuthMiddleware())
 		bannerTipeProdukAdmin.Use(middleware.AdminOnly())
-		bannerTipeProdukAdmin.Use(middleware.RequirePermission("banner:manage"))
+		bannerTipeProdukAdmin.Use(middleware.RequirePermission("marketing:manage"))
 		{
 			bannerTipeProdukAdmin.POST("", bannerTipeProdukController.Create)
 			bannerTipeProdukAdmin.PUT("/:id", bannerTipeProdukController.Update)
@@ -325,13 +334,13 @@ func SetupRoutes(
 		heroSectionAdmin.Use(middleware.AuthMiddleware())
 		heroSectionAdmin.Use(middleware.AdminOnly())
 		{
-			heroSectionAdmin.GET("", middleware.RequirePermission("hero_section:read"), heroSectionController.FindAll)
-			heroSectionAdmin.GET("/:id", middleware.RequirePermission("hero_section:read"), heroSectionController.FindByID)
-			heroSectionAdmin.POST("", middleware.RequirePermission("hero_section:manage"), heroSectionController.Create)
-			heroSectionAdmin.PUT("/:id", middleware.RequirePermission("hero_section:manage"), heroSectionController.Update)
-			heroSectionAdmin.DELETE("/:id", middleware.RequirePermission("hero_section:manage"), heroSectionController.Delete)
-			heroSectionAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("hero_section:manage"), heroSectionController.ToggleStatus)
-			heroSectionAdmin.PUT("/reorder", middleware.RequirePermission("hero_section:manage"), heroSectionController.Reorder)
+			heroSectionAdmin.GET("", middleware.RequirePermission("marketing:read"), heroSectionController.FindAll)
+			heroSectionAdmin.GET("/:id", middleware.RequirePermission("marketing:read"), heroSectionController.FindByID)
+			heroSectionAdmin.POST("", middleware.RequirePermission("marketing:manage"), heroSectionController.Create)
+			heroSectionAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), heroSectionController.Update)
+			heroSectionAdmin.DELETE("/:id", middleware.RequirePermission("marketing:manage"), heroSectionController.Delete)
+			heroSectionAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("marketing:manage"), heroSectionController.ToggleStatus)
+			// heroSectionAdmin.PUT("/reorder", middleware.RequirePermission("marketing:manage"), heroSectionController.Reorder)
 		}
 
 		// Hero Section (Public)
@@ -345,13 +354,13 @@ func SetupRoutes(
 		bannerEventPromoAdmin.Use(middleware.AuthMiddleware())
 		bannerEventPromoAdmin.Use(middleware.AdminOnly())
 		{
-			bannerEventPromoAdmin.GET("", middleware.RequirePermission("banner:read"), bannerEventPromoController.FindAll)
-			bannerEventPromoAdmin.GET("/:id", middleware.RequirePermission("banner:read"), bannerEventPromoController.FindByID)
-			bannerEventPromoAdmin.POST("", middleware.RequirePermission("banner:manage"), bannerEventPromoController.Create)
-			bannerEventPromoAdmin.PUT("/:id", middleware.RequirePermission("banner:manage"), bannerEventPromoController.Update)
-			bannerEventPromoAdmin.DELETE("/:id", middleware.RequirePermission("banner:manage"), bannerEventPromoController.Delete)
-			bannerEventPromoAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("banner:manage"), bannerEventPromoController.ToggleStatus)
-			bannerEventPromoAdmin.PUT("/reorder", middleware.RequirePermission("banner:manage"), bannerEventPromoController.Reorder)
+			bannerEventPromoAdmin.GET("", middleware.RequirePermission("marketing:read"), bannerEventPromoController.FindAll)
+			bannerEventPromoAdmin.GET("/:id", middleware.RequirePermission("marketing:read"), bannerEventPromoController.FindByID)
+			bannerEventPromoAdmin.POST("", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.Create)
+			bannerEventPromoAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.Update)
+			bannerEventPromoAdmin.DELETE("/:id", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.Delete)
+			bannerEventPromoAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.ToggleStatus)
+			bannerEventPromoAdmin.PUT("/reorder", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.Reorder)
 		}
 
 		// Banner Event Promo (Public)
@@ -422,6 +431,19 @@ func SetupRoutes(
 			appStatus.GET("/check-version", appStatusController.CheckVersion)
 			appStatus.GET("/check-maintenance", appStatusController.CheckMaintenance)
 			appStatus.GET("/app-status", appStatusController.AppStatus)
+		}
+
+		// PPN - Admin Only
+		ppnAdmin := v1.Group("/panel/ppn")
+		ppnAdmin.Use(middleware.AuthMiddleware())
+		ppnAdmin.Use(middleware.AdminOnly())
+		{
+			ppnAdmin.GET("", middleware.RequirePermission("system:read"), ppnController.GetAll)
+			ppnAdmin.GET("/:id", middleware.RequirePermission("system:read"), ppnController.GetByID)
+			ppnAdmin.POST("", middleware.RequirePermission("system:manage"), ppnController.Create)
+			ppnAdmin.PUT("/:id", middleware.RequirePermission("system:manage"), ppnController.Update)
+			ppnAdmin.DELETE("/:id", middleware.RequirePermission("system:manage"), ppnController.Delete)
+			ppnAdmin.PATCH("/:id/set-active", middleware.RequirePermission("system:manage"), ppnController.SetActive)
 		}
 	}
 
