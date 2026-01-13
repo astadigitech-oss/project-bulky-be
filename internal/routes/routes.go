@@ -354,13 +354,13 @@ func SetupRoutes(
 		bannerEventPromoAdmin.Use(middleware.AuthMiddleware())
 		bannerEventPromoAdmin.Use(middleware.AdminOnly())
 		{
-			bannerEventPromoAdmin.GET("", middleware.RequirePermission("banner:read"), bannerEventPromoController.FindAll)
-			bannerEventPromoAdmin.GET("/:id", middleware.RequirePermission("banner:read"), bannerEventPromoController.FindByID)
-			bannerEventPromoAdmin.POST("", middleware.RequirePermission("banner:manage"), bannerEventPromoController.Create)
-			bannerEventPromoAdmin.PUT("/:id", middleware.RequirePermission("banner:manage"), bannerEventPromoController.Update)
-			bannerEventPromoAdmin.DELETE("/:id", middleware.RequirePermission("banner:manage"), bannerEventPromoController.Delete)
-			bannerEventPromoAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("banner:manage"), bannerEventPromoController.ToggleStatus)
-			bannerEventPromoAdmin.PUT("/reorder", middleware.RequirePermission("banner:manage"), bannerEventPromoController.Reorder)
+			bannerEventPromoAdmin.GET("", middleware.RequirePermission("marketing:read"), bannerEventPromoController.FindAll)
+			bannerEventPromoAdmin.GET("/:id", middleware.RequirePermission("marketing:read"), bannerEventPromoController.FindByID)
+			bannerEventPromoAdmin.POST("", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.Create)
+			bannerEventPromoAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.Update)
+			bannerEventPromoAdmin.DELETE("/:id", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.Delete)
+			bannerEventPromoAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.ToggleStatus)
+			bannerEventPromoAdmin.PUT("/reorder", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.Reorder)
 		}
 
 		// Banner Event Promo (Public)
@@ -439,6 +439,7 @@ func SetupRoutes(
 		ppnAdmin.Use(middleware.AdminOnly())
 		{
 			ppnAdmin.GET("", middleware.RequirePermission("system:read"), ppnController.GetAll)
+			ppnAdmin.GET("/:id", middleware.RequirePermission("system:read"), ppnController.GetByID)
 			ppnAdmin.POST("", middleware.RequirePermission("system:manage"), ppnController.Create)
 			ppnAdmin.PUT("/:id", middleware.RequirePermission("system:manage"), ppnController.Update)
 			ppnAdmin.DELETE("/:id", middleware.RequirePermission("system:manage"), ppnController.Delete)

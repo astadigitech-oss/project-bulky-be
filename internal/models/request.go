@@ -524,3 +524,9 @@ type UpdateBannerEventPromoRequest struct {
 	TanggalMulai   *string `json:"tanggal_mulai"`
 	TanggalSelesai *string `json:"tanggal_selesai"`
 }
+
+type BannerEventPromoFilterRequest struct {
+	PaginationRequest
+	IsActive  *bool   `form:"is_active"`
+	UpdatedAt *string `form:"updated_at"`
+}

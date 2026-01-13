@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"errors"
-	"time"
 
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
@@ -14,7 +13,7 @@ import (
 type BannerEventPromoService interface {
 	Create(ctx context.Context, req *models.CreateBannerEventPromoRequest) (*models.BannerEventPromoResponse, error)
 	FindByID(ctx context.Context, id string) (*models.BannerEventPromoResponse, error)
-	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.BannerEventPromoResponse, *models.PaginationMeta, error)
+	FindAll(ctx context.Context, params *models.BannerEventPromoFilterRequest) ([]models.BannerEventPromoSimpleResponse, *models.PaginationMeta, error)
 	Update(ctx context.Context, id string, req *models.UpdateBannerEventPromoRequest) (*models.BannerEventPromoResponse, error)
 	Delete(ctx context.Context, id string) error
 	ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error)
@@ -41,15 +40,13 @@ func (s *bannerEventPromoService) Create(ctx context.Context, req *models.Create
 	}
 
 	if req.TanggalMulai != nil {
-		t, err := time.Parse(time.RFC3339, *req.TanggalMulai)
-		if err == nil {
+		if t, err := parseFlexibleDate(*req.TanggalMulai); err == nil {
 			banner.TanggalMulai = &t
 		}
 	}
 
 	if req.TanggalSelesai != nil {
-		t, err := time.Parse(time.RFC3339, *req.TanggalSelesai)
-		if err == nil {
+		if t, err := parseFlexibleDate(*req.TanggalSelesai); err == nil {
 			banner.TanggalSelesai = &t
 		}
 	}
@@ -69,7 +66,7 @@ func (s *bannerEventPromoService) FindByID(ctx context.Context, id string) (*mod
 	return s.toResponse(banner), nil
 }
 
-func (s *bannerEventPromoService) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.BannerEventPromoResponse, *models.PaginationMeta, error) {
+func (s *bannerEventPromoService) FindAll(ctx context.Context, params *models.BannerEventPromoFilterRequest) ([]models.BannerEventPromoSimpleResponse, *models.PaginationMeta, error) {
 	params.SetDefaults()
 
 	banners, total, err := s.repo.FindAll(ctx, params)
@@ -77,9 +74,9 @@ func (s *bannerEventPromoService) FindAll(ctx context.Context, params *models.Pa
 		return nil, nil, err
 	}
 
-	var items []models.BannerEventPromoResponse
+	var items []models.BannerEventPromoSimpleResponse
 	for _, b := range banners {
-		items = append(items, *s.toResponse(&b))
+		items = append(items, *s.toSimpleResponse(&b))
 	}
 
 	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
@@ -109,14 +106,12 @@ func (s *bannerEventPromoService) Update(ctx context.Context, id string, req *mo
 		banner.IsActive = *req.IsActive
 	}
 	if req.TanggalMulai != nil {
-		t, err := time.Parse(time.RFC3339, *req.TanggalMulai)
-		if err == nil {
+		if t, err := parseFlexibleDate(*req.TanggalMulai); err == nil {
 			banner.TanggalMulai = &t
 		}
 	}
 	if req.TanggalSelesai != nil {
-		t, err := time.Parse(time.RFC3339, *req.TanggalSelesai)
-		if err == nil {
+		if t, err := parseFlexibleDate(*req.TanggalSelesai); err == nil {
 			banner.TanggalSelesai = &t
 		}
 	}
@@ -178,16 +173,32 @@ func (s *bannerEventPromoService) GetVisibleBanners(ctx context.Context) ([]mode
 
 func (s *bannerEventPromoService) toResponse(b *models.BannerEventPromo) *models.BannerEventPromoResponse {
 	return &models.BannerEventPromoResponse{
-		ID:             b.ID.String(),
-		Nama:           b.Nama,
-		Gambar:         b.Gambar,
-		UrlTujuan:      b.UrlTujuan,
-		Urutan:         b.Urutan,
-		IsActive:       b.IsActive,
-		IsVisible:      b.IsCurrentlyVisible(),
+		ID:        b.ID.String(),
+		Nama:      b.Nama,
+		Gambar:    b.Gambar,
+		UrlTujuan: b.UrlTujuan,
+		Urutan:    b.Urutan,
+		IsActive:  b.IsActive,
+		// IsVisible:      b.IsCurrentlyVisible(),
 		TanggalMulai:   b.TanggalMulai,
 		TanggalSelesai: b.TanggalSelesai,
 		CreatedAt:      b.CreatedAt,
 		UpdatedAt:      b.UpdatedAt,
+	}
+}
+
+func (s *bannerEventPromoService) toSimpleResponse(b *models.BannerEventPromo) *models.BannerEventPromoSimpleResponse {
+	return &models.BannerEventPromoSimpleResponse{
+		ID:        b.ID.String(),
+		Nama:      b.Nama,
+		Gambar:    b.Gambar,
+		UrlTujuan: b.UrlTujuan,
+		Urutan:    b.Urutan,
+		IsActive:  b.IsActive,
+		// IsVisible:      b.IsCurrentlyVisible(),
+		// TanggalMulai:   b.TanggalMulai,
+		// TanggalSelesai: b.TanggalSelesai,
+		// CreatedAt:      b.CreatedAt,
+		UpdatedAt: b.UpdatedAt,
 	}
 }

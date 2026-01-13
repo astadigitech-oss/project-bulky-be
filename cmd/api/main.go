@@ -117,7 +117,7 @@ func main() {
 	buyerController := controllers.NewBuyerController(buyerService)
 	alamatBuyerController := controllers.NewAlamatBuyerController(alamatBuyerService)
 	heroSectionController := controllers.NewHeroSectionController(heroSectionService, cfg)
-	bannerEventPromoController := controllers.NewBannerEventPromoController(bannerEventPromoService)
+	bannerEventPromoController := controllers.NewBannerEventPromoController(bannerEventPromoService, cfg)
 	ulasanController := controllers.NewUlasanController(ulasanService)
 	forceUpdateController := controllers.NewForceUpdateController(forceUpdateService)
 	modeMaintenanceController := controllers.NewModeMaintenanceController(modeMaintenanceService)

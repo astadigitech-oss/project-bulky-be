@@ -587,17 +587,31 @@ type HeroSectionPublicResponse struct {
 // ========================================
 
 type BannerEventPromoResponse struct {
-	ID             string     `json:"id"`
-	Nama           string     `json:"nama"`
-	Gambar         string     `json:"gambar"`
-	UrlTujuan      *string    `json:"url_tujuan"`
-	Urutan         int        `json:"urutan"`
-	IsActive       bool       `json:"is_active"`
-	IsVisible      bool       `json:"is_visible"`
+	ID        string  `json:"id"`
+	Nama      string  `json:"nama"`
+	Gambar    string  `json:"gambar"`
+	UrlTujuan *string `json:"url_tujuan"`
+	Urutan    int     `json:"urutan"`
+	IsActive  bool    `json:"is_active"`
+	// IsVisible      bool       `json:"is_visible"`
 	TanggalMulai   *time.Time `json:"tanggal_mulai"`
 	TanggalSelesai *time.Time `json:"tanggal_selesai"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
+}
+
+type BannerEventPromoSimpleResponse struct {
+	ID        string  `json:"id"`
+	Nama      string  `json:"nama"`
+	Gambar    string  `json:"gambar"`
+	UrlTujuan *string `json:"url_tujuan"`
+	Urutan    int     `json:"urutan"`
+	IsActive  bool    `json:"is_active"`
+	// IsVisible      bool       `json:"is_visible"`
+	// TanggalMulai   *time.Time `json:"tanggal_mulai"`
+	// TanggalSelesai *time.Time `json:"tanggal_selesai"`
+	// CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // Public response (minimal data)

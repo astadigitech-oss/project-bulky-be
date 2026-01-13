@@ -2,7 +2,10 @@ package controllers
 
 import (
 	"net/http"
+	"strconv"
+	"strings"
 
+	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
@@ -12,14 +15,93 @@ import (
 
 type BannerEventPromoController struct {
 	service services.BannerEventPromoService
+	cfg     *config.Config
 }
 
-func NewBannerEventPromoController(service services.BannerEventPromoService) *BannerEventPromoController {
-	return &BannerEventPromoController{service: service}
+func NewBannerEventPromoController(service services.BannerEventPromoService, cfg *config.Config) *BannerEventPromoController {
+	return &BannerEventPromoController{
+		service: service,
+		cfg:     cfg,
+	}
 }
 
 func (c *BannerEventPromoController) Create(ctx *gin.Context) {
 	var req models.CreateBannerEventPromoRequest
+	var gambarURL *string
+
+	contentType := ctx.GetHeader("Content-Type")
+
+	// Handle multipart/form-data (with file upload)
+	if strings.Contains(contentType, "multipart/form-data") {
+		// Parse form data
+		req.Nama = ctx.PostForm("nama")
+
+		// Parse url_tujuan (optional)
+		if urlTujuan := ctx.PostForm("url_tujuan"); urlTujuan != "" {
+			req.UrlTujuan = &urlTujuan
+		}
+
+		req.TanggalMulai = nil
+		if tm := ctx.PostForm("tanggal_mulai"); tm != "" {
+			req.TanggalMulai = &tm
+		}
+		req.TanggalSelesai = nil
+		if ts := ctx.PostForm("tanggal_selesai"); ts != "" {
+			req.TanggalSelesai = &ts
+		}
+
+		// Parse urutan (optional, default 0)
+		if urutanStr := ctx.PostForm("urutan"); urutanStr != "" {
+			if urutan, err := strconv.Atoi(urutanStr); err == nil {
+				req.Urutan = urutan
+			}
+		}
+
+		// Parse is_active (optional, default false)
+		if isActiveStr := ctx.PostForm("is_active"); isActiveStr != "" {
+			req.IsActive = isActiveStr == "true" || isActiveStr == "1"
+		}
+
+		// Validate required fields
+		if req.Nama == "" {
+			utils.ErrorResponse(ctx, http.StatusBadRequest, "nama wajib diisi", nil)
+			return
+		}
+
+		// Handle file upload
+		if file, err := ctx.FormFile("gambar"); err == nil {
+			if !utils.IsValidImageType(file) {
+				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file tidak didukung", nil)
+				return
+			}
+			savedPath, err := utils.SaveUploadedFile(file, "banner-event-promo", c.cfg)
+			if err != nil {
+				utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file: "+err.Error(), nil)
+				return
+			}
+			gambarURL = &savedPath
+		} else {
+			utils.ErrorResponse(ctx, http.StatusBadRequest, "File gambar wajib diupload", nil)
+			return
+		}
+
+		req.Gambar = *gambarURL
+
+		result, err := c.service.Create(ctx.Request.Context(), &req)
+		if err != nil {
+			// Rollback: delete uploaded file if creation fails
+			if gambarURL != nil {
+				utils.DeleteFile(*gambarURL, c.cfg)
+			}
+			utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
+			return
+		}
+
+		utils.CreatedResponse(ctx, "Banner berhasil dibuat", result)
+		return
+	}
+
+	// Handle JSON request (for backward compatibility)
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 		return
@@ -35,7 +117,7 @@ func (c *BannerEventPromoController) Create(ctx *gin.Context) {
 }
 
 func (c *BannerEventPromoController) FindAll(ctx *gin.Context) {
-	var params models.PaginationRequest
+	var params models.BannerEventPromoFilterRequest
 	if err := ctx.ShouldBindQuery(&params); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
 		return
@@ -66,6 +148,79 @@ func (c *BannerEventPromoController) Update(ctx *gin.Context) {
 	id := ctx.Param("id")
 
 	var req models.UpdateBannerEventPromoRequest
+	var gambarURL *string
+	var oldGambar *string
+
+	contentType := ctx.GetHeader("Content-Type")
+
+	// Handle multipart/form-data (with file upload)
+	if strings.Contains(contentType, "multipart/form-data") {
+		// Get old data for rollback
+		oldData, err := c.service.FindByID(ctx.Request.Context(), id)
+		if err != nil {
+			utils.ErrorResponse(ctx, http.StatusNotFound, "Banner tidak ditemukan", nil)
+			return
+		}
+		oldGambar = &oldData.Gambar
+
+		// Parse form data
+		if nama := ctx.PostForm("nama"); nama != "" {
+			req.Nama = &nama
+		}
+		if urlTujuan := ctx.PostForm("url_tujuan"); urlTujuan != "" {
+			req.UrlTujuan = &urlTujuan
+		}
+		if tm := ctx.PostForm("tanggal_mulai"); tm != "" {
+			req.TanggalMulai = &tm
+		}
+		if ts := ctx.PostForm("tanggal_selesai"); ts != "" {
+			req.TanggalSelesai = &ts
+		}
+		if urutanStr := ctx.PostForm("urutan"); urutanStr != "" {
+			if urutan, err := strconv.Atoi(urutanStr); err == nil {
+				req.Urutan = &urutan
+			}
+		}
+		if isActiveStr := ctx.PostForm("is_active"); isActiveStr != "" {
+			isActive := isActiveStr == "true" || isActiveStr == "1"
+			req.IsActive = &isActive
+		}
+
+		// Handle file upload (optional for update)
+		if file, err := ctx.FormFile("gambar"); err == nil {
+			if !utils.IsValidImageType(file) {
+				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file tidak didukung", nil)
+				return
+			}
+			savedPath, err := utils.SaveUploadedFile(file, "banner-event-promo", c.cfg)
+			if err != nil {
+				utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file: "+err.Error(), nil)
+				return
+			}
+			gambarURL = &savedPath
+			req.Gambar = gambarURL
+		}
+
+		result, err := c.service.Update(ctx.Request.Context(), id, &req)
+		if err != nil {
+			// Rollback: delete newly uploaded file if update fails
+			if gambarURL != nil {
+				utils.DeleteFile(*gambarURL, c.cfg)
+			}
+			utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
+			return
+		}
+
+		// Delete old file after successful update (only if new file was uploaded)
+		if gambarURL != nil && oldGambar != nil {
+			utils.DeleteFile(*oldGambar, c.cfg)
+		}
+
+		utils.SuccessResponse(ctx, "Banner berhasil diupdate", result)
+		return
+	}
+
+	// Handle JSON request (for backward compatibility)
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 		return
@@ -115,6 +270,11 @@ func (c *BannerEventPromoController) Reorder(ctx *gin.Context) {
 	}
 
 	if err := c.service.Reorder(ctx.Request.Context(), &req); err != nil {
+		// Check if error is "not found"
+		if strings.Contains(err.Error(), "tidak ditemukan") {
+			utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
+			return
+		}
 		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 		return
 	}

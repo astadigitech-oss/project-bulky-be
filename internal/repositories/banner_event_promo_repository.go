@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"project-bulky-be/internal/models"
@@ -12,7 +13,7 @@ import (
 type BannerEventPromoRepository interface {
 	Create(ctx context.Context, banner *models.BannerEventPromo) error
 	FindByID(ctx context.Context, id string) (*models.BannerEventPromo, error)
-	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.BannerEventPromo, int64, error)
+	FindAll(ctx context.Context, params *models.BannerEventPromoFilterRequest) ([]models.BannerEventPromo, int64, error)
 	Update(ctx context.Context, banner *models.BannerEventPromo) error
 	Delete(ctx context.Context, id string) error
 	UpdateOrder(ctx context.Context, items []models.ReorderItem) error
@@ -37,7 +38,7 @@ func (r *bannerEventPromoRepository) FindByID(ctx context.Context, id string) (*
 	return &banner, err
 }
 
-func (r *bannerEventPromoRepository) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.BannerEventPromo, int64, error) {
+func (r *bannerEventPromoRepository) FindAll(ctx context.Context, params *models.BannerEventPromoFilterRequest) ([]models.BannerEventPromo, int64, error) {
 	var banners []models.BannerEventPromo
 	var total int64
 
@@ -81,6 +82,16 @@ func (r *bannerEventPromoRepository) Delete(ctx context.Context, id string) erro
 func (r *bannerEventPromoRepository) UpdateOrder(ctx context.Context, items []models.ReorderItem) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		for _, item := range items {
+			// Check if banner exists first
+			var count int64
+			if err := tx.Model(&models.BannerEventPromo{}).Where("id = ?", item.ID).Count(&count).Error; err != nil {
+				return err
+			}
+			if count == 0 {
+				return fmt.Errorf("banner dengan ID %s tidak ditemukan", item.ID)
+			}
+
+			// Update urutan
 			if err := tx.Model(&models.BannerEventPromo{}).
 				Where("id = ?", item.ID).
 				Update("urutan", item.Urutan).Error; err != nil {
