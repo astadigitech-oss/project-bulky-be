@@ -78,10 +78,10 @@ func (s *kondisiPaketService) FindAll(ctx context.Context, params *models.Pagina
 		return nil, nil, err
 	}
 
-	// var items []models.KondisiPaketSimpleResponse
-	// for _, k := range kondisis {
-	// 	items = append(items, *s.toSimpleResponse(&k))
-	// }
+	// Ensure empty array instead of null
+	if kondisis == nil {
+		kondisis = []models.KondisiPaketSimpleResponse{}
+	}
 
 	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
 

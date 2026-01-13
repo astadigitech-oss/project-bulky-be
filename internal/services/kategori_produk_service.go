@@ -110,6 +110,11 @@ func (s *kategoriProdukService) FindAll(ctx context.Context, params *models.Kate
 		return nil, nil, err
 	}
 
+	// Ensure empty array instead of null
+	if kategoris == nil {
+		kategoris = []models.KategoriProdukSimpleResponse{}
+	}
+
 	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
 
 	return kategoris, &meta, nil

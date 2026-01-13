@@ -27,7 +27,15 @@ func NewRoleService(repo repositories.RoleRepository) RoleService {
 }
 
 func (s *roleService) GetAll() ([]models.RoleResponseFormat, error) {
-	return s.repo.FindAll()
+	roles, err := s.repo.FindAll()
+	if err != nil {
+		return nil, err
+	}
+	// Ensure empty array instead of null
+	if roles == nil {
+		roles = []models.RoleResponseFormat{}
+	}
+	return roles, nil
 }
 
 func (s *roleService) GetByID(id uuid.UUID) (*models.Role, error) {

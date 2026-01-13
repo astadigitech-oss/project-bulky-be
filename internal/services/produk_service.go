@@ -122,7 +122,7 @@ func (s *produkService) FindAll(ctx context.Context, params *models.ProdukFilter
 		return nil, nil, err
 	}
 
-	var items []models.ProdukListResponse
+	items := []models.ProdukListResponse{}
 	for _, p := range produks {
 		items = append(items, *s.toListResponse(&p))
 	}

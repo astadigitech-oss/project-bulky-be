@@ -88,7 +88,7 @@ func (s *adminService) FindAll(ctx context.Context, params *models.AdminFilterRe
 		return nil, nil, err
 	}
 
-	var items []models.AdminListResponse
+	items := []models.AdminListResponse{}
 	for _, a := range admins {
 		roleName := ""
 		if a.Role != nil {

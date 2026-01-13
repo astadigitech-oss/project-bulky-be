@@ -75,7 +75,7 @@ func (s *heroSectionService) FindAll(ctx context.Context, params *models.HeroSec
 		return nil, nil, err
 	}
 
-	var items []models.HeroSectionSimpleResponse
+	items := []models.HeroSectionSimpleResponse{}
 	for _, h := range heroes {
 		items = append(items, *s.toSimpleResponse(&h))
 	}

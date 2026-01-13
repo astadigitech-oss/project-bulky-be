@@ -78,7 +78,7 @@ func (s *bannerTipeProdukService) FindAll(ctx context.Context, params *models.Ba
 		return nil, nil, err
 	}
 
-	var items []models.BannerTipeProdukSimpleResponse
+	items := []models.BannerTipeProdukSimpleResponse{}
 	for _, b := range banners {
 		items = append(items, *s.toSimpleResponse(&b))
 	}
@@ -99,7 +99,7 @@ func (s *bannerTipeProdukService) FindByTipeProdukID(ctx context.Context, tipePr
 		return nil, err
 	}
 
-	var items []models.BannerSimpleResponse
+	items := []models.BannerSimpleResponse{}
 	for _, b := range banners {
 		items = append(items, models.BannerSimpleResponse{
 			ID:        b.ID.String(),

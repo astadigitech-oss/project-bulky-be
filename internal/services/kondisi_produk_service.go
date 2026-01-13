@@ -78,7 +78,7 @@ func (s *kondisiProdukService) FindAll(ctx context.Context, params *models.Kondi
 		return nil, nil, err
 	}
 
-	var items []models.KondisiProdukSimpleResponse
+	items := []models.KondisiProdukSimpleResponse{}
 	for _, k := range kondisis {
 		items = append(items, *s.toSimpleResponse(&k))
 	}

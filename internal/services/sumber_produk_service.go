@@ -73,7 +73,7 @@ func (s *sumberProdukService) FindAll(ctx context.Context, params *models.Sumber
 		return nil, nil, err
 	}
 
-	var items []models.SumberProdukSimpleResponse
+	items := []models.SumberProdukSimpleResponse{}
 	for _, sb := range sumbers {
 		items = append(items, *s.toSimpleResponse(&sb))
 	}

@@ -74,7 +74,7 @@ func (s *bannerEventPromoService) FindAll(ctx context.Context, params *models.Ba
 		return nil, nil, err
 	}
 
-	var items []models.BannerEventPromoSimpleResponse
+	items := []models.BannerEventPromoSimpleResponse{}
 	for _, b := range banners {
 		items = append(items, *s.toSimpleResponse(&b))
 	}
@@ -158,7 +158,7 @@ func (s *bannerEventPromoService) GetVisibleBanners(ctx context.Context) ([]mode
 		return nil, err
 	}
 
-	var items []models.BannerEventPromoPublicResponse
+	items := []models.BannerEventPromoPublicResponse{}
 	for _, b := range banners {
 		items = append(items, models.BannerEventPromoPublicResponse{
 			ID:        b.ID.String(),

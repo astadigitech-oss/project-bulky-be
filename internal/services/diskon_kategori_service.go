@@ -74,7 +74,7 @@ func (s *diskonKategoriService) FindAll(ctx context.Context, params *models.Pagi
 		return nil, nil, err
 	}
 
-	var items []models.DiskonKategoriResponse
+	items := []models.DiskonKategoriResponse{}
 	for _, d := range diskons {
 		items = append(items, *s.toResponse(&d))
 	}

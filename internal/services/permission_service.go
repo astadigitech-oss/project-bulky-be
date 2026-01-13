@@ -22,7 +22,15 @@ func NewPermissionService(repo repositories.PermissionRepository) PermissionServ
 }
 
 func (s *permissionService) GetAll() ([]models.Permission, error) {
-	return s.repo.FindAll()
+	permissions, err := s.repo.FindAll()
+	if err != nil {
+		return nil, err
+	}
+	// Ensure empty array instead of null
+	if permissions == nil {
+		permissions = []models.Permission{}
+	}
+	return permissions, nil
 }
 
 func (s *permissionService) GetByModul() (map[string][]models.PermissionSimpleResponse, error) {
@@ -34,7 +42,7 @@ func (s *permissionService) GetByModul() (map[string][]models.PermissionSimpleRe
 	// Map to simple response format
 	result := make(map[string][]models.PermissionSimpleResponse)
 	for modul, perms := range permissions {
-		var simplePerms []models.PermissionSimpleResponse
+		simplePerms := []models.PermissionSimpleResponse{}
 		for _, p := range perms {
 			simplePerms = append(simplePerms, models.PermissionSimpleResponse{
 				ID:        p.ID.String(),

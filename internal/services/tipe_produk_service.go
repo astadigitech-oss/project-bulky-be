@@ -62,6 +62,11 @@ func (s *tipeProdukService) FindAll(ctx context.Context, params *models.Paginati
 		return nil, nil, err
 	}
 
+	// Ensure empty array instead of null
+	if tipes == nil {
+		tipes = []dto.TipeProdukListDTO{}
+	}
+
 	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
 
 	return tipes, &meta, nil

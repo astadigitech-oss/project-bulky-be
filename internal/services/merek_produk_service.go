@@ -102,6 +102,11 @@ func (s *merekProdukService) FindAll(ctx context.Context, params *models.Paginat
 		return nil, nil, err
 	}
 
+	// Ensure empty array instead of null
+	if mereks == nil {
+		mereks = []models.MerekProdukSimpleResponse{}
+	}
+
 	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
 
 	return mereks, &meta, nil
