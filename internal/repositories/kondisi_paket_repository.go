@@ -51,21 +51,13 @@ func (r *kondisiPaketRepository) FindBySlug(ctx context.Context, slug string) (*
 }
 
 func (r *kondisiPaketRepository) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.KondisiPaketSimpleResponse, int64, error) {
-	var kondisis []models.KondisiPaketSimpleResponse
+	var kondisis []models.KondisiPaket
 	var total int64
 
-	// query := r.db.WithContext(ctx).Model(&models.KondisiPaket{})
-	query := r.db.WithContext(ctx).Model(&models.KondisiPaket{}).
-		Select(`
-			id,
-			nama,
-			urutan,
-			is_active,
-			updated_at
-		`)
+	query := r.db.WithContext(ctx).Model(&models.KondisiPaket{})
 
 	if params.Search != "" {
-		query = query.Where("nama ILIKE ?", "%"+params.Search+"%")
+		query = query.Where("nama_id ILIKE ? OR nama_en ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")
 	}
 
 	if params.IsActive != nil {
@@ -77,7 +69,7 @@ func (r *kondisiPaketRepository) FindAll(ctx context.Context, params *models.Pag
 	}
 
 	validSortFields := map[string]bool{
-		"nama":       true,
+		"nama_id":    true,
 		"urutan":     true,
 		"is_active":  true,
 		"updated_at": true,
@@ -85,7 +77,7 @@ func (r *kondisiPaketRepository) FindAll(ctx context.Context, params *models.Pag
 
 	sortBy := params.SortBy
 	if !validSortFields[sortBy] {
-		sortBy = "nama"
+		sortBy = "nama_id"
 	}
 
 	// Validate order direction
@@ -98,11 +90,23 @@ func (r *kondisiPaketRepository) FindAll(ctx context.Context, params *models.Pag
 	query = query.Order(orderClause)
 	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
 
-	if err := query.Scan(&kondisis).Error; err != nil {
+	if err := query.Find(&kondisis).Error; err != nil {
 		return nil, 0, err
 	}
 
-	return kondisis, total, nil
+	// Convert to response DTO
+	var responses []models.KondisiPaketSimpleResponse
+	for _, k := range kondisis {
+		responses = append(responses, models.KondisiPaketSimpleResponse{
+			ID:        k.ID.String(),
+			Nama:      k.GetNama(),
+			Urutan:    k.Urutan,
+			IsActive:  k.IsActive,
+			UpdatedAt: k.UpdatedAt,
+		})
+	}
+
+	return responses, total, nil
 }
 
 func (r *kondisiPaketRepository) Update(ctx context.Context, kondisi *models.KondisiPaket) error {
@@ -126,7 +130,7 @@ func (r *kondisiPaketRepository) ExistsBySlug(ctx context.Context, slug string, 
 func (r *kondisiPaketRepository) GetAllForDropdown(ctx context.Context) ([]models.KondisiPaket, error) {
 	var kondisis []models.KondisiPaket
 	err := r.db.WithContext(ctx).
-		Select("id", "nama", "slug").
+		Select("id", "nama_id", "nama_en", "slug").
 		Where("is_active = ?", true).
 		Order("urutan ASC").
 		Find(&kondisis).Error

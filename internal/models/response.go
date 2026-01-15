@@ -616,9 +616,9 @@ type BannerEventPromoSimpleResponse struct {
 	Nama      string            `json:"nama"`
 	GambarURL TranslatableImage `json:"gambar_url"`
 	LinkURL   *string           `json:"link_url,omitempty"`
-	Urutan    int               `json:"urutan"`
-	IsActive  bool              `json:"is_active"`
-	UpdatedAt time.Time         `json:"updated_at"`
+	// Urutan    int               `json:"urutan"`
+	IsActive  bool      `json:"is_active"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // Public response (minimal data)

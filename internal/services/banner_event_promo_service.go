@@ -197,7 +197,7 @@ func (s *bannerEventPromoService) toSimpleResponse(b *models.BannerEventPromo) *
 		Nama:      b.Nama,
 		GambarURL: b.GetGambarURL(),
 		LinkURL:   b.LinkURL,
-		Urutan:    b.Urutan,
+		// Urutan:    b.Urutan,
 		IsActive:  b.IsActive,
 		UpdatedAt: b.UpdatedAt,
 	}
