@@ -33,7 +33,8 @@ func (s *heroSectionService) Create(ctx context.Context, req *models.CreateHeroS
 	hero := &models.HeroSection{
 		ID:          uuid.New(),
 		Nama:        req.Nama,
-		GambarURLID: req.Gambar,
+		GambarURLID: req.GambarID,
+		GambarURLEN: req.GambarEN,
 		IsActive:    req.IsActive,
 	}
 
@@ -79,8 +80,11 @@ func (s *heroSectionService) Update(ctx context.Context, id string, req *models.
 	if req.Nama != nil {
 		hero.Nama = *req.Nama
 	}
-	if req.Gambar != nil {
-		hero.GambarURLID = *req.Gambar
+	if req.GambarID != nil {
+		hero.GambarURLID = *req.GambarID
+	}
+	if req.GambarEN != nil {
+		hero.GambarURLEN = req.GambarEN
 	}
 	if req.IsActive != nil {
 		hero.IsActive = *req.IsActive
@@ -132,7 +136,7 @@ func (s *heroSectionService) GetVisibleHero(ctx context.Context) (*models.HeroSe
 		ID:        hero.ID.String(),
 		Nama:      hero.Nama,
 		GambarURL: hero.GetGambarURL(),
-		LinkURL:   hero.LinkURL,
+		// LinkURL:   hero.LinkURL,
 	}, nil
 }
 
@@ -141,7 +145,7 @@ func (s *heroSectionService) toResponse(h *models.HeroSection) *models.HeroSecti
 		ID:        h.ID.String(),
 		Nama:      h.Nama,
 		GambarURL: h.GetGambarURL(),
-		LinkURL:   h.LinkURL,
+		// LinkURL:   h.LinkURL,
 		Urutan:    h.Urutan,
 		IsActive:  h.IsActive,
 		CreatedAt: h.CreatedAt,
@@ -154,7 +158,7 @@ func (s *heroSectionService) toSimpleResponse(h *models.HeroSection) *models.Her
 		ID:        h.ID.String(),
 		Nama:      h.Nama,
 		GambarURL: h.GetGambarURL(),
-		LinkURL:   h.LinkURL,
+		// LinkURL:   h.LinkURL,
 		Urutan:    h.Urutan,
 		IsActive:  h.IsActive,
 		UpdatedAt: h.UpdatedAt,

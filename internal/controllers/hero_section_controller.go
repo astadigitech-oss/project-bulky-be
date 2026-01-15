@@ -26,7 +26,8 @@ func NewHeroSectionController(service services.HeroSectionService, cfg *config.C
 
 func (c *HeroSectionController) Create(ctx *gin.Context) {
 	var req models.CreateHeroSectionRequest
-	var gambarURL *string
+	var gambarIDURL *string
+	var gambarENURL *string
 
 	contentType := ctx.GetHeader("Content-Type")
 
@@ -43,13 +44,6 @@ func (c *HeroSectionController) Create(ctx *gin.Context) {
 			req.TanggalSelesai = &ts
 		}
 
-		// Parse urutan (optional, default 0)
-		// if urutanStr := ctx.PostForm("urutan"); urutanStr != "" {
-		// 	if urutan, err := strconv.Atoi(urutanStr); err == nil {
-		// 		req.Urutan = urutan
-		// 	}
-		// }
-
 		// Parse is_active (optional, default false)
 		if isActiveStr := ctx.PostForm("is_active"); isActiveStr != "" {
 			req.IsActive = isActiveStr == "true" || isActiveStr == "1"
@@ -61,30 +55,55 @@ func (c *HeroSectionController) Create(ctx *gin.Context) {
 			return
 		}
 
-		// Handle file upload
-		if file, err := ctx.FormFile("gambar"); err == nil {
+		// Handle gambar_id upload (required)
+		if file, err := ctx.FormFile("gambar_id"); err == nil {
 			if !utils.IsValidImageType(file) {
-				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file tidak didukung", nil)
+				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_id tidak didukung", nil)
 				return
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "hero-section", c.cfg)
 			if err != nil {
-				utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file: "+err.Error(), nil)
+				utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file gambar_id: "+err.Error(), nil)
 				return
 			}
-			gambarURL = &savedPath
+			gambarIDURL = &savedPath
+			req.GambarID = savedPath
 		} else {
-			utils.ErrorResponse(ctx, http.StatusBadRequest, "File gambar wajib diupload", nil)
+			utils.ErrorResponse(ctx, http.StatusBadRequest, "File gambar_id wajib diupload", nil)
 			return
 		}
 
-		req.Gambar = *gambarURL
+		// Handle gambar_en upload (optional)
+		if file, err := ctx.FormFile("gambar_en"); err == nil {
+			if !utils.IsValidImageType(file) {
+				// Rollback gambar_id if gambar_en is invalid
+				if gambarIDURL != nil {
+					utils.DeleteFile(*gambarIDURL, c.cfg)
+				}
+				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_en tidak didukung", nil)
+				return
+			}
+			savedPath, err := utils.SaveUploadedFile(file, "hero-section", c.cfg)
+			if err != nil {
+				// Rollback gambar_id if gambar_en upload fails
+				if gambarIDURL != nil {
+					utils.DeleteFile(*gambarIDURL, c.cfg)
+				}
+				utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file gambar_en: "+err.Error(), nil)
+				return
+			}
+			gambarENURL = &savedPath
+			req.GambarEN = &savedPath
+		}
 
 		result, err := c.service.Create(ctx.Request.Context(), &req)
 		if err != nil {
-			// Rollback: delete uploaded file if creation fails
-			if gambarURL != nil {
-				utils.DeleteFile(*gambarURL, c.cfg)
+			// Rollback: delete uploaded files if creation fails
+			if gambarIDURL != nil {
+				utils.DeleteFile(*gambarIDURL, c.cfg)
+			}
+			if gambarENURL != nil {
+				utils.DeleteFile(*gambarENURL, c.cfg)
 			}
 			utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 			return
@@ -141,8 +160,10 @@ func (c *HeroSectionController) Update(ctx *gin.Context) {
 	id := ctx.Param("id")
 
 	var req models.UpdateHeroSectionRequest
-	var gambarURL *string
-	var oldGambar *string
+	var gambarIDURL *string
+	var gambarENURL *string
+	var oldGambarID *string
+	var oldGambarEN *string
 
 	contentType := ctx.GetHeader("Content-Type")
 
@@ -154,50 +175,83 @@ func (c *HeroSectionController) Update(ctx *gin.Context) {
 			utils.ErrorResponse(ctx, http.StatusNotFound, "Hero section tidak ditemukan", nil)
 			return
 		}
-		oldGambar = &oldData.GambarURL.ID
+		oldGambarID = &oldData.GambarURL.ID
+		if oldData.GambarURL.EN != nil {
+			oldGambarEN = oldData.GambarURL.EN
+		}
 
 		// Parse form data
 		if nama := ctx.PostForm("nama"); nama != "" {
 			req.Nama = &nama
 		}
-		// if urutanStr := ctx.PostForm("urutan"); urutanStr != "" {
-		// 	if urutan, err := strconv.Atoi(urutanStr); err == nil {
-		// 		req.Urutan = &urutan
-		// 	}
-		// }
 		if isActiveStr := ctx.PostForm("is_active"); isActiveStr != "" {
 			isActive := isActiveStr == "true" || isActiveStr == "1"
 			req.IsActive = &isActive
 		}
+		if tm := ctx.PostForm("tanggal_mulai"); tm != "" {
+			req.TanggalMulai = &tm
+		}
+		if ts := ctx.PostForm("tanggal_selesai"); ts != "" {
+			req.TanggalSelesai = &ts
+		}
 
-		// Handle file upload (optional for update)
-		if file, err := ctx.FormFile("gambar"); err == nil {
+		// Handle gambar_id upload (optional for update)
+		if file, err := ctx.FormFile("gambar_id"); err == nil {
 			if !utils.IsValidImageType(file) {
-				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file tidak didukung", nil)
+				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_id tidak didukung", nil)
 				return
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "hero-section", c.cfg)
 			if err != nil {
-				utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file: "+err.Error(), nil)
+				utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file gambar_id: "+err.Error(), nil)
 				return
 			}
-			gambarURL = &savedPath
-			req.Gambar = gambarURL
+			gambarIDURL = &savedPath
+			req.GambarID = &savedPath
+		}
+
+		// Handle gambar_en upload (optional for update)
+		if file, err := ctx.FormFile("gambar_en"); err == nil {
+			if !utils.IsValidImageType(file) {
+				// Rollback gambar_id if gambar_en is invalid
+				if gambarIDURL != nil {
+					utils.DeleteFile(*gambarIDURL, c.cfg)
+				}
+				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_en tidak didukung", nil)
+				return
+			}
+			savedPath, err := utils.SaveUploadedFile(file, "hero-section", c.cfg)
+			if err != nil {
+				// Rollback gambar_id if gambar_en upload fails
+				if gambarIDURL != nil {
+					utils.DeleteFile(*gambarIDURL, c.cfg)
+				}
+				utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file gambar_en: "+err.Error(), nil)
+				return
+			}
+			gambarENURL = &savedPath
+			req.GambarEN = &savedPath
 		}
 
 		result, err := c.service.Update(ctx.Request.Context(), id, &req)
 		if err != nil {
-			// Rollback: delete newly uploaded file if update fails
-			if gambarURL != nil {
-				utils.DeleteFile(*gambarURL, c.cfg)
+			// Rollback: delete newly uploaded files if update fails
+			if gambarIDURL != nil {
+				utils.DeleteFile(*gambarIDURL, c.cfg)
+			}
+			if gambarENURL != nil {
+				utils.DeleteFile(*gambarENURL, c.cfg)
 			}
 			utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 			return
 		}
 
-		// Delete old file after successful update (only if new file was uploaded)
-		if gambarURL != nil && oldGambar != nil {
-			utils.DeleteFile(*oldGambar, c.cfg)
+		// Delete old files after successful update (only if new files were uploaded)
+		if gambarIDURL != nil && oldGambarID != nil {
+			utils.DeleteFile(*oldGambarID, c.cfg)
+		}
+		if gambarENURL != nil && oldGambarEN != nil {
+			utils.DeleteFile(*oldGambarEN, c.cfg)
 		}
 
 		utils.SuccessResponse(ctx, "Hero section berhasil diupdate", result)
