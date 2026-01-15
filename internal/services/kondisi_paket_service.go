@@ -29,7 +29,7 @@ func NewKondisiPaketService(repo repositories.KondisiPaketRepository) KondisiPak
 }
 
 func (s *kondisiPaketService) Create(ctx context.Context, req *models.CreateKondisiPaketRequest) (*models.KondisiPaketResponse, error) {
-	slug := utils.GenerateSlug(req.Nama)
+	slug := utils.GenerateSlug(req.NamaID)
 
 	exists, _ := s.repo.ExistsBySlug(ctx, slug, nil)
 	if exists {
@@ -37,7 +37,8 @@ func (s *kondisiPaketService) Create(ctx context.Context, req *models.CreateKond
 	}
 
 	kondisi := &models.KondisiPaket{
-		Nama:      req.Nama,
+		NamaID:    req.NamaID,
+		NamaEN:    req.NamaEN,
 		Slug:      slug,
 		Deskripsi: req.Deskripsi,
 		IsActive:  true,
@@ -94,14 +95,17 @@ func (s *kondisiPaketService) Update(ctx context.Context, id string, req *models
 		return nil, errors.New("kondisi paket tidak ditemukan")
 	}
 
-	if req.Nama != nil {
-		newSlug := utils.GenerateSlug(*req.Nama)
+	if req.NamaID != nil {
+		newSlug := utils.GenerateSlug(*req.NamaID)
 		exists, _ := s.repo.ExistsBySlug(ctx, newSlug, &id)
 		if exists {
 			return nil, errors.New("kondisi paket dengan nama tersebut sudah ada")
 		}
-		kondisi.Nama = *req.Nama
+		kondisi.NamaID = *req.NamaID
 		kondisi.Slug = newSlug
+	}
+	if req.NamaEN != nil {
+		kondisi.NamaEN = req.NamaEN
 	}
 	if req.Deskripsi != nil {
 		kondisi.Deskripsi = req.Deskripsi
@@ -155,7 +159,7 @@ func (s *kondisiPaketService) Reorder(ctx context.Context, req *models.ReorderRe
 func (s *kondisiPaketService) toResponse(k *models.KondisiPaket) *models.KondisiPaketResponse {
 	return &models.KondisiPaketResponse{
 		ID:        k.ID.String(),
-		Nama:      k.Nama,
+		Nama:      k.GetNama(),
 		Slug:      k.Slug,
 		Deskripsi: k.Deskripsi,
 		Urutan:    k.Urutan,
@@ -168,7 +172,7 @@ func (s *kondisiPaketService) toResponse(k *models.KondisiPaket) *models.Kondisi
 func (s *kondisiPaketService) toSimpleResponse(k *models.KondisiPaket) *models.KondisiPaketSimpleResponse {
 	return &models.KondisiPaketSimpleResponse{
 		ID:   k.ID.String(),
-		Nama: k.Nama,
+		Nama: k.GetNama(),
 		// Slug:         k.Slug,
 		// Deskripsi:    k.Deskripsi,
 		Urutan:   k.Urutan,

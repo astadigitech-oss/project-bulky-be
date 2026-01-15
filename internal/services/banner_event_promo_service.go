@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"time"
 
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
@@ -31,12 +32,13 @@ func NewBannerEventPromoService(repo repositories.BannerEventPromoRepository) Ba
 
 func (s *bannerEventPromoService) Create(ctx context.Context, req *models.CreateBannerEventPromoRequest) (*models.BannerEventPromoResponse, error) {
 	banner := &models.BannerEventPromo{
-		ID:        uuid.New(),
-		Nama:      req.Nama,
-		Gambar:    req.Gambar,
-		UrlTujuan: req.UrlTujuan,
-		Urutan:    req.Urutan,
-		IsActive:  req.IsActive,
+		ID:          uuid.New(),
+		Nama:        req.Nama,
+		GambarURLID: req.GambarID,
+		GambarURLEN: req.GambarEN,
+		LinkURL:     req.UrlTujuan,
+		Urutan:      req.Urutan,
+		IsActive:    req.IsActive,
 	}
 
 	if req.TanggalMulai != nil {
@@ -47,7 +49,7 @@ func (s *bannerEventPromoService) Create(ctx context.Context, req *models.Create
 
 	if req.TanggalSelesai != nil {
 		if t, err := parseFlexibleDate(*req.TanggalSelesai); err == nil {
-			banner.TanggalSelesai = &t
+			banner.TanggalAkhir = &t
 		}
 	}
 
@@ -93,11 +95,14 @@ func (s *bannerEventPromoService) Update(ctx context.Context, id string, req *mo
 	if req.Nama != nil {
 		banner.Nama = *req.Nama
 	}
-	if req.Gambar != nil {
-		banner.Gambar = *req.Gambar
+	if req.GambarID != nil {
+		banner.GambarURLID = *req.GambarID
+	}
+	if req.GambarEN != nil {
+		banner.GambarURLEN = req.GambarEN
 	}
 	if req.UrlTujuan != nil {
-		banner.UrlTujuan = req.UrlTujuan
+		banner.LinkURL = req.UrlTujuan
 	}
 	if req.Urutan != nil {
 		banner.Urutan = *req.Urutan
@@ -112,7 +117,7 @@ func (s *bannerEventPromoService) Update(ctx context.Context, id string, req *mo
 	}
 	if req.TanggalSelesai != nil {
 		if t, err := parseFlexibleDate(*req.TanggalSelesai); err == nil {
-			banner.TanggalSelesai = &t
+			banner.TanggalAkhir = &t
 		}
 	}
 
@@ -163,8 +168,8 @@ func (s *bannerEventPromoService) GetVisibleBanners(ctx context.Context) ([]mode
 		items = append(items, models.BannerEventPromoPublicResponse{
 			ID:        b.ID.String(),
 			Nama:      b.Nama,
-			Gambar:    b.Gambar,
-			UrlTujuan: b.UrlTujuan,
+			GambarURL: b.GetGambarURL(),
+			LinkURL:   b.LinkURL,
 		})
 	}
 
@@ -173,17 +178,16 @@ func (s *bannerEventPromoService) GetVisibleBanners(ctx context.Context) ([]mode
 
 func (s *bannerEventPromoService) toResponse(b *models.BannerEventPromo) *models.BannerEventPromoResponse {
 	return &models.BannerEventPromoResponse{
-		ID:        b.ID.String(),
-		Nama:      b.Nama,
-		Gambar:    b.Gambar,
-		UrlTujuan: b.UrlTujuan,
-		Urutan:    b.Urutan,
-		IsActive:  b.IsActive,
-		// IsVisible:      b.IsCurrentlyVisible(),
-		TanggalMulai:   b.TanggalMulai,
-		TanggalSelesai: b.TanggalSelesai,
-		CreatedAt:      b.CreatedAt,
-		UpdatedAt:      b.UpdatedAt,
+		ID:           b.ID.String(),
+		Nama:         b.Nama,
+		GambarURL:    b.GetGambarURL(),
+		LinkURL:      b.LinkURL,
+		Urutan:       b.Urutan,
+		IsActive:     b.IsActive,
+		TanggalMulai: b.TanggalMulai,
+		TanggalAkhir: b.TanggalAkhir,
+		CreatedAt:    b.CreatedAt,
+		UpdatedAt:    b.UpdatedAt,
 	}
 }
 
@@ -191,14 +195,31 @@ func (s *bannerEventPromoService) toSimpleResponse(b *models.BannerEventPromo) *
 	return &models.BannerEventPromoSimpleResponse{
 		ID:        b.ID.String(),
 		Nama:      b.Nama,
-		Gambar:    b.Gambar,
-		UrlTujuan: b.UrlTujuan,
-		Urutan:    b.Urutan,
+		GambarURL: b.GetGambarURL(),
+		LinkURL:   b.LinkURL,
+		// Urutan:    b.Urutan,
 		IsActive:  b.IsActive,
-		// IsVisible:      b.IsCurrentlyVisible(),
-		// TanggalMulai:   b.TanggalMulai,
-		// TanggalSelesai: b.TanggalSelesai,
-		// CreatedAt:      b.CreatedAt,
 		UpdatedAt: b.UpdatedAt,
 	}
+}
+
+// parseFlexibleDate parses date string in multiple formats
+// Supports: "2026-01-10" (date only) or "2026-01-10T00:00:00Z" (RFC3339)
+func parseFlexibleDate(dateStr string) (time.Time, error) {
+	// Try RFC3339 first (full datetime with timezone)
+	if t, err := time.Parse(time.RFC3339, dateStr); err == nil {
+		return t, nil
+	}
+
+	// Try date only format (yyyy-mm-dd)
+	if t, err := time.Parse("2006-01-02", dateStr); err == nil {
+		return t, nil
+	}
+
+	// Try datetime without timezone
+	if t, err := time.Parse("2006-01-02T15:04:05", dateStr); err == nil {
+		return t, nil
+	}
+
+	return time.Time{}, errors.New("format tanggal tidak valid, gunakan yyyy-mm-dd atau RFC3339")
 }

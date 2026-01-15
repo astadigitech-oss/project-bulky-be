@@ -50,7 +50,7 @@ func (s *masterService) GetDropdown(ctx context.Context) (*models.MasterDropdown
 		for _, k := range kategoris {
 			response.KategoriProduk = append(response.KategoriProduk, models.DropdownItem{
 				ID:   k.ID.String(),
-				Nama: k.Nama,
+				Nama: k.GetNama().ID,
 				Slug: k.Slug,
 			})
 		}
@@ -62,7 +62,7 @@ func (s *masterService) GetDropdown(ctx context.Context) (*models.MasterDropdown
 		for _, m := range mereks {
 			response.MerekProduk = append(response.MerekProduk, models.DropdownItem{
 				ID:   m.ID.String(),
-				Nama: m.Nama,
+				Nama: m.GetNama().ID,
 				Slug: m.Slug,
 			})
 		}
@@ -74,7 +74,7 @@ func (s *masterService) GetDropdown(ctx context.Context) (*models.MasterDropdown
 		for _, k := range kondisis {
 			response.KondisiProduk = append(response.KondisiProduk, models.DropdownItem{
 				ID:   k.ID.String(),
-				Nama: k.Nama,
+				Nama: k.GetNama().ID,
 				Slug: k.Slug,
 			})
 		}
@@ -86,7 +86,7 @@ func (s *masterService) GetDropdown(ctx context.Context) (*models.MasterDropdown
 		for _, p := range pakets {
 			response.KondisiPaket = append(response.KondisiPaket, models.DropdownItem{
 				ID:   p.ID.String(),
-				Nama: p.Nama,
+				Nama: p.GetNama().ID,
 				Slug: p.Slug,
 			})
 		}
@@ -98,7 +98,7 @@ func (s *masterService) GetDropdown(ctx context.Context) (*models.MasterDropdown
 		for _, sb := range sumbers {
 			response.SumberProduk = append(response.SumberProduk, models.DropdownItem{
 				ID:   sb.ID.String(),
-				Nama: sb.Nama,
+				Nama: sb.GetNama().ID,
 				Slug: sb.Slug,
 			})
 		}

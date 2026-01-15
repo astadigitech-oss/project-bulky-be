@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"errors"
-	"time"
 
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
@@ -32,24 +31,10 @@ func NewHeroSectionService(repo repositories.HeroSectionRepository) HeroSectionS
 
 func (s *heroSectionService) Create(ctx context.Context, req *models.CreateHeroSectionRequest) (*models.HeroSectionResponse, error) {
 	hero := &models.HeroSection{
-		ID:     uuid.New(),
-		Nama:   req.Nama,
-		Gambar: req.Gambar,
-		// Urutan:   req.Urutan,
-		IsActive: req.IsActive,
-		// IsActive: true,
-	}
-
-	if req.TanggalMulai != nil {
-		if t, err := parseFlexibleDate(*req.TanggalMulai); err == nil {
-			hero.TanggalMulai = &t
-		}
-	}
-
-	if req.TanggalSelesai != nil {
-		if t, err := parseFlexibleDate(*req.TanggalSelesai); err == nil {
-			hero.TanggalSelesai = &t
-		}
+		ID:          uuid.New(),
+		Nama:        req.Nama,
+		GambarURLID: req.Gambar,
+		IsActive:    req.IsActive,
 	}
 
 	if err := s.repo.Create(ctx, hero); err != nil {
@@ -95,23 +80,10 @@ func (s *heroSectionService) Update(ctx context.Context, id string, req *models.
 		hero.Nama = *req.Nama
 	}
 	if req.Gambar != nil {
-		hero.Gambar = *req.Gambar
+		hero.GambarURLID = *req.Gambar
 	}
-	// if req.Urutan != nil {
-	// 	hero.Urutan = *req.Urutan
-	// }
 	if req.IsActive != nil {
 		hero.IsActive = *req.IsActive
-	}
-	if req.TanggalMulai != nil {
-		if t, err := parseFlexibleDate(*req.TanggalMulai); err == nil {
-			hero.TanggalMulai = &t
-		}
-	}
-	if req.TanggalSelesai != nil {
-		if t, err := parseFlexibleDate(*req.TanggalSelesai); err == nil {
-			hero.TanggalSelesai = &t
-		}
 	}
 
 	if err := s.repo.Update(ctx, hero); err != nil {
@@ -157,59 +129,34 @@ func (s *heroSectionService) GetVisibleHero(ctx context.Context) (*models.HeroSe
 	}
 
 	return &models.HeroSectionPublicResponse{
-		ID:     hero.ID.String(),
-		Nama:   hero.Nama,
-		Gambar: hero.Gambar,
+		ID:        hero.ID.String(),
+		Nama:      hero.Nama,
+		GambarURL: hero.GetGambarURL(),
+		LinkURL:   hero.LinkURL,
 	}, nil
 }
 
 func (s *heroSectionService) toResponse(h *models.HeroSection) *models.HeroSectionResponse {
 	return &models.HeroSectionResponse{
-		ID:     h.ID.String(),
-		Nama:   h.Nama,
-		Gambar: h.Gambar,
-		// Urutan:   h.Urutan,
-		IsActive: h.IsActive,
-		// IsVisible:      h.IsCurrentlyVisible(),
-		TanggalMulai:   h.TanggalMulai,
-		TanggalSelesai: h.TanggalSelesai,
-		CreatedAt:      h.CreatedAt,
-		UpdatedAt:      h.UpdatedAt,
+		ID:        h.ID.String(),
+		Nama:      h.Nama,
+		GambarURL: h.GetGambarURL(),
+		LinkURL:   h.LinkURL,
+		Urutan:    h.Urutan,
+		IsActive:  h.IsActive,
+		CreatedAt: h.CreatedAt,
+		UpdatedAt: h.UpdatedAt,
 	}
 }
 
 func (s *heroSectionService) toSimpleResponse(h *models.HeroSection) *models.HeroSectionSimpleResponse {
 	return &models.HeroSectionSimpleResponse{
-		ID:     h.ID.String(),
-		Nama:   h.Nama,
-		Gambar: h.Gambar,
-		// Urutan:   h.Urutan,
-		IsActive: h.IsActive,
-		// IsVisible:      h.IsCurrentlyVisible(),
-		// TanggalMulai:   h.TanggalMulai,
-		// TanggalSelesai: h.TanggalSelesai,
-		// CreatedAt:      h.CreatedAt,
+		ID:        h.ID.String(),
+		Nama:      h.Nama,
+		GambarURL: h.GetGambarURL(),
+		LinkURL:   h.LinkURL,
+		Urutan:    h.Urutan,
+		IsActive:  h.IsActive,
 		UpdatedAt: h.UpdatedAt,
 	}
-}
-
-// parseFlexibleDate parses date string in multiple formats
-// Supports: "2026-01-10" (date only) or "2026-01-10T00:00:00Z" (RFC3339)
-func parseFlexibleDate(dateStr string) (time.Time, error) {
-	// Try RFC3339 first (full datetime with timezone)
-	if t, err := time.Parse(time.RFC3339, dateStr); err == nil {
-		return t, nil
-	}
-
-	// Try date only format (yyyy-mm-dd)
-	if t, err := time.Parse("2006-01-02", dateStr); err == nil {
-		return t, nil
-	}
-
-	// Try datetime without timezone
-	if t, err := time.Parse("2006-01-02T15:04:05", dateStr); err == nil {
-		return t, nil
-	}
-
-	return time.Time{}, errors.New("format tanggal tidak valid, gunakan yyyy-mm-dd atau RFC3339")
 }

@@ -28,7 +28,7 @@ func NewSumberProdukService(repo repositories.SumberProdukRepository) SumberProd
 }
 
 func (s *sumberProdukService) Create(ctx context.Context, req *models.CreateSumberProdukRequest) (*models.SumberProdukResponse, error) {
-	slug := utils.GenerateSlug(req.Nama)
+	slug := utils.GenerateSlug(req.NamaID)
 
 	exists, _ := s.repo.ExistsBySlug(ctx, slug, nil)
 	if exists {
@@ -36,7 +36,8 @@ func (s *sumberProdukService) Create(ctx context.Context, req *models.CreateSumb
 	}
 
 	sumber := &models.SumberProduk{
-		Nama:      req.Nama,
+		NamaID:    req.NamaID,
+		NamaEN:    req.NamaEN,
 		Slug:      slug,
 		Deskripsi: req.Deskripsi,
 		IsActive:  true,
@@ -89,14 +90,17 @@ func (s *sumberProdukService) Update(ctx context.Context, id string, req *models
 		return nil, errors.New("sumber produk tidak ditemukan")
 	}
 
-	if req.Nama != nil {
-		newSlug := utils.GenerateSlug(*req.Nama)
+	if req.NamaID != nil {
+		newSlug := utils.GenerateSlug(*req.NamaID)
 		exists, _ := s.repo.ExistsBySlug(ctx, newSlug, &id)
 		if exists {
 			return nil, errors.New("sumber produk dengan nama tersebut sudah ada")
 		}
-		sumber.Nama = *req.Nama
+		sumber.NamaID = *req.NamaID
 		sumber.Slug = newSlug
+	}
+	if req.NamaEN != nil {
+		sumber.NamaEN = req.NamaEN
 	}
 	if req.Deskripsi != nil {
 		sumber.Deskripsi = req.Deskripsi
@@ -143,7 +147,7 @@ func (s *sumberProdukService) ToggleStatus(ctx context.Context, id string) (*mod
 func (s *sumberProdukService) toResponse(sb *models.SumberProduk) *models.SumberProdukResponse {
 	return &models.SumberProdukResponse{
 		ID:        sb.ID.String(),
-		Nama:      sb.Nama,
+		Nama:      sb.GetNama(),
 		Slug:      sb.Slug,
 		Deskripsi: sb.Deskripsi,
 		IsActive:  sb.IsActive,
@@ -155,7 +159,7 @@ func (s *sumberProdukService) toResponse(sb *models.SumberProduk) *models.Sumber
 func (s *sumberProdukService) toSimpleResponse(sb *models.SumberProduk) *models.SumberProdukSimpleResponse {
 	return &models.SumberProdukSimpleResponse{
 		ID:   sb.ID.String(),
-		Nama: sb.Nama,
+		Nama: sb.GetNama(),
 		// Slug:      sb.Slug,
 		// Deskripsi: sb.Deskripsi,
 		IsActive: sb.IsActive,

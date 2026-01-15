@@ -193,7 +193,7 @@ func (s *diskonKategoriService) toResponse(d *models.DiskonKategori) *models.Dis
 		ID: d.ID.String(),
 		Kategori: models.DiskonKategoriKategoriInfo{
 			ID:   d.Kategori.ID.String(),
-			Nama: d.Kategori.Nama,
+			Nama: d.Kategori.GetNama().ID,
 			Slug: d.Kategori.Slug,
 		},
 		PersentaseDiskon: d.PersentaseDiskon,

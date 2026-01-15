@@ -35,7 +35,7 @@ func NewKategoriProdukService(repo repositories.KategoriProdukRepository, cfg *c
 }
 
 func (s *kategoriProdukService) Create(ctx context.Context, req *models.CreateKategoriProdukRequest) (*models.KategoriProdukResponse, error) {
-	slug := utils.GenerateSlug(req.Nama)
+	slug := utils.GenerateSlug(req.NamaID)
 
 	exists, _ := s.repo.ExistsBySlug(ctx, slug, nil)
 	if exists {
@@ -43,7 +43,8 @@ func (s *kategoriProdukService) Create(ctx context.Context, req *models.CreateKa
 	}
 
 	kategori := &models.KategoriProduk{
-		Nama:                    req.Nama,
+		NamaID:                  req.NamaID,
+		NamaEN:                  req.NamaEN,
 		Slug:                    slug,
 		Deskripsi:               req.Deskripsi,
 		MemilikiKondisiTambahan: req.MemilikiKondisiTambahan,
@@ -60,7 +61,7 @@ func (s *kategoriProdukService) Create(ctx context.Context, req *models.CreateKa
 }
 
 func (s *kategoriProdukService) CreateWithIcon(ctx context.Context, req *models.CreateKategoriProdukRequest, iconURL, gambarKondisiURL *string) (*models.KategoriProdukResponse, error) {
-	slug := utils.GenerateSlug(req.Nama)
+	slug := utils.GenerateSlug(req.NamaID)
 
 	exists, _ := s.repo.ExistsBySlug(ctx, slug, nil)
 	if exists {
@@ -68,7 +69,8 @@ func (s *kategoriProdukService) CreateWithIcon(ctx context.Context, req *models.
 	}
 
 	kategori := &models.KategoriProduk{
-		Nama:                    req.Nama,
+		NamaID:                  req.NamaID,
+		NamaEN:                  req.NamaEN,
 		Slug:                    slug,
 		Deskripsi:               req.Deskripsi,
 		IconURL:                 iconURL,
@@ -110,14 +112,22 @@ func (s *kategoriProdukService) FindAll(ctx context.Context, params *models.Kate
 		return nil, nil, err
 	}
 
-	// Ensure empty array instead of null
-	if kategoris == nil {
-		kategoris = []models.KategoriProdukSimpleResponse{}
+	// Map entities to simple response
+	items := []models.KategoriProdukSimpleResponse{}
+	for _, k := range kategoris {
+		items = append(items, models.KategoriProdukSimpleResponse{
+			ID:                      k.ID.String(),
+			Nama:                    k.GetNama(),
+			IconURL:                 k.IconURL,
+			MemilikiKondisiTambahan: k.MemilikiKondisiTambahan,
+			IsActive:                k.IsActive,
+			UpdatedAt:               k.UpdatedAt,
+		})
 	}
 
 	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
 
-	return kategoris, &meta, nil
+	return items, &meta, nil
 }
 
 func (s *kategoriProdukService) Update(ctx context.Context, id string, req *models.UpdateKategoriProdukRequest) (*models.KategoriProdukResponse, error) {
@@ -126,14 +136,17 @@ func (s *kategoriProdukService) Update(ctx context.Context, id string, req *mode
 		return nil, errors.New("kategori produk tidak ditemukan")
 	}
 
-	if req.Nama != nil {
-		newSlug := utils.GenerateSlug(*req.Nama)
+	if req.NamaID != nil {
+		newSlug := utils.GenerateSlug(*req.NamaID)
 		exists, _ := s.repo.ExistsBySlug(ctx, newSlug, &id)
 		if exists {
 			return nil, errors.New("kategori dengan nama tersebut sudah ada")
 		}
-		kategori.Nama = *req.Nama
+		kategori.NamaID = *req.NamaID
 		kategori.Slug = newSlug
+	}
+	if req.NamaEN != nil {
+		kategori.NamaEN = req.NamaEN
 	}
 	if req.Deskripsi != nil {
 		kategori.Deskripsi = req.Deskripsi
@@ -165,14 +178,17 @@ func (s *kategoriProdukService) UpdateWithIcon(ctx context.Context, id string, r
 	}
 
 	// Update text fields
-	if req.Nama != nil {
-		newSlug := utils.GenerateSlug(*req.Nama)
+	if req.NamaID != nil {
+		newSlug := utils.GenerateSlug(*req.NamaID)
 		exists, _ := s.repo.ExistsBySlug(ctx, newSlug, &id)
 		if exists {
 			return nil, errors.New("kategori dengan nama tersebut sudah ada")
 		}
-		kategori.Nama = *req.Nama
+		kategori.NamaID = *req.NamaID
 		kategori.Slug = newSlug
+	}
+	if req.NamaEN != nil {
+		kategori.NamaEN = req.NamaEN
 	}
 	if req.Deskripsi != nil {
 		kategori.Deskripsi = req.Deskripsi
@@ -244,7 +260,7 @@ func (s *kategoriProdukService) ToggleStatus(ctx context.Context, id string) (*m
 func (s *kategoriProdukService) toResponse(k *models.KategoriProduk) *models.KategoriProdukResponse {
 	return &models.KategoriProdukResponse{
 		ID:                      k.ID.String(),
-		Nama:                    k.Nama,
+		Nama:                    k.GetNama(),
 		Slug:                    k.Slug,
 		Deskripsi:               k.Deskripsi,
 		IconURL:                 k.IconURL,

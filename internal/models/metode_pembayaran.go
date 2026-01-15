@@ -47,16 +47,39 @@ type UpdateMetodePembayaranRequest struct {
 }
 
 // Response DTOs
+type MetodePembayaranGroupSimple struct {
+	ID   string `json:"id"`
+	Nama string `json:"nama"`
+}
+
+type MetodePembayaranListResponse struct {
+	ID        string                      `json:"id"`
+	Nama      string                      `json:"nama"`
+	Kode      string                      `json:"kode"`
+	Logo      *string                     `json:"logo,omitempty"`
+	Urutan    int                         `json:"urutan"`
+	IsActive  bool                        `json:"is_active"`
+	Group     MetodePembayaranGroupSimple `json:"group"`
+	UpdatedAt time.Time                   `json:"updated_at"`
+}
+
+type MetodePembayaranDetailResponse struct {
+	ID        string                      `json:"id"`
+	Nama      string                      `json:"nama"`
+	Kode      string                      `json:"kode"`
+	Logo      *string                     `json:"logo,omitempty"`
+	Urutan    int                         `json:"urutan"`
+	IsActive  bool                        `json:"is_active"`
+	Group     MetodePembayaranGroupSimple `json:"group"`
+	CreatedAt time.Time                   `json:"created_at"`
+	UpdatedAt time.Time                   `json:"updated_at"`
+}
+
 type MetodePembayaranResponse struct {
-	ID        string                         `json:"id"`
-	GroupID   string                         `json:"group_id"`
-	Nama      string                         `json:"nama"`
-	Kode      string                         `json:"kode"`
-	Logo      *string                        `json:"logo"`
-	LogoURL   *string                        `json:"logo_url,omitempty"`
-	Urutan    int                            `json:"urutan"`
-	IsActive  bool                           `json:"is_active"`
-	CreatedAt time.Time                      `json:"created_at"`
-	UpdatedAt time.Time                      `json:"updated_at"`
-	Group     *MetodePembayaranGroupResponse `json:"group,omitempty"`
+	ID       string  `json:"id"`
+	Nama     string  `json:"nama"`
+	Kode     string  `json:"kode"`
+	Logo     *string `json:"logo,omitempty"`
+	Urutan   int     `json:"urutan"`
+	IsActive bool    `json:"is_active"`
 }

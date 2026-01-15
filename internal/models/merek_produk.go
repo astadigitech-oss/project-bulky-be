@@ -9,15 +9,24 @@ import (
 
 type MerekProduk struct {
 	ID        uuid.UUID      `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
-	Nama      string         `gorm:"type:varchar(100);not null" json:"nama"`
+	NamaID    string         `gorm:"column:nama_id;type:varchar(100);not null" json:"-"`
+	NamaEN    *string        `gorm:"column:nama_en;type:varchar(100)" json:"-"`
 	Slug      string         `gorm:"type:varchar(120);uniqueIndex;not null" json:"slug"`
-	LogoURL   *string        `gorm:"type:varchar(500);column:logo_url" json:"logo_url"`
+	LogoURL   *string        `gorm:"type:varchar(500);column:logo_url" json:"logo_url,omitempty"`
 	IsActive  bool           `gorm:"default:true" json:"is_active"`
 	CreatedAt time.Time      `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 }
 
 func (MerekProduk) TableName() string {
 	return "merek_produk"
+}
+
+// Getter untuk nested response
+func (m *MerekProduk) GetNama() TranslatableString {
+	return TranslatableString{
+		ID: m.NamaID,
+		EN: m.NamaEN,
+	}
 }

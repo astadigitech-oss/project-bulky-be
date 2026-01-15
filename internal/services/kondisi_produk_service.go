@@ -29,7 +29,7 @@ func NewKondisiProdukService(repo repositories.KondisiProdukRepository) KondisiP
 }
 
 func (s *kondisiProdukService) Create(ctx context.Context, req *models.CreateKondisiProdukRequest) (*models.KondisiProdukResponse, error) {
-	slug := utils.GenerateSlug(req.Nama)
+	slug := utils.GenerateSlug(req.NamaID)
 
 	exists, _ := s.repo.ExistsBySlug(ctx, slug, nil)
 	if exists {
@@ -37,7 +37,8 @@ func (s *kondisiProdukService) Create(ctx context.Context, req *models.CreateKon
 	}
 
 	kondisi := &models.KondisiProduk{
-		Nama:      req.Nama,
+		NamaID:    req.NamaID,
+		NamaEN:    req.NamaEN,
 		Slug:      slug,
 		Deskripsi: req.Deskripsi,
 		IsActive:  true,
@@ -94,14 +95,17 @@ func (s *kondisiProdukService) Update(ctx context.Context, id string, req *model
 		return nil, errors.New("kondisi produk tidak ditemukan")
 	}
 
-	if req.Nama != nil {
-		newSlug := utils.GenerateSlug(*req.Nama)
+	if req.NamaID != nil {
+		newSlug := utils.GenerateSlug(*req.NamaID)
 		exists, _ := s.repo.ExistsBySlug(ctx, newSlug, &id)
 		if exists {
 			return nil, errors.New("kondisi produk dengan nama tersebut sudah ada")
 		}
-		kondisi.Nama = *req.Nama
+		kondisi.NamaID = *req.NamaID
 		kondisi.Slug = newSlug
+	}
+	if req.NamaEN != nil {
+		kondisi.NamaEN = req.NamaEN
 	}
 	if req.Deskripsi != nil {
 		kondisi.Deskripsi = req.Deskripsi
@@ -163,7 +167,7 @@ func (s *kondisiProdukService) Reorder(ctx context.Context, req *models.ReorderR
 func (s *kondisiProdukService) toResponse(k *models.KondisiProduk) *models.KondisiProdukResponse {
 	return &models.KondisiProdukResponse{
 		ID:        k.ID.String(),
-		Nama:      k.Nama,
+		Nama:      k.GetNama(),
 		Slug:      k.Slug,
 		Deskripsi: k.Deskripsi,
 		Urutan:    k.Urutan,
@@ -177,7 +181,7 @@ func (s *kondisiProdukService) toResponse(k *models.KondisiProduk) *models.Kondi
 func (s *kondisiProdukService) toSimpleResponse(k *models.KondisiProduk) *models.KondisiProdukSimpleResponse {
 	return &models.KondisiProdukSimpleResponse{
 		ID:   k.ID.String(),
-		Nama: k.Nama,
+		Nama: k.GetNama(),
 		// Slug:         k.Slug,
 		// Deskripsi:    k.Deskripsi,
 		Urutan:   k.Urutan,

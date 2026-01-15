@@ -154,17 +154,11 @@ func (c *HeroSectionController) Update(ctx *gin.Context) {
 			utils.ErrorResponse(ctx, http.StatusNotFound, "Hero section tidak ditemukan", nil)
 			return
 		}
-		oldGambar = &oldData.Gambar
+		oldGambar = &oldData.GambarURL.ID
 
 		// Parse form data
 		if nama := ctx.PostForm("nama"); nama != "" {
 			req.Nama = &nama
-		}
-		if tm := ctx.PostForm("tanggal_mulai"); tm != "" {
-			req.TanggalMulai = &tm
-		}
-		if ts := ctx.PostForm("tanggal_selesai"); ts != "" {
-			req.TanggalSelesai = &ts
 		}
 		// if urutanStr := ctx.PostForm("urutan"); urutanStr != "" {
 		// 	if urutan, err := strconv.Atoi(urutanStr); err == nil {

@@ -34,6 +34,8 @@ func SetupRoutes(
 	modeMaintenanceController *controllers.ModeMaintenanceController,
 	appStatusController *controllers.AppStatusController,
 	ppnController *controllers.PPNController,
+	metodePembayaranGroupController *controllers.MetodePembayaranGroupController,
+	metodePembayaranController *controllers.MetodePembayaranController,
 ) {
 	// Health check
 	router.GET("/api/health", func(c *gin.Context) {
@@ -243,8 +245,7 @@ func SetupRoutes(
 		tipeProdukPublic := v1.Group("/tipe-produk")
 		{
 			tipeProdukPublic.GET("", tipeProdukController.FindAll)
-			tipeProdukPublic.GET("/:id", tipeProdukController.FindByID)
-			// tipeProdukPublic.GET("/slug/:slug", tipeProdukController.FindBySlug)
+			tipeProdukPublic.GET("/with-produk", tipeProdukController.FindAllWithProduk)
 		}
 
 		// Diskon Kategori - Public (Read Only)
@@ -444,6 +445,32 @@ func SetupRoutes(
 			ppnAdmin.PUT("/:id", middleware.RequirePermission("system:manage"), ppnController.Update)
 			ppnAdmin.DELETE("/:id", middleware.RequirePermission("system:manage"), ppnController.Delete)
 			ppnAdmin.PATCH("/:id/set-active", middleware.RequirePermission("system:manage"), ppnController.SetActive)
+		}
+
+		// Metode Pembayaran Group - Admin Only
+		metodePembayaranGroupAdmin := v1.Group("/panel/metode-pembayaran-group")
+		metodePembayaranGroupAdmin.Use(middleware.AuthMiddleware())
+		metodePembayaranGroupAdmin.Use(middleware.AdminOnly())
+		{
+			metodePembayaranGroupAdmin.GET("", middleware.RequirePermission("pembayaran:read"), metodePembayaranGroupController.GetAll)
+			metodePembayaranGroupAdmin.GET("/:id", middleware.RequirePermission("pembayaran:read"), metodePembayaranGroupController.GetByID)
+			metodePembayaranGroupAdmin.POST("", middleware.RequirePermission("pembayaran:manage"), metodePembayaranGroupController.Create)
+			metodePembayaranGroupAdmin.PUT("/:id", middleware.RequirePermission("pembayaran:manage"), metodePembayaranGroupController.Update)
+			metodePembayaranGroupAdmin.DELETE("/:id", middleware.RequirePermission("pembayaran:manage"), metodePembayaranGroupController.Delete)
+			metodePembayaranGroupAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("pembayaran:manage"), metodePembayaranGroupController.ToggleStatus)
+		}
+
+		// Metode Pembayaran - Admin Only
+		metodePembayaranAdmin := v1.Group("/panel/metode-pembayaran")
+		metodePembayaranAdmin.Use(middleware.AuthMiddleware())
+		metodePembayaranAdmin.Use(middleware.AdminOnly())
+		{
+			metodePembayaranAdmin.GET("", middleware.RequirePermission("pembayaran:read"), metodePembayaranController.GetAll)
+			metodePembayaranAdmin.GET("/:id", middleware.RequirePermission("pembayaran:read"), metodePembayaranController.GetByID)
+			metodePembayaranAdmin.POST("", middleware.RequirePermission("pembayaran:manage"), metodePembayaranController.Create)
+			metodePembayaranAdmin.PUT("/:id", middleware.RequirePermission("pembayaran:manage"), metodePembayaranController.Update)
+			metodePembayaranAdmin.DELETE("/:id", middleware.RequirePermission("pembayaran:manage"), metodePembayaranController.Delete)
+			metodePembayaranAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("pembayaran:manage"), metodePembayaranController.ToggleStatus)
 		}
 	}
 
