@@ -27,7 +27,8 @@ func NewBannerEventPromoController(service services.BannerEventPromoService, cfg
 
 func (c *BannerEventPromoController) Create(ctx *gin.Context) {
 	var req models.CreateBannerEventPromoRequest
-	var gambarURL *string
+	var gambarIDURL *string
+	var gambarENURL *string
 
 	contentType := ctx.GetHeader("Content-Type")
 
@@ -68,30 +69,48 @@ func (c *BannerEventPromoController) Create(ctx *gin.Context) {
 			return
 		}
 
-		// Handle file upload
-		if file, err := ctx.FormFile("gambar"); err == nil {
+		// Handle gambar_id upload (required)
+		if file, err := ctx.FormFile("gambar_id"); err == nil {
 			if !utils.IsValidImageType(file) {
-				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file tidak didukung", nil)
+				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_id tidak didukung", nil)
 				return
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "banner-event-promo", c.cfg)
 			if err != nil {
-				utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file: "+err.Error(), nil)
+				utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file gambar_id: "+err.Error(), nil)
 				return
 			}
-			gambarURL = &savedPath
+			gambarIDURL = &savedPath
 		} else {
-			utils.ErrorResponse(ctx, http.StatusBadRequest, "File gambar wajib diupload", nil)
+			utils.ErrorResponse(ctx, http.StatusBadRequest, "File gambar_id wajib diupload", nil)
 			return
 		}
 
-		req.Gambar = *gambarURL
+		// Handle gambar_en upload (optional)
+		if file, err := ctx.FormFile("gambar_en"); err == nil {
+			if !utils.IsValidImageType(file) {
+				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_en tidak didukung", nil)
+				return
+			}
+			savedPath, err := utils.SaveUploadedFile(file, "banner-event-promo", c.cfg)
+			if err != nil {
+				utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file gambar_en: "+err.Error(), nil)
+				return
+			}
+			gambarENURL = &savedPath
+		}
+
+		req.GambarID = *gambarIDURL
+		req.GambarEN = gambarENURL
 
 		result, err := c.service.Create(ctx.Request.Context(), &req)
 		if err != nil {
-			// Rollback: delete uploaded file if creation fails
-			if gambarURL != nil {
-				utils.DeleteFile(*gambarURL, c.cfg)
+			// Rollback: delete uploaded files if creation fails
+			if gambarIDURL != nil {
+				utils.DeleteFile(*gambarIDURL, c.cfg)
+			}
+			if gambarENURL != nil {
+				utils.DeleteFile(*gambarENURL, c.cfg)
 			}
 			utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 			return
@@ -161,7 +180,7 @@ func (c *BannerEventPromoController) Update(ctx *gin.Context) {
 			utils.ErrorResponse(ctx, http.StatusNotFound, "Banner tidak ditemukan", nil)
 			return
 		}
-		oldGambar = &oldData.Gambar
+		oldGambar = &oldData.GambarURL.ID
 
 		// Parse form data
 		if nama := ctx.PostForm("nama"); nama != "" {
@@ -186,19 +205,35 @@ func (c *BannerEventPromoController) Update(ctx *gin.Context) {
 			req.IsActive = &isActive
 		}
 
-		// Handle file upload (optional for update)
-		if file, err := ctx.FormFile("gambar"); err == nil {
+		// Handle gambar_id upload (optional for update)
+		if file, err := ctx.FormFile("gambar_id"); err == nil {
 			if !utils.IsValidImageType(file) {
-				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file tidak didukung", nil)
+				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_id tidak didukung", nil)
 				return
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "banner-event-promo", c.cfg)
 			if err != nil {
-				utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file: "+err.Error(), nil)
+				utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file gambar_id: "+err.Error(), nil)
 				return
 			}
 			gambarURL = &savedPath
-			req.Gambar = gambarURL
+			req.GambarID = gambarURL
+		}
+
+		// Handle gambar_en upload (optional for update)
+		var gambarENURL *string
+		if file, err := ctx.FormFile("gambar_en"); err == nil {
+			if !utils.IsValidImageType(file) {
+				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_en tidak didukung", nil)
+				return
+			}
+			savedPath, err := utils.SaveUploadedFile(file, "banner-event-promo", c.cfg)
+			if err != nil {
+				utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file gambar_en: "+err.Error(), nil)
+				return
+			}
+			gambarENURL = &savedPath
+			req.GambarEN = gambarENURL
 		}
 
 		result, err := c.service.Update(ctx.Request.Context(), id, &req)

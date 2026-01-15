@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"time"
 
 	"project-bulky-be/internal/models"
 
@@ -50,7 +51,14 @@ func (r *merekProdukRepository) FindBySlug(ctx context.Context, slug string) (*m
 }
 
 func (r *merekProdukRepository) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.MerekProdukSimpleResponse, int64, error) {
-	var mereks []models.MerekProdukSimpleResponse
+	var mereks []struct {
+		ID        string    `json:"id"`
+		NamaID    string    `json:"nama_id"`
+		NamaEN    *string   `json:"nama_en"`
+		LogoURL   *string   `json:"logo_url"`
+		IsActive  bool      `json:"is_active"`
+		UpdatedAt time.Time `json:"updated_at"`
+	}
 	var total int64
 
 	// Base query with simplified fields for list view
@@ -58,7 +66,8 @@ func (r *merekProdukRepository) FindAll(ctx context.Context, params *models.Pagi
 		Model(&models.MerekProduk{}).
 		Select(`
 			id,
-			nama,
+			nama_id,
+			nama_en,
 			logo_url,
 			is_active,
 			updated_at
@@ -66,7 +75,7 @@ func (r *merekProdukRepository) FindAll(ctx context.Context, params *models.Pagi
 
 	// Search filter
 	if params.Search != "" {
-		query = query.Where("nama ILIKE ?", "%"+params.Search+"%")
+		query = query.Where("nama_id ILIKE ? OR nama_en ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")
 	}
 
 	// IsActive filter
@@ -82,7 +91,7 @@ func (r *merekProdukRepository) FindAll(ctx context.Context, params *models.Pagi
 	// Valid sort fields for list response
 	validSortFields := map[string]bool{
 		"id":         true,
-		"nama":       true,
+		"nama_id":    true,
 		"logo_url":   true,
 		"is_active":  true,
 		"updated_at": true,
@@ -91,7 +100,7 @@ func (r *merekProdukRepository) FindAll(ctx context.Context, params *models.Pagi
 	// Validate sort_by field
 	sortBy := params.SortBy
 	if !validSortFields[sortBy] {
-		sortBy = "nama" // Default sort field
+		sortBy = "nama_id" // Default sort field
 	}
 
 	// Validate order direction
@@ -108,7 +117,22 @@ func (r *merekProdukRepository) FindAll(ctx context.Context, params *models.Pagi
 		return nil, 0, err
 	}
 
-	return mereks, total, nil
+	// Convert to response format
+	responses := make([]models.MerekProdukSimpleResponse, len(mereks))
+	for i, m := range mereks {
+		responses[i] = models.MerekProdukSimpleResponse{
+			ID: m.ID,
+			Nama: models.TranslatableString{
+				ID: m.NamaID,
+				EN: m.NamaEN,
+			},
+			LogoURL:   m.LogoURL,
+			IsActive:  m.IsActive,
+			UpdatedAt: m.UpdatedAt,
+		}
+	}
+
+	return responses, total, nil
 }
 
 func (r *merekProdukRepository) Update(ctx context.Context, merek *models.MerekProduk) error {

@@ -34,11 +34,14 @@ func (c *MerekProdukController) Create(ctx *gin.Context) {
 	// Handle multipart/form-data (with file upload)
 	if strings.Contains(contentType, "multipart/form-data") {
 		// Parse form data
-		req.Nama = ctx.PostForm("nama")
+		req.NamaID = ctx.PostForm("nama_id")
+		if namaEN := ctx.PostForm("nama_en"); namaEN != "" {
+			req.NamaEN = &namaEN
+		}
 
 		// Validate required field
-		if req.Nama == "" {
-			utils.ErrorResponse(ctx, http.StatusBadRequest, "Nama merek wajib diisi", nil)
+		if req.NamaID == "" {
+			utils.ErrorResponse(ctx, http.StatusBadRequest, "Nama merek (Indonesia) wajib diisi", nil)
 			return
 		}
 
@@ -135,8 +138,11 @@ func (c *MerekProdukController) Update(ctx *gin.Context) {
 	// Handle multipart/form-data (with file upload)
 	if strings.Contains(contentType, "multipart/form-data") {
 		// Parse form data
-		if nama := ctx.PostForm("nama"); nama != "" {
-			req.Nama = &nama
+		if namaID := ctx.PostForm("nama_id"); namaID != "" {
+			req.NamaID = &namaID
+		}
+		if namaEN := ctx.PostForm("nama_en"); namaEN != "" {
+			req.NamaEN = &namaEN
 		}
 		if isActiveStr := ctx.PostForm("is_active"); isActiveStr != "" {
 			isActive := isActiveStr == "true"

@@ -259,17 +259,17 @@ func (s *produkService) toListResponse(p *models.Produk) *models.ProdukListRespo
 		IDCargo: p.IDCargo,
 		Kategori: models.ProdukRelationInfo{
 			ID:   p.Kategori.ID.String(),
-			Nama: p.Kategori.Nama,
+			Nama: p.Kategori.GetNama().ID,
 			Slug: p.Kategori.Slug,
 		},
 		Kondisi: models.ProdukRelationInfo{
 			ID:   p.Kondisi.ID.String(),
-			Nama: p.Kondisi.Nama,
+			Nama: p.Kondisi.GetNama().ID,
 			Slug: p.Kondisi.Slug,
 		},
 		KondisiPaket: models.ProdukRelationInfo{
 			ID:   p.KondisiPaket.ID.String(),
-			Nama: p.KondisiPaket.Nama,
+			Nama: p.KondisiPaket.GetNama().ID,
 			Slug: p.KondisiPaket.Slug,
 		},
 		Warehouse: models.ProdukRelationInfo{
@@ -295,14 +295,14 @@ func (s *produkService) toListResponse(p *models.Produk) *models.ProdukListRespo
 	if p.Merek != nil {
 		resp.Merek = &models.ProdukRelationInfo{
 			ID:   p.Merek.ID.String(),
-			Nama: p.Merek.Nama,
+			Nama: p.Merek.GetNama().ID,
 			Slug: p.Merek.Slug,
 		}
 	}
 	if p.Sumber != nil {
 		resp.Sumber = &models.ProdukRelationInfo{
 			ID:   p.Sumber.ID.String(),
-			Nama: p.Sumber.Nama,
+			Nama: p.Sumber.GetNama().ID,
 			Slug: p.Sumber.Slug,
 		}
 	}
@@ -323,17 +323,17 @@ func (s *produkService) toDetailResponse(p *models.Produk) *models.ProdukDetailR
 		IDCargo: p.IDCargo,
 		Kategori: models.ProdukRelationInfo{
 			ID:   p.Kategori.ID.String(),
-			Nama: p.Kategori.Nama,
+			Nama: p.Kategori.GetNama().ID,
 			Slug: p.Kategori.Slug,
 		},
 		Kondisi: models.ProdukRelationInfo{
 			ID:   p.Kondisi.ID.String(),
-			Nama: p.Kondisi.Nama,
+			Nama: p.Kondisi.GetNama().ID,
 			Slug: p.Kondisi.Slug,
 		},
 		KondisiPaket: models.ProdukRelationInfo{
 			ID:   p.KondisiPaket.ID.String(),
-			Nama: p.KondisiPaket.Nama,
+			Nama: p.KondisiPaket.GetNama().ID,
 			Slug: p.KondisiPaket.Slug,
 		},
 		Warehouse: models.ProdukWarehouseInfo{
@@ -361,14 +361,14 @@ func (s *produkService) toDetailResponse(p *models.Produk) *models.ProdukDetailR
 	if p.Merek != nil {
 		resp.Merek = &models.ProdukRelationInfo{
 			ID:   p.Merek.ID.String(),
-			Nama: p.Merek.Nama,
+			Nama: p.Merek.GetNama().ID,
 			Slug: p.Merek.Slug,
 		}
 	}
 	if p.Sumber != nil {
 		resp.Sumber = &models.ProdukRelationInfo{
 			ID:   p.Sumber.ID.String(),
-			Nama: p.Sumber.Nama,
+			Nama: p.Sumber.GetNama().ID,
 			Slug: p.Sumber.Slug,
 		}
 	}

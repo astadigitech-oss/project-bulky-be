@@ -3,7 +3,6 @@ package controllers
 import (
 	"net/http"
 
-	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
@@ -18,45 +17,24 @@ func NewTipeProdukController(service services.TipeProdukService) *TipeProdukCont
 	return &TipeProdukController{service: service}
 }
 
-// FindAll retrieves all tipe produk with pagination
+// FindAll retrieves all tipe produk without pagination
 func (c *TipeProdukController) FindAll(ctx *gin.Context) {
-	var params models.PaginationRequest
-	if err := ctx.ShouldBindQuery(&params); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
-		return
-	}
-
-	items, meta, err := c.service.FindAll(ctx.Request.Context(), &params)
+	items, err := c.service.FindAll(ctx.Request.Context())
 	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 		return
 	}
 
-	utils.PaginatedSuccessResponse(ctx, "Data tipe produk berhasil diambil", items, *meta)
+	utils.SuccessResponse(ctx, "Data tipe produk berhasil diambil", items)
 }
 
-// FindByID retrieves a single tipe produk by ID
-func (c *TipeProdukController) FindByID(ctx *gin.Context) {
-	id := ctx.Param("id")
-
-	result, err := c.service.FindByID(ctx.Request.Context(), id)
+// FindAllWithProduk retrieves all tipe produk with their products
+func (c *TipeProdukController) FindAllWithProduk(ctx *gin.Context) {
+	items, err := c.service.FindAllWithProduk(ctx.Request.Context())
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
+		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 		return
 	}
 
-	utils.SuccessResponse(ctx, "Detail tipe produk berhasil diambil", result)
+	utils.SuccessResponse(ctx, "Data tipe produk dengan produk berhasil diambil", items)
 }
-
-// FindBySlug retrieves a single tipe produk by slug
-// func (c *TipeProdukController) FindBySlug(ctx *gin.Context) {
-// 	slug := ctx.Param("slug")
-
-// 	result, err := c.service.FindBySlug(ctx.Request.Context(), slug)
-// 	if err != nil {
-// 		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-// 		return
-// 	}
-
-// 	utils.SuccessResponse(ctx, "Detail tipe produk berhasil diambil", result)
-// }

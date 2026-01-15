@@ -75,7 +75,7 @@ func main() {
 
 		// Create kategori produk
 		kategori := &models.KategoriProduk{
-			Nama:                    kategoriData.Nama,
+			NamaID:                  kategoriData.Nama,
 			Slug:                    kategoriData.Slug,
 			IconURL:                 &kategoriData.IconURL,
 			MemilikiKondisiTambahan: false,
@@ -88,7 +88,7 @@ func main() {
 			continue
 		}
 
-		fmt.Printf("✓ Kategori berhasil dibuat: %s (%s)\n", kategori.Nama, kategori.Slug)
+		fmt.Printf("✓ Kategori berhasil dibuat: %s (%s)\n", kategori.NamaID, kategori.Slug)
 		successCount++
 	}
 

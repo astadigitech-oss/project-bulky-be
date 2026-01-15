@@ -35,7 +35,7 @@ func NewMerekProdukService(repo repositories.MerekProdukRepository, cfg *config.
 }
 
 func (s *merekProdukService) Create(ctx context.Context, req *models.CreateMerekProdukRequest) (*models.MerekProdukResponse, error) {
-	slug := utils.GenerateSlug(req.Nama)
+	slug := utils.GenerateSlug(req.NamaID)
 
 	exists, _ := s.repo.ExistsBySlug(ctx, slug, nil)
 	if exists {
@@ -43,7 +43,8 @@ func (s *merekProdukService) Create(ctx context.Context, req *models.CreateMerek
 	}
 
 	merek := &models.MerekProduk{
-		Nama:     req.Nama,
+		NamaID:   req.NamaID,
+		NamaEN:   req.NamaEN,
 		Slug:     slug,
 		LogoURL:  req.Logo,
 		IsActive: true,
@@ -57,7 +58,7 @@ func (s *merekProdukService) Create(ctx context.Context, req *models.CreateMerek
 }
 
 func (s *merekProdukService) CreateWithLogo(ctx context.Context, req *models.CreateMerekProdukRequest, logoURL *string) (*models.MerekProdukResponse, error) {
-	slug := utils.GenerateSlug(req.Nama)
+	slug := utils.GenerateSlug(req.NamaID)
 
 	exists, _ := s.repo.ExistsBySlug(ctx, slug, nil)
 	if exists {
@@ -65,7 +66,8 @@ func (s *merekProdukService) CreateWithLogo(ctx context.Context, req *models.Cre
 	}
 
 	merek := &models.MerekProduk{
-		Nama:     req.Nama,
+		NamaID:   req.NamaID,
+		NamaEN:   req.NamaEN,
 		Slug:     slug,
 		LogoURL:  logoURL,
 		IsActive: true,
@@ -118,14 +120,17 @@ func (s *merekProdukService) Update(ctx context.Context, id string, req *models.
 		return nil, errors.New("merek produk tidak ditemukan")
 	}
 
-	if req.Nama != nil {
-		newSlug := utils.GenerateSlug(*req.Nama)
+	if req.NamaID != nil {
+		newSlug := utils.GenerateSlug(*req.NamaID)
 		exists, _ := s.repo.ExistsBySlug(ctx, newSlug, &id)
 		if exists {
 			return nil, errors.New("merek dengan nama tersebut sudah ada")
 		}
-		merek.Nama = *req.Nama
+		merek.NamaID = *req.NamaID
 		merek.Slug = newSlug
+	}
+	if req.NamaEN != nil {
+		merek.NamaEN = req.NamaEN
 	}
 	if req.Logo != nil {
 		merek.LogoURL = req.Logo
@@ -148,14 +153,17 @@ func (s *merekProdukService) UpdateWithLogo(ctx context.Context, id string, req 
 	}
 
 	// Update text fields
-	if req.Nama != nil {
-		newSlug := utils.GenerateSlug(*req.Nama)
+	if req.NamaID != nil {
+		newSlug := utils.GenerateSlug(*req.NamaID)
 		exists, _ := s.repo.ExistsBySlug(ctx, newSlug, &id)
 		if exists {
 			return nil, errors.New("merek dengan nama tersebut sudah ada")
 		}
-		merek.Nama = *req.Nama
+		merek.NamaID = *req.NamaID
 		merek.Slug = newSlug
+	}
+	if req.NamaEN != nil {
+		merek.NamaEN = req.NamaEN
 	}
 	if req.IsActive != nil {
 		merek.IsActive = *req.IsActive
@@ -207,7 +215,7 @@ func (s *merekProdukService) ToggleStatus(ctx context.Context, id string) (*mode
 func (s *merekProdukService) toResponse(m *models.MerekProduk) *models.MerekProdukResponse {
 	return &models.MerekProdukResponse{
 		ID:        m.ID.String(),
-		Nama:      m.Nama,
+		Nama:      m.GetNama(),
 		Slug:      m.Slug,
 		LogoURL:   m.LogoURL,
 		IsActive:  m.IsActive,

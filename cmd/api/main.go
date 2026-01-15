@@ -62,6 +62,8 @@ func main() {
 	forceUpdateRepo := repositories.NewForceUpdateRepository(db)
 	modeMaintenanceRepo := repositories.NewModeMaintenanceRepository(db)
 	ppnRepo := repositories.NewPPNRepository(db)
+	metodePembayaranGroupRepo := repositories.NewMetodePembayaranGroupRepository(db)
+	metodePembayaranRepo := repositories.NewMetodePembayaranRepository(db)
 
 	// Auth V2 repositories
 	authRepo := repositories.NewAuthRepository(db)
@@ -93,6 +95,8 @@ func main() {
 	forceUpdateService := services.NewForceUpdateService(forceUpdateRepo, cfg.PlayStoreURL, cfg.AppStoreURL)
 	modeMaintenanceService := services.NewModeMaintenanceService(modeMaintenanceRepo)
 	ppnService := services.NewPPNService(ppnRepo)
+	metodePembayaranGroupService := services.NewMetodePembayaranGroupService(metodePembayaranGroupRepo)
+	metodePembayaranService := services.NewMetodePembayaranService(metodePembayaranRepo, metodePembayaranGroupRepo)
 
 	// Auth V2 services
 	authV2Service := services.NewAuthV2Service(authRepo, activityLogRepo)
@@ -123,6 +127,8 @@ func main() {
 	modeMaintenanceController := controllers.NewModeMaintenanceController(modeMaintenanceService)
 	appStatusController := controllers.NewAppStatusController(forceUpdateService, modeMaintenanceService)
 	ppnController := controllers.NewPPNController(ppnService)
+	metodePembayaranGroupController := controllers.NewMetodePembayaranGroupController(metodePembayaranGroupService)
+	metodePembayaranController := controllers.NewMetodePembayaranController(metodePembayaranService, cfg)
 
 	// Auth V2 controllers
 	authV2Controller := controllers.NewAuthV2Controller(authV2Service, adminService, buyerService)
@@ -143,6 +149,7 @@ func main() {
 		ulasanController,
 		forceUpdateController, modeMaintenanceController, appStatusController,
 		ppnController,
+		metodePembayaranGroupController, metodePembayaranController,
 	)
 
 	// Setup Auth V2 routes (new authentication system with roles & permissions)

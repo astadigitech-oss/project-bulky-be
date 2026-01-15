@@ -76,18 +76,34 @@ type ToggleStatusResponse struct {
 // ========================================
 
 type KategoriProdukResponse struct {
-	ID                      string  `json:"id"`
-	Nama                    string  `json:"nama"`
-	Slug                    string  `json:"slug"`
-	Deskripsi               *string `json:"deskripsi"`
-	IconURL                 *string `json:"icon_url"`
-	MemilikiKondisiTambahan bool    `json:"memiliki_kondisi_tambahan"`
-	TipeKondisiTambahan     *string `json:"tipe_kondisi_tambahan"`
-	GambarKondisiURL        *string `json:"gambar_kondisi_url"`
-	TeksKondisi             *string `json:"teks_kondisi"`
-	IsActive                bool    `json:"is_active"`
+	ID                      string             `json:"id"`
+	Nama                    TranslatableString `json:"nama"`
+	Slug                    string             `json:"slug"`
+	Deskripsi               *string            `json:"deskripsi,omitempty"`
+	IconURL                 *string            `json:"icon_url,omitempty"`
+	MemilikiKondisiTambahan bool               `json:"memiliki_kondisi_tambahan"`
+	TipeKondisiTambahan     *string            `json:"tipe_kondisi_tambahan,omitempty"`
+	GambarKondisiURL        *string            `json:"gambar_kondisi_url,omitempty"`
+	TeksKondisi             *string            `json:"teks_kondisi,omitempty"`
+	IsActive                bool               `json:"is_active"`
 	// JumlahProduk            int64     `json:"jumlah_produk"`
 	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type KategoriProdukSimpleResponse struct {
+	ID   string             `json:"id"`
+	Nama TranslatableString `json:"nama"`
+	// Slug                    string             `json:"slug"`
+	// Deskripsi               *string            `json:"deskripsi,omitempty"`
+	IconURL                 *string `json:"icon_url,omitempty"`
+	MemilikiKondisiTambahan bool    `json:"memiliki_kondisi_tambahan"`
+	// TipeKondisiTambahan     *string            `json:"tipe_kondisi_tambahan,omitempty"`
+	// GambarKondisiURL        *string            `json:"gambar_kondisi_url,omitempty"`
+	// TeksKondisi             *string            `json:"teks_kondisi,omitempty"`
+	IsActive bool `json:"is_active"`
+	// JumlahProduk            int64     `json:"jumlah_produk"`
+	// CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
@@ -99,21 +115,21 @@ type KategoriProdukResponse struct {
 // ========================================
 
 type MerekProdukResponse struct {
-	ID       string  `json:"id"`
-	Nama     string  `json:"nama"`
-	Slug     string  `json:"slug"`
-	LogoURL  *string `json:"logo_url"`
-	IsActive bool    `json:"is_active"`
+	ID       string             `json:"id"`
+	Nama     TranslatableString `json:"nama"`
+	Slug     string             `json:"slug"`
+	LogoURL  *string            `json:"logo_url,omitempty"`
+	IsActive bool               `json:"is_active"`
 	// JumlahProduk int64     `json:"jumlah_produk"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type MerekProdukSimpleResponse struct {
-	ID   string `json:"id"`
-	Nama string `json:"nama"`
+	ID   string             `json:"id"`
+	Nama TranslatableString `json:"nama"`
 	// Slug     string  `json:"slug"`
-	LogoURL  *string `json:"logo_url"`
+	LogoURL  *string `json:"logo_url,omitempty"`
 	IsActive bool    `json:"is_active"`
 	// JumlahProduk int64     `json:"jumlah_produk"`
 	// CreatedAt time.Time `json:"created_at"`
@@ -125,20 +141,20 @@ type MerekProdukSimpleResponse struct {
 // ========================================
 
 type KondisiProdukResponse struct {
-	ID        string  `json:"id"`
-	Nama      string  `json:"nama"`
-	Slug      string  `json:"slug"`
-	Deskripsi *string `json:"deskripsi"`
-	Urutan    int     `json:"urutan"`
-	IsActive  bool    `json:"is_active"`
+	ID        string             `json:"id"`
+	Nama      TranslatableString `json:"nama"`
+	Slug      string             `json:"slug"`
+	Deskripsi *string            `json:"deskripsi,omitempty"`
+	Urutan    int                `json:"urutan"`
+	IsActive  bool               `json:"is_active"`
 	// JumlahProduk int64     `json:"jumlah_produk"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type KondisiProdukSimpleResponse struct {
-	ID   string `json:"id"`
-	Nama string `json:"nama"`
+	ID   string             `json:"id"`
+	Nama TranslatableString `json:"nama"`
 	// Slug      string  `json:"slug"`
 	// Deskripsi *string `json:"deskripsi"`
 	Urutan   int  `json:"urutan"`
@@ -153,20 +169,20 @@ type KondisiProdukSimpleResponse struct {
 // ========================================
 
 type KondisiPaketResponse struct {
-	ID        string  `json:"id"`
-	Nama      string  `json:"nama"`
-	Slug      string  `json:"slug"`
-	Deskripsi *string `json:"deskripsi"`
-	Urutan    int     `json:"urutan"`
-	IsActive  bool    `json:"is_active"`
+	ID        string             `json:"id"`
+	Nama      TranslatableString `json:"nama"`
+	Slug      string             `json:"slug"`
+	Deskripsi *string            `json:"deskripsi,omitempty"`
+	Urutan    int                `json:"urutan"`
+	IsActive  bool               `json:"is_active"`
 	// JumlahProduk int64     `json:"jumlah_produk"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type KondisiPaketSimpleResponse struct {
-	ID   string `json:"id"`
-	Nama string `json:"nama"`
+	ID   string             `json:"id"`
+	Nama TranslatableString `json:"nama"`
 	// Slug         string    `json:"slug"`
 	// Deskripsi    *string   `json:"deskripsi"`
 	Urutan   int  `json:"urutan"`
@@ -181,19 +197,19 @@ type KondisiPaketSimpleResponse struct {
 // ========================================
 
 type SumberProdukResponse struct {
-	ID        string  `json:"id"`
-	Nama      string  `json:"nama"`
-	Slug      string  `json:"slug"`
-	Deskripsi *string `json:"deskripsi"`
-	IsActive  bool    `json:"is_active"`
+	ID        string             `json:"id"`
+	Nama      TranslatableString `json:"nama"`
+	Slug      string             `json:"slug"`
+	Deskripsi *string            `json:"deskripsi,omitempty"`
+	IsActive  bool               `json:"is_active"`
 	// JumlahProduk int64     `json:"jumlah_produk"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type SumberProdukSimpleResponse struct {
-	ID   string `json:"id"`
-	Nama string `json:"nama"`
+	ID   string             `json:"id"`
+	Nama TranslatableString `json:"nama"`
 	// Slug      string  `json:"slug"`
 	// Deskripsi *string `json:"deskripsi"`
 	IsActive bool `json:"is_active"`
@@ -550,36 +566,32 @@ type AlamatBuyerResponse struct {
 // ========================================
 
 type HeroSectionResponse struct {
-	ID     string `json:"id"`
-	Nama   string `json:"nama"`
-	Gambar string `json:"gambar"`
-	// Urutan   int    `json:"urutan"`
-	IsActive bool `json:"is_active"`
-	// IsVisible      bool       `json:"is_visible"`
-	TanggalMulai   *time.Time `json:"tanggal_mulai"`
-	TanggalSelesai *time.Time `json:"tanggal_selesai"`
-	CreatedAt      time.Time  `json:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	ID        string            `json:"id"`
+	Nama      string            `json:"nama"`
+	GambarURL TranslatableImage `json:"gambar_url"`
+	LinkURL   *string           `json:"link_url,omitempty"`
+	Urutan    int               `json:"urutan"`
+	IsActive  bool              `json:"is_active"`
+	CreatedAt time.Time         `json:"created_at"`
+	UpdatedAt time.Time         `json:"updated_at"`
 }
 
 type HeroSectionSimpleResponse struct {
-	ID     string `json:"id"`
-	Nama   string `json:"nama"`
-	Gambar string `json:"gambar"`
-	// Urutan   int    `json:"urutan"`
-	IsActive bool `json:"is_active"`
-	// IsVisible      bool       `json:"is_visible"`
-	// TanggalMulai   *time.Time `json:"tanggal_mulai"`
-	// TanggalSelesai *time.Time `json:"tanggal_selesai"`
-	// CreatedAt      time.Time  `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        string            `json:"id"`
+	Nama      string            `json:"nama"`
+	GambarURL TranslatableImage `json:"gambar_url"`
+	LinkURL   *string           `json:"link_url,omitempty"`
+	Urutan    int               `json:"urutan"`
+	IsActive  bool              `json:"is_active"`
+	UpdatedAt time.Time         `json:"updated_at"`
 }
 
 // Public response (minimal data)
 type HeroSectionPublicResponse struct {
-	ID     string `json:"id"`
-	Nama   string `json:"nama"`
-	Gambar string `json:"gambar"`
+	ID        string            `json:"id"`
+	Nama      string            `json:"nama"`
+	GambarURL TranslatableImage `json:"gambar_url"`
+	LinkURL   *string           `json:"link_url,omitempty"`
 }
 
 // ========================================
@@ -587,37 +599,32 @@ type HeroSectionPublicResponse struct {
 // ========================================
 
 type BannerEventPromoResponse struct {
-	ID        string  `json:"id"`
-	Nama      string  `json:"nama"`
-	Gambar    string  `json:"gambar"`
-	UrlTujuan *string `json:"url_tujuan"`
-	Urutan    int     `json:"urutan"`
-	IsActive  bool    `json:"is_active"`
-	// IsVisible      bool       `json:"is_visible"`
-	TanggalMulai   *time.Time `json:"tanggal_mulai"`
-	TanggalSelesai *time.Time `json:"tanggal_selesai"`
-	CreatedAt      time.Time  `json:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	ID           string            `json:"id"`
+	Nama         string            `json:"nama"`
+	GambarURL    TranslatableImage `json:"gambar_url"`
+	LinkURL      *string           `json:"link_url,omitempty"`
+	Urutan       int               `json:"urutan"`
+	IsActive     bool              `json:"is_active"`
+	TanggalMulai *time.Time        `json:"tanggal_mulai,omitempty"`
+	TanggalAkhir *time.Time        `json:"tanggal_akhir,omitempty"`
+	CreatedAt    time.Time         `json:"created_at"`
+	UpdatedAt    time.Time         `json:"updated_at"`
 }
 
 type BannerEventPromoSimpleResponse struct {
-	ID        string  `json:"id"`
-	Nama      string  `json:"nama"`
-	Gambar    string  `json:"gambar"`
-	UrlTujuan *string `json:"url_tujuan"`
-	Urutan    int     `json:"urutan"`
-	IsActive  bool    `json:"is_active"`
-	// IsVisible      bool       `json:"is_visible"`
-	// TanggalMulai   *time.Time `json:"tanggal_mulai"`
-	// TanggalSelesai *time.Time `json:"tanggal_selesai"`
-	// CreatedAt      time.Time  `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        string            `json:"id"`
+	Nama      string            `json:"nama"`
+	GambarURL TranslatableImage `json:"gambar_url"`
+	LinkURL   *string           `json:"link_url,omitempty"`
+	Urutan    int               `json:"urutan"`
+	IsActive  bool              `json:"is_active"`
+	UpdatedAt time.Time         `json:"updated_at"`
 }
 
 // Public response (minimal data)
 type BannerEventPromoPublicResponse struct {
-	ID        string  `json:"id"`
-	Nama      string  `json:"nama"`
-	Gambar    string  `json:"gambar"`
-	UrlTujuan *string `json:"url_tujuan"`
+	ID        string            `json:"id"`
+	Nama      string            `json:"nama"`
+	GambarURL TranslatableImage `json:"gambar_url"`
+	LinkURL   *string           `json:"link_url,omitempty"`
 }

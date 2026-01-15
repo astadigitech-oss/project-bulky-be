@@ -37,12 +37,31 @@ type UpdateMetodePembayaranGroupRequest struct {
 }
 
 // Response DTOs
+type MetodePembayaranGroupListResponse struct {
+	ID           string    `json:"id"`
+	Nama         string    `json:"nama"`
+	Urutan       int       `json:"urutan"`
+	IsActive     bool      `json:"is_active"`
+	JumlahMetode int       `json:"jumlah_metode"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+type MetodePembayaranGroupDetailResponse struct {
+	ID               string                     `json:"id"`
+	Nama             string                     `json:"nama"`
+	Urutan           int                        `json:"urutan"`
+	IsActive         bool                       `json:"is_active"`
+	JumlahMetode     int                        `json:"jumlah_metode"`
+	MetodePembayaran []MetodePembayaranResponse `json:"metode_pembayaran,omitempty"`
+	CreatedAt        time.Time                  `json:"created_at"`
+	UpdatedAt        time.Time                  `json:"updated_at"`
+}
+
 type MetodePembayaranGroupResponse struct {
-	ID               string                      `json:"id"`
-	Nama             string                      `json:"nama"`
-	Urutan           int                         `json:"urutan"`
-	IsActive         bool                        `json:"is_active"`
-	CreatedAt        time.Time                   `json:"created_at"`
-	UpdatedAt        time.Time                   `json:"updated_at"`
-	MetodePembayaran []MetodePembayaranResponse  `json:"metode_pembayaran,omitempty"`
+	ID        string    `json:"id"`
+	Nama      string    `json:"nama"`
+	Urutan    int       `json:"urutan"`
+	IsActive  bool      `json:"is_active"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }

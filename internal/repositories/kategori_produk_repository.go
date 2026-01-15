@@ -12,7 +12,7 @@ type KategoriProdukRepository interface {
 	Create(ctx context.Context, kategori *models.KategoriProduk) error
 	FindByID(ctx context.Context, id string) (*models.KategoriProduk, error)
 	FindBySlug(ctx context.Context, slug string) (*models.KategoriProduk, error)
-	FindAll(ctx context.Context, params *models.KategoriProdukFilterRequest) ([]models.KategoriProdukSimpleResponse, int64, error)
+	FindAll(ctx context.Context, params *models.KategoriProdukFilterRequest) ([]models.KategoriProduk, int64, error)
 	Update(ctx context.Context, kategori *models.KategoriProduk) error
 	Delete(ctx context.Context, id string) error
 	ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error)
@@ -49,25 +49,15 @@ func (r *kategoriProdukRepository) FindBySlug(ctx context.Context, slug string) 
 	return &kategori, nil
 }
 
-func (r *kategoriProdukRepository) FindAll(ctx context.Context, params *models.KategoriProdukFilterRequest) ([]models.KategoriProdukSimpleResponse, int64, error) {
-	var kategoris []models.KategoriProdukSimpleResponse
+func (r *kategoriProdukRepository) FindAll(ctx context.Context, params *models.KategoriProdukFilterRequest) ([]models.KategoriProduk, int64, error) {
+	var kategoris []models.KategoriProduk
 	var total int64
 
-	// query := r.db.WithContext(ctx).Model(&models.KategoriProduk{})
-	query := r.db.WithContext(ctx).Model(&models.KategoriProduk{}).
-		Select(`
-			id,
-			nama,
-			slug,
-			icon_url,
-			is_active,
-			memiliki_kondisi_tambahan,
-			updated_at
-		`)
+	query := r.db.WithContext(ctx).Model(&models.KategoriProduk{})
 
 	// Search filter
 	if params.Search != "" {
-		query = query.Where("nama ILIKE ?", "%"+params.Search+"%")
+		query = query.Where("nama_id ILIKE ? OR nama_en ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")
 	}
 
 	// Active filter
@@ -120,9 +110,9 @@ func (r *kategoriProdukRepository) ExistsBySlug(ctx context.Context, slug string
 func (r *kategoriProdukRepository) GetAllForDropdown(ctx context.Context) ([]models.KategoriProduk, error) {
 	var kategoris []models.KategoriProduk
 	err := r.db.WithContext(ctx).
-		Select("id", "nama", "slug").
+		Select("id", "nama_id", "nama_en", "slug").
 		Where("is_active = ?", true).
-		Order("nama ASC").
+		Order("nama_id ASC").
 		Find(&kategoris).Error
 	return kategoris, err
 }

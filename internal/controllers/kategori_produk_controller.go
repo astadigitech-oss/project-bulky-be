@@ -35,7 +35,10 @@ func (c *KategoriProdukController) Create(ctx *gin.Context) {
 	// Handle multipart/form-data (with file upload)
 	if strings.Contains(contentType, "multipart/form-data") {
 		// Parse form data
-		req.Nama = ctx.PostForm("nama")
+		req.NamaID = ctx.PostForm("nama_id")
+		if namaEN := ctx.PostForm("nama_en"); namaEN != "" {
+			req.NamaEN = &namaEN
+		}
 		if deskripsi := ctx.PostForm("deskripsi"); deskripsi != "" {
 			req.Deskripsi = &deskripsi
 		}
@@ -51,7 +54,7 @@ func (c *KategoriProdukController) Create(ctx *gin.Context) {
 		}
 
 		// Validate required field
-		if req.Nama == "" {
+		if req.NamaID == "" {
 			utils.ErrorResponse(ctx, http.StatusBadRequest, "Nama kategori wajib diisi", nil)
 			return
 		}
@@ -166,8 +169,11 @@ func (c *KategoriProdukController) Update(ctx *gin.Context) {
 	// Handle multipart/form-data (with file upload)
 	if strings.Contains(contentType, "multipart/form-data") {
 		// Parse form data
-		if nama := ctx.PostForm("nama"); nama != "" {
-			req.Nama = &nama
+		if namaID := ctx.PostForm("nama_id"); namaID != "" {
+			req.NamaID = &namaID
+		}
+		if namaEN := ctx.PostForm("nama_en"); namaEN != "" {
+			req.NamaEN = &namaEN
 		}
 		if deskripsi := ctx.PostForm("deskripsi"); deskripsi != "" {
 			req.Deskripsi = &deskripsi

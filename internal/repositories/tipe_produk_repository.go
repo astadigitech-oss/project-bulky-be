@@ -6,16 +6,14 @@ import (
 	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/models"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 // TipeProdukRepository interface for tipe produk operations (Read-only)
 // Note: Tipe produk data is managed via migration only (Paletbox, Container, Truckload)
 type TipeProdukRepository interface {
-	FindByID(ctx context.Context, id uuid.UUID) (*dto.TipeProdukDetailDTO, error)
-	FindBySlug(ctx context.Context, slug string) (*models.TipeProduk, error)
-	FindAll(ctx context.Context, params *models.PaginationRequest) ([]dto.TipeProdukListDTO, int64, error)
+	FindAll(ctx context.Context) ([]dto.TipeProdukListDTO, error)
+	FindAllWithProduk(ctx context.Context) ([]dto.TipeProdukWithProdukDTO, error)
 	GetAllForDropdown(ctx context.Context) ([]models.TipeProduk, error)
 }
 
@@ -27,110 +25,88 @@ func NewTipeProdukRepository(db *gorm.DB) TipeProdukRepository {
 	return &tipeProdukRepository{db: db}
 }
 
-// FindByID retrieves a single tipe produk by ID with complete details
-// Returns TipeProdukDetailDTO with all 10 fields including jumlah_produk
-func (r *tipeProdukRepository) FindByID(ctx context.Context, id uuid.UUID) (*dto.TipeProdukDetailDTO, error) {
-	var tipe dto.TipeProdukDetailDTO
+// FindAll retrieves all tipe produk without pagination
+// Returns TipeProdukListDTO ordered by urutan
+func (r *tipeProdukRepository) FindAll(ctx context.Context) ([]dto.TipeProdukListDTO, error) {
+	var tipes []dto.TipeProdukListDTO
 
 	err := r.db.WithContext(ctx).
 		Model(&models.TipeProduk{}).
 		Select(`
 			id, 
 			nama, 
-			slug, 
-			deskripsi,
+			slug,
 			urutan, 
 			is_active, 
-			created_at,
 			updated_at
 		`).
-		Where("id = ? AND deleted_at IS NULL", id).
-		Scan(&tipe).Error
+		Where("deleted_at IS NULL").
+		Order("urutan ASC").
+		Scan(&tipes).Error
 
 	if err != nil {
 		return nil, err
 	}
 
-	return &tipe, nil
+	return tipes, nil
 }
 
-// FindBySlug retrieves a single tipe produk by slug
-func (r *tipeProdukRepository) FindBySlug(ctx context.Context, slug string) (*models.TipeProduk, error) {
-	var tipe models.TipeProduk
-	err := r.db.WithContext(ctx).Where("slug = ?", slug).First(&tipe).Error
+// FindAllWithProduk retrieves all tipe produk with their products
+func (r *tipeProdukRepository) FindAllWithProduk(ctx context.Context) ([]dto.TipeProdukWithProdukDTO, error) {
+	var result []dto.TipeProdukWithProdukDTO
+
+	// Get all tipe produk
+	var tipes []models.TipeProduk
+	err := r.db.WithContext(ctx).
+		Where("deleted_at IS NULL").
+		Order("urutan ASC").
+		Find(&tipes).Error
+
 	if err != nil {
 		return nil, err
 	}
-	return &tipe, nil
-}
 
-// FindAll retrieves all tipe produk with pagination
-// Returns TipeProdukListDTO with simplified 8 fields for list view
-func (r *tipeProdukRepository) FindAll(ctx context.Context, params *models.PaginationRequest) ([]dto.TipeProdukListDTO, int64, error) {
-	var tipes []dto.TipeProdukListDTO
-	var total int64
+	// For each tipe produk, get its products
+	for _, tipe := range tipes {
+		var produk []dto.ProdukBasicDTO
 
-	// Base query for select simplified fields
-	query := r.db.WithContext(ctx).
-		Model(&models.TipeProduk{}).
-		Select(`
-			id, 
-			nama, 
-			slug, 
-			urutan, 
-			is_active, 
-			updated_at
-		`).
-		Where("deleted_at IS NULL")
+		err := r.db.WithContext(ctx).
+			Model(&models.Produk{}).
+			Select(`
+				id,
+				nama,
+				slug,
+				harga_sebelum_diskon,
+				persentase_diskon,
+				harga_sesudah_diskon,
+				quantity,
+				is_active
+			`).
+			Where("tipe_produk_id = ? AND deleted_at IS NULL", tipe.ID).
+			Order("created_at ASC").
+			Scan(&produk).Error
 
-	// Search filter
-	if params.Search != "" {
-		query = query.Where("nama ILIKE ?", "%"+params.Search+"%")
+		if err != nil {
+			return nil, err
+		}
+
+		// Ensure empty array instead of null
+		if produk == nil {
+			produk = []dto.ProdukBasicDTO{}
+		}
+
+		result = append(result, dto.TipeProdukWithProdukDTO{
+			ID:   tipe.ID,
+			Nama: tipe.Nama,
+			// Slug:      tipe.Slug,
+			// Deskripsi: tipe.Deskripsi,
+			Urutan: tipe.Urutan,
+			// IsActive: tipe.IsActive,
+			Produk: produk,
+		})
 	}
 
-	// IsActive filter
-	if params.IsActive != nil {
-		query = query.Where("is_active = ?", *params.IsActive)
-	}
-
-	// Count total
-	if err := query.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	// Valid sort fields for list response
-	validSortFields := map[string]bool{
-		"id":   true,
-		"nama": true,
-		// "slug":          true,
-		// "icon_url": true,
-		"urutan": true,
-		// "jumlah_produk": true,
-		// "is_active":     true,
-		"updated_at": true,
-	}
-
-	// Validate sort_by field
-	sortBy := params.SortBy
-	if !validSortFields[sortBy] {
-		sortBy = "urutan" // Default sort field
-	}
-
-	// Validate order direction
-	order := params.Order
-	if order != "asc" && order != "desc" {
-		order = "asc" // Default order
-	}
-
-	orderClause := sortBy + " " + order
-	query = query.Order(orderClause)
-	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
-
-	if err := query.Scan(&tipes).Error; err != nil {
-		return nil, 0, err
-	}
-
-	return tipes, total, nil
+	return result, nil
 }
 
 // GetAllForDropdown retrieves all active tipe produk for dropdown selection

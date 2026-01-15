@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
@@ -108,6 +109,10 @@ func (s *ppnService) Create(ctx context.Context, req *models.CreatePPNRequest) (
 	}
 
 	if err := s.repo.Create(ctx, ppn); err != nil {
+		// Check for duplicate persentase error
+		if strings.Contains(err.Error(), "unique_ppn_persentase") || strings.Contains(err.Error(), "duplicate key value") {
+			return nil, errors.New("Persentase PPN sudah ada, silakan gunakan nilai yang berbeda")
+		}
 		return nil, err
 	}
 
@@ -143,6 +148,10 @@ func (s *ppnService) Update(ctx context.Context, id string, req *models.UpdatePP
 	}
 
 	if err := s.repo.Update(ctx, ppn); err != nil {
+		// Check for duplicate persentase error
+		if strings.Contains(err.Error(), "unique_ppn_persentase") || strings.Contains(err.Error(), "duplicate key value") {
+			return nil, errors.New("Persentase PPN sudah ada, silakan gunakan nilai yang berbeda")
+		}
 		return nil, err
 	}
 
