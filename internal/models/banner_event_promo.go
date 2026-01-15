@@ -12,11 +12,11 @@ type BannerEventPromo struct {
 	Nama         string         `gorm:"type:varchar(100);not null" json:"nama"`
 	GambarURLID  string         `gorm:"column:gambar_url_id;type:varchar(500);not null" json:"-"`
 	GambarURLEN  *string        `gorm:"column:gambar_url_en;type:varchar(500)" json:"-"`
-	LinkURL      *string        `gorm:"column:url_tujuan;type:varchar(500)" json:"link_url,omitempty"`
+	LinkURL      *string        `gorm:"column:url_tujuan;type:varchar(500)" json:"url_tujuan,omitempty"`
 	Urutan       int            `gorm:"default:0" json:"urutan"`
 	IsActive     bool           `gorm:"default:true" json:"is_active"`
 	TanggalMulai *time.Time     `json:"tanggal_mulai,omitempty"`
-	TanggalAkhir *time.Time     `gorm:"column:tanggal_selesai" json:"tanggal_akhir,omitempty"`
+	TanggalAkhir *time.Time     `gorm:"column:tanggal_selesai" json:"tanggal_selesai,omitempty"`
 	CreatedAt    time.Time      `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt    time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
 	DeletedAt    gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`

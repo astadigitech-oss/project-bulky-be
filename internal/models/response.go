@@ -602,11 +602,11 @@ type BannerEventPromoResponse struct {
 	ID           string            `json:"id"`
 	Nama         string            `json:"nama"`
 	GambarURL    TranslatableImage `json:"gambar_url"`
-	LinkURL      *string           `json:"link_url,omitempty"`
+	LinkURL      *string           `json:"url_tujuan,omitempty"`
 	Urutan       int               `json:"urutan"`
 	IsActive     bool              `json:"is_active"`
 	TanggalMulai *time.Time        `json:"tanggal_mulai,omitempty"`
-	TanggalAkhir *time.Time        `json:"tanggal_akhir,omitempty"`
+	TanggalAkhir *time.Time        `json:"tanggal_selesai,omitempty"`
 	CreatedAt    time.Time         `json:"created_at"`
 	UpdatedAt    time.Time         `json:"updated_at"`
 }
@@ -615,7 +615,7 @@ type BannerEventPromoSimpleResponse struct {
 	ID        string            `json:"id"`
 	Nama      string            `json:"nama"`
 	GambarURL TranslatableImage `json:"gambar_url"`
-	LinkURL   *string           `json:"link_url,omitempty"`
+	LinkURL   *string           `json:"url_tujuan,omitempty"`
 	// Urutan    int               `json:"urutan"`
 	IsActive  bool      `json:"is_active"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -626,5 +626,5 @@ type BannerEventPromoPublicResponse struct {
 	ID        string            `json:"id"`
 	Nama      string            `json:"nama"`
 	GambarURL TranslatableImage `json:"gambar_url"`
-	LinkURL   *string           `json:"link_url,omitempty"`
+	LinkURL   *string           `json:"url_tujuan,omitempty"`
 }
