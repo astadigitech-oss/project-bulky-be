@@ -64,6 +64,8 @@ func main() {
 	ppnRepo := repositories.NewPPNRepository(db)
 	metodePembayaranGroupRepo := repositories.NewMetodePembayaranGroupRepository(db)
 	metodePembayaranRepo := repositories.NewMetodePembayaranRepository(db)
+	dokumenKebijakanRepo := repositories.NewDokumenKebijakanRepository(db)
+	disclaimerRepo := repositories.NewDisclaimerRepository(db)
 
 	// Auth V2 repositories
 	authRepo := repositories.NewAuthRepository(db)
@@ -97,6 +99,8 @@ func main() {
 	ppnService := services.NewPPNService(ppnRepo)
 	metodePembayaranGroupService := services.NewMetodePembayaranGroupService(metodePembayaranGroupRepo)
 	metodePembayaranService := services.NewMetodePembayaranService(metodePembayaranRepo, metodePembayaranGroupRepo)
+	dokumenKebijakanService := services.NewDokumenKebijakanService(dokumenKebijakanRepo)
+	disclaimerService := services.NewDisclaimerService(disclaimerRepo)
 
 	// Auth V2 services
 	authV2Service := services.NewAuthV2Service(authRepo, activityLogRepo)
@@ -129,6 +133,8 @@ func main() {
 	ppnController := controllers.NewPPNController(ppnService)
 	metodePembayaranGroupController := controllers.NewMetodePembayaranGroupController(metodePembayaranGroupService)
 	metodePembayaranController := controllers.NewMetodePembayaranController(metodePembayaranService, cfg)
+	dokumenKebijakanController := controllers.NewDokumenKebijakanController(dokumenKebijakanService)
+	disclaimerController := controllers.NewDisclaimerController(disclaimerService)
 
 	// Auth V2 controllers
 	authV2Controller := controllers.NewAuthV2Controller(authV2Service, adminService, buyerService)
@@ -150,6 +156,7 @@ func main() {
 		forceUpdateController, modeMaintenanceController, appStatusController,
 		ppnController,
 		metodePembayaranGroupController, metodePembayaranController,
+		dokumenKebijakanController, disclaimerController,
 	)
 
 	// Setup Auth V2 routes (new authentication system with roles & permissions)

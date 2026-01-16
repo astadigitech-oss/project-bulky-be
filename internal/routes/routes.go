@@ -36,6 +36,8 @@ func SetupRoutes(
 	ppnController *controllers.PPNController,
 	metodePembayaranGroupController *controllers.MetodePembayaranGroupController,
 	metodePembayaranController *controllers.MetodePembayaranController,
+	dokumenKebijakanController *controllers.DokumenKebijakanController,
+	disclaimerController *controllers.DisclaimerController,
 ) {
 	// Health check
 	router.GET("/api/health", func(c *gin.Context) {
@@ -471,6 +473,45 @@ func SetupRoutes(
 			metodePembayaranAdmin.PUT("/:id", middleware.RequirePermission("pembayaran:manage"), metodePembayaranController.Update)
 			metodePembayaranAdmin.DELETE("/:id", middleware.RequirePermission("pembayaran:manage"), metodePembayaranController.Delete)
 			metodePembayaranAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("pembayaran:manage"), metodePembayaranController.ToggleStatus)
+		}
+
+		// Dokumen Kebijakan - Admin
+		dokumenKebijakanAdmin := v1.Group("/panel/dokumen-kebijakan")
+		dokumenKebijakanAdmin.Use(middleware.AuthMiddleware())
+		dokumenKebijakanAdmin.Use(middleware.AdminOnly())
+		{
+			dokumenKebijakanAdmin.GET("", middleware.RequirePermission("system:read"), dokumenKebijakanController.FindAll)
+			dokumenKebijakanAdmin.GET("/:id", middleware.RequirePermission("system:read"), dokumenKebijakanController.FindByID)
+			dokumenKebijakanAdmin.POST("", middleware.RequirePermission("system:manage"), dokumenKebijakanController.Create)
+			dokumenKebijakanAdmin.PUT("/:id", middleware.RequirePermission("system:manage"), dokumenKebijakanController.Update)
+			dokumenKebijakanAdmin.DELETE("/:id", middleware.RequirePermission("system:manage"), dokumenKebijakanController.Delete)
+			dokumenKebijakanAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("system:manage"), dokumenKebijakanController.ToggleStatus)
+		}
+
+		// Dokumen Kebijakan - Public
+		dokumenKebijakanPublic := v1.Group("/public/dokumen-kebijakan")
+		{
+			dokumenKebijakanPublic.GET("", dokumenKebijakanController.GetActiveList)
+			dokumenKebijakanPublic.GET("/:slug", dokumenKebijakanController.GetBySlug)
+		}
+
+		// Disclaimer - Admin
+		disclaimerAdmin := v1.Group("/panel/disclaimer")
+		disclaimerAdmin.Use(middleware.AuthMiddleware())
+		disclaimerAdmin.Use(middleware.AdminOnly())
+		{
+			disclaimerAdmin.GET("", middleware.RequirePermission("system:read"), disclaimerController.FindAll)
+			disclaimerAdmin.GET("/:id", middleware.RequirePermission("system:read"), disclaimerController.FindByID)
+			disclaimerAdmin.POST("", middleware.RequirePermission("system:manage"), disclaimerController.Create)
+			disclaimerAdmin.PUT("/:id", middleware.RequirePermission("system:manage"), disclaimerController.Update)
+			disclaimerAdmin.DELETE("/:id", middleware.RequirePermission("system:manage"), disclaimerController.Delete)
+			disclaimerAdmin.PATCH("/:id/set-active", middleware.RequirePermission("system:manage"), disclaimerController.SetActive)
+		}
+
+		// Disclaimer - Public
+		disclaimerPublic := v1.Group("/public/disclaimer")
+		{
+			disclaimerPublic.GET("", disclaimerController.GetActive)
 		}
 	}
 
