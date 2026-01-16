@@ -24,11 +24,11 @@ func (t TranslatableImage) GetFullURL(baseURL string) TranslatableImage {
 	}
 
 	if t.ID != "" {
-		result.ID = baseURL + "/" + t.ID
+		result.ID = baseURL + "/uploads/" + t.ID
 	}
 
 	if t.EN != nil && *t.EN != "" {
-		fullEN := baseURL + "/" + *t.EN
+		fullEN := baseURL + "/uploads/" + *t.EN
 		result.EN = &fullEN
 	}
 
