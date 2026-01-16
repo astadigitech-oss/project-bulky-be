@@ -3,9 +3,12 @@ package services
 import (
 	"context"
 	"errors"
+	"strings"
+
+	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
-	"strings"
+	"project-bulky-be/pkg/utils"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -23,12 +26,14 @@ type MetodePembayaranService interface {
 type metodePembayaranService struct {
 	repo      repositories.MetodePembayaranRepository
 	groupRepo repositories.MetodePembayaranGroupRepository
+	cfg       *config.Config
 }
 
-func NewMetodePembayaranService(repo repositories.MetodePembayaranRepository, groupRepo repositories.MetodePembayaranGroupRepository) MetodePembayaranService {
+func NewMetodePembayaranService(repo repositories.MetodePembayaranRepository, groupRepo repositories.MetodePembayaranGroupRepository, cfg *config.Config) MetodePembayaranService {
 	return &metodePembayaranService{
 		repo:      repo,
 		groupRepo: groupRepo,
+		cfg:       cfg,
 	}
 }
 
@@ -53,7 +58,7 @@ func (s *metodePembayaranService) GetAll(ctx context.Context, params *models.Pag
 			ID:       metode.ID.String(),
 			Nama:     metode.Nama,
 			Kode:     metode.Kode,
-			Logo:     metode.Logo,
+			Logo:     utils.GetFileURLPtr(metode.Logo, s.cfg),
 			Urutan:   metode.Urutan,
 			IsActive: metode.IsActive,
 			Group: models.MetodePembayaranGroupSimple{
@@ -95,7 +100,7 @@ func (s *metodePembayaranService) GetByID(ctx context.Context, id string) (*mode
 		ID:       metode.ID.String(),
 		Nama:     metode.Nama,
 		Kode:     metode.Kode,
-		Logo:     metode.Logo,
+		Logo:     utils.GetFileURLPtr(metode.Logo, s.cfg),
 		Urutan:   metode.Urutan,
 		IsActive: metode.IsActive,
 		Group: models.MetodePembayaranGroupSimple{

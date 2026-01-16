@@ -129,16 +129,17 @@ func SetupRoutes(
 			kategoriPublic.GET("/slug/:slug", kategoriController.FindBySlug)
 		}
 
-		// Kategori Produk - Admin (Write)
+		// Kategori Produk - Admin
 		kategoriAdmin := v1.Group("/panel/kategori-produk")
 		kategoriAdmin.Use(middleware.AuthMiddleware())
 		kategoriAdmin.Use(middleware.AdminOnly())
-		kategoriAdmin.Use(middleware.RequirePermission("kategori:manage"))
 		{
-			kategoriAdmin.POST("", kategoriController.Create)
-			kategoriAdmin.PUT("/:id", kategoriController.Update) // Support JSON & multipart/form-data
-			kategoriAdmin.DELETE("/:id", kategoriController.Delete)
-			kategoriAdmin.PATCH("/:id/toggle-status", kategoriController.ToggleStatus)
+			kategoriAdmin.GET("", middleware.RequirePermission("kategori:read"), kategoriController.FindAll)
+			kategoriAdmin.GET("/:id", middleware.RequirePermission("kategori:read"), kategoriController.FindByID)
+			kategoriAdmin.POST("", middleware.RequirePermission("kategori:manage"), kategoriController.Create)
+			kategoriAdmin.PUT("/:id", middleware.RequirePermission("kategori:manage"), kategoriController.Update)
+			kategoriAdmin.DELETE("/:id", middleware.RequirePermission("kategori:manage"), kategoriController.Delete)
+			kategoriAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("kategori:manage"), kategoriController.ToggleStatus)
 		}
 
 		// Merek Produk - Public (Read Only)
@@ -149,16 +150,17 @@ func SetupRoutes(
 			merekPublic.GET("/slug/:slug", merekController.FindBySlug)
 		}
 
-		// Merek Produk - Admin (Write)
+		// Merek Produk - Admin
 		merekAdmin := v1.Group("/panel/merek-produk")
 		merekAdmin.Use(middleware.AuthMiddleware())
 		merekAdmin.Use(middleware.AdminOnly())
-		merekAdmin.Use(middleware.RequirePermission("brand:manage"))
 		{
-			merekAdmin.POST("", merekController.Create)
-			merekAdmin.PUT("/:id", merekController.Update)
-			merekAdmin.DELETE("/:id", merekController.Delete)
-			merekAdmin.PATCH("/:id/toggle-status", merekController.ToggleStatus)
+			merekAdmin.GET("", middleware.RequirePermission("brand:read"), merekController.FindAll)
+			merekAdmin.GET("/:id", middleware.RequirePermission("brand:read"), merekController.FindByID)
+			merekAdmin.POST("", middleware.RequirePermission("brand:manage"), merekController.Create)
+			merekAdmin.PUT("/:id", middleware.RequirePermission("brand:manage"), merekController.Update)
+			merekAdmin.DELETE("/:id", middleware.RequirePermission("brand:manage"), merekController.Delete)
+			merekAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("brand:manage"), merekController.ToggleStatus)
 		}
 
 		// Kondisi Produk - Public (Read Only)
@@ -169,17 +171,18 @@ func SetupRoutes(
 			kondisiPublic.GET("/slug/:slug", kondisiController.FindBySlug)
 		}
 
-		// Kondisi Produk - Admin (Write)
+		// Kondisi Produk - Admin
 		kondisiAdmin := v1.Group("/panel/kondisi-produk")
 		kondisiAdmin.Use(middleware.AuthMiddleware())
 		kondisiAdmin.Use(middleware.AdminOnly())
-		kondisiAdmin.Use(middleware.RequirePermission("kondisi:manage"))
 		{
-			kondisiAdmin.POST("", kondisiController.Create)
-			kondisiAdmin.PUT("/:id", kondisiController.Update)
-			kondisiAdmin.DELETE("/:id", kondisiController.Delete)
-			kondisiAdmin.PATCH("/:id/toggle-status", kondisiController.ToggleStatus)
-			kondisiAdmin.PUT("/reorder", kondisiController.Reorder)
+			kondisiAdmin.GET("", middleware.RequirePermission("kondisi:read"), kondisiController.FindAll)
+			kondisiAdmin.GET("/:id", middleware.RequirePermission("kondisi:read"), kondisiController.FindByID)
+			kondisiAdmin.POST("", middleware.RequirePermission("kondisi:manage"), kondisiController.Create)
+			kondisiAdmin.PUT("/:id", middleware.RequirePermission("kondisi:manage"), kondisiController.Update)
+			kondisiAdmin.DELETE("/:id", middleware.RequirePermission("kondisi:manage"), kondisiController.Delete)
+			kondisiAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("kondisi:manage"), kondisiController.ToggleStatus)
+			kondisiAdmin.PUT("/reorder", middleware.RequirePermission("kondisi:manage"), kondisiController.Reorder)
 		}
 
 		// Kondisi Paket - Public (Read Only)
@@ -190,17 +193,18 @@ func SetupRoutes(
 			paketPublic.GET("/slug/:slug", kondisiPaketController.FindBySlug)
 		}
 
-		// Kondisi Paket - Admin (Write)
+		// Kondisi Paket - Admin
 		paketAdmin := v1.Group("/panel/kondisi-paket")
 		paketAdmin.Use(middleware.AuthMiddleware())
 		paketAdmin.Use(middleware.AdminOnly())
-		paketAdmin.Use(middleware.RequirePermission("kondisi:manage"))
 		{
-			paketAdmin.POST("", kondisiPaketController.Create)
-			paketAdmin.PUT("/:id", kondisiPaketController.Update)
-			paketAdmin.DELETE("/:id", kondisiPaketController.Delete)
-			paketAdmin.PATCH("/:id/toggle-status", kondisiPaketController.ToggleStatus)
-			paketAdmin.PUT("/reorder", kondisiPaketController.Reorder)
+			paketAdmin.GET("", middleware.RequirePermission("kondisi:read"), kondisiPaketController.FindAll)
+			paketAdmin.GET("/:id", middleware.RequirePermission("kondisi:read"), kondisiPaketController.FindByID)
+			paketAdmin.POST("", middleware.RequirePermission("kondisi:manage"), kondisiPaketController.Create)
+			paketAdmin.PUT("/:id", middleware.RequirePermission("kondisi:manage"), kondisiPaketController.Update)
+			paketAdmin.DELETE("/:id", middleware.RequirePermission("kondisi:manage"), kondisiPaketController.Delete)
+			paketAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("kondisi:manage"), kondisiPaketController.ToggleStatus)
+			paketAdmin.PUT("/reorder", middleware.RequirePermission("kondisi:manage"), kondisiPaketController.Reorder)
 		}
 
 		// Sumber Produk - Public (Read Only)
@@ -211,16 +215,17 @@ func SetupRoutes(
 			sumberPublic.GET("/slug/:slug", sumberController.FindBySlug)
 		}
 
-		// Sumber Produk - Admin (Write)
+		// Sumber Produk - Admin
 		sumberAdmin := v1.Group("/panel/sumber-produk")
 		sumberAdmin.Use(middleware.AuthMiddleware())
 		sumberAdmin.Use(middleware.AdminOnly())
-		sumberAdmin.Use(middleware.RequirePermission("kondisi:manage"))
 		{
-			sumberAdmin.POST("", sumberController.Create)
-			sumberAdmin.PUT("/:id", sumberController.Update)
-			sumberAdmin.DELETE("/:id", sumberController.Delete)
-			sumberAdmin.PATCH("/:id/toggle-status", sumberController.ToggleStatus)
+			sumberAdmin.GET("", middleware.RequirePermission("kondisi:read"), sumberController.FindAll)
+			sumberAdmin.GET("/:id", middleware.RequirePermission("kondisi:read"), sumberController.FindByID)
+			sumberAdmin.POST("", middleware.RequirePermission("kondisi:manage"), sumberController.Create)
+			sumberAdmin.PUT("/:id", middleware.RequirePermission("kondisi:manage"), sumberController.Update)
+			sumberAdmin.DELETE("/:id", middleware.RequirePermission("kondisi:manage"), sumberController.Delete)
+			sumberAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("kondisi:manage"), sumberController.ToggleStatus)
 		}
 
 		// Warehouse - Public (Read Only)
@@ -230,16 +235,17 @@ func SetupRoutes(
 			warehousePublic.GET("/:id", warehouseController.FindByID)
 		}
 
-		// Warehouse - Admin (Write)
+		// Warehouse - Admin
 		warehouseAdmin := v1.Group("/panel/warehouse")
 		warehouseAdmin.Use(middleware.AuthMiddleware())
 		warehouseAdmin.Use(middleware.AdminOnly())
-		warehouseAdmin.Use(middleware.RequirePermission("kondisi:manage"))
 		{
-			warehouseAdmin.POST("", warehouseController.Create)
-			warehouseAdmin.PUT("/:id", warehouseController.Update)
-			warehouseAdmin.DELETE("/:id", warehouseController.Delete)
-			warehouseAdmin.PATCH("/:id/toggle-status", warehouseController.ToggleStatus)
+			warehouseAdmin.GET("", middleware.RequirePermission("kondisi:read"), warehouseController.FindAll)
+			warehouseAdmin.GET("/:id", middleware.RequirePermission("kondisi:read"), warehouseController.FindByID)
+			warehouseAdmin.POST("", middleware.RequirePermission("kondisi:manage"), warehouseController.Create)
+			warehouseAdmin.PUT("/:id", middleware.RequirePermission("kondisi:manage"), warehouseController.Update)
+			warehouseAdmin.DELETE("/:id", middleware.RequirePermission("kondisi:manage"), warehouseController.Delete)
+			warehouseAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("kondisi:manage"), warehouseController.ToggleStatus)
 		}
 
 		// Tipe Produk - Public (Read Only)
@@ -250,6 +256,15 @@ func SetupRoutes(
 			tipeProdukPublic.GET("/with-produk", tipeProdukController.FindAllWithProduk)
 		}
 
+		// Tipe Produk - Admin (Read Only)
+		tipeProdukAdmin := v1.Group("/panel/tipe-produk")
+		tipeProdukAdmin.Use(middleware.AuthMiddleware())
+		tipeProdukAdmin.Use(middleware.AdminOnly())
+		{
+			tipeProdukAdmin.GET("", middleware.RequirePermission("system:read"), tipeProdukController.FindAll)
+			tipeProdukAdmin.GET("/with-produk", middleware.RequirePermission("system:read"), tipeProdukController.FindAllWithProduk)
+		}
+
 		// Diskon Kategori - Public (Read Only)
 		diskonKategoriPublic := v1.Group("/diskon-kategori")
 		{
@@ -258,16 +273,17 @@ func SetupRoutes(
 			diskonKategoriPublic.GET("/by-kategori/:kategori_id", diskonKategoriController.FindActiveByKategoriID)
 		}
 
-		// Diskon Kategori - Admin (Write)
+		// Diskon Kategori - Admin
 		diskonKategoriAdmin := v1.Group("/panel/diskon-kategori")
 		diskonKategoriAdmin.Use(middleware.AuthMiddleware())
 		diskonKategoriAdmin.Use(middleware.AdminOnly())
-		diskonKategoriAdmin.Use(middleware.RequirePermission("diskon:manage"))
 		{
-			diskonKategoriAdmin.POST("", diskonKategoriController.Create)
-			diskonKategoriAdmin.PUT("/:id", diskonKategoriController.Update)
-			diskonKategoriAdmin.DELETE("/:id", diskonKategoriController.Delete)
-			diskonKategoriAdmin.PATCH("/:id/toggle-status", diskonKategoriController.ToggleStatus)
+			diskonKategoriAdmin.GET("", middleware.RequirePermission("diskon:read"), diskonKategoriController.FindAll)
+			diskonKategoriAdmin.GET("/:id", middleware.RequirePermission("diskon:read"), diskonKategoriController.FindByID)
+			diskonKategoriAdmin.POST("", middleware.RequirePermission("diskon:manage"), diskonKategoriController.Create)
+			diskonKategoriAdmin.PUT("/:id", middleware.RequirePermission("diskon:manage"), diskonKategoriController.Update)
+			diskonKategoriAdmin.DELETE("/:id", middleware.RequirePermission("diskon:manage"), diskonKategoriController.Delete)
+			diskonKategoriAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("diskon:manage"), diskonKategoriController.ToggleStatus)
 		}
 
 		// Banner Tipe Produk - Public (Read Only)
@@ -278,17 +294,18 @@ func SetupRoutes(
 			bannerTipeProdukPublic.GET("/by-tipe/:tipe_produk_id", bannerTipeProdukController.FindByTipeProdukID)
 		}
 
-		// Banner Tipe Produk - Admin (Write)
+		// Banner Tipe Produk - Admin
 		bannerTipeProdukAdmin := v1.Group("/panel/banner-tipe-produk")
 		bannerTipeProdukAdmin.Use(middleware.AuthMiddleware())
 		bannerTipeProdukAdmin.Use(middleware.AdminOnly())
-		bannerTipeProdukAdmin.Use(middleware.RequirePermission("marketing:manage"))
 		{
-			bannerTipeProdukAdmin.POST("", bannerTipeProdukController.Create)
-			bannerTipeProdukAdmin.PUT("/:id", bannerTipeProdukController.Update)
-			bannerTipeProdukAdmin.DELETE("/:id", bannerTipeProdukController.Delete)
-			bannerTipeProdukAdmin.PATCH("/:id/toggle-status", bannerTipeProdukController.ToggleStatus)
-			bannerTipeProdukAdmin.PUT("/reorder", bannerTipeProdukController.Reorder)
+			bannerTipeProdukAdmin.GET("", middleware.RequirePermission("marketing:read"), bannerTipeProdukController.FindAll)
+			bannerTipeProdukAdmin.GET("/:id", middleware.RequirePermission("marketing:read"), bannerTipeProdukController.FindByID)
+			bannerTipeProdukAdmin.POST("", middleware.RequirePermission("marketing:manage"), bannerTipeProdukController.Create)
+			bannerTipeProdukAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), bannerTipeProdukController.Update)
+			bannerTipeProdukAdmin.DELETE("/:id", middleware.RequirePermission("marketing:manage"), bannerTipeProdukController.Delete)
+			bannerTipeProdukAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("marketing:manage"), bannerTipeProdukController.ToggleStatus)
+			bannerTipeProdukAdmin.PUT("/reorder", middleware.RequirePermission("marketing:manage"), bannerTipeProdukController.Reorder)
 		}
 
 		// Produk - Public (Read Only)
@@ -299,11 +316,15 @@ func SetupRoutes(
 			produkPublic.GET("/slug/:slug", produkController.FindBySlug)
 		}
 
-		// Produk - Admin (Write)
+		// Produk - Admin
 		produkAdmin := v1.Group("/panel/produk")
 		produkAdmin.Use(middleware.AuthMiddleware())
 		produkAdmin.Use(middleware.AdminOnly())
 		{
+			// Read - produk:read
+			produkAdmin.GET("", middleware.RequirePermission("produk:read"), produkController.FindAll)
+			produkAdmin.GET("/:id", middleware.RequirePermission("produk:read"), produkController.FindByID)
+
 			// Create - produk:create
 			produkAdmin.POST("", middleware.RequirePermission("produk:create"), produkController.Create)
 

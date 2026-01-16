@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 
+	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
+	"project-bulky-be/pkg/utils"
 
 	"github.com/google/uuid"
 )
@@ -19,10 +21,14 @@ type ProdukGambarService interface {
 
 type produkGambarService struct {
 	repo repositories.ProdukGambarRepository
+	cfg  *config.Config
 }
 
-func NewProdukGambarService(repo repositories.ProdukGambarRepository) ProdukGambarService {
-	return &produkGambarService{repo: repo}
+func NewProdukGambarService(repo repositories.ProdukGambarRepository, cfg *config.Config) ProdukGambarService {
+	return &produkGambarService{
+		repo: repo,
+		cfg:  cfg,
+	}
 }
 
 func (s *produkGambarService) Create(ctx context.Context, produkID string, req *models.CreateProdukGambarRequest) (*models.ProdukGambarResponse, error) {
@@ -52,7 +58,7 @@ func (s *produkGambarService) Create(ctx context.Context, produkID string, req *
 
 	return &models.ProdukGambarResponse{
 		ID:        gambar.ID.String(),
-		GambarURL: gambar.GambarURL,
+		GambarURL: utils.GetFileURL(gambar.GambarURL, s.cfg),
 		Urutan:    gambar.Urutan,
 		IsPrimary: gambar.IsPrimary,
 	}, nil
@@ -80,7 +86,7 @@ func (s *produkGambarService) Update(ctx context.Context, id string, req *models
 
 	return &models.ProdukGambarResponse{
 		ID:        gambar.ID.String(),
-		GambarURL: gambar.GambarURL,
+		GambarURL: utils.GetFileURL(gambar.GambarURL, s.cfg),
 		Urutan:    gambar.Urutan,
 		IsPrimary: gambar.IsPrimary,
 	}, nil
