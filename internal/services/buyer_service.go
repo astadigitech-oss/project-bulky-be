@@ -266,7 +266,7 @@ func (s *buyerService) toDetailResponse(b *models.Buyer) *models.BuyerDetailResp
 		Username:  b.Username,
 		Email:     b.Email,
 		Telepon:   b.Telepon,
-		FotoURL:   b.FotoURL,
+		FotoURL:   utils.GetFileURLPtr(b.FotoURL, s.cfg),
 		Alamat:    alamatResponses,
 		CreatedAt: b.CreatedAt,
 		UpdatedAt: b.UpdatedAt,

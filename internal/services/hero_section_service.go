@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
 
@@ -23,10 +24,14 @@ type HeroSectionService interface {
 
 type heroSectionService struct {
 	repo repositories.HeroSectionRepository
+	cfg  *config.Config
 }
 
-func NewHeroSectionService(repo repositories.HeroSectionRepository) HeroSectionService {
-	return &heroSectionService{repo: repo}
+func NewHeroSectionService(repo repositories.HeroSectionRepository, cfg *config.Config) HeroSectionService {
+	return &heroSectionService{
+		repo: repo,
+		cfg:  cfg,
+	}
 }
 
 func (s *heroSectionService) Create(ctx context.Context, req *models.CreateHeroSectionRequest) (*models.HeroSectionResponse, error) {
@@ -135,7 +140,7 @@ func (s *heroSectionService) GetVisibleHero(ctx context.Context) (*models.HeroSe
 	return &models.HeroSectionPublicResponse{
 		ID:        hero.ID.String(),
 		Nama:      hero.Nama,
-		GambarURL: hero.GetGambarURL(),
+		GambarURL: hero.GetGambarURL().GetFullURL(s.cfg.BaseURL),
 		// LinkURL:   hero.LinkURL,
 	}, nil
 }
@@ -144,7 +149,7 @@ func (s *heroSectionService) toResponse(h *models.HeroSection) *models.HeroSecti
 	return &models.HeroSectionResponse{
 		ID:        h.ID.String(),
 		Nama:      h.Nama,
-		GambarURL: h.GetGambarURL(),
+		GambarURL: h.GetGambarURL().GetFullURL(s.cfg.BaseURL),
 		// LinkURL:   h.LinkURL,
 		Urutan:    h.Urutan,
 		IsActive:  h.IsActive,
@@ -157,7 +162,7 @@ func (s *heroSectionService) toSimpleResponse(h *models.HeroSection) *models.Her
 	return &models.HeroSectionSimpleResponse{
 		ID:        h.ID.String(),
 		Nama:      h.Nama,
-		GambarURL: h.GetGambarURL(),
+		GambarURL: h.GetGambarURL().GetFullURL(s.cfg.BaseURL),
 		// LinkURL:   h.LinkURL,
 		Urutan:    h.Urutan,
 		IsActive:  h.IsActive,

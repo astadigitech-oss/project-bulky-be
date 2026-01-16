@@ -104,7 +104,7 @@ func (s *bannerTipeProdukService) FindByTipeProdukID(ctx context.Context, tipePr
 		items = append(items, models.BannerSimpleResponse{
 			ID:        b.ID.String(),
 			Nama:      b.Nama,
-			GambarURL: b.GambarURL,
+			GambarURL: utils.GetFileURL(b.GambarURL, s.cfg),
 			Urutan:    b.Urutan,
 		})
 	}
@@ -256,7 +256,7 @@ func (s *bannerTipeProdukService) toResponse(b *models.BannerTipeProduk) *models
 			Slug: b.TipeProduk.Slug,
 		},
 		Nama:      b.Nama,
-		GambarURL: b.GambarURL,
+		GambarURL: utils.GetFileURL(b.GambarURL, s.cfg),
 		Urutan:    b.Urutan,
 		IsActive:  b.IsActive,
 		CreatedAt: b.CreatedAt,
@@ -273,7 +273,7 @@ func (s *bannerTipeProdukService) toSimpleResponse(b *models.BannerTipeProduk) *
 			// Slug: b.TipeProduk.Slug,
 		},
 		Nama:      b.Nama,
-		GambarURL: b.GambarURL,
+		GambarURL: utils.GetFileURL(b.GambarURL, s.cfg),
 		Urutan:    b.Urutan,
 		IsActive:  b.IsActive,
 		// CreatedAt: b.CreatedAt,

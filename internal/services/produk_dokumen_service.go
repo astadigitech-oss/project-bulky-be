@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 
+	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
+	"project-bulky-be/pkg/utils"
 
 	"github.com/google/uuid"
 )
@@ -17,10 +19,14 @@ type ProdukDokumenService interface {
 
 type produkDokumenService struct {
 	repo repositories.ProdukDokumenRepository
+	cfg  *config.Config
 }
 
-func NewProdukDokumenService(repo repositories.ProdukDokumenRepository) ProdukDokumenService {
-	return &produkDokumenService{repo: repo}
+func NewProdukDokumenService(repo repositories.ProdukDokumenRepository, cfg *config.Config) ProdukDokumenService {
+	return &produkDokumenService{
+		repo: repo,
+		cfg:  cfg,
+	}
 }
 
 func (s *produkDokumenService) Create(ctx context.Context, produkID string, req *models.CreateProdukDokumenRequest) (*models.ProdukDokumenResponse, error) {
@@ -44,7 +50,7 @@ func (s *produkDokumenService) Create(ctx context.Context, produkID string, req 
 	return &models.ProdukDokumenResponse{
 		ID:          dokumen.ID.String(),
 		NamaDokumen: dokumen.NamaDokumen,
-		FileURL:     dokumen.FileURL,
+		FileURL:     utils.GetFileURL(dokumen.FileURL, s.cfg),
 		TipeFile:    dokumen.TipeFile,
 		UkuranFile:  dokumen.UkuranFile,
 	}, nil

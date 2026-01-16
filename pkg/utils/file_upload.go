@@ -154,3 +154,12 @@ func GetFileURL(filePath string, cfg *config.Config) string {
 	}
 	return fmt.Sprintf("%s/%s", strings.TrimRight(cfg.BaseURL, "/"), filePath)
 }
+
+// GetFileURLPtr returns the full URL for a file path pointer
+func GetFileURLPtr(filePath *string, cfg *config.Config) *string {
+	if filePath == nil || *filePath == "" {
+		return nil
+	}
+	url := fmt.Sprintf("%s/%s", strings.TrimRight(cfg.BaseURL, "/"), *filePath)
+	return &url
+}

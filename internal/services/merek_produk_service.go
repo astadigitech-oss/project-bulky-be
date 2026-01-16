@@ -104,6 +104,11 @@ func (s *merekProdukService) FindAll(ctx context.Context, params *models.Paginat
 		return nil, nil, err
 	}
 
+	// Add BASE_URL to LogoURL
+	for i := range mereks {
+		mereks[i].LogoURL = utils.GetFileURLPtr(mereks[i].LogoURL, s.cfg)
+	}
+
 	// Ensure empty array instead of null
 	if mereks == nil {
 		mereks = []models.MerekProdukSimpleResponse{}
@@ -217,7 +222,7 @@ func (s *merekProdukService) toResponse(m *models.MerekProduk) *models.MerekProd
 		ID:        m.ID.String(),
 		Nama:      m.GetNama(),
 		Slug:      m.Slug,
-		LogoURL:   m.LogoURL,
+		LogoURL:   utils.GetFileURLPtr(m.LogoURL, s.cfg),
 		IsActive:  m.IsActive,
 		CreatedAt: m.CreatedAt,
 		UpdatedAt: m.UpdatedAt,

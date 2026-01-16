@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
 
@@ -24,10 +25,14 @@ type BannerEventPromoService interface {
 
 type bannerEventPromoService struct {
 	repo repositories.BannerEventPromoRepository
+	cfg  *config.Config
 }
 
-func NewBannerEventPromoService(repo repositories.BannerEventPromoRepository) BannerEventPromoService {
-	return &bannerEventPromoService{repo: repo}
+func NewBannerEventPromoService(repo repositories.BannerEventPromoRepository, cfg *config.Config) BannerEventPromoService {
+	return &bannerEventPromoService{
+		repo: repo,
+		cfg:  cfg,
+	}
 }
 
 func (s *bannerEventPromoService) Create(ctx context.Context, req *models.CreateBannerEventPromoRequest) (*models.BannerEventPromoResponse, error) {
@@ -168,7 +173,7 @@ func (s *bannerEventPromoService) GetVisibleBanners(ctx context.Context) ([]mode
 		items = append(items, models.BannerEventPromoPublicResponse{
 			ID:        b.ID.String(),
 			Nama:      b.Nama,
-			GambarURL: b.GetGambarURL(),
+			GambarURL: b.GetGambarURL().GetFullURL(s.cfg.BaseURL),
 			LinkURL:   b.LinkURL,
 		})
 	}
@@ -180,7 +185,7 @@ func (s *bannerEventPromoService) toResponse(b *models.BannerEventPromo) *models
 	return &models.BannerEventPromoResponse{
 		ID:           b.ID.String(),
 		Nama:         b.Nama,
-		GambarURL:    b.GetGambarURL(),
+		GambarURL:    b.GetGambarURL().GetFullURL(s.cfg.BaseURL),
 		LinkURL:      b.LinkURL,
 		Urutan:       b.Urutan,
 		IsActive:     b.IsActive,
@@ -195,7 +200,7 @@ func (s *bannerEventPromoService) toSimpleResponse(b *models.BannerEventPromo) *
 	return &models.BannerEventPromoSimpleResponse{
 		ID:        b.ID.String(),
 		Nama:      b.Nama,
-		GambarURL: b.GetGambarURL(),
+		GambarURL: b.GetGambarURL().GetFullURL(s.cfg.BaseURL),
 		LinkURL:   b.LinkURL,
 		// Urutan:    b.Urutan,
 		IsActive:  b.IsActive,

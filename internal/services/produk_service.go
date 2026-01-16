@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
 	"project-bulky-be/pkg/utils"
@@ -25,10 +26,15 @@ type ProdukService interface {
 type produkService struct {
 	repo       repositories.ProdukRepository
 	gambarRepo repositories.ProdukGambarRepository
+	cfg        *config.Config
 }
 
-func NewProdukService(repo repositories.ProdukRepository, gambarRepo repositories.ProdukGambarRepository) ProdukService {
-	return &produkService{repo: repo, gambarRepo: gambarRepo}
+func NewProdukService(repo repositories.ProdukRepository, gambarRepo repositories.ProdukGambarRepository, cfg *config.Config) ProdukService {
+	return &produkService{
+		repo:       repo,
+		gambarRepo: gambarRepo,
+		cfg:        cfg,
+	}
 }
 
 func (s *produkService) Create(ctx context.Context, req *models.CreateProdukRequest) (*models.ProdukDetailResponse, error) {
@@ -309,7 +315,8 @@ func (s *produkService) toListResponse(p *models.Produk) *models.ProdukListRespo
 
 	// Get primary image
 	if len(p.Gambar) > 0 {
-		resp.GambarUtama = &p.Gambar[0].GambarURL
+		fullURL := utils.GetFileURL(p.Gambar[0].GambarURL, s.cfg)
+		resp.GambarUtama = &fullURL
 	}
 
 	return resp
@@ -377,7 +384,7 @@ func (s *produkService) toDetailResponse(p *models.Produk) *models.ProdukDetailR
 	for _, g := range p.Gambar {
 		resp.Gambar = append(resp.Gambar, models.ProdukGambarResponse{
 			ID:        g.ID.String(),
-			GambarURL: g.GambarURL,
+			GambarURL: utils.GetFileURL(g.GambarURL, s.cfg),
 			Urutan:    g.Urutan,
 			IsPrimary: g.IsPrimary,
 		})
@@ -388,7 +395,7 @@ func (s *produkService) toDetailResponse(p *models.Produk) *models.ProdukDetailR
 		resp.Dokumen = append(resp.Dokumen, models.ProdukDokumenResponse{
 			ID:          d.ID.String(),
 			NamaDokumen: d.NamaDokumen,
-			FileURL:     d.FileURL,
+			FileURL:     utils.GetFileURL(d.FileURL, s.cfg),
 			TipeFile:    d.TipeFile,
 			UkuranFile:  d.UkuranFile,
 		})
