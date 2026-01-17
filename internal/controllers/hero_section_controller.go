@@ -13,14 +13,16 @@ import (
 )
 
 type HeroSectionController struct {
-	service services.HeroSectionService
-	cfg     *config.Config
+	service        services.HeroSectionService
+	reorderService *services.ReorderService
+	cfg            *config.Config
 }
 
-func NewHeroSectionController(service services.HeroSectionService, cfg *config.Config) *HeroSectionController {
+func NewHeroSectionController(service services.HeroSectionService, reorderService *services.ReorderService, cfg *config.Config) *HeroSectionController {
 	return &HeroSectionController{
-		service: service,
-		cfg:     cfg,
+		service:        service,
+		reorderService: reorderService,
+		cfg:            cfg,
 	}
 }
 
@@ -328,4 +330,45 @@ func (c *HeroSectionController) GetActive(ctx *gin.Context) {
 	}
 
 	utils.SuccessResponse(ctx, "Hero section aktif berhasil diambil", result)
+}
+
+func (c *HeroSectionController) ReorderByDirection(ctx *gin.Context) {
+	id := ctx.Param("id")
+	direction := ctx.Query("direction")
+
+	if direction == "" {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter 'direction' wajib diisi", nil)
+		return
+	}
+
+	idUUID, err := utils.ParseUUID(id)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", nil)
+		return
+	}
+
+	result, err := c.reorderService.Reorder(
+		ctx.Request.Context(),
+		"hero_section",
+		idUUID,
+		direction,
+		"",
+		nil,
+	)
+
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Urutan berhasil diubah", gin.H{
+		"item": gin.H{
+			"id":     result.ItemID,
+			"urutan": result.ItemUrutan,
+		},
+		"swapped_with": gin.H{
+			"id":     result.SwappedID,
+			"urutan": result.SwappedUrutan,
+		},
+	})
 }

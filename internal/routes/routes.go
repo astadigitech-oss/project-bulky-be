@@ -366,7 +366,8 @@ func SetupRoutes(
 			heroSectionAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), heroSectionController.Update)
 			heroSectionAdmin.DELETE("/:id", middleware.RequirePermission("marketing:manage"), heroSectionController.Delete)
 			heroSectionAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("marketing:manage"), heroSectionController.ToggleStatus)
-			// heroSectionAdmin.PUT("/reorder", middleware.RequirePermission("marketing:manage"), heroSectionController.Reorder)
+			heroSectionAdmin.PUT("/reorder", middleware.RequirePermission("marketing:manage"), heroSectionController.Reorder)
+			heroSectionAdmin.PATCH("/:id/reorder", middleware.RequirePermission("marketing:manage"), heroSectionController.ReorderByDirection)
 		}
 
 		// Hero Section (Public)

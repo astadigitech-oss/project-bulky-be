@@ -76,6 +76,7 @@ func main() {
 	permissionRepo := repositories.NewPermissionRepository(db)
 
 	// Initialize services
+	reorderService := services.NewReorderService(db)
 	kategoriService := services.NewKategoriProdukService(kategoriRepo, cfg)
 	merekService := services.NewMerekProdukService(merekRepo, cfg)
 	kondisiService := services.NewKondisiProdukService(kondisiRepo)
@@ -129,7 +130,7 @@ func main() {
 	masterController := controllers.NewMasterController(masterService)
 	buyerController := controllers.NewBuyerController(buyerService)
 	alamatBuyerController := controllers.NewAlamatBuyerController(alamatBuyerService)
-	heroSectionController := controllers.NewHeroSectionController(heroSectionService, cfg)
+	heroSectionController := controllers.NewHeroSectionController(heroSectionService, reorderService, cfg)
 	bannerEventPromoController := controllers.NewBannerEventPromoController(bannerEventPromoService, cfg)
 	ulasanController := controllers.NewUlasanController(ulasanService)
 	forceUpdateController := controllers.NewForceUpdateController(forceUpdateService)
