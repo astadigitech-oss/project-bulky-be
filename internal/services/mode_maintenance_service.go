@@ -8,12 +8,12 @@ import (
 
 type ModeMaintenanceService interface {
 	CreateMaintenance(req *models.CreateMaintenanceRequest) (*models.ModeMaintenance, error)
-	UpdateMaintenance(id uint, req *models.UpdateMaintenanceRequest) (*models.ModeMaintenance, error)
-	DeleteMaintenance(id uint) error
-	GetMaintenanceByID(id uint) (*models.ModeMaintenance, error)
+	UpdateMaintenance(id string, req *models.UpdateMaintenanceRequest) (*models.ModeMaintenance, error)
+	DeleteMaintenance(id string) error
+	GetMaintenanceByID(id string) (*models.ModeMaintenance, error)
 	GetAllMaintenances(page, limit int) ([]models.ModeMaintenance, int64, error)
-	ActivateMaintenance(id uint) error
-	DeactivateMaintenance(id uint) error
+	ActivateMaintenance(id string) error
+	DeactivateMaintenance(id string) error
 	CheckMaintenance() (*models.CheckMaintenanceResponse, error)
 }
 
@@ -43,7 +43,7 @@ func (s *modeMaintenanceService) CreateMaintenance(req *models.CreateMaintenance
 	return maintenance, nil
 }
 
-func (s *modeMaintenanceService) UpdateMaintenance(id uint, req *models.UpdateMaintenanceRequest) (*models.ModeMaintenance, error) {
+func (s *modeMaintenanceService) UpdateMaintenance(id string, req *models.UpdateMaintenanceRequest) (*models.ModeMaintenance, error) {
 	maintenance, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, errors.New("maintenance not found")
@@ -70,7 +70,7 @@ func (s *modeMaintenanceService) UpdateMaintenance(id uint, req *models.UpdateMa
 	return maintenance, nil
 }
 
-func (s *modeMaintenanceService) DeleteMaintenance(id uint) error {
+func (s *modeMaintenanceService) DeleteMaintenance(id string) error {
 	_, err := s.repo.FindByID(id)
 	if err != nil {
 		return errors.New("maintenance not found")
@@ -79,7 +79,7 @@ func (s *modeMaintenanceService) DeleteMaintenance(id uint) error {
 	return s.repo.Delete(id)
 }
 
-func (s *modeMaintenanceService) GetMaintenanceByID(id uint) (*models.ModeMaintenance, error) {
+func (s *modeMaintenanceService) GetMaintenanceByID(id string) (*models.ModeMaintenance, error) {
 	maintenance, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, errors.New("maintenance not found")
@@ -91,7 +91,7 @@ func (s *modeMaintenanceService) GetAllMaintenances(page, limit int) ([]models.M
 	return s.repo.FindAll(page, limit)
 }
 
-func (s *modeMaintenanceService) ActivateMaintenance(id uint) error {
+func (s *modeMaintenanceService) ActivateMaintenance(id string) error {
 	_, err := s.repo.FindByID(id)
 	if err != nil {
 		return errors.New("maintenance not found")
@@ -100,7 +100,7 @@ func (s *modeMaintenanceService) ActivateMaintenance(id uint) error {
 	return s.repo.Activate(id)
 }
 
-func (s *modeMaintenanceService) DeactivateMaintenance(id uint) error {
+func (s *modeMaintenanceService) DeactivateMaintenance(id string) error {
 	_, err := s.repo.FindByID(id)
 	if err != nil {
 		return errors.New("maintenance not found")

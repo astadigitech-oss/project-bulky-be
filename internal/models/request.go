@@ -542,3 +542,70 @@ type BannerEventPromoFilterRequest struct {
 	IsActive  *bool   `form:"is_active"`
 	UpdatedAt *string `form:"updated_at"`
 }
+
+// ========================================
+// Formulir Partai Besar - Config Request
+// ========================================
+
+type UpdateFormulirConfigRequest struct {
+	DaftarEmail []string `json:"daftar_email" binding:"required,min=1,dive,email"`
+}
+
+// ========================================
+// Formulir Partai Besar - Anggaran Request
+// ========================================
+
+type CreateAnggaranRequest struct {
+	Label  string `json:"label" binding:"required,min=1,max=100"`
+	Urutan int    `json:"urutan"`
+}
+
+type UpdateAnggaranRequest struct {
+	Label  *string `json:"label" binding:"omitempty,min=1,max=100"`
+	Urutan *int    `json:"urutan"`
+}
+
+type AnggaranFilterRequest struct {
+	PaginationRequest
+}
+
+// ========================================
+// Formulir Partai Besar - Submission Request (Buyer)
+// ========================================
+
+type CreateFormulirSubmissionRequest struct {
+	Nama        string   `json:"nama" binding:"required,min=2,max=100"`
+	Telepon     string   `json:"telepon" binding:"required,max=20"`
+	Alamat      string   `json:"alamat" binding:"required"`
+	AnggaranID  string   `json:"anggaran_id" binding:"required,uuid"`
+	KategoriIDs []string `json:"kategori_ids" binding:"required,min=1,dive,uuid"`
+}
+
+type FormulirSubmissionFilterRequest struct {
+	PaginationRequest
+	TanggalDari   *string `form:"tanggal_dari"`
+	TanggalSampai *string `form:"tanggal_sampai"`
+	EmailSent     *bool   `form:"email_sent"`
+}
+
+// ========================================
+// WhatsApp Handler Request
+// ========================================
+
+type CreateWhatsAppHandlerRequest struct {
+	NomorWA   string `json:"nomor_wa" binding:"required,max=20"`
+	PesanAwal string `json:"pesan_awal" binding:"required"`
+	IsActive  bool   `json:"is_active"`
+}
+
+type UpdateWhatsAppHandlerRequest struct {
+	NomorWA   *string `json:"nomor_wa" binding:"omitempty,max=20"`
+	PesanAwal *string `json:"pesan_awal"`
+	IsActive  *bool   `json:"is_active"`
+}
+
+type WhatsAppHandlerFilterRequest struct {
+	PaginationRequest
+	IsActive  *bool   `form:"is_active"`
+	UpdatedAt *string `form:"updated_at"`
+}

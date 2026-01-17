@@ -7,7 +7,7 @@ import "time"
 // ========================================
 
 type ForceUpdateListResponse struct {
-	ID         uint      `json:"id"`
+	ID         string    `json:"id"`
 	KodeVersi  string    `json:"kode_versi"`
 	UpdateType string    `json:"update_type"`
 	IsActive   bool      `json:"is_active"`
@@ -15,7 +15,7 @@ type ForceUpdateListResponse struct {
 }
 
 type ForceUpdateDetailResponse struct {
-	ID              uint      `json:"id"`
+	ID              string    `json:"id"`
 	KodeVersi       string    `json:"kode_versi"`
 	UpdateType      string    `json:"update_type"`
 	InformasiUpdate string    `json:"informasi_update"`
@@ -42,7 +42,7 @@ type CheckVersionResponse struct {
 // ========================================
 
 type MaintenanceListResponse struct {
-	ID              uint      `json:"id"`
+	ID              string    `json:"id"`
 	Judul           string    `json:"judul"`
 	TipeMaintenance string    `json:"tipe_maintenance"`
 	IsActive        bool      `json:"is_active"`
@@ -50,7 +50,7 @@ type MaintenanceListResponse struct {
 }
 
 type MaintenanceDetailResponse struct {
-	ID              uint      `json:"id"`
+	ID              string    `json:"id"`
 	Judul           string    `json:"judul"`
 	TipeMaintenance string    `json:"tipe_maintenance"`
 	Deskripsi       string    `json:"deskripsi"`

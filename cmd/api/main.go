@@ -66,6 +66,8 @@ func main() {
 	metodePembayaranRepo := repositories.NewMetodePembayaranRepository(db)
 	dokumenKebijakanRepo := repositories.NewDokumenKebijakanRepository(db)
 	disclaimerRepo := repositories.NewDisclaimerRepository(db)
+	formulirPartaiBesarRepo := repositories.NewFormulirPartaiBesarRepository(db)
+	whatsappHandlerRepo := repositories.NewWhatsAppHandlerRepository(db)
 
 	// Auth V2 repositories
 	authRepo := repositories.NewAuthRepository(db)
@@ -101,6 +103,9 @@ func main() {
 	metodePembayaranService := services.NewMetodePembayaranService(metodePembayaranRepo, metodePembayaranGroupRepo, cfg)
 	dokumenKebijakanService := services.NewDokumenKebijakanService(dokumenKebijakanRepo)
 	disclaimerService := services.NewDisclaimerService(disclaimerRepo)
+	emailService := services.NewEmailService()
+	formulirPartaiBesarService := services.NewFormulirPartaiBesarService(formulirPartaiBesarRepo, kategoriRepo, emailService)
+	whatsappHandlerService := services.NewWhatsAppHandlerService(whatsappHandlerRepo)
 
 	// Auth V2 services
 	authV2Service := services.NewAuthV2Service(authRepo, activityLogRepo)
@@ -135,6 +140,8 @@ func main() {
 	metodePembayaranController := controllers.NewMetodePembayaranController(metodePembayaranService, cfg)
 	dokumenKebijakanController := controllers.NewDokumenKebijakanController(dokumenKebijakanService)
 	disclaimerController := controllers.NewDisclaimerController(disclaimerService)
+	formulirPartaiBesarController := controllers.NewFormulirPartaiBesarController(formulirPartaiBesarService)
+	whatsappHandlerController := controllers.NewWhatsAppHandlerController(whatsappHandlerService)
 
 	// Auth V2 controllers
 	authV2Controller := controllers.NewAuthV2Controller(authV2Service, adminService, buyerService)
@@ -157,6 +164,7 @@ func main() {
 		ppnController,
 		metodePembayaranGroupController, metodePembayaranController,
 		dokumenKebijakanController, disclaimerController,
+		formulirPartaiBesarController, whatsappHandlerController,
 	)
 
 	// Setup Auth V2 routes (new authentication system with roles & permissions)

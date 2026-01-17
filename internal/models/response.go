@@ -628,3 +628,87 @@ type BannerEventPromoPublicResponse struct {
 	GambarURL TranslatableImage `json:"gambar_url"`
 	LinkURL   *string           `json:"url_tujuan,omitempty"`
 }
+
+// ========================================
+// Formulir Partai Besar - Config Response
+// ========================================
+
+type FormulirConfigResponse struct {
+	ID          string    `json:"id"`
+	DaftarEmail []string  `json:"daftar_email"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// ========================================
+// Formulir Partai Besar - Anggaran Response
+// ========================================
+
+type AnggaranResponse struct {
+	ID     string `json:"id"`
+	Label  string `json:"label"`
+	Urutan int    `json:"urutan"`
+}
+
+// ========================================
+// Formulir Partai Besar - Submission Response (Admin)
+// ========================================
+
+type FormulirSubmissionListResponse struct {
+	ID        string    `json:"id"`
+	Nama      string    `json:"nama"`
+	Telepon   string    `json:"telepon"`
+	Alamat    string    `json:"alamat"`
+	Anggaran  string    `json:"anggaran"`
+	Kategori  []string  `json:"kategori"` // Array nama kategori
+	EmailSent bool      `json:"email_sent"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type FormulirSubmissionDetailResponse struct {
+	ID          string             `json:"id"`
+	Buyer       *BuyerListResponse `json:"buyer,omitempty"`
+	Nama        string             `json:"nama"`
+	Telepon     string             `json:"telepon"`
+	Alamat      string             `json:"alamat"`
+	Anggaran    *AnggaranResponse  `json:"anggaran"`
+	Kategori    []DropdownItem     `json:"kategori"`
+	EmailSent   bool               `json:"email_sent"`
+	EmailSentAt *time.Time         `json:"email_sent_at"`
+	CreatedAt   time.Time          `json:"created_at"`
+}
+
+type FormulirOptionsResponse struct {
+	Anggaran []AnggaranResponse `json:"anggaran"`
+	Kategori []DropdownItem     `json:"kategori"`
+}
+
+// ========================================
+// WhatsApp Handler Response
+// ========================================
+
+type WhatsAppHandlerResponse struct {
+	ID          string    `json:"id"`
+	NomorWA     string    `json:"nomor_wa"`
+	PesanAwal   string    `json:"pesan_awal"`
+	IsActive    bool      `json:"is_active"`
+	WhatsAppURL string    `json:"whatsapp_url"` // Generated URL
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type WhatsAppHandlerSimpleResponse struct {
+	ID        string `json:"id"`
+	NomorWA   string `json:"nomor_wa"`
+	PesanAwal string `json:"pesan_awal"`
+	IsActive  bool   `json:"is_active"`
+	// WhatsAppURL string    `json:"whatsapp_url"` // Generated URL
+	// CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// Public response (untuk floating button)
+type WhatsAppHandlerPublicResponse struct {
+	NomorWA     string `json:"nomor_wa"`
+	PesanAwal   string `json:"pesan_awal"`
+	WhatsAppURL string `json:"whatsapp_url"`
+}

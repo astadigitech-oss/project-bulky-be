@@ -38,6 +38,8 @@ func SetupRoutes(
 	metodePembayaranController *controllers.MetodePembayaranController,
 	dokumenKebijakanController *controllers.DokumenKebijakanController,
 	disclaimerController *controllers.DisclaimerController,
+	formulirPartaiBesarController *controllers.FormulirPartaiBesarController,
+	whatsappHandlerController *controllers.WhatsAppHandlerController,
 ) {
 	// Health check
 	router.GET("/api/health", func(c *gin.Context) {
@@ -533,6 +535,66 @@ func SetupRoutes(
 		disclaimerPublic := v1.Group("/public/disclaimer")
 		{
 			disclaimerPublic.GET("", disclaimerController.GetActive)
+		}
+
+		// Formulir Partai Besar - Config (Admin)
+		formulirConfigAdmin := v1.Group("/panel/formulir-partai-besar/config")
+		formulirConfigAdmin.Use(middleware.AuthMiddleware())
+		formulirConfigAdmin.Use(middleware.AdminOnly())
+		{
+			formulirConfigAdmin.GET("", middleware.RequirePermission("system:read"), formulirPartaiBesarController.GetConfig)
+			formulirConfigAdmin.PUT("", middleware.RequirePermission("system:manage"), formulirPartaiBesarController.UpdateConfig)
+		}
+
+		// Formulir Partai Besar - Anggaran (Admin)
+		formulirAnggaranAdmin := v1.Group("/panel/formulir-partai-besar/anggaran")
+		formulirAnggaranAdmin.Use(middleware.AuthMiddleware())
+		formulirAnggaranAdmin.Use(middleware.AdminOnly())
+		{
+			formulirAnggaranAdmin.GET("", middleware.RequirePermission("system:read"), formulirPartaiBesarController.GetAnggaranList)
+			formulirAnggaranAdmin.GET("/:id", middleware.RequirePermission("system:read"), formulirPartaiBesarController.GetAnggaranByID)
+			formulirAnggaranAdmin.POST("", middleware.RequirePermission("system:manage"), formulirPartaiBesarController.CreateAnggaran)
+			formulirAnggaranAdmin.PUT("/:id", middleware.RequirePermission("system:manage"), formulirPartaiBesarController.UpdateAnggaran)
+			formulirAnggaranAdmin.DELETE("/:id", middleware.RequirePermission("system:manage"), formulirPartaiBesarController.DeleteAnggaran)
+			formulirAnggaranAdmin.PUT("/reorder", middleware.RequirePermission("system:manage"), formulirPartaiBesarController.ReorderAnggaran)
+		}
+
+		// Formulir Partai Besar - Submission (Admin)
+		formulirSubmissionAdmin := v1.Group("/panel/formulir-partai-besar/submission")
+		formulirSubmissionAdmin.Use(middleware.AuthMiddleware())
+		formulirSubmissionAdmin.Use(middleware.AdminOnly())
+		{
+			formulirSubmissionAdmin.GET("", middleware.RequirePermission("system:read"), formulirPartaiBesarController.GetSubmissionList)
+			formulirSubmissionAdmin.GET("/:id", middleware.RequirePermission("system:read"), formulirPartaiBesarController.GetSubmissionDetail)
+			formulirSubmissionAdmin.POST("/:id/resend-email", middleware.RequirePermission("system:manage"), formulirPartaiBesarController.ResendEmail)
+		}
+
+		// Formulir Partai Besar - Buyer
+		formulirBuyer := v1.Group("/buyer/formulir-partai-besar")
+		formulirBuyer.Use(middleware.AuthMiddleware())
+		formulirBuyer.Use(middleware.BuyerOnly())
+		{
+			formulirBuyer.GET("/options", formulirPartaiBesarController.GetOptions)
+			formulirBuyer.POST("/submit", formulirPartaiBesarController.Submit)
+		}
+
+		// WhatsApp Handler - Admin
+		whatsappAdmin := v1.Group("/panel/whatsapp-handler")
+		whatsappAdmin.Use(middleware.AuthMiddleware())
+		whatsappAdmin.Use(middleware.AdminOnly())
+		{
+			whatsappAdmin.GET("", middleware.RequirePermission("system:read"), whatsappHandlerController.FindAll)
+			whatsappAdmin.GET("/:id", middleware.RequirePermission("system:read"), whatsappHandlerController.FindByID)
+			whatsappAdmin.POST("", middleware.RequirePermission("system:manage"), whatsappHandlerController.Create)
+			whatsappAdmin.PUT("/:id", middleware.RequirePermission("system:manage"), whatsappHandlerController.Update)
+			whatsappAdmin.DELETE("/:id", middleware.RequirePermission("system:manage"), whatsappHandlerController.Delete)
+			whatsappAdmin.PATCH("/:id/set-active", middleware.RequirePermission("system:manage"), whatsappHandlerController.SetActive)
+		}
+
+		// WhatsApp Handler - Public
+		whatsappPublic := v1.Group("/public/whatsapp-handler")
+		{
+			whatsappPublic.GET("", whatsappHandlerController.GetActive)
 		}
 	}
 

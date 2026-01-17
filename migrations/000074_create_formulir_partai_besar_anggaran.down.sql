@@ -1,0 +1,2 @@
+DROP TRIGGER IF EXISTS trg_formulir_anggaran_updated_at ON formulir_partai_besar_anggaran;
+DROP TABLE IF EXISTS formulir_partai_besar_anggaran;
