@@ -42,33 +42,30 @@ func (p *PaginationRequest) GetOffset() int {
 // ========================================
 
 type CreateKategoriProdukRequest struct {
-	NamaID                  string  `json:"nama_id" binding:"required,min=2,max=100"`
-	NamaEN                  *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
-	Deskripsi               *string `json:"deskripsi" binding:"omitempty,max=1000"`
-	Icon                    *string `json:"icon"`
-	MemilikiKondisiTambahan bool    `json:"memiliki_kondisi_tambahan"`
-	TipeKondisiTambahan     *string `json:"tipe_kondisi_tambahan" binding:"omitempty,oneof=gambar teks"`
-	GambarKondisi           *string `json:"gambar_kondisi"`
-	TeksKondisi             *string `json:"teks_kondisi" binding:"omitempty,max=500"`
+	NamaID              string  `json:"nama_id" binding:"required,min=2,max=100"`
+	NamaEN              *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
+	Deskripsi           *string `json:"deskripsi" binding:"omitempty,max=1000"`
+	Icon                *string `json:"icon"`
+	TipeKondisiTambahan *string `json:"tipe_kondisi_tambahan" binding:"omitempty,oneof=TEKS GAMBAR"`
+	GambarKondisi       *string `json:"gambar_kondisi"`
+	TeksKondisi         *string `json:"teks_kondisi" binding:"omitempty,max=500"`
 }
 
 type UpdateKategoriProdukRequest struct {
-	NamaID                  *string `json:"nama_id" binding:"omitempty,min=2,max=100"`
-	NamaEN                  *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
-	Deskripsi               *string `json:"deskripsi" binding:"omitempty,max=1000"`
-	Icon                    *string `json:"icon"`
-	MemilikiKondisiTambahan *bool   `json:"memiliki_kondisi_tambahan"`
-	TipeKondisiTambahan     *string `json:"tipe_kondisi_tambahan" binding:"omitempty,oneof=gambar teks"`
-	GambarKondisi           *string `json:"gambar_kondisi"`
-	TeksKondisi             *string `json:"teks_kondisi" binding:"omitempty,max=500"`
-	IsActive                *bool   `json:"is_active"`
+	NamaID              *string `json:"nama_id" binding:"omitempty,min=2,max=100"`
+	NamaEN              *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
+	Deskripsi           *string `json:"deskripsi" binding:"omitempty,max=1000"`
+	Icon                *string `json:"icon"`
+	TipeKondisiTambahan *string `json:"tipe_kondisi_tambahan" binding:"omitempty,oneof=TEKS GAMBAR"`
+	GambarKondisi       *string `json:"gambar_kondisi"`
+	TeksKondisi         *string `json:"teks_kondisi" binding:"omitempty,max=500"`
+	IsActive            *bool   `json:"is_active"`
 }
 
 type KategoriProdukFilterRequest struct {
 	PaginationRequest
-	IsActive                *bool   `form:"is_active"`
-	MemilikiKondisiTambahan *bool   `form:"memiliki_kondisi_tambahan"`
-	UpdatedAt               *string `form:"updated_at"`
+	IsActive  *bool   `form:"is_active"`
+	UpdatedAt *string `form:"updated_at"`
 }
 
 // ========================================

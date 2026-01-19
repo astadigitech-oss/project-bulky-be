@@ -11,11 +11,15 @@ import (
 )
 
 type KondisiProdukController struct {
-	service services.KondisiProdukService
+	service        services.KondisiProdukService
+	reorderService *services.ReorderService
 }
 
-func NewKondisiProdukController(service services.KondisiProdukService) *KondisiProdukController {
-	return &KondisiProdukController{service: service}
+func NewKondisiProdukController(service services.KondisiProdukService, reorderService *services.ReorderService) *KondisiProdukController {
+	return &KondisiProdukController{
+		service:        service,
+		reorderService: reorderService,
+	}
 }
 
 func (c *KondisiProdukController) Create(ctx *gin.Context) {
@@ -136,4 +140,45 @@ func (c *KondisiProdukController) Reorder(ctx *gin.Context) {
 	}
 
 	utils.SuccessResponse(ctx, "Urutan kondisi produk berhasil diubah", nil)
+}
+
+func (c *KondisiProdukController) ReorderByDirection(ctx *gin.Context) {
+	id := ctx.Param("id")
+	direction := ctx.Query("direction")
+
+	if direction == "" {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter 'direction' wajib diisi", nil)
+		return
+	}
+
+	idUUID, err := utils.ParseUUID(id)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", nil)
+		return
+	}
+
+	result, err := c.reorderService.Reorder(
+		ctx.Request.Context(),
+		"kondisi_produk",
+		idUUID,
+		direction,
+		"",
+		nil,
+	)
+
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Urutan berhasil diubah", gin.H{
+		"item": gin.H{
+			"id":     result.ItemID,
+			"urutan": result.ItemUrutan,
+		},
+		"swapped_with": gin.H{
+			"id":     result.SwappedID,
+			"urutan": result.SwappedUrutan,
+		},
+	})
 }

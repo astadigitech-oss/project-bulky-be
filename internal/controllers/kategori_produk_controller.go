@@ -42,10 +42,10 @@ func (c *KategoriProdukController) Create(ctx *gin.Context) {
 		if deskripsi := ctx.PostForm("deskripsi"); deskripsi != "" {
 			req.Deskripsi = &deskripsi
 		}
-		if memilikiKondisi := ctx.PostForm("memiliki_kondisi_tambahan"); memilikiKondisi != "" {
-			hasKondisi := memilikiKondisi == "true"
-			req.MemilikiKondisiTambahan = hasKondisi
-		}
+		// if memilikiKondisi := ctx.PostForm("memiliki_kondisi_tambahan"); memilikiKondisi != "" {
+		// 	hasKondisi := memilikiKondisi == "true"
+		// 	req.MemilikiKondisiTambahan = hasKondisi
+		// }
 		if tipeKondisi := ctx.PostForm("tipe_kondisi_tambahan"); tipeKondisi != "" {
 			req.TipeKondisiTambahan = &tipeKondisi
 		}
@@ -182,10 +182,10 @@ func (c *KategoriProdukController) Update(ctx *gin.Context) {
 			isActive := isActiveStr == "true"
 			req.IsActive = &isActive
 		}
-		if memilikiKondisi := ctx.PostForm("memiliki_kondisi_tambahan"); memilikiKondisi != "" {
-			hasKondisi := memilikiKondisi == "true"
-			req.MemilikiKondisiTambahan = &hasKondisi
-		}
+		// if memilikiKondisi := ctx.PostForm("memiliki_kondisi_tambahan"); memilikiKondisi != "" {
+		// 	hasKondisi := memilikiKondisi == "true"
+		// 	req.MemilikiKondisiTambahan = &hasKondisi
+		// }
 		if tipeKondisi := ctx.PostForm("tipe_kondisi_tambahan"); tipeKondisi != "" {
 			req.TipeKondisiTambahan = &tipeKondisi
 		}

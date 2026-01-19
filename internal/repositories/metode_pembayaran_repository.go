@@ -10,6 +10,7 @@ import (
 
 type MetodePembayaranRepository interface {
 	FindAll(ctx context.Context, params *models.PaginationRequest, groupID *uuid.UUID, isActive *bool) ([]models.MetodePembayaran, int64, error)
+	FindAllSimple(ctx context.Context, groupID *uuid.UUID, isActive *bool) ([]models.MetodePembayaran, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*models.MetodePembayaran, error)
 	FindByIDWithGroup(ctx context.Context, id uuid.UUID) (*models.MetodePembayaran, error)
 	Create(ctx context.Context, metode *models.MetodePembayaran) error
@@ -166,4 +167,29 @@ func (r *metodePembayaranRepository) CheckUsedInTransaction(ctx context.Context,
 	}
 
 	return count > 0, nil
+}
+
+func (r *metodePembayaranRepository) FindAllSimple(ctx context.Context, groupID *uuid.UUID, isActive *bool) ([]models.MetodePembayaran, error) {
+	var metodes []models.MetodePembayaran
+
+	query := r.db.WithContext(ctx).Model(&models.MetodePembayaran{}).Preload("Group")
+
+	// Filter by group_id
+	if groupID != nil {
+		query = query.Where("group_id = ?", *groupID)
+	}
+
+	// Filter by is_active
+	if isActive != nil {
+		query = query.Where("is_active = ?", *isActive)
+	}
+
+	// Order by urutan
+	query = query.Order("urutan asc")
+
+	if err := query.Find(&metodes).Error; err != nil {
+		return nil, err
+	}
+
+	return metodes, nil
 }

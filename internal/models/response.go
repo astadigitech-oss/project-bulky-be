@@ -76,33 +76,25 @@ type ToggleStatusResponse struct {
 // ========================================
 
 type KategoriProdukResponse struct {
-	ID                      string             `json:"id"`
-	Nama                    TranslatableString `json:"nama"`
-	Slug                    string             `json:"slug"`
-	Deskripsi               *string            `json:"deskripsi,omitempty"`
-	IconURL                 *string            `json:"icon_url,omitempty"`
-	MemilikiKondisiTambahan bool               `json:"memiliki_kondisi_tambahan"`
-	TipeKondisiTambahan     *string            `json:"tipe_kondisi_tambahan,omitempty"`
-	GambarKondisiURL        *string            `json:"gambar_kondisi_url,omitempty"`
-	TeksKondisi             *string            `json:"teks_kondisi,omitempty"`
-	IsActive                bool               `json:"is_active"`
-	// JumlahProduk            int64     `json:"jumlah_produk"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID                  string             `json:"id"`
+	Nama                TranslatableString `json:"nama"`
+	Slug                string             `json:"slug"`
+	Deskripsi           string             `json:"deskripsi"`
+	IconURL             string             `json:"icon_url"`
+	TipeKondisiTambahan *string            `json:"tipe_kondisi_tambahan"`
+	GambarKondisiURL    string             `json:"gambar_kondisi_url"`
+	TeksKondisi         string             `json:"teks_kondisi"`
+	IsActive            bool               `json:"is_active"`
+	CreatedAt           time.Time          `json:"created_at"`
+	UpdatedAt           time.Time          `json:"updated_at"`
 }
 
 type KategoriProdukSimpleResponse struct {
-	ID   string             `json:"id"`
-	Nama TranslatableString `json:"nama"`
-	// Slug                    string             `json:"slug"`
-	// Deskripsi               *string            `json:"deskripsi,omitempty"`
-	IconURL                 *string `json:"icon_url,omitempty"`
-	MemilikiKondisiTambahan bool    `json:"memiliki_kondisi_tambahan"`
-	// TipeKondisiTambahan     *string            `json:"tipe_kondisi_tambahan,omitempty"`
-	// GambarKondisiURL        *string            `json:"gambar_kondisi_url,omitempty"`
-	// TeksKondisi             *string            `json:"teks_kondisi,omitempty"`
+	ID      string             `json:"id"`
+	Nama    TranslatableString `json:"nama"`
+	IconURL string             `json:"icon_url"`
+	// TipeKondisiTambahan *string            `json:"tipe_kondisi_tambahan"`
 	IsActive bool `json:"is_active"`
-	// JumlahProduk            int64     `json:"jumlah_produk"`
 	// CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

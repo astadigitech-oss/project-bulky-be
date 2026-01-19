@@ -11,11 +11,15 @@ import (
 )
 
 type FormulirPartaiBesarController struct {
-	service services.FormulirPartaiBesarService
+	service        services.FormulirPartaiBesarService
+	reorderService *services.ReorderService
 }
 
-func NewFormulirPartaiBesarController(service services.FormulirPartaiBesarService) *FormulirPartaiBesarController {
-	return &FormulirPartaiBesarController{service: service}
+func NewFormulirPartaiBesarController(service services.FormulirPartaiBesarService, reorderService *services.ReorderService) *FormulirPartaiBesarController {
+	return &FormulirPartaiBesarController{
+		service:        service,
+		reorderService: reorderService,
+	}
 }
 
 // ========================================
@@ -218,5 +222,46 @@ func (c *FormulirPartaiBesarController) Submit(ctx *gin.Context) {
 
 	utils.CreatedResponse(ctx, "Formulir berhasil dikirim. Tim kami akan segera menghubungi Anda.", gin.H{
 		"id": submissionID,
+	})
+}
+
+func (c *FormulirPartaiBesarController) ReorderAnggaranByDirection(ctx *gin.Context) {
+	id := ctx.Param("id")
+	direction := ctx.Query("direction")
+
+	if direction == "" {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter 'direction' wajib diisi", nil)
+		return
+	}
+
+	idUUID, err := uuid.Parse(id)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", nil)
+		return
+	}
+
+	result, err := c.reorderService.Reorder(
+		ctx.Request.Context(),
+		"formulir_partai_besar_anggaran",
+		idUUID,
+		direction,
+		"",
+		nil,
+	)
+
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Urutan berhasil diubah", gin.H{
+		"item": gin.H{
+			"id":     result.ItemID,
+			"urutan": result.ItemUrutan,
+		},
+		"swapped_with": gin.H{
+			"id":     result.SwappedID,
+			"urutan": result.SwappedUrutan,
+		},
 	})
 }

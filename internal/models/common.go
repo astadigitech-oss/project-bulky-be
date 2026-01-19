@@ -34,3 +34,11 @@ func (t TranslatableImage) GetFullURL(baseURL string) TranslatableImage {
 
 	return result
 }
+
+// SafeString converts *string to string (empty if nil)
+func SafeString(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}

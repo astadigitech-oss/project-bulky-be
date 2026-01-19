@@ -11,12 +11,8 @@ import (
 )
 
 type WhatsAppHandlerService interface {
-	Create(ctx context.Context, req *models.CreateWhatsAppHandlerRequest) (*models.WhatsAppHandlerResponse, error)
-	FindAll(ctx context.Context, params *models.WhatsAppHandlerFilterRequest) ([]models.WhatsAppHandlerResponse, *models.PaginationMeta, error)
-	FindByID(ctx context.Context, id string) (*models.WhatsAppHandlerResponse, error)
+	FindAll(ctx context.Context) ([]models.WhatsAppHandlerResponse, error)
 	Update(ctx context.Context, id string, req *models.UpdateWhatsAppHandlerRequest) (*models.WhatsAppHandlerResponse, error)
-	Delete(ctx context.Context, id string) error
-	SetActive(ctx context.Context, id string) error
 	GetActive(ctx context.Context) (*models.WhatsAppHandlerPublicResponse, error)
 }
 
@@ -28,34 +24,10 @@ func NewWhatsAppHandlerService(repo repositories.WhatsAppHandlerRepository) What
 	return &whatsAppHandlerService{repo: repo}
 }
 
-func (s *whatsAppHandlerService) Create(ctx context.Context, req *models.CreateWhatsAppHandlerRequest) (*models.WhatsAppHandlerResponse, error) {
-	handler := &models.WhatsAppHandler{
-		NomorWA:   req.NomorWA,
-		PesanAwal: req.PesanAwal,
-		IsActive:  req.IsActive,
-	}
-
-	if err := s.repo.Create(ctx, handler); err != nil {
-		return nil, errors.New("gagal membuat WhatsApp handler")
-	}
-
-	return &models.WhatsAppHandlerResponse{
-		ID:          handler.ID.String(),
-		NomorWA:     handler.NomorWA,
-		PesanAwal:   handler.PesanAwal,
-		IsActive:    handler.IsActive,
-		WhatsAppURL: handler.GetWhatsAppURL(),
-		CreatedAt:   handler.CreatedAt,
-		UpdatedAt:   handler.UpdatedAt,
-	}, nil
-}
-
-func (s *whatsAppHandlerService) FindAll(ctx context.Context, params *models.WhatsAppHandlerFilterRequest) ([]models.WhatsAppHandlerResponse, *models.PaginationMeta, error) {
-	params.SetDefaults()
-
-	items, total, err := s.repo.FindAll(ctx, params)
+func (s *whatsAppHandlerService) FindAll(ctx context.Context) ([]models.WhatsAppHandlerResponse, error) {
+	items, err := s.repo.FindAllSimple(ctx)
 	if err != nil {
-		return nil, nil, errors.New("gagal mengambil data WhatsApp handler")
+		return nil, errors.New("gagal mengambil data WhatsApp handler")
 	}
 
 	var responses []models.WhatsAppHandlerResponse
@@ -71,33 +43,7 @@ func (s *whatsAppHandlerService) FindAll(ctx context.Context, params *models.Wha
 		})
 	}
 
-	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
-	return responses, &meta, nil
-}
-
-func (s *whatsAppHandlerService) FindByID(ctx context.Context, id string) (*models.WhatsAppHandlerResponse, error) {
-	uid, err := uuid.Parse(id)
-	if err != nil {
-		return nil, errors.New("ID tidak valid")
-	}
-
-	handler, err := s.repo.FindByID(ctx, uid)
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, errors.New("WhatsApp handler tidak ditemukan")
-		}
-		return nil, errors.New("gagal mengambil data WhatsApp handler")
-	}
-
-	return &models.WhatsAppHandlerResponse{
-		ID:          handler.ID.String(),
-		NomorWA:     handler.NomorWA,
-		PesanAwal:   handler.PesanAwal,
-		IsActive:    handler.IsActive,
-		WhatsAppURL: handler.GetWhatsAppURL(),
-		CreatedAt:   handler.CreatedAt,
-		UpdatedAt:   handler.UpdatedAt,
-	}, nil
+	return responses, nil
 }
 
 func (s *whatsAppHandlerService) Update(ctx context.Context, id string, req *models.UpdateWhatsAppHandlerRequest) (*models.WhatsAppHandlerResponse, error) {
@@ -121,6 +67,12 @@ func (s *whatsAppHandlerService) Update(ctx context.Context, id string, req *mod
 		handler.PesanAwal = *req.PesanAwal
 	}
 	if req.IsActive != nil {
+		// If setting to active, deactivate all others first
+		if *req.IsActive {
+			if err := s.repo.DeactivateAll(ctx); err != nil {
+				return nil, errors.New("gagal menonaktifkan handler lain")
+			}
+		}
 		handler.IsActive = *req.IsActive
 	}
 
@@ -137,51 +89,6 @@ func (s *whatsAppHandlerService) Update(ctx context.Context, id string, req *mod
 		CreatedAt:   handler.CreatedAt,
 		UpdatedAt:   handler.UpdatedAt,
 	}, nil
-}
-
-func (s *whatsAppHandlerService) Delete(ctx context.Context, id string) error {
-	uid, err := uuid.Parse(id)
-	if err != nil {
-		return errors.New("ID tidak valid")
-	}
-
-	// Check if exists
-	_, err = s.repo.FindByID(ctx, uid)
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return errors.New("WhatsApp handler tidak ditemukan")
-		}
-		return errors.New("gagal mengambil data WhatsApp handler")
-	}
-
-	if err := s.repo.Delete(ctx, uid); err != nil {
-		return errors.New("gagal menghapus WhatsApp handler")
-	}
-
-	return nil
-}
-
-func (s *whatsAppHandlerService) SetActive(ctx context.Context, id string) error {
-	uid, err := uuid.Parse(id)
-	if err != nil {
-		return errors.New("ID tidak valid")
-	}
-
-	// Check if exists
-	_, err = s.repo.FindByID(ctx, uid)
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return errors.New("WhatsApp handler tidak ditemukan")
-		}
-		return errors.New("gagal mengambil data WhatsApp handler")
-	}
-
-	// Set active
-	if err := s.repo.SetActive(ctx, uid); err != nil {
-		return errors.New("gagal mengaktifkan WhatsApp handler")
-	}
-
-	return nil
 }
 
 func (s *whatsAppHandlerService) GetActive(ctx context.Context) (*models.WhatsAppHandlerPublicResponse, error) {

@@ -77,13 +77,12 @@ func main() {
 		// Create kategori produk
 		namaEN := kategoriData.NamaEN
 		kategori := &models.KategoriProduk{
-			NamaID:                  kategoriData.NamaID,
-			NamaEN:                  &namaEN,
-			Slug:                    kategoriData.Slug,
-			IconURL:                 &kategoriData.IconURL,
-			MemilikiKondisiTambahan: false,
-			IsActive:                true,
-			CreatedAt:               time.Now().Add(time.Duration(i) * time.Second), // Ordering by created_at
+			NamaID:    kategoriData.NamaID,
+			NamaEN:    &namaEN,
+			Slug:      kategoriData.Slug,
+			IconURL:   &kategoriData.IconURL,
+			IsActive:  true,
+			CreatedAt: time.Now().Add(time.Duration(i) * time.Second), // Ordering by created_at
 		}
 
 		if err := db.Create(kategori).Error; err != nil {

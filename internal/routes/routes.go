@@ -185,6 +185,7 @@ func SetupRoutes(
 			kondisiAdmin.DELETE("/:id", middleware.RequirePermission("kondisi:manage"), kondisiController.Delete)
 			kondisiAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("kondisi:manage"), kondisiController.ToggleStatus)
 			kondisiAdmin.PUT("/reorder", middleware.RequirePermission("kondisi:manage"), kondisiController.Reorder)
+			kondisiAdmin.PATCH("/:id/reorder", middleware.RequirePermission("kondisi:manage"), kondisiController.ReorderByDirection)
 		}
 
 		// Kondisi Paket - Public (Read Only)
@@ -207,6 +208,7 @@ func SetupRoutes(
 			paketAdmin.DELETE("/:id", middleware.RequirePermission("kondisi:manage"), kondisiPaketController.Delete)
 			paketAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("kondisi:manage"), kondisiPaketController.ToggleStatus)
 			paketAdmin.PUT("/reorder", middleware.RequirePermission("kondisi:manage"), kondisiPaketController.Reorder)
+			paketAdmin.PATCH("/:id/reorder", middleware.RequirePermission("kondisi:manage"), kondisiPaketController.ReorderByDirection)
 		}
 
 		// Sumber Produk - Public (Read Only)
@@ -308,6 +310,7 @@ func SetupRoutes(
 			bannerTipeProdukAdmin.DELETE("/:id", middleware.RequirePermission("marketing:manage"), bannerTipeProdukController.Delete)
 			bannerTipeProdukAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("marketing:manage"), bannerTipeProdukController.ToggleStatus)
 			bannerTipeProdukAdmin.PUT("/reorder", middleware.RequirePermission("marketing:manage"), bannerTipeProdukController.Reorder)
+			bannerTipeProdukAdmin.PATCH("/:id/reorder", middleware.RequirePermission("marketing:manage"), bannerTipeProdukController.ReorderByDirection)
 		}
 
 		// Produk - Public (Read Only)
@@ -388,6 +391,7 @@ func SetupRoutes(
 			bannerEventPromoAdmin.DELETE("/:id", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.Delete)
 			bannerEventPromoAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.ToggleStatus)
 			bannerEventPromoAdmin.PUT("/reorder", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.Reorder)
+			bannerEventPromoAdmin.PATCH("/:id/reorder", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.ReorderByDirection)
 		}
 
 		// Banner Event Promo (Public)
@@ -473,50 +477,41 @@ func SetupRoutes(
 			ppnAdmin.PATCH("/:id/set-active", middleware.RequirePermission("system:manage"), ppnController.SetActive)
 		}
 
-		// Metode Pembayaran Group - Admin Only
+		// Metode Pembayaran Group - Admin Only (Simplified)
 		metodePembayaranGroupAdmin := v1.Group("/panel/metode-pembayaran-group")
 		metodePembayaranGroupAdmin.Use(middleware.AuthMiddleware())
 		metodePembayaranGroupAdmin.Use(middleware.AdminOnly())
 		{
 			metodePembayaranGroupAdmin.GET("", middleware.RequirePermission("pembayaran:read"), metodePembayaranGroupController.GetAll)
-			metodePembayaranGroupAdmin.GET("/:id", middleware.RequirePermission("pembayaran:read"), metodePembayaranGroupController.GetByID)
-			metodePembayaranGroupAdmin.POST("", middleware.RequirePermission("pembayaran:manage"), metodePembayaranGroupController.Create)
 			metodePembayaranGroupAdmin.PUT("/:id", middleware.RequirePermission("pembayaran:manage"), metodePembayaranGroupController.Update)
-			metodePembayaranGroupAdmin.DELETE("/:id", middleware.RequirePermission("pembayaran:manage"), metodePembayaranGroupController.Delete)
-			metodePembayaranGroupAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("pembayaran:manage"), metodePembayaranGroupController.ToggleStatus)
+			metodePembayaranGroupAdmin.PATCH("/:id/reorder", middleware.RequirePermission("pembayaran:manage"), metodePembayaranGroupController.ReorderByDirection)
 		}
 
-		// Metode Pembayaran - Admin Only
+		// Metode Pembayaran - Admin Only (Simplified)
 		metodePembayaranAdmin := v1.Group("/panel/metode-pembayaran")
 		metodePembayaranAdmin.Use(middleware.AuthMiddleware())
 		metodePembayaranAdmin.Use(middleware.AdminOnly())
 		{
 			metodePembayaranAdmin.GET("", middleware.RequirePermission("pembayaran:read"), metodePembayaranController.GetAll)
-			metodePembayaranAdmin.GET("/:id", middleware.RequirePermission("pembayaran:read"), metodePembayaranController.GetByID)
-			metodePembayaranAdmin.POST("", middleware.RequirePermission("pembayaran:manage"), metodePembayaranController.Create)
 			metodePembayaranAdmin.PUT("/:id", middleware.RequirePermission("pembayaran:manage"), metodePembayaranController.Update)
-			metodePembayaranAdmin.DELETE("/:id", middleware.RequirePermission("pembayaran:manage"), metodePembayaranController.Delete)
-			metodePembayaranAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("pembayaran:manage"), metodePembayaranController.ToggleStatus)
+			metodePembayaranAdmin.PATCH("/:id/reorder", middleware.RequirePermission("pembayaran:manage"), metodePembayaranController.ReorderByDirection)
 		}
 
-		// Dokumen Kebijakan - Admin
+		// Dokumen Kebijakan - Admin (Simplified - Fixed Pages)
 		dokumenKebijakanAdmin := v1.Group("/panel/dokumen-kebijakan")
 		dokumenKebijakanAdmin.Use(middleware.AuthMiddleware())
 		dokumenKebijakanAdmin.Use(middleware.AdminOnly())
 		{
-			dokumenKebijakanAdmin.GET("", middleware.RequirePermission("system:read"), dokumenKebijakanController.FindAll)
-			dokumenKebijakanAdmin.GET("/:id", middleware.RequirePermission("system:read"), dokumenKebijakanController.FindByID)
-			dokumenKebijakanAdmin.POST("", middleware.RequirePermission("system:manage"), dokumenKebijakanController.Create)
-			dokumenKebijakanAdmin.PUT("/:id", middleware.RequirePermission("system:manage"), dokumenKebijakanController.Update)
-			dokumenKebijakanAdmin.DELETE("/:id", middleware.RequirePermission("system:manage"), dokumenKebijakanController.Delete)
-			dokumenKebijakanAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("system:manage"), dokumenKebijakanController.ToggleStatus)
+			dokumenKebijakanAdmin.GET("", middleware.RequirePermission("system:read"), dokumenKebijakanController.GetAll)
+			dokumenKebijakanAdmin.GET("/:slug", middleware.RequirePermission("system:read"), dokumenKebijakanController.GetBySlug)
+			dokumenKebijakanAdmin.PUT("/:slug", middleware.RequirePermission("system:manage"), dokumenKebijakanController.Update)
 		}
 
 		// Dokumen Kebijakan - Public
 		dokumenKebijakanPublic := v1.Group("/public/dokumen-kebijakan")
 		{
-			dokumenKebijakanPublic.GET("", dokumenKebijakanController.GetActiveList)
-			dokumenKebijakanPublic.GET("/:slug", dokumenKebijakanController.GetBySlug)
+			dokumenKebijakanPublic.GET("", dokumenKebijakanController.GetAllPublic)
+			dokumenKebijakanPublic.GET("/:slug", dokumenKebijakanController.GetBySlugPublic)
 		}
 
 		// Disclaimer - Admin
@@ -558,6 +553,7 @@ func SetupRoutes(
 			formulirAnggaranAdmin.PUT("/:id", middleware.RequirePermission("system:manage"), formulirPartaiBesarController.UpdateAnggaran)
 			formulirAnggaranAdmin.DELETE("/:id", middleware.RequirePermission("system:manage"), formulirPartaiBesarController.DeleteAnggaran)
 			formulirAnggaranAdmin.PUT("/reorder", middleware.RequirePermission("system:manage"), formulirPartaiBesarController.ReorderAnggaran)
+			formulirAnggaranAdmin.PATCH("/:id/reorder", middleware.RequirePermission("system:manage"), formulirPartaiBesarController.ReorderAnggaranByDirection)
 		}
 
 		// Formulir Partai Besar - Submission (Admin)
@@ -579,17 +575,13 @@ func SetupRoutes(
 			formulirBuyer.POST("/submit", formulirPartaiBesarController.Submit)
 		}
 
-		// WhatsApp Handler - Admin
+		// WhatsApp Handler - Admin (Simplified)
 		whatsappAdmin := v1.Group("/panel/whatsapp-handler")
 		whatsappAdmin.Use(middleware.AuthMiddleware())
 		whatsappAdmin.Use(middleware.AdminOnly())
 		{
 			whatsappAdmin.GET("", middleware.RequirePermission("system:read"), whatsappHandlerController.FindAll)
-			whatsappAdmin.GET("/:id", middleware.RequirePermission("system:read"), whatsappHandlerController.FindByID)
-			whatsappAdmin.POST("", middleware.RequirePermission("system:manage"), whatsappHandlerController.Create)
 			whatsappAdmin.PUT("/:id", middleware.RequirePermission("system:manage"), whatsappHandlerController.Update)
-			whatsappAdmin.DELETE("/:id", middleware.RequirePermission("system:manage"), whatsappHandlerController.Delete)
-			whatsappAdmin.PATCH("/:id/set-active", middleware.RequirePermission("system:manage"), whatsappHandlerController.SetActive)
 		}
 
 		// WhatsApp Handler - Public

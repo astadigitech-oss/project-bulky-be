@@ -11,11 +11,13 @@ import (
 type WhatsAppHandlerRepository interface {
 	Create(ctx context.Context, handler *models.WhatsAppHandler) error
 	FindAll(ctx context.Context, params *models.WhatsAppHandlerFilterRequest) ([]models.WhatsAppHandler, int64, error)
+	FindAllSimple(ctx context.Context) ([]models.WhatsAppHandler, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*models.WhatsAppHandler, error)
 	Update(ctx context.Context, handler *models.WhatsAppHandler) error
 	Delete(ctx context.Context, id uuid.UUID) error
 	GetActive(ctx context.Context) (*models.WhatsAppHandler, error)
 	SetActive(ctx context.Context, id uuid.UUID) error
+	DeactivateAll(ctx context.Context) error
 }
 
 type whatsAppHandlerRepository struct {
@@ -130,4 +132,18 @@ func (r *whatsAppHandlerRepository) SetActive(ctx context.Context, id uuid.UUID)
 
 		return nil
 	})
+}
+
+func (r *whatsAppHandlerRepository) FindAllSimple(ctx context.Context) ([]models.WhatsAppHandler, error) {
+	var items []models.WhatsAppHandler
+	if err := r.db.WithContext(ctx).Order("updated_at desc").Find(&items).Error; err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func (r *whatsAppHandlerRepository) DeactivateAll(ctx context.Context) error {
+	return r.db.WithContext(ctx).Model(&models.WhatsAppHandler{}).
+		Where("deleted_at IS NULL").
+		Update("is_active", false).Error
 }

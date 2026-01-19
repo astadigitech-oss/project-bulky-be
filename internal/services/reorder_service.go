@@ -61,12 +61,19 @@ func (s *ReorderService) Reorder(
 		query = query.Where(scopeColumn+" = ?", scopeValue)
 	}
 
-	if err := query.Scan(&currentUrutan).Error; err != nil {
+	queryResult := query.Scan(&currentUrutan)
+	if queryResult.Error != nil {
 		tx.Rollback()
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(queryResult.Error, gorm.ErrRecordNotFound) {
 			return nil, errors.New("data tidak ditemukan")
 		}
-		return nil, err
+		return nil, queryResult.Error
+	}
+
+	// Check if record actually found
+	if queryResult.RowsAffected == 0 {
+		tx.Rollback()
+		return nil, errors.New("data tidak ditemukan")
 	}
 
 	// Find adjacent item to swap with
@@ -95,12 +102,12 @@ func (s *ReorderService) Reorder(
 			Limit(1)
 	}
 
-	var result struct {
+	var adjacentResult struct {
 		ID     uuid.UUID
 		Urutan int
 	}
 
-	if err := adjacentQuery.Scan(&result).Error; err != nil {
+	if err := adjacentQuery.Scan(&adjacentResult).Error; err != nil {
 		tx.Rollback()
 		if direction == "up" {
 			return nil, errors.New("item sudah berada di urutan paling atas")
@@ -108,7 +115,7 @@ func (s *ReorderService) Reorder(
 		return nil, errors.New("item sudah berada di urutan paling bawah")
 	}
 
-	if result.ID == uuid.Nil {
+	if adjacentResult.ID == uuid.Nil {
 		tx.Rollback()
 		if direction == "up" {
 			return nil, errors.New("item sudah berada di urutan paling atas")
@@ -116,8 +123,8 @@ func (s *ReorderService) Reorder(
 		return nil, errors.New("item sudah berada di urutan paling bawah")
 	}
 
-	adjacentID = result.ID
-	adjacentUrutan = result.Urutan
+	adjacentID = adjacentResult.ID
+	adjacentUrutan = adjacentResult.Urutan
 
 	// Swap urutan values
 	// Update current item → adjacent's urutan

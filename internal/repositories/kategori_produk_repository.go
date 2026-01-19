@@ -66,9 +66,9 @@ func (r *kategoriProdukRepository) FindAll(ctx context.Context, params *models.K
 	}
 
 	// MemilikiKondisiTambahan filter
-	if params.MemilikiKondisiTambahan != nil {
-		query = query.Where("memiliki_kondisi_tambahan = ?", *params.MemilikiKondisiTambahan)
-	}
+	// if params.MemilikiKondisiTambahan != nil {
+	// 	query = query.Where("memiliki_kondisi_tambahan = ?", *params.MemilikiKondisiTambahan)
+	// }
 
 	// Count total
 	if err := query.Count(&total).Error; err != nil {
