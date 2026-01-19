@@ -18,6 +18,7 @@ type KondisiProdukRepository interface {
 	ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error)
 	GetAllForDropdown(ctx context.Context) ([]models.KondisiProduk, error)
 	UpdateOrder(ctx context.Context, items []models.ReorderItem) error
+	GetMaxUrutan(ctx context.Context) (int, error)
 }
 
 type kondisiProdukRepository struct {
@@ -118,4 +119,13 @@ func (r *kondisiProdukRepository) UpdateOrder(ctx context.Context, items []model
 		}
 		return nil
 	})
+}
+
+func (r *kondisiProdukRepository) GetMaxUrutan(ctx context.Context) (int, error) {
+	var maxUrutan int
+	err := r.db.WithContext(ctx).
+		Model(&models.KondisiProduk{}).
+		Select("COALESCE(MAX(urutan), 0)").
+		Scan(&maxUrutan).Error
+	return maxUrutan, err
 }

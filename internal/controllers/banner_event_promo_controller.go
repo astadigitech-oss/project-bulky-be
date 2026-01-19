@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 
 	"project-bulky-be/internal/config"
@@ -51,13 +50,6 @@ func (c *BannerEventPromoController) Create(ctx *gin.Context) {
 		req.TanggalSelesai = nil
 		if ts := ctx.PostForm("tanggal_selesai"); ts != "" {
 			req.TanggalSelesai = &ts
-		}
-
-		// Parse urutan (optional, default 0)
-		if urutanStr := ctx.PostForm("urutan"); urutanStr != "" {
-			if urutan, err := strconv.Atoi(urutanStr); err == nil {
-				req.Urutan = urutan
-			}
 		}
 
 		// Parse is_active (optional, default false)
@@ -196,11 +188,6 @@ func (c *BannerEventPromoController) Update(ctx *gin.Context) {
 		}
 		if ts := ctx.PostForm("tanggal_selesai"); ts != "" {
 			req.TanggalSelesai = &ts
-		}
-		if urutanStr := ctx.PostForm("urutan"); urutanStr != "" {
-			if urutan, err := strconv.Atoi(urutanStr); err == nil {
-				req.Urutan = &urutan
-			}
 		}
 		if isActiveStr := ctx.PostForm("is_active"); isActiveStr != "" {
 			isActive := isActiveStr == "true" || isActiveStr == "1"

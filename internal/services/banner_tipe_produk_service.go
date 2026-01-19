@@ -44,15 +44,18 @@ func (s *bannerTipeProdukService) Create(ctx context.Context, req *models.Create
 		return nil, errors.New("tipe_produk_id tidak valid")
 	}
 
+	// Auto-increment urutan
+	maxUrutan, err := s.repo.GetMaxUrutan(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	banner := &models.BannerTipeProduk{
 		TipeProdukID: tipeProdukUUID,
 		Nama:         req.Nama,
 		GambarURL:    req.GambarURL,
+		Urutan:       maxUrutan + 1,
 		IsActive:     true,
-	}
-
-	if req.Urutan != nil {
-		banner.Urutan = *req.Urutan
 	}
 
 	if err := s.repo.Create(ctx, banner); err != nil {
@@ -131,9 +134,6 @@ func (s *bannerTipeProdukService) Update(ctx context.Context, id string, req *mo
 	if req.GambarURL != nil {
 		banner.GambarURL = *req.GambarURL
 	}
-	if req.Urutan != nil {
-		banner.Urutan = *req.Urutan
-	}
 	if req.IsActive != nil {
 		banner.IsActive = *req.IsActive
 	}
@@ -166,9 +166,6 @@ func (s *bannerTipeProdukService) UpdateWithFile(ctx context.Context, id string,
 	}
 	if req.GambarURL != nil {
 		banner.GambarURL = *req.GambarURL
-	}
-	if req.Urutan != nil {
-		banner.Urutan = *req.Urutan
 	}
 	if req.IsActive != nil {
 		banner.IsActive = *req.IsActive

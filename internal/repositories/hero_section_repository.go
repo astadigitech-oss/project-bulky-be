@@ -17,6 +17,7 @@ type HeroSectionRepository interface {
 	Delete(ctx context.Context, id string) error
 	UpdateOrder(ctx context.Context, items []models.ReorderItem) error
 	GetVisibleHero(ctx context.Context) (*models.HeroSection, error)
+	GetMaxUrutan(ctx context.Context) (int, error)
 }
 
 type heroSectionRepository struct {
@@ -103,4 +104,13 @@ func (r *heroSectionRepository) GetVisibleHero(ctx context.Context) (*models.Her
 		First(&hero).Error
 
 	return &hero, err
+}
+
+func (r *heroSectionRepository) GetMaxUrutan(ctx context.Context) (int, error) {
+	var maxUrutan int
+	err := r.db.WithContext(ctx).
+		Model(&models.HeroSection{}).
+		Select("COALESCE(MAX(urutan), 0)").
+		Scan(&maxUrutan).Error
+	return maxUrutan, err
 }

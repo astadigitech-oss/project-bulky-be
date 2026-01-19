@@ -20,6 +20,7 @@ type FormulirPartaiBesarRepository interface {
 	UpdateAnggaran(ctx context.Context, anggaran *models.FormulirPartaiBesarAnggaran) error
 	DeleteAnggaran(ctx context.Context, id uuid.UUID) error
 	ReorderAnggaran(ctx context.Context, items []models.ReorderItem) error
+	GetMaxAnggaranUrutan(ctx context.Context) (int, error)
 
 	// Submission
 	CreateSubmission(ctx context.Context, submission *models.FormulirPartaiBesarSubmission) error
@@ -103,6 +104,15 @@ func (r *formulirPartaiBesarRepository) ReorderAnggaran(ctx context.Context, ite
 		}
 		return nil
 	})
+}
+
+func (r *formulirPartaiBesarRepository) GetMaxAnggaranUrutan(ctx context.Context) (int, error) {
+	var maxUrutan int
+	err := r.db.WithContext(ctx).
+		Model(&models.FormulirPartaiBesarAnggaran{}).
+		Select("COALESCE(MAX(urutan), 0)").
+		Scan(&maxUrutan).Error
+	return maxUrutan, err
 }
 
 // ========================================

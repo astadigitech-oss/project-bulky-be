@@ -33,7 +33,6 @@ type UpdateMetodePembayaranRequest struct {
 	Nama      *string `json:"nama" binding:"omitempty,min=1,max=50"`
 	Kode      *string `json:"kode" binding:"omitempty,min=1,max=30"`
 	LogoValue *string `json:"logo_value" binding:"omitempty,max=50"`
-	Urutan    *int    `json:"urutan"`
 	IsActive  *bool   `json:"is_active"`
 }
 

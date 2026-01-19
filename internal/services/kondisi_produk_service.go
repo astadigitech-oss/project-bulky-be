@@ -36,16 +36,19 @@ func (s *kondisiProdukService) Create(ctx context.Context, req *models.CreateKon
 		return nil, errors.New("kondisi produk dengan nama tersebut sudah ada")
 	}
 
+	// Auto-increment urutan
+	maxUrutan, err := s.repo.GetMaxUrutan(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	kondisi := &models.KondisiProduk{
 		NamaID:    req.NamaID,
 		NamaEN:    req.NamaEN,
 		Slug:      slug,
 		Deskripsi: req.Deskripsi,
+		Urutan:    maxUrutan + 1,
 		IsActive:  true,
-	}
-
-	if req.Urutan != nil {
-		kondisi.Urutan = *req.Urutan
 	}
 
 	if err := s.repo.Create(ctx, kondisi); err != nil {
@@ -109,9 +112,6 @@ func (s *kondisiProdukService) Update(ctx context.Context, id string, req *model
 	}
 	if req.Deskripsi != nil {
 		kondisi.Deskripsi = req.Deskripsi
-	}
-	if req.Urutan != nil {
-		kondisi.Urutan = *req.Urutan
 	}
 	if req.IsActive != nil {
 		kondisi.IsActive = *req.IsActive

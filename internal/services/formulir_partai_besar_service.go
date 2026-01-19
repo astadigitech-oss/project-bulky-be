@@ -94,9 +94,15 @@ func (s *formulirPartaiBesarService) UpdateConfig(ctx context.Context, req *mode
 // ========================================
 
 func (s *formulirPartaiBesarService) CreateAnggaran(ctx context.Context, req *models.CreateAnggaranRequest) (*models.AnggaranResponse, error) {
+	// Auto-increment urutan
+	maxUrutan, err := s.repo.GetMaxAnggaranUrutan(ctx)
+	if err != nil {
+		return nil, errors.New("gagal mengambil urutan maksimal")
+	}
+
 	anggaran := &models.FormulirPartaiBesarAnggaran{
 		Label:  req.Label,
-		Urutan: req.Urutan,
+		Urutan: maxUrutan + 1,
 	}
 
 	if err := s.repo.CreateAnggaran(ctx, anggaran); err != nil {
@@ -165,9 +171,6 @@ func (s *formulirPartaiBesarService) UpdateAnggaran(ctx context.Context, id stri
 
 	if req.Label != nil {
 		anggaran.Label = *req.Label
-	}
-	if req.Urutan != nil {
-		anggaran.Urutan = *req.Urutan
 	}
 
 	if err := s.repo.UpdateAnggaran(ctx, anggaran); err != nil {

@@ -18,6 +18,7 @@ type BannerEventPromoRepository interface {
 	Delete(ctx context.Context, id string) error
 	UpdateOrder(ctx context.Context, items []models.ReorderItem) error
 	GetVisibleBanners(ctx context.Context) ([]models.BannerEventPromo, error)
+	GetMaxUrutan(ctx context.Context) (int, error)
 }
 
 type bannerEventPromoRepository struct {
@@ -114,4 +115,13 @@ func (r *bannerEventPromoRepository) GetVisibleBanners(ctx context.Context) ([]m
 		Find(&banners).Error
 
 	return banners, err
+}
+
+func (r *bannerEventPromoRepository) GetMaxUrutan(ctx context.Context) (int, error) {
+	var maxUrutan int
+	err := r.db.WithContext(ctx).
+		Model(&models.BannerEventPromo{}).
+		Select("COALESCE(MAX(urutan), 0)").
+		Scan(&maxUrutan).Error
+	return maxUrutan, err
 }

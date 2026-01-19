@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -38,14 +37,6 @@ func (c *BannerTipeProdukController) Create(ctx *gin.Context) {
 		// Parse form data
 		req.TipeProdukID = ctx.PostForm("tipe_produk_id")
 		req.Nama = ctx.PostForm("nama")
-
-		// Parse urutan (optional)
-		if urutanStr := ctx.PostForm("urutan"); urutanStr != "" {
-			urutan := 0
-			if _, err := fmt.Sscanf(urutanStr, "%d", &urutan); err == nil {
-				req.Urutan = &urutan
-			}
-		}
 
 		// Validate required fields
 		if req.TipeProdukID == "" || req.Nama == "" {
@@ -159,12 +150,6 @@ func (c *BannerTipeProdukController) Update(ctx *gin.Context) {
 		}
 		if nama := ctx.PostForm("nama"); nama != "" {
 			req.Nama = &nama
-		}
-		if urutanStr := ctx.PostForm("urutan"); urutanStr != "" {
-			urutan := 0
-			if _, err := fmt.Sscanf(urutanStr, "%d", &urutan); err == nil {
-				req.Urutan = &urutan
-			}
 		}
 		if isActiveStr := ctx.PostForm("is_active"); isActiveStr != "" {
 			isActive := isActiveStr == "true"

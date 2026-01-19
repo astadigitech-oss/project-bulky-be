@@ -73,10 +73,6 @@ func (s *metodePembayaranGroupService) Update(ctx context.Context, id string, re
 		group.Nama = *req.Nama
 	}
 
-	if req.Urutan != nil {
-		group.Urutan = *req.Urutan
-	}
-
 	if req.IsActive != nil {
 		group.IsActive = *req.IsActive
 	}

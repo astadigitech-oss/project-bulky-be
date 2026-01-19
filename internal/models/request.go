@@ -99,14 +99,12 @@ type CreateKondisiProdukRequest struct {
 	NamaID    string  `json:"nama_id" binding:"required,min=2,max=100"`
 	NamaEN    *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
 	Deskripsi *string `json:"deskripsi" binding:"omitempty,max=500"`
-	Urutan    *int    `json:"urutan"`
 }
 
 type UpdateKondisiProdukRequest struct {
 	NamaID    *string `json:"nama_id" binding:"omitempty,min=2,max=100"`
 	NamaEN    *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
 	Deskripsi *string `json:"deskripsi" binding:"omitempty,max=500"`
-	Urutan    *int    `json:"urutan"`
 	IsActive  *bool   `json:"is_active"`
 }
 
@@ -124,14 +122,12 @@ type CreateKondisiPaketRequest struct {
 	NamaID    string  `json:"nama_id" binding:"required,min=2,max=100"`
 	NamaEN    *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
 	Deskripsi *string `json:"deskripsi" binding:"omitempty,max=500"`
-	Urutan    *int    `json:"urutan"`
 }
 
 type UpdateKondisiPaketRequest struct {
 	NamaID    *string `json:"nama_id" binding:"omitempty,min=2,max=100"`
 	NamaEN    *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
 	Deskripsi *string `json:"deskripsi" binding:"omitempty,max=500"`
-	Urutan    *int    `json:"urutan"`
 	IsActive  *bool   `json:"is_active"`
 }
 
@@ -249,14 +245,12 @@ type CreateBannerTipeProdukRequest struct {
 	TipeProdukID string `json:"tipe_produk_id" binding:"required,uuid"`
 	Nama         string `json:"nama" binding:"required,min=2,max=100"`
 	GambarURL    string `json:"gambar_url" binding:"required,max=500"`
-	Urutan       *int   `json:"urutan"`
 }
 
 type UpdateBannerTipeProdukRequest struct {
 	TipeProdukID *string `json:"tipe_produk_id" binding:"omitempty,uuid"`
 	Nama         *string `json:"nama" binding:"omitempty,min=2,max=100"`
 	GambarURL    *string `json:"gambar_url" binding:"omitempty,max=500"`
-	Urutan       *int    `json:"urutan"`
 	IsActive     *bool   `json:"is_active"`
 }
 
@@ -332,12 +326,10 @@ type ProdukFilterRequest struct {
 
 type CreateProdukGambarRequest struct {
 	GambarURL string `json:"gambar_url" binding:"required,max=500"`
-	Urutan    *int   `json:"urutan"`
 	IsPrimary bool   `json:"is_primary"`
 }
 
 type UpdateProdukGambarRequest struct {
-	Urutan    *int  `json:"urutan"`
 	IsPrimary *bool `json:"is_primary"`
 }
 
@@ -517,7 +509,6 @@ type CreateBannerEventPromoRequest struct {
 	GambarID       string  `json:"gambar_id" binding:"required,max=255"`
 	GambarEN       *string `json:"gambar_en" binding:"omitempty,max=255"`
 	UrlTujuan      *string `json:"url_tujuan" binding:"omitempty,max=255"`
-	Urutan         int     `json:"urutan"`
 	IsActive       bool    `json:"is_active"`
 	TanggalMulai   *string `json:"tanggal_mulai"`
 	TanggalSelesai *string `json:"tanggal_selesai"`
@@ -528,7 +519,6 @@ type UpdateBannerEventPromoRequest struct {
 	GambarID       *string `json:"gambar_id" binding:"omitempty,max=255"`
 	GambarEN       *string `json:"gambar_en" binding:"omitempty,max=255"`
 	UrlTujuan      *string `json:"url_tujuan" binding:"omitempty,max=255"`
-	Urutan         *int    `json:"urutan"`
 	IsActive       *bool   `json:"is_active"`
 	TanggalMulai   *string `json:"tanggal_mulai"`
 	TanggalSelesai *string `json:"tanggal_selesai"`
@@ -553,13 +543,11 @@ type UpdateFormulirConfigRequest struct {
 // ========================================
 
 type CreateAnggaranRequest struct {
-	Label  string `json:"label" binding:"required,min=1,max=100"`
-	Urutan int    `json:"urutan"`
+	Label string `json:"label" binding:"required,min=1,max=100"`
 }
 
 type UpdateAnggaranRequest struct {
-	Label  *string `json:"label" binding:"omitempty,min=1,max=100"`
-	Urutan *int    `json:"urutan"`
+	Label *string `json:"label" binding:"omitempty,min=1,max=100"`
 }
 
 type AnggaranFilterRequest struct {

@@ -120,11 +120,6 @@ func (s *metodePembayaranService) Update(ctx context.Context, id string, req *mo
 		metode.LogoValue = req.LogoValue
 	}
 
-	// Update urutan if provided
-	if req.Urutan != nil {
-		metode.Urutan = *req.Urutan
-	}
-
 	// Update is_active if provided
 	if req.IsActive != nil {
 		metode.IsActive = *req.IsActive
