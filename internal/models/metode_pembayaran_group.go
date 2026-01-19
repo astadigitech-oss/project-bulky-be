@@ -26,13 +26,11 @@ func (MetodePembayaranGroup) TableName() string {
 
 // Request DTOs
 type CreateMetodePembayaranGroupRequest struct {
-	Nama   string `json:"nama" binding:"required,min=1,max=50"`
-	Urutan int    `json:"urutan"`
+	Nama string `json:"nama" binding:"required,min=1,max=50"`
 }
 
 type UpdateMetodePembayaranGroupRequest struct {
 	Nama     *string `json:"nama" binding:"omitempty,min=1,max=50"`
-	Urutan   *int    `json:"urutan"`
 	IsActive *bool   `json:"is_active"`
 }
 

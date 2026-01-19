@@ -2,10 +2,11 @@ package controllers
 
 import (
 	"net/http"
+	"strconv"
+
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,18 +23,18 @@ func NewForceUpdateController(service services.ForceUpdateService) *ForceUpdateC
 func (c *ForceUpdateController) CreateForceUpdate(ctx *gin.Context) {
 	var req models.CreateForceUpdateRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Invalid request body", err.Error())
+		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Data request tidak valid", utils.GetValidationErrorMessage(err))
 		return
 	}
 
 	forceUpdate, err := c.service.CreateForceUpdate(&req)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Failed to create force update", err.Error())
+		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat konfigurasi force update", err.Error())
 		return
 	}
 
 	response := models.ForceUpdateDetailResponse{
-		ID:              uint(forceUpdate.ID.ID()),
+		ID:              forceUpdate.ID.String(),
 		KodeVersi:       forceUpdate.KodeVersi,
 		UpdateType:      string(forceUpdate.UpdateType),
 		InformasiUpdate: forceUpdate.InformasiUpdate,
@@ -42,35 +43,31 @@ func (c *ForceUpdateController) CreateForceUpdate(ctx *gin.Context) {
 		UpdatedAt:       forceUpdate.UpdatedAt,
 	}
 
-	utils.CreatedResponse(ctx, "Force update created successfully", response)
+	utils.CreatedResponse(ctx, "Konfigurasi force update berhasil dibuat", response)
 }
 
 // UpdateForceUpdate updates force update configuration
 func (c *ForceUpdateController) UpdateForceUpdate(ctx *gin.Context) {
-	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
-	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Invalid force update ID", err.Error())
-		return
-	}
+	id := ctx.Param("id")
 
 	var req models.UpdateForceUpdateRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Invalid request body", err.Error())
+		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Data request tidak valid", utils.GetValidationErrorMessage(err))
 		return
 	}
 
-	forceUpdate, err := c.service.UpdateForceUpdate(uint(id), &req)
+	forceUpdate, err := c.service.UpdateForceUpdate(id, &req)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if err.Error() == "force update not found" {
 			status = http.StatusNotFound
 		}
-		utils.SimpleErrorResponse(ctx, status, "Failed to update force update", err.Error())
+		utils.SimpleErrorResponse(ctx, status, "Gagal memperbarui konfigurasi force update", err.Error())
 		return
 	}
 
 	response := models.ForceUpdateDetailResponse{
-		ID:              uint(forceUpdate.ID.ID()),
+		ID:              forceUpdate.ID.String(),
 		KodeVersi:       forceUpdate.KodeVersi,
 		UpdateType:      string(forceUpdate.UpdateType),
 		InformasiUpdate: forceUpdate.InformasiUpdate,
@@ -79,50 +76,42 @@ func (c *ForceUpdateController) UpdateForceUpdate(ctx *gin.Context) {
 		UpdatedAt:       forceUpdate.UpdatedAt,
 	}
 
-	utils.SuccessResponse(ctx, "Force update updated successfully", response)
+	utils.SuccessResponse(ctx, "Konfigurasi force update berhasil diperbarui", response)
 }
 
 // DeleteForceUpdate deletes force update configuration
 func (c *ForceUpdateController) DeleteForceUpdate(ctx *gin.Context) {
-	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
-	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Invalid force update ID", err.Error())
-		return
-	}
+	id := ctx.Param("id")
 
-	err = c.service.DeleteForceUpdate(uint(id))
+	err := c.service.DeleteForceUpdate(id)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if err.Error() == "force update not found" {
 			status = http.StatusNotFound
 		}
-		utils.SimpleErrorResponse(ctx, status, "Failed to delete force update", err.Error())
+		utils.SimpleErrorResponse(ctx, status, "Gagal menghapus konfigurasi force update", err.Error())
 		return
 	}
 
-	utils.SuccessResponse(ctx, "Force update deleted successfully", nil)
+	utils.SuccessResponse(ctx, "Konfigurasi force update berhasil dihapus", nil)
 }
 
 // GetForceUpdateByID gets force update by ID
 func (c *ForceUpdateController) GetForceUpdateByID(ctx *gin.Context) {
-	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
-	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Invalid force update ID", err.Error())
-		return
-	}
+	id := ctx.Param("id")
 
-	forceUpdate, err := c.service.GetForceUpdateByID(uint(id))
+	forceUpdate, err := c.service.GetForceUpdateByID(id)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if err.Error() == "force update not found" {
 			status = http.StatusNotFound
 		}
-		utils.SimpleErrorResponse(ctx, status, "Failed to get force update", err.Error())
+		utils.SimpleErrorResponse(ctx, status, "Gagal mengambil data force update", err.Error())
 		return
 	}
 
 	response := models.ForceUpdateDetailResponse{
-		ID:              uint(forceUpdate.ID.ID()),
+		ID:              forceUpdate.ID.String(),
 		KodeVersi:       forceUpdate.KodeVersi,
 		UpdateType:      string(forceUpdate.UpdateType),
 		InformasiUpdate: forceUpdate.InformasiUpdate,
@@ -131,7 +120,7 @@ func (c *ForceUpdateController) GetForceUpdateByID(ctx *gin.Context) {
 		UpdatedAt:       forceUpdate.UpdatedAt,
 	}
 
-	utils.SuccessResponse(ctx, "Force update retrieved successfully", response)
+	utils.SuccessResponse(ctx, "Data force update berhasil diambil", response)
 }
 
 // GetAllForceUpdates gets all force update configurations
@@ -148,14 +137,14 @@ func (c *ForceUpdateController) GetAllForceUpdates(ctx *gin.Context) {
 
 	forceUpdates, total, err := c.service.GetAllForceUpdates(page, limit)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Failed to get force updates", err.Error())
+		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data force update", err.Error())
 		return
 	}
 
 	var response []models.ForceUpdateListResponse
 	for _, fu := range forceUpdates {
 		response = append(response, models.ForceUpdateListResponse{
-			ID:         uint(fu.ID.ID()),
+			ID:         fu.ID.String(),
 			KodeVersi:  fu.KodeVersi,
 			UpdateType: string(fu.UpdateType),
 			IsActive:   fu.IsActive,
@@ -165,26 +154,22 @@ func (c *ForceUpdateController) GetAllForceUpdates(ctx *gin.Context) {
 
 	meta := models.NewPaginationMeta(page, limit, total)
 
-	utils.PaginatedSuccessResponse(ctx, "Force updates retrieved successfully", response, meta)
+	utils.PaginatedSuccessResponse(ctx, "Data force update berhasil diambil", response, meta)
 }
 
 // SetActiveForceUpdate sets active force update configuration
 func (c *ForceUpdateController) SetActiveForceUpdate(ctx *gin.Context) {
-	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
-	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Invalid force update ID", err.Error())
-		return
-	}
+	id := ctx.Param("id")
 
-	err = c.service.SetActiveForceUpdate(uint(id))
+	err := c.service.SetActiveForceUpdate(id)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if err.Error() == "force update not found" {
 			status = http.StatusNotFound
 		}
-		utils.SimpleErrorResponse(ctx, status, "Failed to set active force update", err.Error())
+		utils.SimpleErrorResponse(ctx, status, "Gagal mengaktifkan force update", err.Error())
 		return
 	}
 
-	utils.SuccessResponse(ctx, "Force update activated successfully", nil)
+	utils.SuccessResponse(ctx, "Force update berhasil diaktifkan", nil)
 }

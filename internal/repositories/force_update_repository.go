@@ -9,11 +9,11 @@ import (
 type ForceUpdateRepository interface {
 	Create(forceUpdate *models.ForceUpdateApp) error
 	Update(forceUpdate *models.ForceUpdateApp) error
-	Delete(id uint) error
-	FindByID(id uint) (*models.ForceUpdateApp, error)
+	Delete(id string) error
+	FindByID(id string) (*models.ForceUpdateApp, error)
 	FindAll(page, limit int) ([]models.ForceUpdateApp, int64, error)
 	FindActive() (*models.ForceUpdateApp, error)
-	SetActive(id uint) error
+	SetActive(id string) error
 }
 
 type forceUpdateRepository struct {
@@ -32,13 +32,13 @@ func (r *forceUpdateRepository) Update(forceUpdate *models.ForceUpdateApp) error
 	return r.db.Save(forceUpdate).Error
 }
 
-func (r *forceUpdateRepository) Delete(id uint) error {
-	return r.db.Delete(&models.ForceUpdateApp{}, id).Error
+func (r *forceUpdateRepository) Delete(id string) error {
+	return r.db.Where("id = ?", id).Delete(&models.ForceUpdateApp{}).Error
 }
 
-func (r *forceUpdateRepository) FindByID(id uint) (*models.ForceUpdateApp, error) {
+func (r *forceUpdateRepository) FindByID(id string) (*models.ForceUpdateApp, error) {
 	var forceUpdate models.ForceUpdateApp
-	err := r.db.First(&forceUpdate, id).Error
+	err := r.db.Where("id = ?", id).First(&forceUpdate).Error
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (r *forceUpdateRepository) FindActive() (*models.ForceUpdateApp, error) {
 	return &forceUpdate, nil
 }
 
-func (r *forceUpdateRepository) SetActive(id uint) error {
+func (r *forceUpdateRepository) SetActive(id string) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		// Deactivate all records
 		if err := tx.Model(&models.ForceUpdateApp{}).Where("is_active = ?", true).Update("is_active", false).Error; err != nil {

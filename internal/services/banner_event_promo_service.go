@@ -36,13 +36,19 @@ func NewBannerEventPromoService(repo repositories.BannerEventPromoRepository, cf
 }
 
 func (s *bannerEventPromoService) Create(ctx context.Context, req *models.CreateBannerEventPromoRequest) (*models.BannerEventPromoResponse, error) {
+	// Auto-increment urutan
+	maxUrutan, err := s.repo.GetMaxUrutan(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	banner := &models.BannerEventPromo{
 		ID:          uuid.New(),
 		Nama:        req.Nama,
 		GambarURLID: req.GambarID,
 		GambarURLEN: req.GambarEN,
 		LinkURL:     req.UrlTujuan,
-		Urutan:      req.Urutan,
+		Urutan:      maxUrutan + 1,
 		IsActive:    req.IsActive,
 	}
 
@@ -108,9 +114,6 @@ func (s *bannerEventPromoService) Update(ctx context.Context, id string, req *mo
 	}
 	if req.UrlTujuan != nil {
 		banner.LinkURL = req.UrlTujuan
-	}
-	if req.Urutan != nil {
-		banner.Urutan = *req.Urutan
 	}
 	if req.IsActive != nil {
 		banner.IsActive = *req.IsActive

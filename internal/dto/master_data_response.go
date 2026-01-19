@@ -87,32 +87,32 @@ type KategoriProdukDetailResponse struct {
 
 func ToKategoriProdukListResponse(k *models.KategoriProduk, jumlahProduk int) KategoriProdukListResponse {
 	return KategoriProdukListResponse{
-		ID:                      k.ID,
-		Nama:                    k.GetNama(),
-		Slug:                    k.Slug,
-		IconURL:                 k.IconURL,
-		MemilikiKondisiTambahan: k.MemilikiKondisiTambahan,
-		JumlahProduk:            jumlahProduk,
-		IsActive:                k.IsActive,
-		UpdatedAt:               k.UpdatedAt,
+		ID:      k.ID,
+		Nama:    k.GetNama(),
+		Slug:    k.Slug,
+		IconURL: k.IconURL,
+		// MemilikiKondisiTambahan: k.MemilikiKondisiTambahan,
+		JumlahProduk: jumlahProduk,
+		IsActive:     k.IsActive,
+		UpdatedAt:    k.UpdatedAt,
 	}
 }
 
 func ToKategoriProdukDetailResponse(k *models.KategoriProduk, jumlahProduk int) KategoriProdukDetailResponse {
 	return KategoriProdukDetailResponse{
-		ID:                      k.ID,
-		Nama:                    k.GetNama(),
-		Slug:                    k.Slug,
-		Deskripsi:               k.Deskripsi,
-		IconURL:                 k.IconURL,
-		MemilikiKondisiTambahan: k.MemilikiKondisiTambahan,
-		TipeKondisiTambahan:     k.TipeKondisiTambahan,
-		GambarKondisiURL:        k.GambarKondisiURL,
-		TeksKondisi:             k.TeksKondisi,
-		JumlahProduk:            jumlahProduk,
-		IsActive:                k.IsActive,
-		CreatedAt:               k.CreatedAt,
-		UpdatedAt:               k.UpdatedAt,
+		ID:        k.ID,
+		Nama:      k.GetNama(),
+		Slug:      k.Slug,
+		Deskripsi: k.Deskripsi,
+		IconURL:   k.IconURL,
+		// MemilikiKondisiTambahan: k.MemilikiKondisiTambahan,
+		TipeKondisiTambahan: k.TipeKondisiTambahan,
+		GambarKondisiURL:    k.GambarKondisiURL,
+		TeksKondisi:         k.TeksKondisi,
+		JumlahProduk:        jumlahProduk,
+		IsActive:            k.IsActive,
+		CreatedAt:           k.CreatedAt,
+		UpdatedAt:           k.UpdatedAt,
 	}
 }
 

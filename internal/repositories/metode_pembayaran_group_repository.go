@@ -10,6 +10,7 @@ import (
 
 type MetodePembayaranGroupRepository interface {
 	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.MetodePembayaranGroup, int64, error)
+	FindAllSimple(ctx context.Context) ([]models.MetodePembayaranGroup, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*models.MetodePembayaranGroup, error)
 	FindByIDWithMetode(ctx context.Context, id uuid.UUID) (*models.MetodePembayaranGroup, error)
 	Create(ctx context.Context, group *models.MetodePembayaranGroup) error
@@ -152,4 +153,12 @@ func (r *metodePembayaranGroupRepository) CountActiveMetode(ctx context.Context,
 		Count(&count).Error
 
 	return count, err
+}
+
+func (r *metodePembayaranGroupRepository) FindAllSimple(ctx context.Context) ([]models.MetodePembayaranGroup, error) {
+	var groups []models.MetodePembayaranGroup
+	if err := r.db.WithContext(ctx).Order("urutan asc").Find(&groups).Error; err != nil {
+		return nil, err
+	}
+	return groups, nil
 }

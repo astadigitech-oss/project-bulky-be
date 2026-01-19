@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -14,14 +13,16 @@ import (
 )
 
 type BannerTipeProdukController struct {
-	service services.BannerTipeProdukService
-	cfg     *config.Config
+	service        services.BannerTipeProdukService
+	reorderService *services.ReorderService
+	cfg            *config.Config
 }
 
-func NewBannerTipeProdukController(service services.BannerTipeProdukService, cfg *config.Config) *BannerTipeProdukController {
+func NewBannerTipeProdukController(service services.BannerTipeProdukService, reorderService *services.ReorderService, cfg *config.Config) *BannerTipeProdukController {
 	return &BannerTipeProdukController{
-		service: service,
-		cfg:     cfg,
+		service:        service,
+		reorderService: reorderService,
+		cfg:            cfg,
 	}
 }
 
@@ -36,14 +37,6 @@ func (c *BannerTipeProdukController) Create(ctx *gin.Context) {
 		// Parse form data
 		req.TipeProdukID = ctx.PostForm("tipe_produk_id")
 		req.Nama = ctx.PostForm("nama")
-
-		// Parse urutan (optional)
-		if urutanStr := ctx.PostForm("urutan"); urutanStr != "" {
-			urutan := 0
-			if _, err := fmt.Sscanf(urutanStr, "%d", &urutan); err == nil {
-				req.Urutan = &urutan
-			}
-		}
 
 		// Validate required fields
 		if req.TipeProdukID == "" || req.Nama == "" {
@@ -158,12 +151,6 @@ func (c *BannerTipeProdukController) Update(ctx *gin.Context) {
 		if nama := ctx.PostForm("nama"); nama != "" {
 			req.Nama = &nama
 		}
-		if urutanStr := ctx.PostForm("urutan"); urutanStr != "" {
-			urutan := 0
-			if _, err := fmt.Sscanf(urutanStr, "%d", &urutan); err == nil {
-				req.Urutan = &urutan
-			}
-		}
 		if isActiveStr := ctx.PostForm("is_active"); isActiveStr != "" {
 			isActive := isActiveStr == "true"
 			req.IsActive = &isActive
@@ -260,4 +247,45 @@ func (c *BannerTipeProdukController) Reorder(ctx *gin.Context) {
 	}
 
 	utils.SuccessResponse(ctx, "Urutan banner berhasil diubah", nil)
+}
+
+func (c *BannerTipeProdukController) ReorderByDirection(ctx *gin.Context) {
+	id := ctx.Param("id")
+	direction := ctx.Query("direction")
+
+	if direction == "" {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter 'direction' wajib diisi", nil)
+		return
+	}
+
+	idUUID, err := utils.ParseUUID(id)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", nil)
+		return
+	}
+
+	result, err := c.reorderService.Reorder(
+		ctx.Request.Context(),
+		"banner_tipe_produk",
+		idUUID,
+		direction,
+		"",
+		nil,
+	)
+
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Urutan berhasil diubah", gin.H{
+		"item": gin.H{
+			"id":     result.ItemID,
+			"urutan": result.ItemUrutan,
+		},
+		"swapped_with": gin.H{
+			"id":     result.SwappedID,
+			"urutan": result.SwappedUrutan,
+		},
+	})
 }

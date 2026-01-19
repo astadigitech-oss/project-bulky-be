@@ -9,11 +9,11 @@ import (
 
 type ForceUpdateService interface {
 	CreateForceUpdate(req *models.CreateForceUpdateRequest) (*models.ForceUpdateApp, error)
-	UpdateForceUpdate(id uint, req *models.UpdateForceUpdateRequest) (*models.ForceUpdateApp, error)
-	DeleteForceUpdate(id uint) error
-	GetForceUpdateByID(id uint) (*models.ForceUpdateApp, error)
+	UpdateForceUpdate(id string, req *models.UpdateForceUpdateRequest) (*models.ForceUpdateApp, error)
+	DeleteForceUpdate(id string) error
+	GetForceUpdateByID(id string) (*models.ForceUpdateApp, error)
 	GetAllForceUpdates(page, limit int) ([]models.ForceUpdateApp, int64, error)
-	SetActiveForceUpdate(id uint) error
+	SetActiveForceUpdate(id string) error
 	CheckVersion(currentVersion string) (*models.CheckVersionResponse, error)
 }
 
@@ -47,7 +47,7 @@ func (s *forceUpdateService) CreateForceUpdate(req *models.CreateForceUpdateRequ
 	return forceUpdate, nil
 }
 
-func (s *forceUpdateService) UpdateForceUpdate(id uint, req *models.UpdateForceUpdateRequest) (*models.ForceUpdateApp, error) {
+func (s *forceUpdateService) UpdateForceUpdate(id string, req *models.UpdateForceUpdateRequest) (*models.ForceUpdateApp, error) {
 	forceUpdate, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, errors.New("force update not found")
@@ -74,7 +74,7 @@ func (s *forceUpdateService) UpdateForceUpdate(id uint, req *models.UpdateForceU
 	return forceUpdate, nil
 }
 
-func (s *forceUpdateService) DeleteForceUpdate(id uint) error {
+func (s *forceUpdateService) DeleteForceUpdate(id string) error {
 	_, err := s.repo.FindByID(id)
 	if err != nil {
 		return errors.New("force update not found")
@@ -83,7 +83,7 @@ func (s *forceUpdateService) DeleteForceUpdate(id uint) error {
 	return s.repo.Delete(id)
 }
 
-func (s *forceUpdateService) GetForceUpdateByID(id uint) (*models.ForceUpdateApp, error) {
+func (s *forceUpdateService) GetForceUpdateByID(id string) (*models.ForceUpdateApp, error) {
 	forceUpdate, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, errors.New("force update not found")
@@ -95,7 +95,7 @@ func (s *forceUpdateService) GetAllForceUpdates(page, limit int) ([]models.Force
 	return s.repo.FindAll(page, limit)
 }
 
-func (s *forceUpdateService) SetActiveForceUpdate(id uint) error {
+func (s *forceUpdateService) SetActiveForceUpdate(id string) error {
 	_, err := s.repo.FindByID(id)
 	if err != nil {
 		return errors.New("force update not found")

@@ -6,6 +6,7 @@ import (
 	"project-bulky-be/internal/models"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type Response struct {
@@ -82,4 +83,9 @@ func SimpleSuccessResponse(c *gin.Context, statusCode int, message string, data 
 		"message": message,
 		"data":    data,
 	})
+}
+
+// ParseUUID parses string to UUID
+func ParseUUID(s string) (uuid.UUID, error) {
+	return uuid.Parse(s)
 }

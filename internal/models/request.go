@@ -42,33 +42,30 @@ func (p *PaginationRequest) GetOffset() int {
 // ========================================
 
 type CreateKategoriProdukRequest struct {
-	NamaID                  string  `json:"nama_id" binding:"required,min=2,max=100"`
-	NamaEN                  *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
-	Deskripsi               *string `json:"deskripsi" binding:"omitempty,max=1000"`
-	Icon                    *string `json:"icon"`
-	MemilikiKondisiTambahan bool    `json:"memiliki_kondisi_tambahan"`
-	TipeKondisiTambahan     *string `json:"tipe_kondisi_tambahan" binding:"omitempty,oneof=gambar teks"`
-	GambarKondisi           *string `json:"gambar_kondisi"`
-	TeksKondisi             *string `json:"teks_kondisi" binding:"omitempty,max=500"`
+	NamaID              string  `json:"nama_id" binding:"required,min=2,max=100"`
+	NamaEN              *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
+	Deskripsi           *string `json:"deskripsi" binding:"omitempty,max=1000"`
+	Icon                *string `json:"icon"`
+	TipeKondisiTambahan *string `json:"tipe_kondisi_tambahan" binding:"omitempty,oneof=TEKS GAMBAR"`
+	GambarKondisi       *string `json:"gambar_kondisi"`
+	TeksKondisi         *string `json:"teks_kondisi" binding:"omitempty,max=500"`
 }
 
 type UpdateKategoriProdukRequest struct {
-	NamaID                  *string `json:"nama_id" binding:"omitempty,min=2,max=100"`
-	NamaEN                  *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
-	Deskripsi               *string `json:"deskripsi" binding:"omitempty,max=1000"`
-	Icon                    *string `json:"icon"`
-	MemilikiKondisiTambahan *bool   `json:"memiliki_kondisi_tambahan"`
-	TipeKondisiTambahan     *string `json:"tipe_kondisi_tambahan" binding:"omitempty,oneof=gambar teks"`
-	GambarKondisi           *string `json:"gambar_kondisi"`
-	TeksKondisi             *string `json:"teks_kondisi" binding:"omitempty,max=500"`
-	IsActive                *bool   `json:"is_active"`
+	NamaID              *string `json:"nama_id" binding:"omitempty,min=2,max=100"`
+	NamaEN              *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
+	Deskripsi           *string `json:"deskripsi" binding:"omitempty,max=1000"`
+	Icon                *string `json:"icon"`
+	TipeKondisiTambahan *string `json:"tipe_kondisi_tambahan" binding:"omitempty,oneof=TEKS GAMBAR"`
+	GambarKondisi       *string `json:"gambar_kondisi"`
+	TeksKondisi         *string `json:"teks_kondisi" binding:"omitempty,max=500"`
+	IsActive            *bool   `json:"is_active"`
 }
 
 type KategoriProdukFilterRequest struct {
 	PaginationRequest
-	IsActive                *bool   `form:"is_active"`
-	MemilikiKondisiTambahan *bool   `form:"memiliki_kondisi_tambahan"`
-	UpdatedAt               *string `form:"updated_at"`
+	IsActive  *bool   `form:"is_active"`
+	UpdatedAt *string `form:"updated_at"`
 }
 
 // ========================================
@@ -102,14 +99,12 @@ type CreateKondisiProdukRequest struct {
 	NamaID    string  `json:"nama_id" binding:"required,min=2,max=100"`
 	NamaEN    *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
 	Deskripsi *string `json:"deskripsi" binding:"omitempty,max=500"`
-	Urutan    *int    `json:"urutan"`
 }
 
 type UpdateKondisiProdukRequest struct {
 	NamaID    *string `json:"nama_id" binding:"omitempty,min=2,max=100"`
 	NamaEN    *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
 	Deskripsi *string `json:"deskripsi" binding:"omitempty,max=500"`
-	Urutan    *int    `json:"urutan"`
 	IsActive  *bool   `json:"is_active"`
 }
 
@@ -127,14 +122,12 @@ type CreateKondisiPaketRequest struct {
 	NamaID    string  `json:"nama_id" binding:"required,min=2,max=100"`
 	NamaEN    *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
 	Deskripsi *string `json:"deskripsi" binding:"omitempty,max=500"`
-	Urutan    *int    `json:"urutan"`
 }
 
 type UpdateKondisiPaketRequest struct {
 	NamaID    *string `json:"nama_id" binding:"omitempty,min=2,max=100"`
 	NamaEN    *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
 	Deskripsi *string `json:"deskripsi" binding:"omitempty,max=500"`
-	Urutan    *int    `json:"urutan"`
 	IsActive  *bool   `json:"is_active"`
 }
 
@@ -252,14 +245,12 @@ type CreateBannerTipeProdukRequest struct {
 	TipeProdukID string `json:"tipe_produk_id" binding:"required,uuid"`
 	Nama         string `json:"nama" binding:"required,min=2,max=100"`
 	GambarURL    string `json:"gambar_url" binding:"required,max=500"`
-	Urutan       *int   `json:"urutan"`
 }
 
 type UpdateBannerTipeProdukRequest struct {
 	TipeProdukID *string `json:"tipe_produk_id" binding:"omitempty,uuid"`
 	Nama         *string `json:"nama" binding:"omitempty,min=2,max=100"`
 	GambarURL    *string `json:"gambar_url" binding:"omitempty,max=500"`
-	Urutan       *int    `json:"urutan"`
 	IsActive     *bool   `json:"is_active"`
 }
 
@@ -335,12 +326,10 @@ type ProdukFilterRequest struct {
 
 type CreateProdukGambarRequest struct {
 	GambarURL string `json:"gambar_url" binding:"required,max=500"`
-	Urutan    *int   `json:"urutan"`
 	IsPrimary bool   `json:"is_primary"`
 }
 
 type UpdateProdukGambarRequest struct {
-	Urutan    *int  `json:"urutan"`
 	IsPrimary *bool `json:"is_primary"`
 }
 
@@ -520,7 +509,6 @@ type CreateBannerEventPromoRequest struct {
 	GambarID       string  `json:"gambar_id" binding:"required,max=255"`
 	GambarEN       *string `json:"gambar_en" binding:"omitempty,max=255"`
 	UrlTujuan      *string `json:"url_tujuan" binding:"omitempty,max=255"`
-	Urutan         int     `json:"urutan"`
 	IsActive       bool    `json:"is_active"`
 	TanggalMulai   *string `json:"tanggal_mulai"`
 	TanggalSelesai *string `json:"tanggal_selesai"`
@@ -531,13 +519,77 @@ type UpdateBannerEventPromoRequest struct {
 	GambarID       *string `json:"gambar_id" binding:"omitempty,max=255"`
 	GambarEN       *string `json:"gambar_en" binding:"omitempty,max=255"`
 	UrlTujuan      *string `json:"url_tujuan" binding:"omitempty,max=255"`
-	Urutan         *int    `json:"urutan"`
 	IsActive       *bool   `json:"is_active"`
 	TanggalMulai   *string `json:"tanggal_mulai"`
 	TanggalSelesai *string `json:"tanggal_selesai"`
 }
 
 type BannerEventPromoFilterRequest struct {
+	PaginationRequest
+	IsActive  *bool   `form:"is_active"`
+	UpdatedAt *string `form:"updated_at"`
+}
+
+// ========================================
+// Formulir Partai Besar - Config Request
+// ========================================
+
+type UpdateFormulirConfigRequest struct {
+	DaftarEmail []string `json:"daftar_email" binding:"required,min=1,dive,email"`
+}
+
+// ========================================
+// Formulir Partai Besar - Anggaran Request
+// ========================================
+
+type CreateAnggaranRequest struct {
+	Label string `json:"label" binding:"required,min=1,max=100"`
+}
+
+type UpdateAnggaranRequest struct {
+	Label *string `json:"label" binding:"omitempty,min=1,max=100"`
+}
+
+type AnggaranFilterRequest struct {
+	PaginationRequest
+}
+
+// ========================================
+// Formulir Partai Besar - Submission Request (Buyer)
+// ========================================
+
+type CreateFormulirSubmissionRequest struct {
+	Nama        string   `json:"nama" binding:"required,min=2,max=100"`
+	Telepon     string   `json:"telepon" binding:"required,max=20"`
+	Alamat      string   `json:"alamat" binding:"required"`
+	AnggaranID  string   `json:"anggaran_id" binding:"required,uuid"`
+	KategoriIDs []string `json:"kategori_ids" binding:"required,min=1,dive,uuid"`
+}
+
+type FormulirSubmissionFilterRequest struct {
+	PaginationRequest
+	TanggalDari   *string `form:"tanggal_dari"`
+	TanggalSampai *string `form:"tanggal_sampai"`
+	EmailSent     *bool   `form:"email_sent"`
+}
+
+// ========================================
+// WhatsApp Handler Request
+// ========================================
+
+type CreateWhatsAppHandlerRequest struct {
+	NomorWA   string `json:"nomor_wa" binding:"required,max=20"`
+	PesanAwal string `json:"pesan_awal" binding:"required"`
+	IsActive  bool   `json:"is_active"`
+}
+
+type UpdateWhatsAppHandlerRequest struct {
+	NomorWA   *string `json:"nomor_wa" binding:"omitempty,max=20"`
+	PesanAwal *string `json:"pesan_awal"`
+	IsActive  *bool   `json:"is_active"`
+}
+
+type WhatsAppHandlerFilterRequest struct {
 	PaginationRequest
 	IsActive  *bool   `form:"is_active"`
 	UpdatedAt *string `form:"updated_at"`

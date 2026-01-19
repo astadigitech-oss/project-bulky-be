@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 
 	"project-bulky-be/internal/config"
@@ -14,14 +13,16 @@ import (
 )
 
 type BannerEventPromoController struct {
-	service services.BannerEventPromoService
-	cfg     *config.Config
+	service        services.BannerEventPromoService
+	reorderService *services.ReorderService
+	cfg            *config.Config
 }
 
-func NewBannerEventPromoController(service services.BannerEventPromoService, cfg *config.Config) *BannerEventPromoController {
+func NewBannerEventPromoController(service services.BannerEventPromoService, reorderService *services.ReorderService, cfg *config.Config) *BannerEventPromoController {
 	return &BannerEventPromoController{
-		service: service,
-		cfg:     cfg,
+		service:        service,
+		reorderService: reorderService,
+		cfg:            cfg,
 	}
 }
 
@@ -49,13 +50,6 @@ func (c *BannerEventPromoController) Create(ctx *gin.Context) {
 		req.TanggalSelesai = nil
 		if ts := ctx.PostForm("tanggal_selesai"); ts != "" {
 			req.TanggalSelesai = &ts
-		}
-
-		// Parse urutan (optional, default 0)
-		if urutanStr := ctx.PostForm("urutan"); urutanStr != "" {
-			if urutan, err := strconv.Atoi(urutanStr); err == nil {
-				req.Urutan = urutan
-			}
 		}
 
 		// Parse is_active (optional, default false)
@@ -195,11 +189,6 @@ func (c *BannerEventPromoController) Update(ctx *gin.Context) {
 		if ts := ctx.PostForm("tanggal_selesai"); ts != "" {
 			req.TanggalSelesai = &ts
 		}
-		if urutanStr := ctx.PostForm("urutan"); urutanStr != "" {
-			if urutan, err := strconv.Atoi(urutanStr); err == nil {
-				req.Urutan = &urutan
-			}
-		}
 		if isActiveStr := ctx.PostForm("is_active"); isActiveStr != "" {
 			isActive := isActiveStr == "true" || isActiveStr == "1"
 			req.IsActive = &isActive
@@ -325,4 +314,45 @@ func (c *BannerEventPromoController) GetActive(ctx *gin.Context) {
 	}
 
 	utils.SuccessResponse(ctx, "Data banner aktif berhasil diambil", result)
+}
+
+func (c *BannerEventPromoController) ReorderByDirection(ctx *gin.Context) {
+	id := ctx.Param("id")
+	direction := ctx.Query("direction")
+
+	if direction == "" {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter 'direction' wajib diisi", nil)
+		return
+	}
+
+	idUUID, err := utils.ParseUUID(id)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", nil)
+		return
+	}
+
+	result, err := c.reorderService.Reorder(
+		ctx.Request.Context(),
+		"banner_event_promo",
+		idUUID,
+		direction,
+		"",
+		nil,
+	)
+
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Urutan berhasil diubah", gin.H{
+		"item": gin.H{
+			"id":     result.ItemID,
+			"urutan": result.ItemUrutan,
+		},
+		"swapped_with": gin.H{
+			"id":     result.SwappedID,
+			"urutan": result.SwappedUrutan,
+		},
+	})
 }

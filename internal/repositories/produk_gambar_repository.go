@@ -17,6 +17,7 @@ type ProdukGambarRepository interface {
 	CountByProdukID(ctx context.Context, produkID string) (int64, error)
 	UpdateOrder(ctx context.Context, items []models.ReorderItem) error
 	SetPrimary(ctx context.Context, produkID, gambarID string) error
+	GetMaxUrutanByProdukID(ctx context.Context, produkID string) (int, error)
 }
 
 type produkGambarRepository struct {
@@ -89,4 +90,14 @@ func (r *produkGambarRepository) SetPrimary(ctx context.Context, produkID, gamba
 			Where("id = ?", gambarID).
 			Update("is_primary", true).Error
 	})
+}
+
+func (r *produkGambarRepository) GetMaxUrutanByProdukID(ctx context.Context, produkID string) (int, error) {
+	var maxUrutan int
+	err := r.db.WithContext(ctx).
+		Model(&models.ProdukGambar{}).
+		Where("produk_id = ?", produkID).
+		Select("COALESCE(MAX(urutan), 0)").
+		Scan(&maxUrutan).Error
+	return maxUrutan, err
 }

@@ -37,14 +37,17 @@ func (s *produkGambarService) Create(ctx context.Context, produkID string, req *
 		return nil, errors.New("produk_id tidak valid")
 	}
 
+	// Auto-increment urutan per produk
+	maxUrutan, err := s.repo.GetMaxUrutanByProdukID(ctx, produkID)
+	if err != nil {
+		return nil, err
+	}
+
 	gambar := &models.ProdukGambar{
 		ProdukID:  produkUUID,
 		GambarURL: req.GambarURL,
+		Urutan:    maxUrutan + 1,
 		IsPrimary: req.IsPrimary,
-	}
-
-	if req.Urutan != nil {
-		gambar.Urutan = *req.Urutan
 	}
 
 	if err := s.repo.Create(ctx, gambar); err != nil {
@@ -70,9 +73,6 @@ func (s *produkGambarService) Update(ctx context.Context, id string, req *models
 		return nil, errors.New("gambar tidak ditemukan")
 	}
 
-	if req.Urutan != nil {
-		gambar.Urutan = *req.Urutan
-	}
 	if req.IsPrimary != nil {
 		gambar.IsPrimary = *req.IsPrimary
 		if *req.IsPrimary {

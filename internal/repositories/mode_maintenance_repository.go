@@ -9,12 +9,12 @@ import (
 type ModeMaintenanceRepository interface {
 	Create(maintenance *models.ModeMaintenance) error
 	Update(maintenance *models.ModeMaintenance) error
-	Delete(id uint) error
-	FindByID(id uint) (*models.ModeMaintenance, error)
+	Delete(id string) error
+	FindByID(id string) (*models.ModeMaintenance, error)
 	FindAll(page, limit int) ([]models.ModeMaintenance, int64, error)
 	FindActive() (*models.ModeMaintenance, error)
-	Activate(id uint) error
-	Deactivate(id uint) error
+	Activate(id string) error
+	Deactivate(id string) error
 }
 
 type modeMaintenanceRepository struct {
@@ -33,13 +33,13 @@ func (r *modeMaintenanceRepository) Update(maintenance *models.ModeMaintenance) 
 	return r.db.Save(maintenance).Error
 }
 
-func (r *modeMaintenanceRepository) Delete(id uint) error {
-	return r.db.Delete(&models.ModeMaintenance{}, id).Error
+func (r *modeMaintenanceRepository) Delete(id string) error {
+	return r.db.Where("id = ?", id).Delete(&models.ModeMaintenance{}).Error
 }
 
-func (r *modeMaintenanceRepository) FindByID(id uint) (*models.ModeMaintenance, error) {
+func (r *modeMaintenanceRepository) FindByID(id string) (*models.ModeMaintenance, error) {
 	var maintenance models.ModeMaintenance
-	err := r.db.First(&maintenance, id).Error
+	err := r.db.Where("id = ?", id).First(&maintenance).Error
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func (r *modeMaintenanceRepository) FindActive() (*models.ModeMaintenance, error
 	return &maintenance, nil
 }
 
-func (r *modeMaintenanceRepository) Activate(id uint) error {
+func (r *modeMaintenanceRepository) Activate(id string) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		// Deactivate all records
 		if err := tx.Model(&models.ModeMaintenance{}).Where("is_active = ?", true).Update("is_active", false).Error; err != nil {
@@ -84,6 +84,6 @@ func (r *modeMaintenanceRepository) Activate(id uint) error {
 	})
 }
 
-func (r *modeMaintenanceRepository) Deactivate(id uint) error {
+func (r *modeMaintenanceRepository) Deactivate(id string) error {
 	return r.db.Model(&models.ModeMaintenance{}).Where("id = ?", id).Update("is_active", false).Error
 }

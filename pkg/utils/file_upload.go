@@ -148,11 +148,21 @@ func SaveUploadedFileWithCustomName(file *multipart.FileHeader, directory, custo
 }
 
 // GetFileURL returns the full URL for a file path
-func GetFileURL(filePath string, cfg *config.Config) string {
-	if filePath == "" {
+func GetFileURL(filePath interface{}, cfg *config.Config) string {
+	switch v := filePath.(type) {
+	case string:
+		if v == "" {
+			return ""
+		}
+		return fmt.Sprintf("%s/uploads/%s", strings.TrimRight(cfg.BaseURL, "/"), v)
+	case *string:
+		if v == nil || *v == "" {
+			return ""
+		}
+		return fmt.Sprintf("%s/uploads/%s", strings.TrimRight(cfg.BaseURL, "/"), *v)
+	default:
 		return ""
 	}
-	return fmt.Sprintf("%s/uploads/%s", strings.TrimRight(cfg.BaseURL, "/"), filePath)
 }
 
 // GetFileURLPtr returns the full URL for a file path pointer

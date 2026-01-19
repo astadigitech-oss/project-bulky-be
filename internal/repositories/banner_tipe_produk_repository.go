@@ -16,6 +16,7 @@ type BannerTipeProdukRepository interface {
 	Update(ctx context.Context, banner *models.BannerTipeProduk) error
 	Delete(ctx context.Context, id string) error
 	UpdateOrder(ctx context.Context, items []models.ReorderItem) error
+	GetMaxUrutan(ctx context.Context) (int, error)
 }
 
 type bannerTipeProdukRepository struct {
@@ -120,4 +121,13 @@ func (r *bannerTipeProdukRepository) UpdateOrder(ctx context.Context, items []mo
 		}
 		return nil
 	})
+}
+
+func (r *bannerTipeProdukRepository) GetMaxUrutan(ctx context.Context) (int, error) {
+	var maxUrutan int
+	err := r.db.WithContext(ctx).
+		Model(&models.BannerTipeProduk{}).
+		Select("COALESCE(MAX(urutan), 0)").
+		Scan(&maxUrutan).Error
+	return maxUrutan, err
 }

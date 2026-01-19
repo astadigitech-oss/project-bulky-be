@@ -35,11 +35,18 @@ func NewHeroSectionService(repo repositories.HeroSectionRepository, cfg *config.
 }
 
 func (s *heroSectionService) Create(ctx context.Context, req *models.CreateHeroSectionRequest) (*models.HeroSectionResponse, error) {
+	// Auto-increment urutan
+	maxUrutan, err := s.repo.GetMaxUrutan(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	hero := &models.HeroSection{
 		ID:          uuid.New(),
 		Nama:        req.Nama,
 		GambarURLID: req.GambarID,
 		GambarURLEN: req.GambarEN,
+		Urutan:      maxUrutan + 1,
 		IsActive:    req.IsActive,
 	}
 
