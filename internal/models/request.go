@@ -167,6 +167,11 @@ type ReorderRequest struct {
 	Items []ReorderItem `json:"items" binding:"required,min=1,dive"`
 }
 
+// ReorderByDirectionRequest - For single item reorder (up/down)
+type ReorderByDirectionRequest struct {
+	Direction string `json:"direction" binding:"required,oneof=up down"`
+}
+
 // ========================================
 // Warehouse Request
 // ========================================

@@ -5,14 +5,11 @@ import (
 	"errors"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
-
-	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 type WhatsAppHandlerService interface {
-	FindAll(ctx context.Context) ([]models.WhatsAppHandlerResponse, error)
-	Update(ctx context.Context, id string, req *models.UpdateWhatsAppHandlerRequest) (*models.WhatsAppHandlerResponse, error)
+	Get(ctx context.Context) (*models.WhatsAppHandlerSimpleResponse, error)
+	Update(ctx context.Context, req *models.UpdateWhatsAppHandlerRequest) (*models.WhatsAppHandlerResponse, error)
 	GetActive(ctx context.Context) (*models.WhatsAppHandlerPublicResponse, error)
 }
 
@@ -24,40 +21,39 @@ func NewWhatsAppHandlerService(repo repositories.WhatsAppHandlerRepository) What
 	return &whatsAppHandlerService{repo: repo}
 }
 
-func (s *whatsAppHandlerService) FindAll(ctx context.Context) ([]models.WhatsAppHandlerResponse, error) {
-	items, err := s.repo.FindAllSimple(ctx)
+func (s *whatsAppHandlerService) Get(ctx context.Context) (*models.WhatsAppHandlerSimpleResponse, error) {
+	// Get the active handler or first one
+	handler, err := s.repo.GetActive(ctx)
 	if err != nil {
-		return nil, errors.New("gagal mengambil data WhatsApp handler")
-	}
-
-	var responses []models.WhatsAppHandlerResponse
-	for _, item := range items {
-		responses = append(responses, models.WhatsAppHandlerResponse{
-			ID:          item.ID.String(),
-			NomorWA:     item.NomorWA,
-			PesanAwal:   item.PesanAwal,
-			IsActive:    item.IsActive,
-			WhatsAppURL: item.GetWhatsAppURL(),
-			CreatedAt:   item.CreatedAt,
-			UpdatedAt:   item.UpdatedAt,
-		})
-	}
-
-	return responses, nil
-}
-
-func (s *whatsAppHandlerService) Update(ctx context.Context, id string, req *models.UpdateWhatsAppHandlerRequest) (*models.WhatsAppHandlerResponse, error) {
-	uid, err := uuid.Parse(id)
-	if err != nil {
-		return nil, errors.New("ID tidak valid")
-	}
-
-	handler, err := s.repo.FindByID(ctx, uid)
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		// If no active, try to get first one
+		items, err := s.repo.FindAllSimple(ctx)
+		if err != nil || len(items) == 0 {
 			return nil, errors.New("WhatsApp handler tidak ditemukan")
 		}
-		return nil, errors.New("gagal mengambil data WhatsApp handler")
+		handler = &items[0]
+	}
+
+	return &models.WhatsAppHandlerSimpleResponse{
+		ID:        handler.ID.String(),
+		NomorWA:   handler.NomorWA,
+		PesanAwal: handler.PesanAwal,
+		// IsActive:    handler.IsActive,
+		WhatsAppURL: handler.GetWhatsAppURL(),
+		// CreatedAt:   handler.CreatedAt,
+		UpdatedAt: handler.UpdatedAt,
+	}, nil
+}
+
+func (s *whatsAppHandlerService) Update(ctx context.Context, req *models.UpdateWhatsAppHandlerRequest) (*models.WhatsAppHandlerResponse, error) {
+	// Get the active handler or first one
+	handler, err := s.repo.GetActive(ctx)
+	if err != nil {
+		// If no active, try to get first one
+		items, err := s.repo.FindAllSimple(ctx)
+		if err != nil || len(items) == 0 {
+			return nil, errors.New("WhatsApp handler tidak ditemukan")
+		}
+		handler = &items[0]
 	}
 
 	if req.NomorWA != nil {
@@ -67,12 +63,6 @@ func (s *whatsAppHandlerService) Update(ctx context.Context, id string, req *mod
 		handler.PesanAwal = *req.PesanAwal
 	}
 	if req.IsActive != nil {
-		// If setting to active, deactivate all others first
-		if *req.IsActive {
-			if err := s.repo.DeactivateAll(ctx); err != nil {
-				return nil, errors.New("gagal menonaktifkan handler lain")
-			}
-		}
 		handler.IsActive = *req.IsActive
 	}
 

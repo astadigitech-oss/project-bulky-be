@@ -12,9 +12,9 @@ import (
 
 type DokumenKebijakanService interface {
 	FindAll(ctx context.Context) ([]models.DokumenKebijakanListResponse, error)
-	FindBySlug(ctx context.Context, slug string) (*models.DokumenKebijakanDetailResponse, error)
-	Update(ctx context.Context, slug string, req *models.UpdateDokumenKebijakanRequest) (*models.DokumenKebijakanDetailResponse, error)
-	GetBySlugPublic(ctx context.Context, slug string) (*models.DokumenKebijakanPublicResponse, error)
+	FindByID(ctx context.Context, id string) (*models.DokumenKebijakanDetailResponse, error)
+	Update(ctx context.Context, id string, req *models.UpdateDokumenKebijakanRequest) (*models.DokumenKebijakanDetailResponse, error)
+	GetByIDPublic(ctx context.Context, id string, lang string) (*models.DokumenKebijakanPublicResponse, error)
 	GetActiveListPublic(ctx context.Context) ([]models.DokumenKebijakanPublicResponse, error)
 }
 
@@ -39,11 +39,11 @@ func (s *dokumenKebijakanService) FindAll(ctx context.Context) ([]models.Dokumen
 	items := make([]models.DokumenKebijakanListResponse, len(dokumens))
 	for i, d := range dokumens {
 		items[i] = models.DokumenKebijakanListResponse{
-			ID:        d.ID.String(),
-			Judul:     d.Judul,
-			Slug:      d.Slug,
-			Urutan:    d.Urutan,
-			IsActive:  d.IsActive,
+			ID:      d.ID.String(),
+			Judul:   d.Judul,
+			JudulEN: d.JudulEN,
+			Urutan:  d.Urutan,
+			// IsActive:  d.IsActive,
 			UpdatedAt: d.UpdatedAt,
 		}
 	}
@@ -51,8 +51,8 @@ func (s *dokumenKebijakanService) FindAll(ctx context.Context) ([]models.Dokumen
 	return items, nil
 }
 
-func (s *dokumenKebijakanService) FindBySlug(ctx context.Context, slug string) (*models.DokumenKebijakanDetailResponse, error) {
-	dokumen, err := s.repo.FindBySlugForEdit(ctx, slug)
+func (s *dokumenKebijakanService) FindByID(ctx context.Context, id string) (*models.DokumenKebijakanDetailResponse, error) {
+	dokumen, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("dokumen kebijakan tidak ditemukan")
@@ -61,19 +61,20 @@ func (s *dokumenKebijakanService) FindBySlug(ctx context.Context, slug string) (
 	}
 
 	return &models.DokumenKebijakanDetailResponse{
-		ID:        dokumen.ID.String(),
-		Judul:     dokumen.Judul,
-		Slug:      dokumen.Slug,
-		Konten:    dokumen.Konten,
-		Urutan:    dokumen.Urutan,
-		IsActive:  dokumen.IsActive,
+		ID:       dokumen.ID.String(),
+		Judul:    dokumen.Judul,
+		JudulEN:  dokumen.JudulEN,
+		Konten:   dokumen.Konten,
+		KontenEN: dokumen.KontenEN,
+		Urutan:   dokumen.Urutan,
+		// IsActive:  dokumen.IsActive,
 		CreatedAt: dokumen.CreatedAt,
 		UpdatedAt: dokumen.UpdatedAt,
 	}, nil
 }
 
-func (s *dokumenKebijakanService) Update(ctx context.Context, slug string, req *models.UpdateDokumenKebijakanRequest) (*models.DokumenKebijakanDetailResponse, error) {
-	dokumen, err := s.repo.FindBySlugForEdit(ctx, slug)
+func (s *dokumenKebijakanService) Update(ctx context.Context, id string, req *models.UpdateDokumenKebijakanRequest) (*models.DokumenKebijakanDetailResponse, error) {
+	dokumen, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("dokumen kebijakan tidak ditemukan")
@@ -86,10 +87,21 @@ func (s *dokumenKebijakanService) Update(ctx context.Context, slug string, req *
 		dokumen.Judul = *req.Judul
 	}
 
+	// Update judul_en if provided
+	if req.JudulEN != nil {
+		dokumen.JudulEN = *req.JudulEN
+	}
+
 	// Update konten if provided (sanitize HTML)
 	if req.Konten != nil {
 		sanitized := s.sanitizer.Sanitize(*req.Konten)
 		dokumen.Konten = sanitized
+	}
+
+	// Update konten_en if provided (sanitize HTML)
+	if req.KontenEN != nil {
+		sanitized := s.sanitizer.Sanitize(*req.KontenEN)
+		dokumen.KontenEN = sanitized
 	}
 
 	// Update is_active if provided
@@ -102,19 +114,20 @@ func (s *dokumenKebijakanService) Update(ctx context.Context, slug string, req *
 	}
 
 	return &models.DokumenKebijakanDetailResponse{
-		ID:        dokumen.ID.String(),
-		Judul:     dokumen.Judul,
-		Slug:      dokumen.Slug,
-		Konten:    dokumen.Konten,
-		Urutan:    dokumen.Urutan,
-		IsActive:  dokumen.IsActive,
+		ID:       dokumen.ID.String(),
+		Judul:    dokumen.Judul,
+		JudulEN:  dokumen.JudulEN,
+		Konten:   dokumen.Konten,
+		KontenEN: dokumen.KontenEN,
+		Urutan:   dokumen.Urutan,
+		// IsActive:  dokumen.IsActive,
 		CreatedAt: dokumen.CreatedAt,
 		UpdatedAt: dokumen.UpdatedAt,
 	}, nil
 }
 
-func (s *dokumenKebijakanService) GetBySlugPublic(ctx context.Context, slug string) (*models.DokumenKebijakanPublicResponse, error) {
-	dokumen, err := s.repo.FindBySlug(ctx, slug)
+func (s *dokumenKebijakanService) GetByIDPublic(ctx context.Context, id string, lang string) (*models.DokumenKebijakanPublicResponse, error) {
+	dokumen, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("dokumen kebijakan tidak ditemukan")
@@ -122,10 +135,23 @@ func (s *dokumenKebijakanService) GetBySlugPublic(ctx context.Context, slug stri
 		return nil, errors.New("gagal mengambil data dokumen kebijakan")
 	}
 
+	if !dokumen.IsActive {
+		return nil, errors.New("dokumen kebijakan tidak aktif")
+	}
+
+	// Return based on language
+	judul := dokumen.Judul
+	konten := dokumen.Konten
+	if lang == "en" {
+		judul = dokumen.JudulEN
+		konten = dokumen.KontenEN
+	}
+
 	return &models.DokumenKebijakanPublicResponse{
-		Judul:  dokumen.Judul,
-		Slug:   dokumen.Slug,
-		Konten: dokumen.Konten,
+		ID:     dokumen.ID.String(),
+		Judul:  judul,
+		Konten: konten,
+		Urutan: dokumen.Urutan,
 	}, nil
 }
 
@@ -138,8 +164,9 @@ func (s *dokumenKebijakanService) GetActiveListPublic(ctx context.Context) ([]mo
 	items := make([]models.DokumenKebijakanPublicResponse, len(dokumens))
 	for i, d := range dokumens {
 		items[i] = models.DokumenKebijakanPublicResponse{
-			Judul: d.Judul,
-			Slug:  d.Slug,
+			ID:     d.ID.String(),
+			Judul:  d.Judul,
+			Urutan: d.Urutan,
 		}
 	}
 

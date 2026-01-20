@@ -503,15 +503,15 @@ func SetupRoutes(
 		dokumenKebijakanAdmin.Use(middleware.AdminOnly())
 		{
 			dokumenKebijakanAdmin.GET("", middleware.RequirePermission("system:read"), dokumenKebijakanController.GetAll)
-			dokumenKebijakanAdmin.GET("/:slug", middleware.RequirePermission("system:read"), dokumenKebijakanController.GetBySlug)
-			dokumenKebijakanAdmin.PUT("/:slug", middleware.RequirePermission("system:manage"), dokumenKebijakanController.Update)
+			dokumenKebijakanAdmin.GET("/:id", middleware.RequirePermission("system:read"), dokumenKebijakanController.GetByID)
+			dokumenKebijakanAdmin.PUT("/:id", middleware.RequirePermission("system:manage"), dokumenKebijakanController.Update)
 		}
 
 		// Dokumen Kebijakan - Public
 		dokumenKebijakanPublic := v1.Group("/public/dokumen-kebijakan")
 		{
 			dokumenKebijakanPublic.GET("", dokumenKebijakanController.GetAllPublic)
-			dokumenKebijakanPublic.GET("/:slug", dokumenKebijakanController.GetBySlugPublic)
+			dokumenKebijakanPublic.GET("/:id", dokumenKebijakanController.GetByIDPublic)
 		}
 
 		// Disclaimer - Admin
@@ -575,13 +575,13 @@ func SetupRoutes(
 			formulirBuyer.POST("/submit", formulirPartaiBesarController.Submit)
 		}
 
-		// WhatsApp Handler - Admin (Simplified)
+		// WhatsApp Handler - Admin (Simplified - Single Record)
 		whatsappAdmin := v1.Group("/panel/whatsapp-handler")
 		whatsappAdmin.Use(middleware.AuthMiddleware())
 		whatsappAdmin.Use(middleware.AdminOnly())
 		{
-			whatsappAdmin.GET("", middleware.RequirePermission("system:read"), whatsappHandlerController.FindAll)
-			whatsappAdmin.PUT("/:id", middleware.RequirePermission("system:manage"), whatsappHandlerController.Update)
+			whatsappAdmin.GET("", middleware.RequirePermission("system:read"), whatsappHandlerController.Get)
+			whatsappAdmin.PUT("", middleware.RequirePermission("system:manage"), whatsappHandlerController.Update)
 		}
 
 		// WhatsApp Handler - Public

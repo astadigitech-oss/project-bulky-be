@@ -12,6 +12,7 @@ type BannerTipeProdukRepository interface {
 	Create(ctx context.Context, banner *models.BannerTipeProduk) error
 	FindByID(ctx context.Context, id string) (*models.BannerTipeProduk, error)
 	FindAll(ctx context.Context, params *models.BannerTipeProdukFilterRequest, tipeProdukID string) ([]models.BannerTipeProduk, int64, error)
+	FindAllGrouped(ctx context.Context, search string) ([]models.BannerTipeProduk, error) // NEW
 	FindByTipeProdukID(ctx context.Context, tipeProdukID string) ([]models.BannerTipeProduk, error)
 	Update(ctx context.Context, banner *models.BannerTipeProduk) error
 	Delete(ctx context.Context, id string) error
@@ -71,6 +72,28 @@ func (r *bannerTipeProdukRepository) FindAll(ctx context.Context, params *models
 	}
 
 	return banners, total, nil
+}
+
+// FindAllGrouped - Get all banners without pagination, for grouped response
+func (r *bannerTipeProdukRepository) FindAllGrouped(ctx context.Context, search string) ([]models.BannerTipeProduk, error) {
+	var banners []models.BannerTipeProduk
+
+	query := r.db.WithContext(ctx).Preload("TipeProduk")
+
+	// Search filter only
+	if search != "" {
+		query = query.Where("nama ILIKE ?", "%"+search+"%")
+	}
+
+	// Order by tipe_produk slug, then urutan
+	query = query.Joins("JOIN tipe_produk ON tipe_produk.id = banner_tipe_produk.tipe_produk_id").
+		Order("tipe_produk.slug ASC, banner_tipe_produk.urutan ASC")
+
+	if err := query.Find(&banners).Error; err != nil {
+		return nil, err
+	}
+
+	return banners, nil
 }
 
 func (r *bannerTipeProdukRepository) FindByTipeProdukID(ctx context.Context, tipeProdukID string) ([]models.BannerTipeProduk, error) {

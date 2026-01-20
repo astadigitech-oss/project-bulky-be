@@ -17,28 +17,26 @@ func NewWhatsAppHandlerController(service services.WhatsAppHandlerService) *What
 	return &WhatsAppHandlerController{service: service}
 }
 
-// GetAll - Get all WhatsApp handlers (no pagination)
-func (c *WhatsAppHandlerController) FindAll(ctx *gin.Context) {
-	items, err := c.service.FindAll(ctx.Request.Context())
+// Get - Get single WhatsApp handler (no list)
+func (c *WhatsAppHandlerController) Get(ctx *gin.Context) {
+	result, err := c.service.Get(ctx.Request.Context())
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
+		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 		return
 	}
 
-	utils.SuccessResponse(ctx, "Data WhatsApp handler berhasil diambil", items)
+	utils.SuccessResponse(ctx, "Data WhatsApp handler berhasil diambil", result)
 }
 
-// Update - Update WhatsApp handler by ID
+// Update - Update WhatsApp handler (no ID in path)
 func (c *WhatsAppHandlerController) Update(ctx *gin.Context) {
-	id := ctx.Param("id")
-
 	var req models.UpdateWhatsAppHandlerRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 		return
 	}
 
-	result, err := c.service.Update(ctx.Request.Context(), id, &req)
+	result, err := c.service.Update(ctx.Request.Context(), &req)
 	if err != nil {
 		if err.Error() == "WhatsApp handler tidak ditemukan" {
 			utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)

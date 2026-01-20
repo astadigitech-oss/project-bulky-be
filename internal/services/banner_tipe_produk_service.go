@@ -17,6 +17,7 @@ type BannerTipeProdukService interface {
 	Create(ctx context.Context, req *models.CreateBannerTipeProdukRequest) (*models.BannerTipeProdukResponse, error)
 	FindByID(ctx context.Context, id string) (*models.BannerTipeProdukResponse, error)
 	FindAll(ctx context.Context, params *models.BannerTipeProdukFilterRequest, tipeProdukID string) ([]models.BannerTipeProdukSimpleResponse, *models.PaginationMeta, error)
+	FindAllGrouped(ctx context.Context, search string) (*models.BannerTipeProdukGroupedResponse, *models.BannerTipeProdukGroupedMeta, error) // NEW
 	FindByTipeProdukID(ctx context.Context, tipeProdukID string) ([]models.BannerSimpleResponse, error)
 	Update(ctx context.Context, id string, req *models.UpdateBannerTipeProdukRequest) (*models.BannerTipeProdukResponse, error)
 	UpdateWithFile(ctx context.Context, id string, req *models.UpdateBannerTipeProdukRequest, newGambarURL *string) (*models.BannerTipeProdukResponse, error)
@@ -89,6 +90,46 @@ func (s *bannerTipeProdukService) FindAll(ctx context.Context, params *models.Ba
 	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
 
 	return items, &meta, nil
+}
+
+// FindAllGrouped - Get all banners grouped by tipe_produk (no pagination)
+func (s *bannerTipeProdukService) FindAllGrouped(ctx context.Context, search string) (*models.BannerTipeProdukGroupedResponse, *models.BannerTipeProdukGroupedMeta, error) {
+	banners, err := s.repo.FindAllGrouped(ctx, search)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Initialize grouped response with empty arrays
+	grouped := &models.BannerTipeProdukGroupedResponse{
+		PaletLoad:     []models.BannerTipeProdukSimpleResponse{},
+		ContainerLoad: []models.BannerTipeProdukSimpleResponse{},
+		TruckLoad:     []models.BannerTipeProdukSimpleResponse{},
+	}
+
+	// Group by tipe_produk slug
+	for _, banner := range banners {
+		resp := s.toSimpleResponse(&banner)
+
+		switch banner.TipeProduk.Slug {
+		case "palet-load":
+			grouped.PaletLoad = append(grouped.PaletLoad, *resp)
+		case "container-load":
+			grouped.ContainerLoad = append(grouped.ContainerLoad, *resp)
+		case "truck-load":
+			grouped.TruckLoad = append(grouped.TruckLoad, *resp)
+		}
+	}
+
+	// Create meta with total by type
+	meta := &models.BannerTipeProdukGroupedMeta{
+		TotalByType: map[string]int{
+			"palet_load":     len(grouped.PaletLoad),
+			"container_load": len(grouped.ContainerLoad),
+			"truck_load":     len(grouped.TruckLoad),
+		},
+	}
+
+	return grouped, meta, nil
 }
 
 func (s *bannerTipeProdukService) FindByTipeProdukID(ctx context.Context, tipeProdukID string) ([]models.BannerSimpleResponse, error) {
