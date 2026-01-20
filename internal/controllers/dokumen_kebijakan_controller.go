@@ -33,11 +33,11 @@ func (c *DokumenKebijakanController) GetAll(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, "Data dokumen kebijakan berhasil diambil", items)
 }
 
-// GetBySlug - Get single dokumen kebijakan by slug (for edit form)
-func (c *DokumenKebijakanController) GetBySlug(ctx *gin.Context) {
-	slug := ctx.Param("slug")
+// GetByID - Get single dokumen kebijakan by ID (for edit form)
+func (c *DokumenKebijakanController) GetByID(ctx *gin.Context) {
+	id := ctx.Param("id")
 
-	result, err := c.service.FindBySlug(ctx.Request.Context(), slug)
+	result, err := c.service.FindByID(ctx.Request.Context(), id)
 	if err != nil {
 		if err.Error() == "dokumen kebijakan tidak ditemukan" {
 			utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
@@ -50,9 +50,9 @@ func (c *DokumenKebijakanController) GetBySlug(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, "Detail dokumen kebijakan berhasil diambil", result)
 }
 
-// Update - Update dokumen kebijakan by slug
+// Update - Update dokumen kebijakan by ID
 func (c *DokumenKebijakanController) Update(ctx *gin.Context) {
-	slug := ctx.Param("slug")
+	id := ctx.Param("id")
 
 	var req models.UpdateDokumenKebijakanRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -60,7 +60,7 @@ func (c *DokumenKebijakanController) Update(ctx *gin.Context) {
 		return
 	}
 
-	result, err := c.service.Update(ctx.Request.Context(), slug, &req)
+	result, err := c.service.Update(ctx.Request.Context(), id, &req)
 	if err != nil {
 		if err.Error() == "dokumen kebijakan tidak ditemukan" {
 			utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
@@ -88,13 +88,19 @@ func (c *DokumenKebijakanController) GetAllPublic(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, "Data dokumen kebijakan berhasil diambil", items)
 }
 
-// GetBySlugPublic - Get single dokumen kebijakan by slug for public
-func (c *DokumenKebijakanController) GetBySlugPublic(ctx *gin.Context) {
-	slug := ctx.Param("slug")
+// GetByIDPublic - Get single dokumen kebijakan by ID for public
+func (c *DokumenKebijakanController) GetByIDPublic(ctx *gin.Context) {
+	id := ctx.Param("id")
+	lang := ctx.DefaultQuery("lang", "id") // default to Indonesian
 
-	result, err := c.service.GetBySlugPublic(ctx.Request.Context(), slug)
+	// Validate lang parameter
+	if lang != "id" && lang != "en" {
+		lang = "id"
+	}
+
+	result, err := c.service.GetByIDPublic(ctx.Request.Context(), id, lang)
 	if err != nil {
-		if err.Error() == "dokumen kebijakan tidak ditemukan" {
+		if err.Error() == "dokumen kebijakan tidak ditemukan" || err.Error() == "dokumen kebijakan tidak aktif" {
 			utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 			return
 		}

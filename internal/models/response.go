@@ -13,6 +13,7 @@ type PaginationMeta struct {
 	From        int   `json:"from"`
 	Last        int   `json:"last"`
 	Total       int64 `json:"total"`
+	TotalItems  int64 `json:"total_items"` // Same as Total, for frontend convenience
 	PerPage     int   `json:"per_page"`
 }
 
@@ -49,6 +50,7 @@ func NewPaginationMeta(currentPage, perPage int, total int64) PaginationMeta {
 		From:        from,
 		Last:        last,
 		Total:       total,
+		TotalItems:  total, // Same as Total
 		PerPage:     perPage,
 	}
 }
@@ -344,6 +346,17 @@ type BannerSimpleResponse struct {
 	Urutan    int    `json:"urutan"`
 }
 
+// Grouped response for Banner Tipe Produk
+type BannerTipeProdukGroupedResponse struct {
+	PaletLoad     []BannerTipeProdukSimpleResponse `json:"palet_load"`
+	ContainerLoad []BannerTipeProdukSimpleResponse `json:"container_load"`
+	TruckLoad     []BannerTipeProdukSimpleResponse `json:"truck_load"`
+}
+
+type BannerTipeProdukGroupedMeta struct {
+	TotalByType map[string]int `json:"total_by_type"`
+}
+
 // ========================================
 // Produk Response
 // ========================================
@@ -608,9 +621,9 @@ type BannerEventPromoSimpleResponse struct {
 	Nama      string            `json:"nama"`
 	GambarURL TranslatableImage `json:"gambar_url"`
 	LinkURL   *string           `json:"url_tujuan,omitempty"`
-	// Urutan    int               `json:"urutan"`
-	IsActive  bool      `json:"is_active"`
-	UpdatedAt time.Time `json:"updated_at"`
+	Urutan    int               `json:"urutan"` // ADD THIS
+	IsActive  bool              `json:"is_active"`
+	UpdatedAt time.Time         `json:"updated_at"`
 }
 
 // Public response (minimal data)
@@ -692,8 +705,8 @@ type WhatsAppHandlerSimpleResponse struct {
 	ID        string `json:"id"`
 	NomorWA   string `json:"nomor_wa"`
 	PesanAwal string `json:"pesan_awal"`
-	IsActive  bool   `json:"is_active"`
-	// WhatsAppURL string    `json:"whatsapp_url"` // Generated URL
+	// IsActive  bool   `json:"is_active"`
+	WhatsAppURL string `json:"whatsapp_url"` // Generated URL
 	// CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

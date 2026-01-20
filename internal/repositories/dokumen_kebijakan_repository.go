@@ -11,13 +11,10 @@ import (
 type DokumenKebijakanRepository interface {
 	Create(ctx context.Context, dokumen *models.DokumenKebijakan) error
 	FindByID(ctx context.Context, id string) (*models.DokumenKebijakan, error)
-	FindBySlug(ctx context.Context, slug string) (*models.DokumenKebijakan, error)
 	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.DokumenKebijakan, int64, error)
 	FindAllSimple(ctx context.Context) ([]models.DokumenKebijakan, error)
-	FindBySlugForEdit(ctx context.Context, slug string) (*models.DokumenKebijakan, error)
 	Update(ctx context.Context, dokumen *models.DokumenKebijakan) error
 	Delete(ctx context.Context, id string) error
-	ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error)
 	GetActiveList(ctx context.Context) ([]models.DokumenKebijakan, error)
 }
 
@@ -42,15 +39,6 @@ func (r *dokumenKebijakanRepository) FindByID(ctx context.Context, id string) (*
 	return &dokumen, nil
 }
 
-func (r *dokumenKebijakanRepository) FindBySlug(ctx context.Context, slug string) (*models.DokumenKebijakan, error) {
-	var dokumen models.DokumenKebijakan
-	err := r.db.WithContext(ctx).Where("slug = ? AND is_active = ?", slug, true).First(&dokumen).Error
-	if err != nil {
-		return nil, err
-	}
-	return &dokumen, nil
-}
-
 func (r *dokumenKebijakanRepository) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.DokumenKebijakan, int64, error) {
 	var dokumens []models.DokumenKebijakan
 	var total int64
@@ -58,7 +46,7 @@ func (r *dokumenKebijakanRepository) FindAll(ctx context.Context, params *models
 	query := r.db.WithContext(ctx).Model(&models.DokumenKebijakan{})
 
 	if params.Search != "" {
-		query = query.Where("judul ILIKE ?", "%"+params.Search+"%")
+		query = query.Where("judul ILIKE ? OR judul_en ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")
 	}
 
 	if params.IsActive != nil {
@@ -74,16 +62,17 @@ func (r *dokumenKebijakanRepository) FindAll(ctx context.Context, params *models
 		"is_active":  true,
 		"created_at": true,
 		"updated_at": true,
+		"urutan":     true,
 	}
 
 	sortBy := params.SortBy
 	if !validSortFields[sortBy] {
-		sortBy = "updated_at"
+		sortBy = "urutan"
 	}
 
 	order := params.Order
 	if order != "asc" && order != "desc" {
-		order = "desc"
+		order = "asc"
 	}
 
 	orderClause := sortBy + " " + order
@@ -105,22 +94,12 @@ func (r *dokumenKebijakanRepository) Delete(ctx context.Context, id string) erro
 	return r.db.WithContext(ctx).Where("id = ?", id).Delete(&models.DokumenKebijakan{}).Error
 }
 
-func (r *dokumenKebijakanRepository) ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error) {
-	var count int64
-	query := r.db.WithContext(ctx).Model(&models.DokumenKebijakan{}).Where("slug = ?", slug)
-	if excludeID != nil {
-		query = query.Where("id != ?", *excludeID)
-	}
-	err := query.Count(&count).Error
-	return count > 0, err
-}
-
 func (r *dokumenKebijakanRepository) GetActiveList(ctx context.Context) ([]models.DokumenKebijakan, error) {
 	var dokumens []models.DokumenKebijakan
 	err := r.db.WithContext(ctx).
-		Select("id", "judul", "slug").
+		Select("id", "judul", "judul_en", "urutan").
 		Where("is_active = ?", true).
-		Order("created_at DESC").
+		Order("urutan ASC").
 		Find(&dokumens).Error
 	return dokumens, err
 }
@@ -131,13 +110,4 @@ func (r *dokumenKebijakanRepository) FindAllSimple(ctx context.Context) ([]model
 		Order("urutan ASC").
 		Find(&dokumens).Error
 	return dokumens, err
-}
-
-func (r *dokumenKebijakanRepository) FindBySlugForEdit(ctx context.Context, slug string) (*models.DokumenKebijakan, error) {
-	var dokumen models.DokumenKebijakan
-	err := r.db.WithContext(ctx).Where("slug = ?", slug).First(&dokumen).Error
-	if err != nil {
-		return nil, err
-	}
-	return &dokumen, nil
 }

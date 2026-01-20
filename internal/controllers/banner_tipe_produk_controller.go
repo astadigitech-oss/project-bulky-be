@@ -93,6 +93,29 @@ func (c *BannerTipeProdukController) Create(ctx *gin.Context) {
 }
 
 func (c *BannerTipeProdukController) FindAll(ctx *gin.Context) {
+	// Check if grouped response is requested (no pagination params)
+	_, hasPage := ctx.GetQuery("page")
+	_, hasPerPage := ctx.GetQuery("per_page")
+	search := ctx.Query("search")
+
+	// If no pagination params, return grouped response
+	if !hasPage && !hasPerPage {
+		grouped, meta, err := c.service.FindAllGrouped(ctx.Request.Context(), search)
+		if err != nil {
+			utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
+			return
+		}
+
+		ctx.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "Data banner tipe produk berhasil diambil",
+			"data":    grouped,
+			"meta":    meta,
+		})
+		return
+	}
+
+	// Otherwise, return paginated response (old behavior)
 	var params models.BannerTipeProdukFilterRequest
 	if err := ctx.ShouldBindQuery(&params); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
@@ -251,10 +274,10 @@ func (c *BannerTipeProdukController) Reorder(ctx *gin.Context) {
 
 func (c *BannerTipeProdukController) ReorderByDirection(ctx *gin.Context) {
 	id := ctx.Param("id")
-	direction := ctx.Query("direction")
 
-	if direction == "" {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter 'direction' wajib diisi", nil)
+	var req models.ReorderByDirectionRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 		return
 	}
 
@@ -268,7 +291,7 @@ func (c *BannerTipeProdukController) ReorderByDirection(ctx *gin.Context) {
 		ctx.Request.Context(),
 		"banner_tipe_produk",
 		idUUID,
-		direction,
+		req.Direction,
 		"",
 		nil,
 	)
