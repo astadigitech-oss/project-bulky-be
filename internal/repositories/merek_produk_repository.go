@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"project-bulky-be/internal/models"
@@ -15,7 +16,7 @@ type MerekProdukRepository interface {
 	FindBySlug(ctx context.Context, slug string) (*models.MerekProduk, error)
 	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.MerekProdukSimpleResponse, int64, error)
 	Update(ctx context.Context, merek *models.MerekProduk) error
-	Delete(ctx context.Context, id string) error
+	Delete(ctx context.Context, merek *models.MerekProduk) error
 	ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error)
 	GetAllForDropdown(ctx context.Context) ([]models.MerekProduk, error)
 }
@@ -139,8 +140,25 @@ func (r *merekProdukRepository) Update(ctx context.Context, merek *models.MerekP
 	return r.db.WithContext(ctx).Save(merek).Error
 }
 
-func (r *merekProdukRepository) Delete(ctx context.Context, id string) error {
-	return r.db.WithContext(ctx).Where("id = ?", id).Delete(&models.MerekProduk{}).Error
+func (r *merekProdukRepository) Delete(ctx context.Context, merek *models.MerekProduk) error {
+	// Manual update slug untuk soft delete
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		now := time.Now()
+		deletedSlug := fmt.Sprintf("%s-deleted-%d%06d",
+			merek.Slug,
+			now.Unix(),
+			now.Nanosecond()/1000,
+		)
+
+		if err := tx.Model(merek).Updates(map[string]interface{}{
+			"slug":       deletedSlug,
+			"deleted_at": now,
+		}).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 func (r *merekProdukRepository) ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error) {

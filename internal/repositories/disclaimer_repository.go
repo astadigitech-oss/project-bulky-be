@@ -2,6 +2,8 @@ package repositories
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"project-bulky-be/internal/models"
 
@@ -14,7 +16,7 @@ type DisclaimerRepository interface {
 	FindBySlug(ctx context.Context, slug string) (*models.Disclaimer, error)
 	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.Disclaimer, int64, error)
 	Update(ctx context.Context, disclaimer *models.Disclaimer) error
-	Delete(ctx context.Context, id string) error
+	Delete(ctx context.Context, disclaimer *models.Disclaimer) error
 	ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error)
 	GetActive(ctx context.Context) (*models.Disclaimer, error)
 }
@@ -99,8 +101,32 @@ func (r *disclaimerRepository) Update(ctx context.Context, disclaimer *models.Di
 	return r.db.WithContext(ctx).Save(disclaimer).Error
 }
 
-func (r *disclaimerRepository) Delete(ctx context.Context, id string) error {
-	return r.db.WithContext(ctx).Where("id = ?", id).Delete(&models.Disclaimer{}).Error
+func (r *disclaimerRepository) Delete(ctx context.Context, disclaimer *models.Disclaimer) error {
+	// Manual update slug untuk soft delete
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		now := time.Now()
+
+		// Handle nullable slug
+		slugValue := ""
+		if disclaimer.Slug != nil {
+			slugValue = *disclaimer.Slug
+		}
+
+		deletedSlug := fmt.Sprintf("%s-deleted-%d%06d",
+			slugValue,
+			now.Unix(),
+			now.Nanosecond()/1000,
+		)
+
+		if err := tx.Model(disclaimer).Updates(map[string]interface{}{
+			"slug":       deletedSlug,
+			"deleted_at": now,
+		}).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 func (r *disclaimerRepository) ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error) {

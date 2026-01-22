@@ -223,12 +223,12 @@ func (s *kategoriProdukService) UpdateWithIcon(ctx context.Context, id string, r
 }
 
 func (s *kategoriProdukService) Delete(ctx context.Context, id string) error {
-	_, err := s.repo.FindByID(ctx, id)
+	kategori, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return errors.New("kategori produk tidak ditemukan")
 	}
 
-	return s.repo.Delete(ctx, id)
+	return s.repo.Delete(ctx, kategori)
 }
 
 func (s *kategoriProdukService) ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error) {

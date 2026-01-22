@@ -193,11 +193,11 @@ func (s *merekProdukService) UpdateWithLogo(ctx context.Context, id string, req 
 }
 
 func (s *merekProdukService) Delete(ctx context.Context, id string) error {
-	_, err := s.repo.FindByID(ctx, id)
+	merek, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return errors.New("merek produk tidak ditemukan")
 	}
-	return s.repo.Delete(ctx, id)
+	return s.repo.Delete(ctx, merek)
 }
 
 func (s *merekProdukService) ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error) {

@@ -117,14 +117,14 @@ func (s *sumberProdukService) Update(ctx context.Context, id string, req *models
 }
 
 func (s *sumberProdukService) Delete(ctx context.Context, id string) error {
-	_, err := s.repo.FindByID(ctx, id)
+	sumber, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return errors.New("sumber produk tidak ditemukan")
 	}
 
 	// TODO: Check if sumber has products
 
-	return s.repo.Delete(ctx, id)
+	return s.repo.Delete(ctx, sumber)
 }
 
 func (s *sumberProdukService) ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error) {
