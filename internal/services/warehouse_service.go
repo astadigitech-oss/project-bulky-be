@@ -116,12 +116,12 @@ func (s *warehouseService) Update(ctx context.Context, id string, req *models.Up
 }
 
 func (s *warehouseService) Delete(ctx context.Context, id string) error {
-	_, err := s.repo.FindByID(ctx, id)
+	warehouse, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return errors.New("warehouse tidak ditemukan")
 	}
 	// TODO: Check if warehouse has products
-	return s.repo.Delete(ctx, id)
+	return s.repo.Delete(ctx, warehouse)
 }
 
 func (s *warehouseService) ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error) {

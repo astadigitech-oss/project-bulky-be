@@ -127,11 +127,11 @@ func (s *disclaimerService) Update(ctx context.Context, id string, req *models.U
 }
 
 func (s *disclaimerService) Delete(ctx context.Context, id string) error {
-	_, err := s.repo.FindByID(ctx, id)
+	disclaimer, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return errors.New("disclaimer tidak ditemukan")
 	}
-	return s.repo.Delete(ctx, id)
+	return s.repo.Delete(ctx, disclaimer)
 }
 
 func (s *disclaimerService) SetActive(ctx context.Context, id string) (*models.ToggleStatusResponse, error) {

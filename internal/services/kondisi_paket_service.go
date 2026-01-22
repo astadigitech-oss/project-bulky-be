@@ -125,14 +125,21 @@ func (s *kondisiPaketService) Update(ctx context.Context, id string, req *models
 }
 
 func (s *kondisiPaketService) Delete(ctx context.Context, id string) error {
-	_, err := s.repo.FindByID(ctx, id)
+	kondisi, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return errors.New("kondisi paket tidak ditemukan")
 	}
 
-	// TODO: Check if kondisi paket has products
+	// Check if kondisi paket has products
+	hasProducts, err := s.repo.HasProducts(ctx, id)
+	if err != nil {
+		return errors.New("gagal memeriksa relasi kondisi paket")
+	}
+	if hasProducts {
+		return errors.New("kondisi paket tidak dapat dihapus karena masih digunakan oleh produk")
+	}
 
-	return s.repo.Delete(ctx, id)
+	return s.repo.Delete(ctx, kondisi)
 }
 
 func (s *kondisiPaketService) ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error) {

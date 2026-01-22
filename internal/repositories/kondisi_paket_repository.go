@@ -2,6 +2,8 @@ package repositories
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"project-bulky-be/internal/models"
 
@@ -14,11 +16,12 @@ type KondisiPaketRepository interface {
 	FindBySlug(ctx context.Context, slug string) (*models.KondisiPaket, error)
 	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.KondisiPaketSimpleResponse, int64, error)
 	Update(ctx context.Context, kondisi *models.KondisiPaket) error
-	Delete(ctx context.Context, id string) error
+	Delete(ctx context.Context, kondisi *models.KondisiPaket) error
 	ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error)
 	GetAllForDropdown(ctx context.Context) ([]models.KondisiPaket, error)
 	UpdateOrder(ctx context.Context, items []models.ReorderItem) error
 	GetMaxUrutan(ctx context.Context) (int, error)
+	HasProducts(ctx context.Context, id string) (bool, error)
 }
 
 type kondisiPaketRepository struct {
@@ -114,8 +117,27 @@ func (r *kondisiPaketRepository) Update(ctx context.Context, kondisi *models.Kon
 	return r.db.WithContext(ctx).Save(kondisi).Error
 }
 
-func (r *kondisiPaketRepository) Delete(ctx context.Context, id string) error {
-	return r.db.WithContext(ctx).Where("id = ?", id).Delete(&models.KondisiPaket{}).Error
+func (r *kondisiPaketRepository) Delete(ctx context.Context, kondisi *models.KondisiPaket) error {
+	// Manual update slug untuk soft delete (karena GORM tidak pass slug ke trigger)
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Generate deleted slug
+		now := time.Now()
+		deletedSlug := fmt.Sprintf("%s-deleted-%d%06d",
+			kondisi.Slug,
+			now.Unix(),
+			now.Nanosecond()/1000,
+		)
+
+		// Update slug dan deleted_at
+		if err := tx.Model(kondisi).Updates(map[string]interface{}{
+			"slug":       deletedSlug,
+			"deleted_at": now,
+		}).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 func (r *kondisiPaketRepository) ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error) {
@@ -158,4 +180,13 @@ func (r *kondisiPaketRepository) GetMaxUrutan(ctx context.Context) (int, error) 
 		Select("COALESCE(MAX(urutan), 0)").
 		Scan(&maxUrutan).Error
 	return maxUrutan, err
+}
+
+func (r *kondisiPaketRepository) HasProducts(ctx context.Context, id string) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Table("produk").
+		Where("kondisi_paket_id = ? AND deleted_at IS NULL", id).
+		Count(&count).Error
+	return count > 0, err
 }

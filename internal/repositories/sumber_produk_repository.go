@@ -2,6 +2,8 @@ package repositories
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"project-bulky-be/internal/models"
 
@@ -14,7 +16,7 @@ type SumberProdukRepository interface {
 	FindBySlug(ctx context.Context, slug string) (*models.SumberProduk, error)
 	FindAll(ctx context.Context, params *models.SumberProdukFilterRequest) ([]models.SumberProduk, int64, error)
 	Update(ctx context.Context, sumber *models.SumberProduk) error
-	Delete(ctx context.Context, id string) error
+	Delete(ctx context.Context, sumber *models.SumberProduk) error
 	ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error)
 	GetAllForDropdown(ctx context.Context) ([]models.SumberProduk, error)
 }
@@ -82,8 +84,25 @@ func (r *sumberProdukRepository) Update(ctx context.Context, sumber *models.Sumb
 	return r.db.WithContext(ctx).Save(sumber).Error
 }
 
-func (r *sumberProdukRepository) Delete(ctx context.Context, id string) error {
-	return r.db.WithContext(ctx).Where("id = ?", id).Delete(&models.SumberProduk{}).Error
+func (r *sumberProdukRepository) Delete(ctx context.Context, sumber *models.SumberProduk) error {
+	// Manual update slug untuk soft delete
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		now := time.Now()
+		deletedSlug := fmt.Sprintf("%s-deleted-%d%06d",
+			sumber.Slug,
+			now.Unix(),
+			now.Nanosecond()/1000,
+		)
+
+		if err := tx.Model(sumber).Updates(map[string]interface{}{
+			"slug":       deletedSlug,
+			"deleted_at": now,
+		}).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 func (r *sumberProdukRepository) ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error) {

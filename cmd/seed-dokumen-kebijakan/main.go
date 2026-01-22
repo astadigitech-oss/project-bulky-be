@@ -190,9 +190,9 @@ func main() {
 
 		// Create new record
 		dokumen := models.DokumenKebijakan{
-			ID:       uuid.New(),
-			Judul:    seed.Judul,
-			Slug:     seed.Slug,
+			ID:    uuid.New(),
+			Judul: seed.Judul,
+			// Slug:     seed.Slug,
 			Konten:   seed.Konten,
 			Urutan:   seed.Urutan,
 			IsActive: true,

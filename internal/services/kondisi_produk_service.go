@@ -125,14 +125,14 @@ func (s *kondisiProdukService) Update(ctx context.Context, id string, req *model
 }
 
 func (s *kondisiProdukService) Delete(ctx context.Context, id string) error {
-	_, err := s.repo.FindByID(ctx, id)
+	kondisi, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return errors.New("kondisi produk tidak ditemukan")
 	}
 
 	// TODO: Check if kondisi has products
 
-	return s.repo.Delete(ctx, id)
+	return s.repo.Delete(ctx, kondisi)
 }
 
 func (s *kondisiProdukService) ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error) {
