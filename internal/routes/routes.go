@@ -40,6 +40,7 @@ func SetupRoutes(
 	disclaimerController *controllers.DisclaimerController,
 	formulirPartaiBesarController *controllers.FormulirPartaiBesarController,
 	whatsappHandlerController *controllers.WhatsAppHandlerController,
+	informasiPickupController *controllers.InformasiPickupController,
 ) {
 	// Health check
 	router.GET("/api/health", func(c *gin.Context) {
@@ -588,6 +589,22 @@ func SetupRoutes(
 		whatsappPublic := v1.Group("/public/whatsapp-handler")
 		{
 			whatsappPublic.GET("", whatsappHandlerController.GetActive)
+		}
+
+		// Informasi Pickup - Admin
+		informasiPickupAdmin := v1.Group("/panel/informasi-pickup")
+		informasiPickupAdmin.Use(middleware.AuthMiddleware())
+		informasiPickupAdmin.Use(middleware.AdminOnly())
+		{
+			informasiPickupAdmin.GET("", middleware.RequirePermission("operasional:read"), informasiPickupController.Get)
+			informasiPickupAdmin.PUT("", middleware.RequirePermission("operasional:manage"), informasiPickupController.Update)
+			informasiPickupAdmin.PUT("/jadwal", middleware.RequirePermission("operasional:manage"), informasiPickupController.UpdateJadwal)
+		}
+
+		// Informasi Pickup - Public
+		informasiPickupPublic := v1.Group("/public/informasi-pickup")
+		{
+			informasiPickupPublic.GET("", informasiPickupController.GetPublic)
 		}
 	}
 

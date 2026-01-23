@@ -49,3 +49,14 @@ type InformasiPickupResponse struct {
 	CreatedAt      time.Time              `json:"created_at"`
 	UpdatedAt      time.Time              `json:"updated_at"`
 }
+
+type PublicInformasiPickupResponse struct {
+	Alamat         string                 `json:"alamat"`
+	JamOperasional string                 `json:"jam_operasional"`
+	NomorWhatsapp  string                 `json:"nomor_whatsapp"`
+	Latitude       *float64               `json:"latitude"`
+	Longitude      *float64               `json:"longitude"`
+	GoogleMapsURL  *string                `json:"google_maps_url"`
+	IsOpenNow      bool                   `json:"is_open_now"`
+	JadwalGudang   []JadwalGudangResponse `json:"jadwal_gudang"`
+}

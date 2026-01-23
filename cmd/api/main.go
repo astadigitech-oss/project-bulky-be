@@ -68,6 +68,7 @@ func main() {
 	disclaimerRepo := repositories.NewDisclaimerRepository(db)
 	formulirPartaiBesarRepo := repositories.NewFormulirPartaiBesarRepository(db)
 	whatsappHandlerRepo := repositories.NewWhatsAppHandlerRepository(db)
+	informasiPickupRepo := repositories.NewInformasiPickupRepository(db)
 
 	// Auth V2 repositories
 	authRepo := repositories.NewAuthRepository(db)
@@ -107,6 +108,7 @@ func main() {
 	emailService := services.NewEmailService()
 	formulirPartaiBesarService := services.NewFormulirPartaiBesarService(formulirPartaiBesarRepo, kategoriRepo, emailService)
 	whatsappHandlerService := services.NewWhatsAppHandlerService(whatsappHandlerRepo)
+	informasiPickupService := services.NewInformasiPickupService(informasiPickupRepo)
 
 	// Auth V2 services
 	authV2Service := services.NewAuthV2Service(authRepo, activityLogRepo)
@@ -143,6 +145,7 @@ func main() {
 	disclaimerController := controllers.NewDisclaimerController(disclaimerService)
 	formulirPartaiBesarController := controllers.NewFormulirPartaiBesarController(formulirPartaiBesarService, reorderService)
 	whatsappHandlerController := controllers.NewWhatsAppHandlerController(whatsappHandlerService)
+	informasiPickupController := controllers.NewInformasiPickupController(informasiPickupService)
 
 	// Auth V2 controllers
 	authV2Controller := controllers.NewAuthV2Controller(authV2Service, adminService, buyerService)
@@ -166,6 +169,7 @@ func main() {
 		metodePembayaranGroupController, metodePembayaranController,
 		dokumenKebijakanController, disclaimerController,
 		formulirPartaiBesarController, whatsappHandlerController,
+		informasiPickupController,
 	)
 
 	// Setup Auth V2 routes (new authentication system with roles & permissions)
