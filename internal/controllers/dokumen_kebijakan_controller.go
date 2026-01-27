@@ -33,11 +33,22 @@ func (c *DokumenKebijakanController) GetAll(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, "Data dokumen kebijakan berhasil diambil", items)
 }
 
-// GetByID - Get single dokumen kebijakan by ID (for edit form)
+// GetByID - Get single dokumen kebijakan by ID or slug (for edit form)
 func (c *DokumenKebijakanController) GetByID(ctx *gin.Context) {
-	id := ctx.Param("id")
+	idOrSlug := ctx.Param("id")
 
-	result, err := c.service.FindByID(ctx.Request.Context(), id)
+	// Try to determine if it's a UUID or slug
+	var result *models.DokumenKebijakanDetailResponse
+	var err error
+
+	// Check if it looks like a UUID (contains hyphens and is 36 chars)
+	if len(idOrSlug) == 36 && utils.IsValidUUID(idOrSlug) {
+		result, err = c.service.FindByID(ctx.Request.Context(), idOrSlug)
+	} else {
+		// Treat as slug
+		result, err = c.service.FindBySlug(ctx.Request.Context(), idOrSlug)
+	}
+
 	if err != nil {
 		if err.Error() == "dokumen kebijakan tidak ditemukan" {
 			utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
@@ -50,9 +61,9 @@ func (c *DokumenKebijakanController) GetByID(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, "Detail dokumen kebijakan berhasil diambil", result)
 }
 
-// Update - Update dokumen kebijakan by ID
+// Update - Update dokumen kebijakan by ID or slug
 func (c *DokumenKebijakanController) Update(ctx *gin.Context) {
-	id := ctx.Param("id")
+	idOrSlug := ctx.Param("id")
 
 	var req models.UpdateDokumenKebijakanRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -60,7 +71,18 @@ func (c *DokumenKebijakanController) Update(ctx *gin.Context) {
 		return
 	}
 
-	result, err := c.service.Update(ctx.Request.Context(), id, &req)
+	// Try to determine if it's a UUID or slug
+	var result *models.DokumenKebijakanDetailResponse
+	var err error
+
+	// Check if it looks like a UUID (contains hyphens and is 36 chars)
+	if len(idOrSlug) == 36 && utils.IsValidUUID(idOrSlug) {
+		result, err = c.service.Update(ctx.Request.Context(), idOrSlug, &req)
+	} else {
+		// Treat as slug
+		result, err = c.service.UpdateBySlug(ctx.Request.Context(), idOrSlug, &req)
+	}
+
 	if err != nil {
 		if err.Error() == "dokumen kebijakan tidak ditemukan" {
 			utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
@@ -88,9 +110,9 @@ func (c *DokumenKebijakanController) GetAllPublic(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, "Data dokumen kebijakan berhasil diambil", items)
 }
 
-// GetByIDPublic - Get single dokumen kebijakan by ID for public
+// GetByIDPublic - Get single dokumen kebijakan by ID or slug for public
 func (c *DokumenKebijakanController) GetByIDPublic(ctx *gin.Context) {
-	id := ctx.Param("id")
+	idOrSlug := ctx.Param("id")
 	lang := ctx.DefaultQuery("lang", "id") // default to Indonesian
 
 	// Validate lang parameter
@@ -98,7 +120,18 @@ func (c *DokumenKebijakanController) GetByIDPublic(ctx *gin.Context) {
 		lang = "id"
 	}
 
-	result, err := c.service.GetByIDPublic(ctx.Request.Context(), id, lang)
+	// Try to determine if it's a UUID or slug
+	var result *models.DokumenKebijakanPublicResponse
+	var err error
+
+	// Check if it looks like a UUID (contains hyphens and is 36 chars)
+	if len(idOrSlug) == 36 && utils.IsValidUUID(idOrSlug) {
+		result, err = c.service.GetByIDPublic(ctx.Request.Context(), idOrSlug, lang)
+	} else {
+		// Treat as slug
+		result, err = c.service.GetBySlugPublic(ctx.Request.Context(), idOrSlug, lang)
+	}
+
 	if err != nil {
 		if err.Error() == "dokumen kebijakan tidak ditemukan" || err.Error() == "dokumen kebijakan tidak aktif" {
 			utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)

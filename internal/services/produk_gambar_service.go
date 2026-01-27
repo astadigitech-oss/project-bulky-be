@@ -20,14 +20,16 @@ type ProdukGambarService interface {
 }
 
 type produkGambarService struct {
-	repo repositories.ProdukGambarRepository
-	cfg  *config.Config
+	repo           repositories.ProdukGambarRepository
+	reorderService *ReorderService
+	cfg            *config.Config
 }
 
-func NewProdukGambarService(repo repositories.ProdukGambarRepository, cfg *config.Config) ProdukGambarService {
+func NewProdukGambarService(repo repositories.ProdukGambarRepository, reorderService *ReorderService, cfg *config.Config) ProdukGambarService {
 	return &produkGambarService{
-		repo: repo,
-		cfg:  cfg,
+		repo:           repo,
+		reorderService: reorderService,
+		cfg:            cfg,
 	}
 }
 
@@ -104,7 +106,22 @@ func (s *produkGambarService) Delete(ctx context.Context, id string) error {
 		return errors.New("tidak dapat menghapus gambar terakhir. Produk harus memiliki minimal 1 gambar")
 	}
 
-	return s.repo.Delete(ctx, id)
+	deletedUrutan := gambar.Urutan
+	produkID := gambar.ProdukID
+
+	// Soft delete
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return err
+	}
+
+	// Reorder remaining items within same produk to fill gap
+	return s.reorderService.ReorderAfterDelete(
+		ctx,
+		"produk_gambar",
+		deletedUrutan,
+		"produk_id", // Scoped by produk_id
+		produkID,
+	)
 }
 
 func (s *produkGambarService) Reorder(ctx context.Context, req *models.ReorderRequest) error {

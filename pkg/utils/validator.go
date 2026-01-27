@@ -38,6 +38,13 @@ func IsValidIndonesianPhone(phone string) bool {
 	return matched
 }
 
+// IsValidUUID validates if a string is a valid UUID format
+func IsValidUUID(uuid string) bool {
+	pattern := `^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`
+	matched, _ := regexp.MatchString(pattern, uuid)
+	return matched
+}
+
 // GetValidationErrorMessage converts validation errors to Indonesian messages
 func GetValidationErrorMessage(err error) string {
 	if validationErrors, ok := err.(validator.ValidationErrors); ok {

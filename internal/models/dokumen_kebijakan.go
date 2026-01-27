@@ -11,6 +11,7 @@ type DokumenKebijakan struct {
 	ID        uuid.UUID      `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
 	Judul     string         `gorm:"type:varchar(100);not null" json:"judul"`
 	JudulEN   string         `gorm:"column:judul_en;type:varchar(100);not null" json:"judul_en"`
+	Slug      string         `gorm:"type:varchar(100);uniqueIndex;not null" json:"slug"`
 	Konten    string         `gorm:"type:text;not null" json:"konten"`                     // HTML content (Indonesian)
 	KontenEN  string         `gorm:"column:konten_en;type:text;not null" json:"konten_en"` // HTML content (English)
 	Urutan    int            `gorm:"default:0" json:"urutan"`
@@ -38,6 +39,7 @@ type DokumenKebijakanListResponse struct {
 	ID      string `json:"id"`
 	Judul   string `json:"judul"`
 	JudulEN string `json:"judul_en"`
+	Slug    string `json:"slug"`
 	Urutan  int    `json:"urutan"`
 	// IsActive  bool      `json:"is_active"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -47,6 +49,7 @@ type DokumenKebijakanDetailResponse struct {
 	ID       string `json:"id"`
 	Judul    string `json:"judul"`
 	JudulEN  string `json:"judul_en"`
+	Slug     string `json:"slug"`
 	Konten   string `json:"konten"`    // HTML content (Indonesian)
 	KontenEN string `json:"konten_en"` // HTML content (English)
 	Urutan   int    `json:"urutan"`
@@ -57,7 +60,8 @@ type DokumenKebijakanDetailResponse struct {
 
 type DokumenKebijakanPublicResponse struct {
 	ID     string `json:"id"`
-	Judul  string `json:"judul"`  // Based on lang param
+	Judul  string `json:"judul"` // Based on lang param
+	Slug   string `json:"slug"`
 	Konten string `json:"konten"` // Based on lang param
 	Urutan int    `json:"urutan"`
 }

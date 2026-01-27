@@ -23,14 +23,16 @@ type HeroSectionService interface {
 }
 
 type heroSectionService struct {
-	repo repositories.HeroSectionRepository
-	cfg  *config.Config
+	repo           repositories.HeroSectionRepository
+	reorderService *ReorderService
+	cfg            *config.Config
 }
 
-func NewHeroSectionService(repo repositories.HeroSectionRepository, cfg *config.Config) HeroSectionService {
+func NewHeroSectionService(repo repositories.HeroSectionRepository, reorderService *ReorderService, cfg *config.Config) HeroSectionService {
 	return &heroSectionService{
-		repo: repo,
-		cfg:  cfg,
+		repo:           repo,
+		reorderService: reorderService,
+		cfg:            cfg,
 	}
 }
 
@@ -110,11 +112,26 @@ func (s *heroSectionService) Update(ctx context.Context, id string, req *models.
 }
 
 func (s *heroSectionService) Delete(ctx context.Context, id string) error {
-	_, err := s.repo.FindByID(ctx, id)
+	hero, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return errors.New("hero section tidak ditemukan")
 	}
-	return s.repo.Delete(ctx, id)
+
+	deletedUrutan := hero.Urutan
+
+	// Soft delete
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return err
+	}
+
+	// Reorder remaining items to fill gap
+	return s.reorderService.ReorderAfterDelete(
+		ctx,
+		"hero_section",
+		deletedUrutan,
+		"", // No scope
+		nil,
+	)
 }
 
 func (s *heroSectionService) ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error) {

@@ -11,6 +11,7 @@ import (
 type DokumenKebijakanRepository interface {
 	Create(ctx context.Context, dokumen *models.DokumenKebijakan) error
 	FindByID(ctx context.Context, id string) (*models.DokumenKebijakan, error)
+	FindBySlug(ctx context.Context, slug string) (*models.DokumenKebijakan, error)
 	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.DokumenKebijakan, int64, error)
 	FindAllSimple(ctx context.Context) ([]models.DokumenKebijakan, error)
 	Update(ctx context.Context, dokumen *models.DokumenKebijakan) error
@@ -33,6 +34,15 @@ func (r *dokumenKebijakanRepository) Create(ctx context.Context, dokumen *models
 func (r *dokumenKebijakanRepository) FindByID(ctx context.Context, id string) (*models.DokumenKebijakan, error) {
 	var dokumen models.DokumenKebijakan
 	err := r.db.WithContext(ctx).Where("id = ?", id).First(&dokumen).Error
+	if err != nil {
+		return nil, err
+	}
+	return &dokumen, nil
+}
+
+func (r *dokumenKebijakanRepository) FindBySlug(ctx context.Context, slug string) (*models.DokumenKebijakan, error) {
+	var dokumen models.DokumenKebijakan
+	err := r.db.WithContext(ctx).Where("slug = ?", slug).First(&dokumen).Error
 	if err != nil {
 		return nil, err
 	}

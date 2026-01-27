@@ -21,11 +21,15 @@ type KondisiPaketService interface {
 }
 
 type kondisiPaketService struct {
-	repo repositories.KondisiPaketRepository
+	repo           repositories.KondisiPaketRepository
+	reorderService *ReorderService
 }
 
-func NewKondisiPaketService(repo repositories.KondisiPaketRepository) KondisiPaketService {
-	return &kondisiPaketService{repo: repo}
+func NewKondisiPaketService(repo repositories.KondisiPaketRepository, reorderService *ReorderService) KondisiPaketService {
+	return &kondisiPaketService{
+		repo:           repo,
+		reorderService: reorderService,
+	}
 }
 
 func (s *kondisiPaketService) Create(ctx context.Context, req *models.CreateKondisiPaketRequest) (*models.KondisiPaketResponse, error) {
@@ -139,7 +143,21 @@ func (s *kondisiPaketService) Delete(ctx context.Context, id string) error {
 		return errors.New("kondisi paket tidak dapat dihapus karena masih digunakan oleh produk")
 	}
 
-	return s.repo.Delete(ctx, kondisi)
+	deletedUrutan := kondisi.Urutan
+
+	// Soft delete
+	if err := s.repo.Delete(ctx, kondisi); err != nil {
+		return err
+	}
+
+	// Reorder remaining items to fill gap
+	return s.reorderService.ReorderAfterDelete(
+		ctx,
+		"kondisi_paket",
+		deletedUrutan,
+		"", // No scope
+		nil,
+	)
 }
 
 func (s *kondisiPaketService) ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error) {
