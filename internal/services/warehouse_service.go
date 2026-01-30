@@ -3,7 +3,10 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
 
+	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
 	"project-bulky-be/pkg/utils"
@@ -16,14 +19,25 @@ type WarehouseService interface {
 	Update(ctx context.Context, id string, req *models.UpdateWarehouseRequest) (*models.WarehouseResponse, error)
 	Delete(ctx context.Context, id string) error
 	ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error)
+	// New methods for singleton pattern
+	Get(ctx context.Context) (*dto.WarehouseResponse, error)
+	UpdateSingleton(ctx context.Context, req *dto.WarehouseUpdateRequest) (*dto.WarehouseResponse, error)
+	GetPublic(ctx context.Context) (*dto.WarehousePublicResponse, error)
+	// Informasi Pickup methods (warehouse + jadwal)
+	GetInformasiPickup(ctx context.Context) (*dto.InformasiPickupResponse, error)
+	UpdateJadwal(ctx context.Context, req *dto.UpdateJadwalRequest) error
 }
 
 type warehouseService struct {
-	repo repositories.WarehouseRepository
+	repo       repositories.WarehouseRepository
+	jadwalRepo repositories.JadwalGudangRepository
 }
 
-func NewWarehouseService(repo repositories.WarehouseRepository) WarehouseService {
-	return &warehouseService{repo: repo}
+func NewWarehouseService(repo repositories.WarehouseRepository, jadwalRepo repositories.JadwalGudangRepository) WarehouseService {
+	return &warehouseService{
+		repo:       repo,
+		jadwalRepo: jadwalRepo,
+	}
 }
 
 func (s *warehouseService) Create(ctx context.Context, req *models.CreateWarehouseRequest) (*models.WarehouseResponse, error) {
@@ -155,4 +169,241 @@ func (s *warehouseService) toResponse(w *models.Warehouse) *models.WarehouseResp
 		CreatedAt:    w.CreatedAt,
 		UpdatedAt:    w.UpdatedAt,
 	}
+}
+
+// Get returns the first active warehouse (singleton pattern)
+func (s *warehouseService) Get(ctx context.Context) (*dto.WarehouseResponse, error) {
+	warehouse, err := s.repo.FindFirstActive(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if warehouse == nil {
+		return nil, errors.New("warehouse tidak ditemukan")
+	}
+	return s.toWarehouseResponse(warehouse), nil
+}
+
+// UpdateSingleton updates the first active warehouse (singleton pattern)
+func (s *warehouseService) UpdateSingleton(ctx context.Context, req *dto.WarehouseUpdateRequest) (*dto.WarehouseResponse, error) {
+	warehouse, err := s.repo.FindFirstActive(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if warehouse == nil {
+		return nil, errors.New("warehouse tidak ditemukan")
+	}
+
+	// Update fields
+	warehouse.Nama = req.Nama
+	warehouse.Alamat = req.Alamat
+	warehouse.Kota = req.Kota
+	warehouse.KodePos = req.KodePos
+	warehouse.Telepon = req.Telepon
+	warehouse.Latitude = req.Latitude
+	warehouse.Longitude = req.Longitude
+	warehouse.JamOperasional = req.JamOperasional
+
+	// Regenerate slug if nama changed
+	newSlug := utils.GenerateSlug(req.Nama)
+	if warehouse.Slug != newSlug {
+		warehouse.Slug = newSlug
+	}
+
+	if err := s.repo.Update(ctx, warehouse); err != nil {
+		return nil, err
+	}
+
+	return s.toWarehouseResponse(warehouse), nil
+}
+
+// GetPublic returns simplified warehouse data for public
+func (s *warehouseService) GetPublic(ctx context.Context) (*dto.WarehousePublicResponse, error) {
+	warehouse, err := s.repo.FindFirstActive(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if warehouse == nil {
+		return nil, errors.New("warehouse tidak ditemukan")
+	}
+	return &dto.WarehousePublicResponse{
+		Nama:      warehouse.Nama,
+		Alamat:    warehouse.Alamat,
+		Kota:      warehouse.Kota,
+		Latitude:  warehouse.Latitude,
+		Longitude: warehouse.Longitude,
+	}, nil
+}
+
+func (s *warehouseService) toWarehouseResponse(w *models.Warehouse) *dto.WarehouseResponse {
+	return &dto.WarehouseResponse{
+		ID:             w.ID.String(),
+		Nama:           w.Nama,
+		Slug:           w.Slug,
+		Alamat:         w.Alamat,
+		Kota:           w.Kota,
+		KodePos:        w.KodePos,
+		Telepon:        w.Telepon,
+		Latitude:       w.Latitude,
+		Longitude:      w.Longitude,
+		JamOperasional: w.JamOperasional,
+		IsActive:       w.IsActive,
+		CreatedAt:      w.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:      w.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+}
+
+// GetInformasiPickup returns warehouse + jadwal for public informasi pickup endpoint
+func (s *warehouseService) GetInformasiPickup(ctx context.Context) (*dto.InformasiPickupResponse, error) {
+	warehouse, err := s.repo.FindFirstActive(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if warehouse == nil {
+		return nil, errors.New("warehouse tidak ditemukan")
+	}
+
+	// Get jadwal
+	jadwal, err := s.jadwalRepo.FindByWarehouseID(ctx, warehouse.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert jadwal to response
+	jadwalResp := []dto.JadwalGudangResponse{}
+	for _, j := range jadwal {
+		jadwalResp = append(jadwalResp, dto.JadwalGudangResponse{
+			Hari:     j.Hari,
+			NamaHari: j.GetHariNama(),
+			JamBuka:  j.JamBuka,
+			JamTutup: j.JamTutup,
+			IsBuka:   j.IsBuka,
+		})
+	}
+
+	// Calculate is_open_now
+	isOpenNow := s.isOpenNow(jadwal)
+	// statusText := s.getStatusText(jadwal)
+	jadwalHariIni := s.getJadwalHariIni(jadwal)
+
+	// Generate URLs
+	whatsappURL := ""
+	if warehouse.Telepon != nil {
+		whatsappURL = fmt.Sprintf("https://wa.me/%s", *warehouse.Telepon)
+	}
+
+	// googleMapsURL := ""
+	// if warehouse.Latitude != nil && warehouse.Longitude != nil {
+	// 	googleMapsURL = fmt.Sprintf("https://maps.google.com/?q=%f,%f", *warehouse.Latitude, *warehouse.Longitude)
+	// }
+
+	return &dto.InformasiPickupResponse{
+		Alamat:         warehouse.Alamat,
+		JamOperasional: warehouse.JamOperasional,
+		Telepon:        warehouse.Telepon,
+		WhatsappURL:    whatsappURL,
+		Latitude:       warehouse.Latitude,
+		Longitude:      warehouse.Longitude,
+		// GoogleMapsURL:  googleMapsURL,
+		IsOpenNow: isOpenNow,
+		// StatusText:     statusText,
+		JadwalHariIni: jadwalHariIni,
+		Jadwal:        jadwalResp,
+	}, nil
+}
+
+// UpdateJadwal updates jadwal gudang
+func (s *warehouseService) UpdateJadwal(ctx context.Context, req *dto.UpdateJadwalRequest) error {
+	warehouse, err := s.repo.FindFirstActive(ctx)
+	if err != nil {
+		return err
+	}
+	if warehouse == nil {
+		return errors.New("warehouse tidak ditemukan")
+	}
+
+	// Validate jadwal
+	for _, j := range req.Jadwal {
+		if j.IsBuka {
+			if j.JamBuka == nil || j.JamTutup == nil {
+				return fmt.Errorf("jam buka dan jam tutup wajib diisi untuk hari %d", j.Hari)
+			}
+			if *j.JamBuka >= *j.JamTutup {
+				return fmt.Errorf("jam tutup harus lebih besar dari jam buka untuk hari %d", j.Hari)
+			}
+		}
+	}
+
+	// Convert to models
+	jadwalModels := []models.JadwalGudang{}
+	for _, j := range req.Jadwal {
+		jadwalModels = append(jadwalModels, models.JadwalGudang{
+			WarehouseID: warehouse.ID,
+			Hari:        j.Hari,
+			JamBuka:     j.JamBuka,
+			JamTutup:    j.JamTutup,
+			IsBuka:      j.IsBuka,
+		})
+	}
+
+	return s.jadwalRepo.UpdateBatch(ctx, warehouse.ID, jadwalModels)
+}
+
+// Helper functions
+func (s *warehouseService) isOpenNow(jadwal []models.JadwalGudang) bool {
+	now := time.Now()
+	currentDay := int(now.Weekday())
+	currentTime := now.Format("15:04")
+
+	for _, j := range jadwal {
+		if j.Hari == currentDay && j.IsBuka {
+			if j.JamBuka != nil && j.JamTutup != nil {
+				if currentTime >= *j.JamBuka && currentTime <= *j.JamTutup {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func (s *warehouseService) getStatusText(jadwal []models.JadwalGudang) string {
+	now := time.Now()
+	currentDay := int(now.Weekday())
+	currentTime := now.Format("15:04")
+
+	for _, j := range jadwal {
+		if j.Hari == currentDay {
+			if !j.IsBuka {
+				return "Tutup"
+			}
+			if j.JamBuka != nil && j.JamTutup != nil {
+				if currentTime >= *j.JamBuka && currentTime <= *j.JamTutup {
+					return "Buka"
+				}
+				if currentTime < *j.JamBuka {
+					return fmt.Sprintf("Buka pukul %s", *j.JamBuka)
+				}
+			}
+			return "Tutup"
+		}
+	}
+	return "Tutup"
+}
+
+func (s *warehouseService) getJadwalHariIni(jadwal []models.JadwalGudang) *dto.JadwalGudangResponse {
+	now := time.Now()
+	currentDay := int(now.Weekday())
+
+	for _, j := range jadwal {
+		if j.Hari == currentDay {
+			return &dto.JadwalGudangResponse{
+				Hari:     j.Hari,
+				NamaHari: j.GetHariNama(),
+				JamBuka:  j.JamBuka,
+				JamTutup: j.JamTutup,
+				IsBuka:   j.IsBuka,
+			}
+		}
+	}
+	return nil
 }

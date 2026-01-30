@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"strconv"
 
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/services"
@@ -22,6 +23,68 @@ func NewMetodePembayaranController(service services.MetodePembayaranService, reo
 	}
 }
 
+// GetAllGrouped - Admin endpoint with grouped response
+func (c *MetodePembayaranController) GetAllGrouped(ctx *gin.Context) {
+	result, err := c.service.GetAllGrouped(ctx.Request.Context(), true) // isAdmin = true
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data", nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Data metode pembayaran berhasil diambil", result)
+}
+
+// GetAllGroupedPublic - Public endpoint with grouped response (active only)
+func (c *MetodePembayaranController) GetAllGroupedPublic(ctx *gin.Context) {
+	result, err := c.service.GetAllGrouped(ctx.Request.Context(), false) // isAdmin = false
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data", nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Data metode pembayaran berhasil diambil", result)
+}
+
+// ToggleMethodStatus - Toggle status of individual payment method
+func (c *MetodePembayaranController) ToggleMethodStatus(ctx *gin.Context) {
+	id := ctx.Param("id")
+
+	result, err := c.service.ToggleMethodStatus(ctx.Request.Context(), id)
+	if err != nil {
+		if err.Error() == "Metode pembayaran tidak ditemukan" {
+			utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
+			return
+		}
+		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Status metode pembayaran berhasil diubah", result)
+}
+
+// ToggleGroupStatus - Toggle status of payment group by urutan
+func (c *MetodePembayaranController) ToggleGroupStatus(ctx *gin.Context) {
+	urutanStr := ctx.Param("urutan")
+	urutan, err := strconv.Atoi(urutanStr)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Urutan tidak valid", nil)
+		return
+	}
+
+	result, err := c.service.ToggleGroupStatus(ctx.Request.Context(), urutan)
+	if err != nil {
+		if err.Error() == "Group tidak ditemukan" {
+			utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
+			return
+		}
+		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Status group berhasil diubah", result)
+}
+
+// Legacy methods - kept for backward compatibility if needed
 func (c *MetodePembayaranController) GetAll(ctx *gin.Context) {
 	// Parse optional filters
 	var groupID *string

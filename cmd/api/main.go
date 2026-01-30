@@ -68,7 +68,7 @@ func main() {
 	disclaimerRepo := repositories.NewDisclaimerRepository(db)
 	formulirPartaiBesarRepo := repositories.NewFormulirPartaiBesarRepository(db)
 	whatsappHandlerRepo := repositories.NewWhatsAppHandlerRepository(db)
-	informasiPickupRepo := repositories.NewInformasiPickupRepository(db)
+	jadwalGudangRepo := repositories.NewJadwalGudangRepository(db)
 
 	// Auth V2 repositories
 	authRepo := repositories.NewAuthRepository(db)
@@ -83,7 +83,7 @@ func main() {
 	kondisiService := services.NewKondisiProdukService(kondisiRepo, reorderService)
 	kondisiPaketService := services.NewKondisiPaketService(kondisiPaketRepo, reorderService)
 	sumberService := services.NewSumberProdukService(sumberRepo)
-	warehouseService := services.NewWarehouseService(warehouseRepo)
+	warehouseService := services.NewWarehouseService(warehouseRepo, jadwalGudangRepo)
 	tipeProdukService := services.NewTipeProdukService(tipeProdukRepo)
 	diskonKategoriService := services.NewDiskonKategoriService(diskonKategoriRepo)
 	bannerTipeProdukService := services.NewBannerTipeProdukService(bannerTipeProdukRepo, tipeProdukRepo, reorderService, cfg)
@@ -101,14 +101,12 @@ func main() {
 	forceUpdateService := services.NewForceUpdateService(forceUpdateRepo, cfg.PlayStoreURL, cfg.AppStoreURL)
 	modeMaintenanceService := services.NewModeMaintenanceService(modeMaintenanceRepo)
 	ppnService := services.NewPPNService(ppnRepo)
-	metodePembayaranGroupService := services.NewMetodePembayaranGroupService(metodePembayaranGroupRepo)
 	metodePembayaranService := services.NewMetodePembayaranService(metodePembayaranRepo, metodePembayaranGroupRepo)
 	dokumenKebijakanService := services.NewDokumenKebijakanService(dokumenKebijakanRepo)
 	disclaimerService := services.NewDisclaimerService(disclaimerRepo)
 	emailService := services.NewEmailService()
 	formulirPartaiBesarService := services.NewFormulirPartaiBesarService(formulirPartaiBesarRepo, kategoriRepo, reorderService, emailService)
 	whatsappHandlerService := services.NewWhatsAppHandlerService(whatsappHandlerRepo)
-	informasiPickupService := services.NewInformasiPickupService(informasiPickupRepo)
 
 	// Auth V2 services
 	authV2Service := services.NewAuthV2Service(authRepo, activityLogRepo)
@@ -139,13 +137,11 @@ func main() {
 	modeMaintenanceController := controllers.NewModeMaintenanceController(modeMaintenanceService)
 	appStatusController := controllers.NewAppStatusController(forceUpdateService, modeMaintenanceService)
 	ppnController := controllers.NewPPNController(ppnService)
-	metodePembayaranGroupController := controllers.NewMetodePembayaranGroupController(metodePembayaranGroupService, reorderService)
 	metodePembayaranController := controllers.NewMetodePembayaranController(metodePembayaranService, reorderService)
 	dokumenKebijakanController := controllers.NewDokumenKebijakanController(dokumenKebijakanService)
 	disclaimerController := controllers.NewDisclaimerController(disclaimerService)
 	formulirPartaiBesarController := controllers.NewFormulirPartaiBesarController(formulirPartaiBesarService, reorderService)
 	whatsappHandlerController := controllers.NewWhatsAppHandlerController(whatsappHandlerService)
-	informasiPickupController := controllers.NewInformasiPickupController(informasiPickupService)
 
 	// Auth V2 controllers
 	authV2Controller := controllers.NewAuthV2Controller(authV2Service, adminService, buyerService)
@@ -166,10 +162,9 @@ func main() {
 		ulasanController,
 		forceUpdateController, modeMaintenanceController, appStatusController,
 		ppnController,
-		metodePembayaranGroupController, metodePembayaranController,
+		metodePembayaranController,
 		dokumenKebijakanController, disclaimerController,
 		formulirPartaiBesarController, whatsappHandlerController,
-		informasiPickupController,
 	)
 
 	// Setup Auth V2 routes (new authentication system with roles & permissions)
