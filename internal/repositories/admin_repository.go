@@ -64,7 +64,7 @@ func (r *adminRepository) FindByIDWithRole(ctx context.Context, id string) (*mod
 
 func (r *adminRepository) FindByEmail(ctx context.Context, email string) (*models.Admin, error) {
 	var admin models.Admin
-	err := r.db.WithContext(ctx).Where("email = ?", email).First(&admin).Error
+	err := r.db.WithContext(ctx).Where("LOWER(email) = LOWER(?)", email).First(&admin).Error
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +125,7 @@ func (r *adminRepository) Delete(ctx context.Context, id string) error {
 
 func (r *adminRepository) ExistsByEmail(ctx context.Context, email string, excludeID *string) (bool, error) {
 	var count int64
-	query := r.db.WithContext(ctx).Model(&models.Admin{}).Where("email = ?", email)
+	query := r.db.WithContext(ctx).Model(&models.Admin{}).Where("LOWER(email) = LOWER(?)", email)
 	if excludeID != nil {
 		query = query.Where("id != ?", *excludeID)
 	}

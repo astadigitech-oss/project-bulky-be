@@ -155,3 +155,28 @@ func (s *ReorderService) Reorder(
 		SwappedUrutan: currentUrutan,
 	}, nil
 }
+
+// ReorderAfterDelete - Reorder items after deletion to fill gaps
+// tableName: nama tabel (e.g., "banner_event_promo")
+// deletedUrutan: urutan dari item yang dihapus
+// scopeColumn: optional WHERE condition column untuk scoping (e.g., "tipe_produk_id")
+// scopeValue: optional WHERE condition value untuk scoping
+func (s *ReorderService) ReorderAfterDelete(
+	ctx context.Context,
+	tableName string,
+	deletedUrutan int,
+	scopeColumn string,
+	scopeValue interface{},
+) error {
+	// Build base query
+	query := s.db.WithContext(ctx).Table(tableName).
+		Where("urutan > ? AND deleted_at IS NULL", deletedUrutan)
+
+	// Add scope condition if provided
+	if scopeColumn != "" && scopeValue != nil {
+		query = query.Where(scopeColumn+" = ?", scopeValue)
+	}
+
+	// Decrement urutan for all items after deleted item
+	return query.UpdateColumn("urutan", gorm.Expr("urutan - 1")).Error
+}

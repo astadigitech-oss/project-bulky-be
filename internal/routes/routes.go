@@ -34,12 +34,12 @@ func SetupRoutes(
 	modeMaintenanceController *controllers.ModeMaintenanceController,
 	appStatusController *controllers.AppStatusController,
 	ppnController *controllers.PPNController,
-	metodePembayaranGroupController *controllers.MetodePembayaranGroupController,
 	metodePembayaranController *controllers.MetodePembayaranController,
 	dokumenKebijakanController *controllers.DokumenKebijakanController,
 	disclaimerController *controllers.DisclaimerController,
 	formulirPartaiBesarController *controllers.FormulirPartaiBesarController,
 	whatsappHandlerController *controllers.WhatsAppHandlerController,
+	faqController *controllers.FAQController,
 ) {
 	// Health check
 	router.GET("/api/health", func(c *gin.Context) {
@@ -232,24 +232,16 @@ func SetupRoutes(
 			sumberAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("kondisi:manage"), sumberController.ToggleStatus)
 		}
 
-		// Warehouse - Public (Read Only)
-		warehousePublic := v1.Group("/warehouse")
-		{
-			warehousePublic.GET("", warehouseController.FindAll)
-			warehousePublic.GET("/:id", warehouseController.FindByID)
-		}
+		// Warehouse - Public (Singleton - Simplified)
+		v1.GET("/public/warehouse", warehouseController.GetPublic)
 
-		// Warehouse - Admin
+		// Warehouse - Admin (Singleton Pattern)
 		warehouseAdmin := v1.Group("/panel/warehouse")
 		warehouseAdmin.Use(middleware.AuthMiddleware())
 		warehouseAdmin.Use(middleware.AdminOnly())
 		{
-			warehouseAdmin.GET("", middleware.RequirePermission("kondisi:read"), warehouseController.FindAll)
-			warehouseAdmin.GET("/:id", middleware.RequirePermission("kondisi:read"), warehouseController.FindByID)
-			warehouseAdmin.POST("", middleware.RequirePermission("kondisi:manage"), warehouseController.Create)
-			warehouseAdmin.PUT("/:id", middleware.RequirePermission("kondisi:manage"), warehouseController.Update)
-			warehouseAdmin.DELETE("/:id", middleware.RequirePermission("kondisi:manage"), warehouseController.Delete)
-			warehouseAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("kondisi:manage"), warehouseController.ToggleStatus)
+			warehouseAdmin.GET("", middleware.RequirePermission("operasional:read"), warehouseController.Get)
+			warehouseAdmin.PUT("", middleware.RequirePermission("operasional:manage"), warehouseController.UpdateSingleton)
 		}
 
 		// Tipe Produk - Public (Read Only)
@@ -369,8 +361,6 @@ func SetupRoutes(
 			heroSectionAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), heroSectionController.Update)
 			heroSectionAdmin.DELETE("/:id", middleware.RequirePermission("marketing:manage"), heroSectionController.Delete)
 			heroSectionAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("marketing:manage"), heroSectionController.ToggleStatus)
-			heroSectionAdmin.PUT("/reorder", middleware.RequirePermission("marketing:manage"), heroSectionController.Reorder)
-			heroSectionAdmin.PATCH("/:id/reorder", middleware.RequirePermission("marketing:manage"), heroSectionController.ReorderByDirection)
 		}
 
 		// Hero Section (Public)
@@ -477,25 +467,18 @@ func SetupRoutes(
 			ppnAdmin.PATCH("/:id/set-active", middleware.RequirePermission("system:manage"), ppnController.SetActive)
 		}
 
-		// Metode Pembayaran Group - Admin Only (Simplified)
-		metodePembayaranGroupAdmin := v1.Group("/panel/metode-pembayaran-group")
-		metodePembayaranGroupAdmin.Use(middleware.AuthMiddleware())
-		metodePembayaranGroupAdmin.Use(middleware.AdminOnly())
-		{
-			metodePembayaranGroupAdmin.GET("", middleware.RequirePermission("pembayaran:read"), metodePembayaranGroupController.GetAll)
-			metodePembayaranGroupAdmin.PUT("/:id", middleware.RequirePermission("pembayaran:manage"), metodePembayaranGroupController.Update)
-			metodePembayaranGroupAdmin.PATCH("/:id/reorder", middleware.RequirePermission("pembayaran:manage"), metodePembayaranGroupController.ReorderByDirection)
-		}
-
-		// Metode Pembayaran - Admin Only (Simplified)
+		// Metode Pembayaran - Simplified Grouped API
 		metodePembayaranAdmin := v1.Group("/panel/metode-pembayaran")
 		metodePembayaranAdmin.Use(middleware.AuthMiddleware())
 		metodePembayaranAdmin.Use(middleware.AdminOnly())
 		{
-			metodePembayaranAdmin.GET("", middleware.RequirePermission("pembayaran:read"), metodePembayaranController.GetAll)
-			metodePembayaranAdmin.PUT("/:id", middleware.RequirePermission("pembayaran:manage"), metodePembayaranController.Update)
-			metodePembayaranAdmin.PATCH("/:id/reorder", middleware.RequirePermission("pembayaran:manage"), metodePembayaranController.ReorderByDirection)
+			metodePembayaranAdmin.GET("", middleware.RequirePermission("pembayaran:read"), metodePembayaranController.GetAllGrouped)
+			metodePembayaranAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("pembayaran:manage"), metodePembayaranController.ToggleMethodStatus)
+			metodePembayaranAdmin.PATCH("/group/:urutan/toggle-status", middleware.RequirePermission("pembayaran:manage"), metodePembayaranController.ToggleGroupStatus)
 		}
+
+		// Metode Pembayaran - Public (Grouped, Active Only)
+		v1.GET("/public/metode-pembayaran", metodePembayaranController.GetAllGroupedPublic)
 
 		// Dokumen Kebijakan - Admin (Simplified - Fixed Pages)
 		dokumenKebijakanAdmin := v1.Group("/panel/dokumen-kebijakan")
@@ -512,6 +495,22 @@ func SetupRoutes(
 		{
 			dokumenKebijakanPublic.GET("", dokumenKebijakanController.GetAllPublic)
 			dokumenKebijakanPublic.GET("/:id", dokumenKebijakanController.GetByIDPublic)
+		}
+
+		// FAQ - Public (Custom route with accordion format)
+		v1.GET("/public/faq", dokumenKebijakanController.GetFAQ)
+
+		// FAQ - Admin (Separate from dokumen-kebijakan)
+		faqAdmin := v1.Group("/panel/faq")
+		faqAdmin.Use(middleware.AuthMiddleware())
+		faqAdmin.Use(middleware.AdminOnly())
+		{
+			faqAdmin.GET("", middleware.RequirePermission("operasional:read"), faqController.Get)
+			faqAdmin.PUT("", middleware.RequirePermission("operasional:manage"), faqController.Update)
+			faqAdmin.POST("/items", middleware.RequirePermission("operasional:manage"), faqController.AddItem)
+			faqAdmin.PUT("/items/:index", middleware.RequirePermission("operasional:manage"), faqController.UpdateItem)
+			faqAdmin.DELETE("/items/:index", middleware.RequirePermission("operasional:manage"), faqController.DeleteItem)
+			faqAdmin.PATCH("/items/reorder", middleware.RequirePermission("operasional:manage"), faqController.ReorderItem)
 		}
 
 		// Disclaimer - Admin
@@ -588,6 +587,18 @@ func SetupRoutes(
 		whatsappPublic := v1.Group("/public/whatsapp-handler")
 		{
 			whatsappPublic.GET("", whatsappHandlerController.GetActive)
+		}
+
+		// Informasi Pickup - Public (Warehouse + Jadwal)
+		v1.GET("/public/informasi-pickup", warehouseController.GetInformasiPickup)
+
+		// Informasi Pickup - Admin (Jadwal via Warehouse)
+		informasiPickupAdmin := v1.Group("/panel/informasi-pickup")
+		informasiPickupAdmin.Use(middleware.AuthMiddleware())
+		informasiPickupAdmin.Use(middleware.AdminOnly())
+		{
+			informasiPickupAdmin.GET("", middleware.RequirePermission("operasional:read"), warehouseController.GetInformasiPickup)
+			informasiPickupAdmin.PUT("/jadwal", middleware.RequirePermission("operasional:manage"), warehouseController.UpdateJadwal)
 		}
 	}
 

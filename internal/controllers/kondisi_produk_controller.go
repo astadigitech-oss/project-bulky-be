@@ -144,10 +144,10 @@ func (c *KondisiProdukController) Reorder(ctx *gin.Context) {
 
 func (c *KondisiProdukController) ReorderByDirection(ctx *gin.Context) {
 	id := ctx.Param("id")
-	direction := ctx.Query("direction")
 
-	if direction == "" {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter 'direction' wajib diisi", nil)
+	var req models.ReorderByDirectionRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 		return
 	}
 
@@ -161,7 +161,7 @@ func (c *KondisiProdukController) ReorderByDirection(ctx *gin.Context) {
 		ctx.Request.Context(),
 		"kondisi_produk",
 		idUUID,
-		direction,
+		req.Direction,
 		"",
 		nil,
 	)

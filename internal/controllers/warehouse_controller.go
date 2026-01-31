@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 
+	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
@@ -108,4 +109,70 @@ func (c *WarehouseController) ToggleStatus(ctx *gin.Context) {
 	}
 
 	utils.SuccessResponse(ctx, "Status warehouse berhasil diubah", result)
+}
+
+// Get returns the first active warehouse (singleton pattern)
+func (c *WarehouseController) Get(ctx *gin.Context) {
+	result, err := c.service.Get(ctx.Request.Context())
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Data warehouse berhasil diambil", result)
+}
+
+// UpdateSingleton updates the first active warehouse (singleton pattern)
+func (c *WarehouseController) UpdateSingleton(ctx *gin.Context) {
+	var req dto.WarehouseUpdateRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
+		return
+	}
+
+	result, err := c.service.UpdateSingleton(ctx.Request.Context(), &req)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Data warehouse berhasil diupdate", result)
+}
+
+// GetPublic returns simplified warehouse data for public
+func (c *WarehouseController) GetPublic(ctx *gin.Context) {
+	result, err := c.service.GetPublic(ctx.Request.Context())
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Data warehouse berhasil diambil", result)
+}
+
+// GetInformasiPickup returns warehouse + jadwal for public informasi pickup endpoint
+func (c *WarehouseController) GetInformasiPickup(ctx *gin.Context) {
+	result, err := c.service.GetInformasiPickup(ctx.Request.Context())
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Data informasi pickup berhasil diambil", result)
+}
+
+// UpdateJadwal updates jadwal gudang
+func (c *WarehouseController) UpdateJadwal(ctx *gin.Context) {
+	var req dto.UpdateJadwalRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
+		return
+	}
+
+	if err := c.service.UpdateJadwal(ctx.Request.Context(), &req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Jadwal berhasil diupdate", nil)
 }

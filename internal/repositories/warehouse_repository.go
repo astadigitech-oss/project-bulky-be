@@ -14,6 +14,7 @@ type WarehouseRepository interface {
 	Create(ctx context.Context, warehouse *models.Warehouse) error
 	FindByID(ctx context.Context, id string) (*models.Warehouse, error)
 	FindBySlug(ctx context.Context, slug string) (*models.Warehouse, error)
+	FindFirstActive(ctx context.Context) (*models.Warehouse, error)
 	FindAll(ctx context.Context, params *models.PaginationRequest, kota string) ([]models.Warehouse, int64, error)
 	Update(ctx context.Context, warehouse *models.Warehouse) error
 	Delete(ctx context.Context, warehouse *models.Warehouse) error
@@ -127,4 +128,19 @@ func (r *warehouseRepository) GetAllForDropdown(ctx context.Context) ([]models.W
 		Order("nama ASC").
 		Find(&warehouses).Error
 	return warehouses, err
+}
+
+func (r *warehouseRepository) FindFirstActive(ctx context.Context) (*models.Warehouse, error) {
+	var warehouse models.Warehouse
+	err := r.db.WithContext(ctx).
+		Where("is_active = ?", true).
+		Order("created_at ASC").
+		First(&warehouse).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &warehouse, nil
 }

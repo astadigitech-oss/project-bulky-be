@@ -24,14 +24,16 @@ type BannerEventPromoService interface {
 }
 
 type bannerEventPromoService struct {
-	repo repositories.BannerEventPromoRepository
-	cfg  *config.Config
+	repo           repositories.BannerEventPromoRepository
+	reorderService *ReorderService
+	cfg            *config.Config
 }
 
-func NewBannerEventPromoService(repo repositories.BannerEventPromoRepository, cfg *config.Config) BannerEventPromoService {
+func NewBannerEventPromoService(repo repositories.BannerEventPromoRepository, reorderService *ReorderService, cfg *config.Config) BannerEventPromoService {
 	return &bannerEventPromoService{
-		repo: repo,
-		cfg:  cfg,
+		repo:           repo,
+		reorderService: reorderService,
+		cfg:            cfg,
 	}
 }
 
@@ -137,11 +139,26 @@ func (s *bannerEventPromoService) Update(ctx context.Context, id string, req *mo
 }
 
 func (s *bannerEventPromoService) Delete(ctx context.Context, id string) error {
-	_, err := s.repo.FindByID(ctx, id)
+	banner, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return errors.New("banner tidak ditemukan")
 	}
-	return s.repo.Delete(ctx, id)
+
+	deletedUrutan := banner.Urutan
+
+	// Soft delete banner
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return err
+	}
+
+	// Reorder remaining items to fill gap
+	return s.reorderService.ReorderAfterDelete(
+		ctx,
+		"banner_event_promo",
+		deletedUrutan,
+		"", // No scope
+		nil,
+	)
 }
 
 func (s *bannerEventPromoService) ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error) {

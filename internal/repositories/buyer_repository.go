@@ -96,7 +96,7 @@ func (r *buyerRepository) ExistsByUsername(ctx context.Context, username string,
 
 func (r *buyerRepository) ExistsByEmail(ctx context.Context, email string, excludeID *string) (bool, error) {
 	var count int64
-	query := r.db.WithContext(ctx).Model(&models.Buyer{}).Where("email = ?", email)
+	query := r.db.WithContext(ctx).Model(&models.Buyer{}).Where("LOWER(email) = LOWER(?)", email)
 	if excludeID != nil {
 		query = query.Where("id != ?", *excludeID)
 	}

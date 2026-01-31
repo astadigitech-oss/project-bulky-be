@@ -107,8 +107,8 @@ func ToHeroSectionListResponse(h *models.HeroSection) HeroSectionListResponse {
 		Nama:      h.Nama,
 		GambarURL: h.GetGambarURL(),
 		// LinkURL:   h.LinkURL,
-		Urutan:    h.Urutan,
-		IsActive:  h.IsActive,
+		Urutan:    0, // Removed field
+		IsActive:  h.IsDefault,
 		UpdatedAt: h.UpdatedAt,
 	}
 }
@@ -119,8 +119,8 @@ func ToHeroSectionDetailResponse(h *models.HeroSection) HeroSectionDetailRespons
 		Nama:      h.Nama,
 		GambarURL: h.GetGambarURL(),
 		// LinkURL:   h.LinkURL,
-		Urutan:    h.Urutan,
-		IsActive:  h.IsActive,
+		Urutan:    0, // Removed field
+		IsActive:  h.IsDefault,
 		CreatedAt: h.CreatedAt,
 		UpdatedAt: h.UpdatedAt,
 	}

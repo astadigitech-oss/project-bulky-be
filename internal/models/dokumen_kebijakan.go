@@ -11,9 +11,9 @@ type DokumenKebijakan struct {
 	ID        uuid.UUID      `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
 	Judul     string         `gorm:"type:varchar(100);not null" json:"judul"`
 	JudulEN   string         `gorm:"column:judul_en;type:varchar(100);not null" json:"judul_en"`
-	Konten    string         `gorm:"type:text;not null" json:"konten"`                     // HTML content (Indonesian)
+	Slug      string         `gorm:"type:varchar(100);uniqueIndex;not null" json:"slug"`
+	Konten    string         `gorm:"type:text;not null" json:"konten"`                     // HTML content (Indonesian) or JSON for FAQ
 	KontenEN  string         `gorm:"column:konten_en;type:text;not null" json:"konten_en"` // HTML content (English)
-	Urutan    int            `gorm:"default:0" json:"urutan"`
 	IsActive  bool           `gorm:"default:true" json:"is_active"`
 	CreatedAt time.Time      `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
@@ -35,29 +35,45 @@ type UpdateDokumenKebijakanRequest struct {
 
 // Response DTOs
 type DokumenKebijakanListResponse struct {
-	ID      string `json:"id"`
-	Judul   string `json:"judul"`
-	JudulEN string `json:"judul_en"`
-	Urutan  int    `json:"urutan"`
-	// IsActive  bool      `json:"is_active"`
+	ID        string    `json:"id"`
+	Judul     string    `json:"judul"`
+	JudulEN   string    `json:"judul_en"`
+	Slug      string    `json:"slug"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type DokumenKebijakanDetailResponse struct {
-	ID       string `json:"id"`
-	Judul    string `json:"judul"`
-	JudulEN  string `json:"judul_en"`
-	Konten   string `json:"konten"`    // HTML content (Indonesian)
-	KontenEN string `json:"konten_en"` // HTML content (English)
-	Urutan   int    `json:"urutan"`
-	// IsActive  bool      `json:"is_active"`
+	ID        string    `json:"id"`
+	Judul     string    `json:"judul"`
+	JudulEN   string    `json:"judul_en"`
+	Slug      string    `json:"slug"`
+	Konten    string    `json:"konten"`    // HTML content (Indonesian) or JSON for FAQ
+	KontenEN  string    `json:"konten_en"` // HTML content (English)
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type DokumenKebijakanPublicResponse struct {
 	ID     string `json:"id"`
-	Judul  string `json:"judul"`  // Based on lang param
+	Judul  string `json:"judul"` // Based on lang param
+	Slug   string `json:"slug"`
 	Konten string `json:"konten"` // Based on lang param
-	Urutan int    `json:"urutan"`
+}
+
+// FAQ DTOs
+type FAQContentItem struct {
+	Question   string `json:"question"`
+	QuestionEN string `json:"question_en"`
+	Answer     string `json:"answer"`
+	AnswerEN   string `json:"answer_en"`
+}
+
+type FAQItem struct {
+	Question string `json:"question"`
+	Answer   string `json:"answer"`
+}
+
+type FAQResponse struct {
+	Judul string    `json:"judul"`
+	Items []FAQItem `json:"items"`
 }

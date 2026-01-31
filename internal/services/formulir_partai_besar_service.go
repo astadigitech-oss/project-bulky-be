@@ -36,20 +36,23 @@ type FormulirPartaiBesarService interface {
 }
 
 type formulirPartaiBesarService struct {
-	repo         repositories.FormulirPartaiBesarRepository
-	kategoriRepo repositories.KategoriProdukRepository
-	emailService EmailService
+	repo           repositories.FormulirPartaiBesarRepository
+	kategoriRepo   repositories.KategoriProdukRepository
+	reorderService *ReorderService
+	emailService   EmailService
 }
 
 func NewFormulirPartaiBesarService(
 	repo repositories.FormulirPartaiBesarRepository,
 	kategoriRepo repositories.KategoriProdukRepository,
+	reorderService *ReorderService,
 	emailService EmailService,
 ) FormulirPartaiBesarService {
 	return &formulirPartaiBesarService{
-		repo:         repo,
-		kategoriRepo: kategoriRepo,
-		emailService: emailService,
+		repo:           repo,
+		kategoriRepo:   kategoriRepo,
+		reorderService: reorderService,
+		emailService:   emailService,
 	}
 }
 
@@ -191,7 +194,7 @@ func (s *formulirPartaiBesarService) DeleteAnggaran(ctx context.Context, id stri
 	}
 
 	// Check if exists
-	_, err = s.repo.FindAnggaranByID(ctx, uid)
+	anggaran, err := s.repo.FindAnggaranByID(ctx, uid)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return errors.New("anggaran tidak ditemukan")
@@ -199,11 +202,21 @@ func (s *formulirPartaiBesarService) DeleteAnggaran(ctx context.Context, id stri
 		return errors.New("gagal mengambil data anggaran")
 	}
 
+	deletedUrutan := anggaran.Urutan
+
+	// Soft delete
 	if err := s.repo.DeleteAnggaran(ctx, uid); err != nil {
 		return errors.New("gagal menghapus anggaran")
 	}
 
-	return nil
+	// Reorder remaining items to fill gap
+	return s.reorderService.ReorderAfterDelete(
+		ctx,
+		"formulir_partai_besar_anggaran",
+		deletedUrutan,
+		"", // No scope
+		nil,
+	)
 }
 
 func (s *formulirPartaiBesarService) ReorderAnggaran(ctx context.Context, req *models.ReorderRequest) error {

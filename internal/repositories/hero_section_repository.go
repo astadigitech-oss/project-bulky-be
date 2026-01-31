@@ -15,9 +15,8 @@ type HeroSectionRepository interface {
 	FindAll(ctx context.Context, params *models.HeroSectionFilterRequest) ([]models.HeroSection, int64, error)
 	Update(ctx context.Context, hero *models.HeroSection) error
 	Delete(ctx context.Context, id string) error
-	UpdateOrder(ctx context.Context, items []models.ReorderItem) error
 	GetVisibleHero(ctx context.Context) (*models.HeroSection, error)
-	GetMaxUrutan(ctx context.Context) (int, error)
+	CheckDateRangeOverlap(ctx context.Context, tanggalMulai, tanggalSelesai *time.Time, excludeID *string) (bool, error)
 }
 
 type heroSectionRepository struct {
@@ -49,9 +48,9 @@ func (r *heroSectionRepository) FindAll(ctx context.Context, params *models.Hero
 		query = query.Where("nama ILIKE ?", "%"+params.Search+"%")
 	}
 
-	// Filter is_active
-	if params.IsActive != nil {
-		query = query.Where("is_active = ?", *params.IsActive)
+	// Filter is_default
+	if params.IsDefault != nil {
+		query = query.Where("is_default = ?", *params.IsDefault)
 	}
 
 	// Count total
@@ -79,38 +78,54 @@ func (r *heroSectionRepository) Delete(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Delete(&models.HeroSection{}, "id = ?", id).Error
 }
 
-func (r *heroSectionRepository) UpdateOrder(ctx context.Context, items []models.ReorderItem) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		for _, item := range items {
-			if err := tx.Model(&models.HeroSection{}).
-				Where("id = ?", item.ID).
-				Update("urutan", item.Urutan).Error; err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-}
-
 func (r *heroSectionRepository) GetVisibleHero(ctx context.Context) (*models.HeroSection, error) {
 	var hero models.HeroSection
 	now := time.Now()
 
+	// Priority: Scheduled hero (dalam rentang tanggal) > Default hero
 	err := r.db.WithContext(ctx).
-		Where("is_active = ?", true).
-		Where("tanggal_mulai IS NULL OR tanggal_mulai <= ?", now).
-		Where("tanggal_selesai IS NULL OR tanggal_selesai >= ?", now).
-		Order("urutan ASC").
+		Where("deleted_at IS NULL").
+		Where(`
+			is_default = true
+			OR (
+				tanggal_mulai IS NOT NULL 
+				AND tanggal_selesai IS NOT NULL
+				AND tanggal_mulai <= ? 
+				AND tanggal_selesai >= ?
+			)
+		`, now, now).
+		Order("tanggal_mulai DESC NULLS LAST"). // Prioritize scheduled over default
 		First(&hero).Error
 
 	return &hero, err
 }
 
-func (r *heroSectionRepository) GetMaxUrutan(ctx context.Context) (int, error) {
-	var maxUrutan int
-	err := r.db.WithContext(ctx).
-		Model(&models.HeroSection{}).
-		Select("COALESCE(MAX(urutan), 0)").
-		Scan(&maxUrutan).Error
-	return maxUrutan, err
+func (r *heroSectionRepository) CheckDateRangeOverlap(ctx context.Context, tanggalMulai, tanggalSelesai *time.Time, excludeID *string) (bool, error) {
+	// Skip validation if no date range
+	if tanggalMulai == nil || tanggalSelesai == nil {
+		return false, nil
+	}
+
+	query := r.db.WithContext(ctx).Model(&models.HeroSection{}).
+		Where("deleted_at IS NULL").
+		Where(`
+			(tanggal_mulai IS NOT NULL AND tanggal_selesai IS NOT NULL) AND
+			(
+				(tanggal_mulai <= ? AND tanggal_selesai >= ?) OR
+				(tanggal_mulai <= ? AND tanggal_selesai >= ?) OR
+				(tanggal_mulai >= ? AND tanggal_selesai <= ?)
+			)
+		`, tanggalMulai, tanggalMulai, tanggalSelesai, tanggalSelesai, tanggalMulai, tanggalSelesai)
+
+	// Exclude current record if updating
+	if excludeID != nil {
+		query = query.Where("id != ?", *excludeID)
+	}
+
+	var count int64
+	if err := query.Count(&count).Error; err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }

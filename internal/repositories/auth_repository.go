@@ -45,7 +45,7 @@ func NewAuthRepository(db *gorm.DB) AuthRepository {
 // Admin methods
 func (r *authRepository) FindAdminByEmail(email string) (*models.Admin, error) {
 	var admin models.Admin
-	err := r.db.Where("email = ? AND deleted_at IS NULL", email).First(&admin).Error
+	err := r.db.Where("LOWER(email) = LOWER(?) AND deleted_at IS NULL", email).First(&admin).Error
 	return &admin, err
 }
 
@@ -77,7 +77,7 @@ func (r *authRepository) UpdateAdmin(admin *models.Admin) error {
 // Buyer methods
 func (r *authRepository) FindBuyerByEmail(email string) (*models.Buyer, error) {
 	var buyer models.Buyer
-	err := r.db.Where("email = ? AND deleted_at IS NULL", email).First(&buyer).Error
+	err := r.db.Where("LOWER(email) = LOWER(?) AND deleted_at IS NULL", email).First(&buyer).Error
 	return &buyer, err
 }
 

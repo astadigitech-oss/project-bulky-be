@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
 
@@ -15,6 +16,9 @@ import (
 type MetodePembayaranService interface {
 	GetAll(ctx context.Context, groupID *string, isActive *bool) ([]models.MetodePembayaranListResponse, error)
 	Update(ctx context.Context, id string, req *models.UpdateMetodePembayaranRequest) (*models.MetodePembayaranDetailResponse, error)
+	GetAllGrouped(ctx context.Context, isAdmin bool) ([]dto.PaymentMethodGroupResponse, error)
+	ToggleMethodStatus(ctx context.Context, id string) (*dto.ToggleMethodStatusResponse, error)
+	ToggleGroupStatus(ctx context.Context, urutan int) (*dto.ToggleGroupStatusResponse, error)
 }
 
 type metodePembayaranService struct {
@@ -148,5 +152,128 @@ func (s *metodePembayaranService) Update(ctx context.Context, id string, req *mo
 		},
 		CreatedAt: metode.CreatedAt,
 		UpdatedAt: metode.UpdatedAt,
+	}, nil
+}
+
+// GetAllGrouped returns payment methods grouped by group
+func (s *metodePembayaranService) GetAllGrouped(ctx context.Context, isAdmin bool) ([]dto.PaymentMethodGroupResponse, error) {
+	// 1. Get all groups ordered by urutan
+	groups, err := s.groupRepo.FindAllSimple(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []dto.PaymentMethodGroupResponse
+
+	for _, group := range groups {
+		// Skip inactive groups for public
+		if !isAdmin && !group.IsActive {
+			continue
+		}
+
+		// 2. Get methods for each group
+		methods, err := s.repo.FindAllSimple(ctx, &group.ID, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		var methodResponses []dto.PaymentMethodResponse
+		for _, method := range methods {
+			// Skip inactive methods for public
+			if !isAdmin && !method.IsActive {
+				continue
+			}
+
+			resp := dto.PaymentMethodResponse{
+				ID:        method.ID.String(),
+				Nama:      method.Nama,
+				Kode:      method.Kode,
+				LogoValue: method.LogoValue,
+			}
+
+			// Include admin-only fields
+			if isAdmin {
+				resp.Urutan = method.Urutan
+				resp.IsActive = method.IsActive
+			}
+
+			methodResponses = append(methodResponses, resp)
+		}
+
+		// Skip group if no active methods (for public)
+		if !isAdmin && len(methodResponses) == 0 {
+			continue
+		}
+
+		groupResp := dto.PaymentMethodGroupResponse{
+			Group:   group.Nama,
+			Methods: methodResponses,
+		}
+
+		// Include admin-only fields
+		if isAdmin {
+			groupResp.Urutan = group.Urutan
+			groupResp.IsActive = group.IsActive
+		}
+
+		result = append(result, groupResp)
+	}
+
+	return result, nil
+}
+
+// ToggleMethodStatus toggles the is_active status of a payment method
+func (s *metodePembayaranService) ToggleMethodStatus(ctx context.Context, id string) (*dto.ToggleMethodStatusResponse, error) {
+	metodeID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, errors.New("ID metode pembayaran tidak valid")
+	}
+
+	metode, err := s.repo.ToggleStatus(ctx, metodeID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("Metode pembayaran tidak ditemukan")
+		}
+		return nil, err
+	}
+
+	return &dto.ToggleMethodStatusResponse{
+		ID:       metode.ID.String(),
+		Nama:     metode.Nama,
+		Kode:     metode.Kode,
+		IsActive: metode.IsActive,
+	}, nil
+}
+
+// ToggleGroupStatus toggles the is_active status of a payment group by urutan
+func (s *metodePembayaranService) ToggleGroupStatus(ctx context.Context, urutan int) (*dto.ToggleGroupStatusResponse, error) {
+	// Find group by urutan
+	groups, err := s.groupRepo.FindAllSimple(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var targetGroup *models.MetodePembayaranGroup
+	for i := range groups {
+		if groups[i].Urutan == urutan {
+			targetGroup = &groups[i]
+			break
+		}
+	}
+
+	if targetGroup == nil {
+		return nil, errors.New("Group tidak ditemukan")
+	}
+
+	// Toggle status
+	group, err := s.groupRepo.ToggleStatus(ctx, targetGroup.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.ToggleGroupStatusResponse{
+		Group:    group.Nama,
+		Urutan:   group.Urutan,
+		IsActive: group.IsActive,
 	}, nil
 }

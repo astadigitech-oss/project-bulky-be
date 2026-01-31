@@ -11,6 +11,7 @@ import (
 type DokumenKebijakanRepository interface {
 	Create(ctx context.Context, dokumen *models.DokumenKebijakan) error
 	FindByID(ctx context.Context, id string) (*models.DokumenKebijakan, error)
+	FindBySlug(ctx context.Context, slug string) (*models.DokumenKebijakan, error)
 	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.DokumenKebijakan, int64, error)
 	FindAllSimple(ctx context.Context) ([]models.DokumenKebijakan, error)
 	Update(ctx context.Context, dokumen *models.DokumenKebijakan) error
@@ -33,6 +34,15 @@ func (r *dokumenKebijakanRepository) Create(ctx context.Context, dokumen *models
 func (r *dokumenKebijakanRepository) FindByID(ctx context.Context, id string) (*models.DokumenKebijakan, error) {
 	var dokumen models.DokumenKebijakan
 	err := r.db.WithContext(ctx).Where("id = ?", id).First(&dokumen).Error
+	if err != nil {
+		return nil, err
+	}
+	return &dokumen, nil
+}
+
+func (r *dokumenKebijakanRepository) FindBySlug(ctx context.Context, slug string) (*models.DokumenKebijakan, error) {
+	var dokumen models.DokumenKebijakan
+	err := r.db.WithContext(ctx).Where("slug = ?", slug).First(&dokumen).Error
 	if err != nil {
 		return nil, err
 	}
@@ -62,12 +72,12 @@ func (r *dokumenKebijakanRepository) FindAll(ctx context.Context, params *models
 		"is_active":  true,
 		"created_at": true,
 		"updated_at": true,
-		"urutan":     true,
+		"slug":       true,
 	}
 
 	sortBy := params.SortBy
 	if !validSortFields[sortBy] {
-		sortBy = "urutan"
+		sortBy = "slug"
 	}
 
 	order := params.Order
@@ -97,9 +107,9 @@ func (r *dokumenKebijakanRepository) Delete(ctx context.Context, id string) erro
 func (r *dokumenKebijakanRepository) GetActiveList(ctx context.Context) ([]models.DokumenKebijakan, error) {
 	var dokumens []models.DokumenKebijakan
 	err := r.db.WithContext(ctx).
-		Select("id", "judul", "judul_en", "urutan").
+		Select("id", "judul", "judul_en", "slug").
 		Where("is_active = ?", true).
-		Order("urutan ASC").
+		Order("slug ASC").
 		Find(&dokumens).Error
 	return dokumens, err
 }
@@ -107,7 +117,7 @@ func (r *dokumenKebijakanRepository) GetActiveList(ctx context.Context) ([]model
 func (r *dokumenKebijakanRepository) FindAllSimple(ctx context.Context) ([]models.DokumenKebijakan, error) {
 	var dokumens []models.DokumenKebijakan
 	err := r.db.WithContext(ctx).
-		Order("urutan ASC").
+		Order("slug ASC").
 		Find(&dokumens).Error
 	return dokumens, err
 }

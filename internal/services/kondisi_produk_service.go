@@ -21,11 +21,15 @@ type KondisiProdukService interface {
 }
 
 type kondisiProdukService struct {
-	repo repositories.KondisiProdukRepository
+	repo           repositories.KondisiProdukRepository
+	reorderService *ReorderService
 }
 
-func NewKondisiProdukService(repo repositories.KondisiProdukRepository) KondisiProdukService {
-	return &kondisiProdukService{repo: repo}
+func NewKondisiProdukService(repo repositories.KondisiProdukRepository, reorderService *ReorderService) KondisiProdukService {
+	return &kondisiProdukService{
+		repo:           repo,
+		reorderService: reorderService,
+	}
 }
 
 func (s *kondisiProdukService) Create(ctx context.Context, req *models.CreateKondisiProdukRequest) (*models.KondisiProdukResponse, error) {
@@ -130,9 +134,23 @@ func (s *kondisiProdukService) Delete(ctx context.Context, id string) error {
 		return errors.New("kondisi produk tidak ditemukan")
 	}
 
+	deletedUrutan := kondisi.Urutan
+
 	// TODO: Check if kondisi has products
 
-	return s.repo.Delete(ctx, kondisi)
+	// Soft delete
+	if err := s.repo.Delete(ctx, kondisi); err != nil {
+		return err
+	}
+
+	// Reorder remaining items to fill gap
+	return s.reorderService.ReorderAfterDelete(
+		ctx,
+		"kondisi_produk",
+		deletedUrutan,
+		"", // No scope
+		nil,
+	)
 }
 
 func (s *kondisiProdukService) ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error) {
