@@ -13,16 +13,14 @@ import (
 )
 
 type HeroSectionController struct {
-	service        services.HeroSectionService
-	reorderService *services.ReorderService
-	cfg            *config.Config
+	service services.HeroSectionService
+	cfg     *config.Config
 }
 
-func NewHeroSectionController(service services.HeroSectionService, reorderService *services.ReorderService, cfg *config.Config) *HeroSectionController {
+func NewHeroSectionController(service services.HeroSectionService, cfg *config.Config) *HeroSectionController {
 	return &HeroSectionController{
-		service:        service,
-		reorderService: reorderService,
-		cfg:            cfg,
+		service: service,
+		cfg:     cfg,
 	}
 }
 
@@ -46,9 +44,9 @@ func (c *HeroSectionController) Create(ctx *gin.Context) {
 			req.TanggalSelesai = &ts
 		}
 
-		// Parse is_active (optional, default false)
-		if isActiveStr := ctx.PostForm("is_active"); isActiveStr != "" {
-			req.IsActive = isActiveStr == "true" || isActiveStr == "1"
+		// Parse is_default (optional, default false)
+		if isDefaultStr := ctx.PostForm("is_default"); isDefaultStr != "" {
+			req.IsDefault = isDefaultStr == "true" || isDefaultStr == "1"
 		}
 
 		// Validate required fields
@@ -186,9 +184,9 @@ func (c *HeroSectionController) Update(ctx *gin.Context) {
 		if nama := ctx.PostForm("nama"); nama != "" {
 			req.Nama = &nama
 		}
-		if isActiveStr := ctx.PostForm("is_active"); isActiveStr != "" {
-			isActive := isActiveStr == "true" || isActiveStr == "1"
-			req.IsActive = &isActive
+		if isDefaultStr := ctx.PostForm("is_default"); isDefaultStr != "" {
+			isDefault := isDefaultStr == "true" || isDefaultStr == "1"
+			req.IsDefault = &isDefault
 		}
 		if tm := ctx.PostForm("tanggal_mulai"); tm != "" {
 			req.TanggalMulai = &tm
@@ -299,22 +297,7 @@ func (c *HeroSectionController) ToggleStatus(ctx *gin.Context) {
 		return
 	}
 
-	utils.SuccessResponse(ctx, "Status hero section berhasil diubah", result)
-}
-
-func (c *HeroSectionController) Reorder(ctx *gin.Context) {
-	var req models.ReorderRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
-	}
-
-	if err := c.service.Reorder(ctx.Request.Context(), &req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, "Urutan hero section berhasil diupdate", nil)
+	utils.SuccessResponse(ctx, "Status default hero section berhasil diubah", result)
 }
 
 func (c *HeroSectionController) GetActive(ctx *gin.Context) {
@@ -330,45 +313,4 @@ func (c *HeroSectionController) GetActive(ctx *gin.Context) {
 	}
 
 	utils.SuccessResponse(ctx, "Hero section aktif berhasil diambil", result)
-}
-
-func (c *HeroSectionController) ReorderByDirection(ctx *gin.Context) {
-	id := ctx.Param("id")
-
-	var req models.ReorderByDirectionRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
-	}
-
-	idUUID, err := utils.ParseUUID(id)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", nil)
-		return
-	}
-
-	result, err := c.reorderService.Reorder(
-		ctx.Request.Context(),
-		"hero_section",
-		idUUID,
-		req.Direction,
-		"",
-		nil,
-	)
-
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, "Urutan berhasil diubah", gin.H{
-		"item": gin.H{
-			"id":     result.ItemID,
-			"urutan": result.ItemUrutan,
-		},
-		"swapped_with": gin.H{
-			"id":     result.SwappedID,
-			"urutan": result.SwappedUrutan,
-		},
-	})
 }

@@ -73,6 +73,11 @@ type ToggleStatusResponse struct {
 	IsActive bool   `json:"is_active"`
 }
 
+type ToggleDefaultResponse struct {
+	ID        string `json:"id"`
+	IsDefault bool   `json:"is_default"`
+}
+
 // ========================================
 // Kategori Produk Response
 // ========================================
@@ -571,24 +576,26 @@ type AlamatBuyerResponse struct {
 // ========================================
 
 type HeroSectionResponse struct {
-	ID        string            `json:"id"`
-	Nama      string            `json:"nama"`
-	GambarURL TranslatableImage `json:"gambar_url"`
-	LinkURL   *string           `json:"link_url,omitempty"`
-	Urutan    int               `json:"urutan"`
-	IsActive  bool              `json:"is_active"`
-	CreatedAt time.Time         `json:"created_at"`
-	UpdatedAt time.Time         `json:"updated_at"`
+	ID             string            `json:"id"`
+	Nama           string            `json:"nama"`
+	GambarURL      TranslatableImage `json:"gambar_url"`
+	IsDefault      bool              `json:"is_default"`
+	IsVisible      bool              `json:"is_visible"`
+	TanggalMulai   *time.Time        `json:"tanggal_mulai,omitempty"`
+	TanggalSelesai *time.Time        `json:"tanggal_selesai,omitempty"`
+	CreatedAt      time.Time         `json:"created_at"`
+	UpdatedAt      time.Time         `json:"updated_at"`
 }
 
 type HeroSectionSimpleResponse struct {
-	ID        string            `json:"id"`
-	Nama      string            `json:"nama"`
-	GambarURL TranslatableImage `json:"gambar_url"`
-	LinkURL   *string           `json:"link_url,omitempty"`
-	Urutan    int               `json:"urutan"`
-	IsActive  bool              `json:"is_active"`
-	UpdatedAt time.Time         `json:"updated_at"`
+	ID             string            `json:"id"`
+	Nama           string            `json:"nama"`
+	GambarURL      TranslatableImage `json:"gambar_url"`
+	IsDefault      bool              `json:"is_default"`
+	IsVisible      bool              `json:"is_visible"`
+	TanggalMulai   *time.Time        `json:"tanggal_mulai,omitempty"`
+	TanggalSelesai *time.Time        `json:"tanggal_selesai,omitempty"`
+	UpdatedAt      time.Time         `json:"updated_at"`
 }
 
 // Public response (minimal data)
@@ -596,7 +603,6 @@ type HeroSectionPublicResponse struct {
 	ID        string            `json:"id"`
 	Nama      string            `json:"nama"`
 	GambarURL TranslatableImage `json:"gambar_url"`
-	LinkURL   *string           `json:"link_url,omitempty"`
 }
 
 // ========================================

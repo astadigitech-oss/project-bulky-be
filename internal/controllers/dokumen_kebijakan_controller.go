@@ -143,3 +143,25 @@ func (c *DokumenKebijakanController) GetByIDPublic(ctx *gin.Context) {
 
 	utils.SuccessResponse(ctx, "Detail dokumen kebijakan berhasil diambil", result)
 }
+
+// GetFAQ - Get FAQ in accordion format for public
+func (c *DokumenKebijakanController) GetFAQ(ctx *gin.Context) {
+	lang := ctx.DefaultQuery("lang", "id") // default to Indonesian
+
+	// Validate lang parameter
+	if lang != "id" && lang != "en" {
+		lang = "id"
+	}
+
+	result, err := c.service.GetFAQ(ctx.Request.Context(), lang)
+	if err != nil {
+		if err.Error() == "FAQ tidak ditemukan" || err.Error() == "FAQ tidak aktif" {
+			utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
+			return
+		}
+		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Data FAQ berhasil diambil", result)
+}

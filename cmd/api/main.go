@@ -95,7 +95,7 @@ func main() {
 	masterService := services.NewMasterService(kategoriRepo, merekRepo, kondisiRepo, kondisiPaketRepo, sumberRepo)
 	buyerService := services.NewBuyerService(buyerRepo, alamatBuyerRepo)
 	alamatBuyerService := services.NewAlamatBuyerService(alamatBuyerRepo, buyerRepo)
-	heroSectionService := services.NewHeroSectionService(heroSectionRepo, reorderService, cfg)
+	heroSectionService := services.NewHeroSectionService(heroSectionRepo, cfg)
 	bannerEventPromoService := services.NewBannerEventPromoService(bannerEventPromoRepo, reorderService, cfg)
 	ulasanService := services.NewUlasanService(ulasanRepo, pesananItemRepo, pesananRepo, cfg.UploadPath, cfg.BaseURL)
 	forceUpdateService := services.NewForceUpdateService(forceUpdateRepo, cfg.PlayStoreURL, cfg.AppStoreURL)
@@ -107,6 +107,7 @@ func main() {
 	emailService := services.NewEmailService()
 	formulirPartaiBesarService := services.NewFormulirPartaiBesarService(formulirPartaiBesarRepo, kategoriRepo, reorderService, emailService)
 	whatsappHandlerService := services.NewWhatsAppHandlerService(whatsappHandlerRepo)
+	faqService := services.NewFAQService(db)
 
 	// Auth V2 services
 	authV2Service := services.NewAuthV2Service(authRepo, activityLogRepo)
@@ -130,7 +131,7 @@ func main() {
 	masterController := controllers.NewMasterController(masterService)
 	buyerController := controllers.NewBuyerController(buyerService)
 	alamatBuyerController := controllers.NewAlamatBuyerController(alamatBuyerService)
-	heroSectionController := controllers.NewHeroSectionController(heroSectionService, reorderService, cfg)
+	heroSectionController := controllers.NewHeroSectionController(heroSectionService, cfg)
 	bannerEventPromoController := controllers.NewBannerEventPromoController(bannerEventPromoService, reorderService, cfg)
 	ulasanController := controllers.NewUlasanController(ulasanService)
 	forceUpdateController := controllers.NewForceUpdateController(forceUpdateService)
@@ -142,6 +143,7 @@ func main() {
 	disclaimerController := controllers.NewDisclaimerController(disclaimerService)
 	formulirPartaiBesarController := controllers.NewFormulirPartaiBesarController(formulirPartaiBesarService, reorderService)
 	whatsappHandlerController := controllers.NewWhatsAppHandlerController(whatsappHandlerService)
+	faqController := controllers.NewFAQController(faqService)
 
 	// Auth V2 controllers
 	authV2Controller := controllers.NewAuthV2Controller(authV2Service, adminService, buyerService)
@@ -165,6 +167,7 @@ func main() {
 		metodePembayaranController,
 		dokumenKebijakanController, disclaimerController,
 		formulirPartaiBesarController, whatsappHandlerController,
+		faqController,
 	)
 
 	// Setup Auth V2 routes (new authentication system with roles & permissions)

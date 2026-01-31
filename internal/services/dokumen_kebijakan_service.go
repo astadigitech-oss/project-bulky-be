@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	"project-bulky-be/internal/models"
@@ -19,6 +20,7 @@ type DokumenKebijakanService interface {
 	GetByIDPublic(ctx context.Context, id string, lang string) (*models.DokumenKebijakanPublicResponse, error)
 	GetBySlugPublic(ctx context.Context, slug string, lang string) (*models.DokumenKebijakanPublicResponse, error)
 	GetActiveListPublic(ctx context.Context) ([]models.DokumenKebijakanPublicResponse, error)
+	GetFAQ(ctx context.Context, lang string) (*models.FAQResponse, error)
 }
 
 type dokumenKebijakanService struct {
@@ -33,22 +35,40 @@ func NewDokumenKebijakanService(repo repositories.DokumenKebijakanRepository) Do
 	}
 }
 
+// Fixed pages order (predefined)
+var fixedPagesOrder = []string{
+	"tentang-kami",
+	"cara-membeli",
+	"tentang-pembayaran",
+	"hubungi-kami",
+	"faq",
+	"syarat-ketentuan",
+	"kebijakan-privasi",
+}
+
 func (s *dokumenKebijakanService) FindAll(ctx context.Context) ([]models.DokumenKebijakanListResponse, error) {
 	dokumens, err := s.repo.FindAllSimple(ctx)
 	if err != nil {
 		return nil, errors.New("gagal mengambil data dokumen kebijakan")
 	}
 
-	items := make([]models.DokumenKebijakanListResponse, len(dokumens))
-	for i, d := range dokumens {
-		items[i] = models.DokumenKebijakanListResponse{
-			ID:      d.ID.String(),
-			Judul:   d.Judul,
-			JudulEN: d.JudulEN,
-			Slug:    d.Slug,
-			Urutan:  d.Urutan,
-			// IsActive:  d.IsActive,
-			UpdatedAt: d.UpdatedAt,
+	// Create map for quick lookup
+	docMap := make(map[string]models.DokumenKebijakan)
+	for _, d := range dokumens {
+		docMap[d.Slug] = d
+	}
+
+	// Sort by predefined order
+	items := make([]models.DokumenKebijakanListResponse, 0, len(fixedPagesOrder))
+	for _, slug := range fixedPagesOrder {
+		if d, ok := docMap[slug]; ok {
+			items = append(items, models.DokumenKebijakanListResponse{
+				ID:        d.ID.String(),
+				Judul:     d.Judul,
+				JudulEN:   d.JudulEN,
+				Slug:      d.Slug,
+				UpdatedAt: d.UpdatedAt,
+			})
 		}
 	}
 
@@ -65,14 +85,12 @@ func (s *dokumenKebijakanService) FindByID(ctx context.Context, id string) (*mod
 	}
 
 	return &models.DokumenKebijakanDetailResponse{
-		ID:       dokumen.ID.String(),
-		Judul:    dokumen.Judul,
-		JudulEN:  dokumen.JudulEN,
-		Slug:     dokumen.Slug,
-		Konten:   dokumen.Konten,
-		KontenEN: dokumen.KontenEN,
-		Urutan:   dokumen.Urutan,
-		// IsActive:  dokumen.IsActive,
+		ID:        dokumen.ID.String(),
+		Judul:     dokumen.Judul,
+		JudulEN:   dokumen.JudulEN,
+		Slug:      dokumen.Slug,
+		Konten:    dokumen.Konten,
+		KontenEN:  dokumen.KontenEN,
 		CreatedAt: dokumen.CreatedAt,
 		UpdatedAt: dokumen.UpdatedAt,
 	}, nil
@@ -88,14 +106,12 @@ func (s *dokumenKebijakanService) FindBySlug(ctx context.Context, slug string) (
 	}
 
 	return &models.DokumenKebijakanDetailResponse{
-		ID:       dokumen.ID.String(),
-		Judul:    dokumen.Judul,
-		JudulEN:  dokumen.JudulEN,
-		Slug:     dokumen.Slug,
-		Konten:   dokumen.Konten,
-		KontenEN: dokumen.KontenEN,
-		Urutan:   dokumen.Urutan,
-		// IsActive:  dokumen.IsActive,
+		ID:        dokumen.ID.String(),
+		Judul:     dokumen.Judul,
+		JudulEN:   dokumen.JudulEN,
+		Slug:      dokumen.Slug,
+		Konten:    dokumen.Konten,
+		KontenEN:  dokumen.KontenEN,
 		CreatedAt: dokumen.CreatedAt,
 		UpdatedAt: dokumen.UpdatedAt,
 	}, nil
@@ -120,10 +136,20 @@ func (s *dokumenKebijakanService) Update(ctx context.Context, id string, req *mo
 		dokumen.JudulEN = *req.JudulEN
 	}
 
-	// Update konten if provided (sanitize HTML)
+	// Update konten if provided (sanitize HTML for non-FAQ, keep JSON for FAQ)
 	if req.Konten != nil {
-		sanitized := s.sanitizer.Sanitize(*req.Konten)
-		dokumen.Konten = sanitized
+		if dokumen.Slug == "faq" {
+			// For FAQ, validate JSON format
+			var faqItems []models.FAQContentItem
+			if err := json.Unmarshal([]byte(*req.Konten), &faqItems); err != nil {
+				return nil, errors.New("format FAQ tidak valid, harus berupa JSON array")
+			}
+			dokumen.Konten = *req.Konten
+		} else {
+			// For other pages, sanitize HTML
+			sanitized := s.sanitizer.Sanitize(*req.Konten)
+			dokumen.Konten = sanitized
+		}
 	}
 
 	// Update konten_en if provided (sanitize HTML)
@@ -142,14 +168,12 @@ func (s *dokumenKebijakanService) Update(ctx context.Context, id string, req *mo
 	}
 
 	return &models.DokumenKebijakanDetailResponse{
-		ID:       dokumen.ID.String(),
-		Judul:    dokumen.Judul,
-		JudulEN:  dokumen.JudulEN,
-		Slug:     dokumen.Slug,
-		Konten:   dokumen.Konten,
-		KontenEN: dokumen.KontenEN,
-		Urutan:   dokumen.Urutan,
-		// IsActive:  dokumen.IsActive,
+		ID:        dokumen.ID.String(),
+		Judul:     dokumen.Judul,
+		JudulEN:   dokumen.JudulEN,
+		Slug:      dokumen.Slug,
+		Konten:    dokumen.Konten,
+		KontenEN:  dokumen.KontenEN,
 		CreatedAt: dokumen.CreatedAt,
 		UpdatedAt: dokumen.UpdatedAt,
 	}, nil
@@ -174,10 +198,20 @@ func (s *dokumenKebijakanService) UpdateBySlug(ctx context.Context, slug string,
 		dokumen.JudulEN = *req.JudulEN
 	}
 
-	// Update konten if provided (sanitize HTML)
+	// Update konten if provided (sanitize HTML for non-FAQ, keep JSON for FAQ)
 	if req.Konten != nil {
-		sanitized := s.sanitizer.Sanitize(*req.Konten)
-		dokumen.Konten = sanitized
+		if dokumen.Slug == "faq" {
+			// For FAQ, validate JSON format
+			var faqItems []models.FAQContentItem
+			if err := json.Unmarshal([]byte(*req.Konten), &faqItems); err != nil {
+				return nil, errors.New("format FAQ tidak valid, harus berupa JSON array")
+			}
+			dokumen.Konten = *req.Konten
+		} else {
+			// For other pages, sanitize HTML
+			sanitized := s.sanitizer.Sanitize(*req.Konten)
+			dokumen.Konten = sanitized
+		}
 	}
 
 	// Update konten_en if provided (sanitize HTML)
@@ -196,14 +230,12 @@ func (s *dokumenKebijakanService) UpdateBySlug(ctx context.Context, slug string,
 	}
 
 	return &models.DokumenKebijakanDetailResponse{
-		ID:       dokumen.ID.String(),
-		Judul:    dokumen.Judul,
-		JudulEN:  dokumen.JudulEN,
-		Slug:     dokumen.Slug,
-		Konten:   dokumen.Konten,
-		KontenEN: dokumen.KontenEN,
-		Urutan:   dokumen.Urutan,
-		// IsActive:  dokumen.IsActive,
+		ID:        dokumen.ID.String(),
+		Judul:     dokumen.Judul,
+		JudulEN:   dokumen.JudulEN,
+		Slug:      dokumen.Slug,
+		Konten:    dokumen.Konten,
+		KontenEN:  dokumen.KontenEN,
 		CreatedAt: dokumen.CreatedAt,
 		UpdatedAt: dokumen.UpdatedAt,
 	}, nil
@@ -235,7 +267,6 @@ func (s *dokumenKebijakanService) GetByIDPublic(ctx context.Context, id string, 
 		Judul:  judul,
 		Slug:   dokumen.Slug,
 		Konten: konten,
-		Urutan: dokumen.Urutan,
 	}, nil
 }
 
@@ -265,7 +296,6 @@ func (s *dokumenKebijakanService) GetBySlugPublic(ctx context.Context, slug stri
 		Judul:  judul,
 		Slug:   dokumen.Slug,
 		Konten: konten,
-		Urutan: dokumen.Urutan,
 	}, nil
 }
 
@@ -278,11 +308,55 @@ func (s *dokumenKebijakanService) GetActiveListPublic(ctx context.Context) ([]mo
 	items := make([]models.DokumenKebijakanPublicResponse, len(dokumens))
 	for i, d := range dokumens {
 		items[i] = models.DokumenKebijakanPublicResponse{
-			ID:     d.ID.String(),
-			Judul:  d.Judul,
-			Urutan: d.Urutan,
+			ID:    d.ID.String(),
+			Judul: d.Judul,
+			Slug:  d.Slug,
 		}
 	}
 
 	return items, nil
+}
+
+func (s *dokumenKebijakanService) GetFAQ(ctx context.Context, lang string) (*models.FAQResponse, error) {
+	doc, err := s.repo.FindBySlug(ctx, "faq")
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("FAQ tidak ditemukan")
+		}
+		return nil, errors.New("gagal mengambil data FAQ")
+	}
+
+	if !doc.IsActive {
+		return nil, errors.New("FAQ tidak aktif")
+	}
+
+	// Parse JSON content
+	var items []models.FAQContentItem
+	if err := json.Unmarshal([]byte(doc.Konten), &items); err != nil {
+		return nil, errors.New("format FAQ tidak valid")
+	}
+
+	// Build response based on language
+	response := &models.FAQResponse{
+		Judul: doc.Judul,
+		Items: make([]models.FAQItem, 0, len(items)),
+	}
+
+	if lang == "en" {
+		response.Judul = doc.JudulEN
+	}
+
+	for _, item := range items {
+		faqItem := models.FAQItem{}
+		if lang == "en" {
+			faqItem.Question = item.QuestionEN
+			faqItem.Answer = item.AnswerEN
+		} else {
+			faqItem.Question = item.Question
+			faqItem.Answer = item.Answer
+		}
+		response.Items = append(response.Items, faqItem)
+	}
+
+	return response, nil
 }

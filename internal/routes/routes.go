@@ -39,6 +39,7 @@ func SetupRoutes(
 	disclaimerController *controllers.DisclaimerController,
 	formulirPartaiBesarController *controllers.FormulirPartaiBesarController,
 	whatsappHandlerController *controllers.WhatsAppHandlerController,
+	faqController *controllers.FAQController,
 ) {
 	// Health check
 	router.GET("/api/health", func(c *gin.Context) {
@@ -360,8 +361,6 @@ func SetupRoutes(
 			heroSectionAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), heroSectionController.Update)
 			heroSectionAdmin.DELETE("/:id", middleware.RequirePermission("marketing:manage"), heroSectionController.Delete)
 			heroSectionAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("marketing:manage"), heroSectionController.ToggleStatus)
-			heroSectionAdmin.PUT("/reorder", middleware.RequirePermission("marketing:manage"), heroSectionController.Reorder)
-			heroSectionAdmin.PATCH("/:id/reorder", middleware.RequirePermission("marketing:manage"), heroSectionController.ReorderByDirection)
 		}
 
 		// Hero Section (Public)
@@ -496,6 +495,22 @@ func SetupRoutes(
 		{
 			dokumenKebijakanPublic.GET("", dokumenKebijakanController.GetAllPublic)
 			dokumenKebijakanPublic.GET("/:id", dokumenKebijakanController.GetByIDPublic)
+		}
+
+		// FAQ - Public (Custom route with accordion format)
+		v1.GET("/public/faq", dokumenKebijakanController.GetFAQ)
+
+		// FAQ - Admin (Separate from dokumen-kebijakan)
+		faqAdmin := v1.Group("/panel/faq")
+		faqAdmin.Use(middleware.AuthMiddleware())
+		faqAdmin.Use(middleware.AdminOnly())
+		{
+			faqAdmin.GET("", middleware.RequirePermission("operasional:read"), faqController.Get)
+			faqAdmin.PUT("", middleware.RequirePermission("operasional:manage"), faqController.Update)
+			faqAdmin.POST("/items", middleware.RequirePermission("operasional:manage"), faqController.AddItem)
+			faqAdmin.PUT("/items/:index", middleware.RequirePermission("operasional:manage"), faqController.UpdateItem)
+			faqAdmin.DELETE("/items/:index", middleware.RequirePermission("operasional:manage"), faqController.DeleteItem)
+			faqAdmin.PATCH("/items/reorder", middleware.RequirePermission("operasional:manage"), faqController.ReorderItem)
 		}
 
 		// Disclaimer - Admin

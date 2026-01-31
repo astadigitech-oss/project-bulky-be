@@ -72,12 +72,12 @@ func (r *dokumenKebijakanRepository) FindAll(ctx context.Context, params *models
 		"is_active":  true,
 		"created_at": true,
 		"updated_at": true,
-		"urutan":     true,
+		"slug":       true,
 	}
 
 	sortBy := params.SortBy
 	if !validSortFields[sortBy] {
-		sortBy = "urutan"
+		sortBy = "slug"
 	}
 
 	order := params.Order
@@ -107,9 +107,9 @@ func (r *dokumenKebijakanRepository) Delete(ctx context.Context, id string) erro
 func (r *dokumenKebijakanRepository) GetActiveList(ctx context.Context) ([]models.DokumenKebijakan, error) {
 	var dokumens []models.DokumenKebijakan
 	err := r.db.WithContext(ctx).
-		Select("id", "judul", "judul_en", "urutan").
+		Select("id", "judul", "judul_en", "slug").
 		Where("is_active = ?", true).
-		Order("urutan ASC").
+		Order("slug ASC").
 		Find(&dokumens).Error
 	return dokumens, err
 }
@@ -117,7 +117,7 @@ func (r *dokumenKebijakanRepository) GetActiveList(ctx context.Context) ([]model
 func (r *dokumenKebijakanRepository) FindAllSimple(ctx context.Context) ([]models.DokumenKebijakan, error) {
 	var dokumens []models.DokumenKebijakan
 	err := r.db.WithContext(ctx).
-		Order("urutan ASC").
+		Order("slug ASC").
 		Find(&dokumens).Error
 	return dokumens, err
 }

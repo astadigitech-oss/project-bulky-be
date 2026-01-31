@@ -485,7 +485,7 @@ type CreateHeroSectionRequest struct {
 	Nama           string  `json:"nama" binding:"required,min=1,max=100"`
 	GambarID       string  `json:"gambar_id" binding:"required,max=500"`
 	GambarEN       *string `json:"gambar_en" binding:"omitempty,max=500"`
-	IsActive       bool    `json:"is_active"`
+	IsDefault      bool    `json:"is_default"`
 	TanggalMulai   *string `json:"tanggal_mulai"`
 	TanggalSelesai *string `json:"tanggal_selesai"`
 }
@@ -494,14 +494,14 @@ type UpdateHeroSectionRequest struct {
 	Nama           *string `json:"nama" binding:"omitempty,min=1,max=100"`
 	GambarID       *string `json:"gambar_id" binding:"omitempty,max=500"`
 	GambarEN       *string `json:"gambar_en" binding:"omitempty,max=500"`
-	IsActive       *bool   `json:"is_active"`
+	IsDefault      *bool   `json:"is_default"`
 	TanggalMulai   *string `json:"tanggal_mulai"`
 	TanggalSelesai *string `json:"tanggal_selesai"`
 }
 
 type HeroSectionFilterRequest struct {
 	PaginationRequest
-	IsActive  *bool   `form:"is_active"`
+	IsDefault *bool   `form:"is_default"`
 	UpdatedAt *string `form:"updated_at"`
 }
 
