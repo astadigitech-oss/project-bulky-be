@@ -25,7 +25,8 @@ type WarehouseService interface {
 	GetPublic(ctx context.Context) (*dto.WarehousePublicResponse, error)
 	// Informasi Pickup methods (warehouse + jadwal)
 	GetInformasiPickup(ctx context.Context) (*dto.InformasiPickupResponse, error)
-	UpdateJadwal(ctx context.Context, req *dto.UpdateJadwalRequest) error
+	GetJadwal(ctx context.Context) ([]dto.JadwalGudangResponse, error)
+	UpdateJadwal(ctx context.Context, req *dto.UpdateJadwalRequest) ([]dto.JadwalGudangResponse, error)
 }
 
 type warehouseService struct {
@@ -198,7 +199,6 @@ func (s *warehouseService) UpdateSingleton(ctx context.Context, req *dto.Warehou
 	warehouse.Alamat = req.Alamat
 	warehouse.Kota = req.Kota
 	warehouse.KodePos = req.KodePos
-	warehouse.Telepon = req.Telepon
 	warehouse.Latitude = req.Latitude
 	warehouse.Longitude = req.Longitude
 	warehouse.JamOperasional = req.JamOperasional
@@ -238,15 +238,12 @@ func (s *warehouseService) toWarehouseResponse(w *models.Warehouse) *dto.Warehou
 	return &dto.WarehouseResponse{
 		ID:             w.ID.String(),
 		Nama:           w.Nama,
-		Slug:           w.Slug,
 		Alamat:         w.Alamat,
 		Kota:           w.Kota,
 		KodePos:        w.KodePos,
-		Telepon:        w.Telepon,
 		Latitude:       w.Latitude,
 		Longitude:      w.Longitude,
 		JamOperasional: w.JamOperasional,
-		IsActive:       w.IsActive,
 		CreatedAt:      w.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		UpdatedAt:      w.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
@@ -311,24 +308,56 @@ func (s *warehouseService) GetInformasiPickup(ctx context.Context) (*dto.Informa
 	}, nil
 }
 
-// UpdateJadwal updates jadwal gudang
-func (s *warehouseService) UpdateJadwal(ctx context.Context, req *dto.UpdateJadwalRequest) error {
+// GetJadwal returns jadwal gudang as array
+func (s *warehouseService) GetJadwal(ctx context.Context) ([]dto.JadwalGudangResponse, error) {
 	warehouse, err := s.repo.FindFirstActive(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if warehouse == nil {
-		return errors.New("warehouse tidak ditemukan")
+		return nil, errors.New("warehouse tidak ditemukan")
+	}
+
+	// Get jadwal
+	jadwal, err := s.jadwalRepo.FindByWarehouseID(ctx, warehouse.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert jadwal to response
+	jadwalResp := []dto.JadwalGudangResponse{}
+	for _, j := range jadwal {
+		jadwalResp = append(jadwalResp, dto.JadwalGudangResponse{
+			ID:       j.ID.String(),
+			Hari:     j.Hari,
+			NamaHari: j.GetHariNama(),
+			JamBuka:  j.JamBuka,
+			JamTutup: j.JamTutup,
+			IsBuka:   j.IsBuka,
+		})
+	}
+
+	return jadwalResp, nil
+}
+
+// UpdateJadwal updates jadwal gudang and returns updated jadwal array
+func (s *warehouseService) UpdateJadwal(ctx context.Context, req *dto.UpdateJadwalRequest) ([]dto.JadwalGudangResponse, error) {
+	warehouse, err := s.repo.FindFirstActive(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if warehouse == nil {
+		return nil, errors.New("warehouse tidak ditemukan")
 	}
 
 	// Validate jadwal
 	for _, j := range req.Jadwal {
 		if j.IsBuka {
 			if j.JamBuka == nil || j.JamTutup == nil {
-				return fmt.Errorf("jam buka dan jam tutup wajib diisi untuk hari %d", j.Hari)
+				return nil, fmt.Errorf("jam buka dan jam tutup wajib diisi untuk hari %d", j.Hari)
 			}
 			if *j.JamBuka >= *j.JamTutup {
-				return fmt.Errorf("jam tutup harus lebih besar dari jam buka untuk hari %d", j.Hari)
+				return nil, fmt.Errorf("jam tutup harus lebih besar dari jam buka untuk hari %d", j.Hari)
 			}
 		}
 	}
@@ -345,7 +374,12 @@ func (s *warehouseService) UpdateJadwal(ctx context.Context, req *dto.UpdateJadw
 		})
 	}
 
-	return s.jadwalRepo.UpdateBatch(ctx, warehouse.ID, jadwalModels)
+	if err := s.jadwalRepo.UpdateBatch(ctx, warehouse.ID, jadwalModels); err != nil {
+		return nil, err
+	}
+
+	// Return updated jadwal
+	return s.GetJadwal(ctx)
 }
 
 // Helper functions

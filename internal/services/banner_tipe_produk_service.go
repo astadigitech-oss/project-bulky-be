@@ -287,20 +287,19 @@ func (s *bannerTipeProdukService) Delete(ctx context.Context, id string) error {
 	}
 
 	deletedUrutan := banner.Urutan
-	tipeProdukID := banner.TipeProdukID
 
 	// Soft delete banner
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return err
 	}
 
-	// Reorder remaining items within same tipe_produk to fill gap
+	// Reorder remaining items GLOBALLY (no scope) to fill gap
 	return s.reorderService.ReorderAfterDelete(
 		ctx,
 		"banner_tipe_produk",
 		deletedUrutan,
-		"tipe_produk_id",
-		tipeProdukID,
+		"",  // No scope column
+		nil, // No scope value
 	)
 }
 
@@ -311,7 +310,6 @@ func (s *bannerTipeProdukService) DeleteWithFile(ctx context.Context, id string)
 	}
 
 	deletedUrutan := banner.Urutan
-	tipeProdukID := banner.TipeProdukID
 
 	// Delete from database first
 	if err := s.repo.Delete(ctx, id); err != nil {
@@ -323,13 +321,13 @@ func (s *bannerTipeProdukService) DeleteWithFile(ctx context.Context, id string)
 		utils.DeleteFile(banner.GambarURL, s.cfg)
 	}
 
-	// Reorder remaining items within same tipe_produk to fill gap
+	// Reorder remaining items GLOBALLY (no scope) to fill gap
 	return s.reorderService.ReorderAfterDelete(
 		ctx,
 		"banner_tipe_produk",
 		deletedUrutan,
-		"tipe_produk_id",
-		tipeProdukID,
+		"",  // No scope column
+		nil, // No scope value
 	)
 }
 

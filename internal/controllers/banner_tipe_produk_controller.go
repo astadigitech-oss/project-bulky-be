@@ -287,13 +287,14 @@ func (c *BannerTipeProdukController) ReorderByDirection(ctx *gin.Context) {
 		return
 	}
 
+	// Reorder GLOBALLY (no scope)
 	result, err := c.reorderService.Reorder(
 		ctx.Request.Context(),
 		"banner_tipe_produk",
 		idUUID,
 		req.Direction,
-		"",
-		nil,
+		"",  // No scope column
+		nil, // No scope value
 	)
 
 	if err != nil {

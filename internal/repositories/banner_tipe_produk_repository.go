@@ -12,13 +12,15 @@ type BannerTipeProdukRepository interface {
 	Create(ctx context.Context, banner *models.BannerTipeProduk) error
 	FindByID(ctx context.Context, id string) (*models.BannerTipeProduk, error)
 	FindAll(ctx context.Context, params *models.BannerTipeProdukFilterRequest, tipeProdukID string) ([]models.BannerTipeProduk, int64, error)
-	FindAllGrouped(ctx context.Context, search string) ([]models.BannerTipeProduk, error) // NEW
+	FindAllGrouped(ctx context.Context, search string) ([]models.BannerTipeProduk, error)
 	FindByTipeProdukID(ctx context.Context, tipeProdukID string) ([]models.BannerTipeProduk, error)
 	Update(ctx context.Context, banner *models.BannerTipeProduk) error
 	Delete(ctx context.Context, id string) error
 	UpdateOrder(ctx context.Context, items []models.ReorderItem) error
 	GetMaxUrutan(ctx context.Context) (int, error)
 	GetMaxUrutanByTipeProduk(ctx context.Context, tipeProdukID string) (int, error)
+	FindPreviousByUrutan(ctx context.Context, currentUrutan int) (*models.BannerTipeProduk, error)
+	FindNextByUrutan(ctx context.Context, currentUrutan int) (*models.BannerTipeProduk, error)
 }
 
 type bannerTipeProdukRepository struct {
@@ -164,4 +166,30 @@ func (r *bannerTipeProdukRepository) GetMaxUrutanByTipeProduk(ctx context.Contex
 		Select("COALESCE(MAX(urutan), 0)").
 		Scan(&maxUrutan).Error
 	return maxUrutan, err
+}
+
+// FindPreviousByUrutan - Find banner with urutan < current (global, no scope)
+func (r *bannerTipeProdukRepository) FindPreviousByUrutan(ctx context.Context, currentUrutan int) (*models.BannerTipeProduk, error) {
+	var banner models.BannerTipeProduk
+	err := r.db.WithContext(ctx).
+		Where("urutan < ?", currentUrutan).
+		Order("urutan DESC").
+		First(&banner).Error
+	if err != nil {
+		return nil, err
+	}
+	return &banner, nil
+}
+
+// FindNextByUrutan - Find banner with urutan > current (global, no scope)
+func (r *bannerTipeProdukRepository) FindNextByUrutan(ctx context.Context, currentUrutan int) (*models.BannerTipeProduk, error) {
+	var banner models.BannerTipeProduk
+	err := r.db.WithContext(ctx).
+		Where("urutan > ?", currentUrutan).
+		Order("urutan ASC").
+		First(&banner).Error
+	if err != nil {
+		return nil, err
+	}
+	return &banner, nil
 }
