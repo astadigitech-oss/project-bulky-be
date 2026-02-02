@@ -10,20 +10,17 @@ type JadwalGudangResponse struct {
 	IsBuka   bool    `json:"is_buka"`
 }
 
-// WarehouseResponse - untuk admin panel
+// WarehouseResponse - untuk admin panel (simplified - removed slug, telepon, is_active)
 type WarehouseResponse struct {
 	ID             string   `json:"id"`
 	Nama           string   `json:"nama"`
-	Slug           string   `json:"slug"`
 	Alamat         *string  `json:"alamat"`
 	Kota           *string  `json:"kota"`
 	KodePos        *string  `json:"kode_pos"`
-	Telepon        *string  `json:"telepon"`
 	Latitude       *float64 `json:"latitude"`
 	Longitude      *float64 `json:"longitude"`
 	JamOperasional *string  `json:"jam_operasional"`
-	IsActive       bool     `json:"is_active"`
-	CreatedAt      string   `json:"created_at"`
+	CreatedAt      string   `json:"created_at,omitempty"`
 	UpdatedAt      string   `json:"updated_at"`
 }
 
@@ -51,13 +48,12 @@ type InformasiPickupResponse struct {
 	Jadwal        []JadwalGudangResponse `json:"jadwal"`
 }
 
-// WarehouseUpdateRequest - request untuk update warehouse
+// WarehouseUpdateRequest - request untuk update warehouse (removed telepon)
 type WarehouseUpdateRequest struct {
 	Nama           string   `json:"nama" binding:"required,min=3,max=100"`
 	Alamat         *string  `json:"alamat" binding:"omitempty,min=10"`
 	Kota           *string  `json:"kota" binding:"omitempty,max=100"`
 	KodePos        *string  `json:"kode_pos" binding:"omitempty,max=10,numeric"`
-	Telepon        *string  `json:"telepon" binding:"omitempty,max=20"`
 	Latitude       *float64 `json:"latitude" binding:"omitempty,min=-90,max=90"`
 	Longitude      *float64 `json:"longitude" binding:"omitempty,min=-180,max=180"`
 	JamOperasional *string  `json:"jam_operasional" binding:"omitempty,max=100"`

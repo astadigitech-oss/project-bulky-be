@@ -53,7 +53,6 @@ func (c *WarehouseController) FindAll(ctx *gin.Context) {
 	utils.PaginatedSuccessResponse(ctx, "Data warehouse berhasil diambil", items, *meta)
 }
 
-
 func (c *WarehouseController) FindByID(ctx *gin.Context) {
 	id := ctx.Param("id")
 
@@ -161,7 +160,18 @@ func (c *WarehouseController) GetInformasiPickup(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, "Data informasi pickup berhasil diambil", result)
 }
 
-// UpdateJadwal updates jadwal gudang
+// GetJadwal returns jadwal gudang as array
+func (c *WarehouseController) GetJadwal(ctx *gin.Context) {
+	result, err := c.service.GetJadwal(ctx.Request.Context())
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Data jadwal gudang berhasil diambil", result)
+}
+
+// UpdateJadwal updates jadwal gudang and returns updated array
 func (c *WarehouseController) UpdateJadwal(ctx *gin.Context) {
 	var req dto.UpdateJadwalRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -169,10 +179,11 @@ func (c *WarehouseController) UpdateJadwal(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.service.UpdateJadwal(ctx.Request.Context(), &req); err != nil {
+	result, err := c.service.UpdateJadwal(ctx.Request.Context(), &req)
+	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
-	utils.SuccessResponse(ctx, "Jadwal berhasil diupdate", nil)
+	utils.SuccessResponse(ctx, "Jadwal gudang berhasil diupdate", result)
 }

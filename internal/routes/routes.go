@@ -597,7 +597,8 @@ func SetupRoutes(
 		informasiPickupAdmin.Use(middleware.AuthMiddleware())
 		informasiPickupAdmin.Use(middleware.AdminOnly())
 		{
-			informasiPickupAdmin.GET("", middleware.RequirePermission("operasional:read"), warehouseController.GetInformasiPickup)
+			informasiPickupAdmin.GET("", middleware.RequirePermission("operasional:read"), warehouseController.Get)
+			informasiPickupAdmin.GET("/jadwal", middleware.RequirePermission("operasional:read"), warehouseController.GetJadwal)
 			informasiPickupAdmin.PUT("/jadwal", middleware.RequirePermission("operasional:manage"), warehouseController.UpdateJadwal)
 		}
 	}
