@@ -21,6 +21,9 @@ type BannerTipeProdukRepository interface {
 	GetMaxUrutanByTipeProduk(ctx context.Context, tipeProdukID string) (int, error)
 	FindPreviousByUrutan(ctx context.Context, currentUrutan int) (*models.BannerTipeProduk, error)
 	FindNextByUrutan(ctx context.Context, currentUrutan int) (*models.BannerTipeProduk, error)
+	FindPreviousByUrutanAndTipeProduk(ctx context.Context, tipeProdukID string, currentUrutan int) (*models.BannerTipeProduk, error)
+	FindNextByUrutanAndTipeProduk(ctx context.Context, tipeProdukID string, currentUrutan int) (*models.BannerTipeProduk, error)
+	ReorderAfterDeleteScoped(ctx context.Context, tipeProdukID string, deletedUrutan int) error
 }
 
 type bannerTipeProdukRepository struct {
@@ -110,7 +113,7 @@ func (r *bannerTipeProdukRepository) FindByTipeProdukID(ctx context.Context, tip
 }
 
 func (r *bannerTipeProdukRepository) Update(ctx context.Context, banner *models.BannerTipeProduk) error {
-	return r.db.WithContext(ctx).Save(banner).Error
+	return r.db.WithContext(ctx).Omit("TipeProduk").Save(banner).Error
 }
 
 func (r *bannerTipeProdukRepository) Delete(ctx context.Context, id string) error {
@@ -192,4 +195,41 @@ func (r *bannerTipeProdukRepository) FindNextByUrutan(ctx context.Context, curre
 		return nil, err
 	}
 	return &banner, nil
+}
+
+// FindPreviousByUrutanAndTipeProduk - Find previous banner within same tipe_produk
+func (r *bannerTipeProdukRepository) FindPreviousByUrutanAndTipeProduk(ctx context.Context, tipeProdukID string, currentUrutan int) (*models.BannerTipeProduk, error) {
+	var banner models.BannerTipeProduk
+	err := r.db.WithContext(ctx).
+		Where("tipe_produk_id = ?", tipeProdukID).
+		Where("urutan < ?", currentUrutan).
+		Order("urutan DESC").
+		First(&banner).Error
+	if err != nil {
+		return nil, err
+	}
+	return &banner, nil
+}
+
+// FindNextByUrutanAndTipeProduk - Find next banner within same tipe_produk
+func (r *bannerTipeProdukRepository) FindNextByUrutanAndTipeProduk(ctx context.Context, tipeProdukID string, currentUrutan int) (*models.BannerTipeProduk, error) {
+	var banner models.BannerTipeProduk
+	err := r.db.WithContext(ctx).
+		Where("tipe_produk_id = ?", tipeProdukID).
+		Where("urutan > ?", currentUrutan).
+		Order("urutan ASC").
+		First(&banner).Error
+	if err != nil {
+		return nil, err
+	}
+	return &banner, nil
+}
+
+// ReorderAfterDeleteScoped - Reorder banners after delete within same tipe_produk
+func (r *bannerTipeProdukRepository) ReorderAfterDeleteScoped(ctx context.Context, tipeProdukID string, deletedUrutan int) error {
+	return r.db.WithContext(ctx).
+		Model(&models.BannerTipeProduk{}).
+		Where("tipe_produk_id = ?", tipeProdukID).
+		Where("urutan > ?", deletedUrutan).
+		Update("urutan", gorm.Expr("urutan - 1")).Error
 }

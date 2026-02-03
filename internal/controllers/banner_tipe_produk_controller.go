@@ -66,9 +66,7 @@ func (c *BannerTipeProdukController) Create(ctx *gin.Context) {
 		result, err := c.service.Create(ctx.Request.Context(), &req)
 		if err != nil {
 			// Rollback: delete uploaded file if creation fails
-			if gambarURL != nil {
-				utils.DeleteFile(*gambarURL, c.cfg)
-			}
+			utils.DeleteFile(*gambarURL, c.cfg)
 			utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 			return
 		}
@@ -281,20 +279,33 @@ func (c *BannerTipeProdukController) ReorderByDirection(ctx *gin.Context) {
 		return
 	}
 
+	// Get banner to find its tipe_produk_id
+	banner, err := c.service.FindByID(ctx.Request.Context(), id)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusNotFound, "Banner tidak ditemukan", nil)
+		return
+	}
+
 	idUUID, err := utils.ParseUUID(id)
 	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", nil)
 		return
 	}
 
-	// Reorder GLOBALLY (no scope)
+	tipeProdukUUID, err := utils.ParseUUID(banner.TipeProduk.ID)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe produk ID tidak valid", nil)
+		return
+	}
+
+	// Reorder SCOPED by tipe_produk_id
 	result, err := c.reorderService.Reorder(
 		ctx.Request.Context(),
 		"banner_tipe_produk",
 		idUUID,
 		req.Direction,
-		"",  // No scope column
-		nil, // No scope value
+		"tipe_produk_id",
+		tipeProdukUUID,
 	)
 
 	if err != nil {

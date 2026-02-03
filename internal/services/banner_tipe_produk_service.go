@@ -54,8 +54,8 @@ func (s *bannerTipeProdukService) Create(ctx context.Context, req *models.Create
 		return nil, errors.New("tipe_produk_id tidak valid")
 	}
 
-	// Auto-increment urutan
-	maxUrutan, err := s.repo.GetMaxUrutan(ctx)
+	// Auto-increment urutan per tipe_produk (scoped)
+	maxUrutan, err := s.repo.GetMaxUrutanByTipeProduk(ctx, req.TipeProdukID)
 	if err != nil {
 		return nil, err
 	}
@@ -211,15 +211,11 @@ func (s *bannerTipeProdukService) Update(ctx context.Context, id string, req *mo
 			// Update banner with new tipe_produk and place at end
 			banner.TipeProdukID = tipeProdukUUID
 			banner.Urutan = maxUrutan + 1
+			// Clear preloaded relation to avoid GORM using old FK
+			banner.TipeProduk = models.TipeProduk{}
 
 			// Reorder old tipe_produk group to fill gap
-			if err := s.reorderService.ReorderAfterDelete(
-				ctx,
-				"banner_tipe_produk",
-				oldUrutan,
-				"tipe_produk_id",
-				oldTipeProdukID,
-			); err != nil {
+			if err := s.repo.ReorderAfterDeleteScoped(ctx, oldTipeProdukID.String(), oldUrutan); err != nil {
 				return nil, err
 			}
 		}
@@ -250,14 +246,56 @@ func (s *bannerTipeProdukService) UpdateWithFile(ctx context.Context, id string,
 
 	// Store old gambar URL for deletion if update successful
 	oldGambarURL := banner.GambarURL
+	oldTipeProdukID := banner.TipeProdukID
+	oldUrutan := banner.Urutan
 
+	// Check if tipe_produk is being changed
 	if req.TipeProdukID != nil {
 		tipeProdukUUID, err := uuid.Parse(*req.TipeProdukID)
 		if err != nil {
 			return nil, errors.New("tipe_produk_id tidak valid")
 		}
-		banner.TipeProdukID = tipeProdukUUID
+
+		// If tipe_produk is actually changing
+		if tipeProdukUUID != banner.TipeProdukID {
+			// Validate new tipe_produk exists by checking dropdown list
+			allTipeProduk, err := s.tipeProdukRepo.GetAllForDropdown(ctx)
+			if err != nil {
+				return nil, errors.New("gagal validasi tipe produk")
+			}
+
+			// Check if the new tipe_produk_id exists
+			found := false
+			for _, tp := range allTipeProduk {
+				if tp.ID == tipeProdukUUID {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				return nil, errors.New("tipe produk tidak ditemukan")
+			}
+
+			// Get max urutan in new tipe_produk group
+			maxUrutan, err := s.repo.GetMaxUrutanByTipeProduk(ctx, tipeProdukUUID.String())
+			if err != nil {
+				return nil, err
+			}
+
+			// Update banner with new tipe_produk and place at end
+			banner.TipeProdukID = tipeProdukUUID
+			banner.Urutan = maxUrutan + 1
+			// Clear preloaded relation to avoid GORM using old FK
+			banner.TipeProduk = models.TipeProduk{}
+
+			// Reorder old tipe_produk group to fill gap
+			if err := s.repo.ReorderAfterDeleteScoped(ctx, oldTipeProdukID.String(), oldUrutan); err != nil {
+				return nil, err
+			}
+		}
 	}
+
 	if req.Nama != nil {
 		banner.Nama = *req.Nama
 	}
@@ -287,20 +325,15 @@ func (s *bannerTipeProdukService) Delete(ctx context.Context, id string) error {
 	}
 
 	deletedUrutan := banner.Urutan
+	tipeProdukID := banner.TipeProdukID.String()
 
 	// Soft delete banner
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return err
 	}
 
-	// Reorder remaining items GLOBALLY (no scope) to fill gap
-	return s.reorderService.ReorderAfterDelete(
-		ctx,
-		"banner_tipe_produk",
-		deletedUrutan,
-		"",  // No scope column
-		nil, // No scope value
-	)
+	// Reorder remaining items within same tipe_produk (scoped)
+	return s.repo.ReorderAfterDeleteScoped(ctx, tipeProdukID, deletedUrutan)
 }
 
 func (s *bannerTipeProdukService) DeleteWithFile(ctx context.Context, id string) error {
@@ -310,6 +343,7 @@ func (s *bannerTipeProdukService) DeleteWithFile(ctx context.Context, id string)
 	}
 
 	deletedUrutan := banner.Urutan
+	tipeProdukID := banner.TipeProdukID.String()
 
 	// Delete from database first
 	if err := s.repo.Delete(ctx, id); err != nil {
@@ -321,14 +355,8 @@ func (s *bannerTipeProdukService) DeleteWithFile(ctx context.Context, id string)
 		utils.DeleteFile(banner.GambarURL, s.cfg)
 	}
 
-	// Reorder remaining items GLOBALLY (no scope) to fill gap
-	return s.reorderService.ReorderAfterDelete(
-		ctx,
-		"banner_tipe_produk",
-		deletedUrutan,
-		"",  // No scope column
-		nil, // No scope value
-	)
+	// Reorder remaining items within same tipe_produk (scoped)
+	return s.repo.ReorderAfterDeleteScoped(ctx, tipeProdukID, deletedUrutan)
 }
 
 func (s *bannerTipeProdukService) ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error) {
