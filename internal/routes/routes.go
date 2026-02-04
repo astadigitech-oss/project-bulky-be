@@ -497,20 +497,20 @@ func SetupRoutes(
 			dokumenKebijakanPublic.GET("/:id", dokumenKebijakanController.GetByIDPublic)
 		}
 
-		// FAQ - Public (Custom route with accordion format)
-		v1.GET("/public/faq", dokumenKebijakanController.GetFAQ)
+		// FAQ - Public
+		v1.GET("/public/faq", faqController.GetPublic)
 
-		// FAQ - Admin (Separate from dokumen-kebijakan)
+		// FAQ - Admin (Tabel terpisah dengan UUID)
 		faqAdmin := v1.Group("/panel/faq")
 		faqAdmin.Use(middleware.AuthMiddleware())
 		faqAdmin.Use(middleware.AdminOnly())
 		{
-			faqAdmin.GET("", middleware.RequirePermission("operasional:read"), faqController.Get)
-			faqAdmin.PUT("", middleware.RequirePermission("operasional:manage"), faqController.Update)
-			faqAdmin.POST("/items", middleware.RequirePermission("operasional:manage"), faqController.AddItem)
-			faqAdmin.PUT("/items/:index", middleware.RequirePermission("operasional:manage"), faqController.UpdateItem)
-			faqAdmin.DELETE("/items/:index", middleware.RequirePermission("operasional:manage"), faqController.DeleteItem)
-			faqAdmin.PATCH("/items/reorder", middleware.RequirePermission("operasional:manage"), faqController.ReorderItem)
+			faqAdmin.GET("", middleware.RequirePermission("operasional:read"), faqController.GetAll)
+			faqAdmin.GET("/:id", middleware.RequirePermission("operasional:read"), faqController.GetByID)
+			faqAdmin.POST("", middleware.RequirePermission("operasional:manage"), faqController.Create)
+			faqAdmin.PUT("/:id", middleware.RequirePermission("operasional:manage"), faqController.Update)
+			faqAdmin.DELETE("/:id", middleware.RequirePermission("operasional:manage"), faqController.Delete)
+			faqAdmin.PATCH("/:id/reorder", middleware.RequirePermission("operasional:manage"), faqController.Reorder)
 		}
 
 		// Disclaimer - Admin

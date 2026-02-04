@@ -20,7 +20,7 @@ type DokumenKebijakanService interface {
 	GetByIDPublic(ctx context.Context, id string, lang string) (*models.DokumenKebijakanPublicResponse, error)
 	GetBySlugPublic(ctx context.Context, slug string, lang string) (*models.DokumenKebijakanPublicResponse, error)
 	GetActiveListPublic(ctx context.Context) ([]models.DokumenKebijakanPublicResponse, error)
-	GetFAQ(ctx context.Context, lang string) (*models.FAQResponse, error)
+	GetFAQ(ctx context.Context, lang string) (*models.FAQLegacyResponse, error)
 }
 
 type dokumenKebijakanService struct {
@@ -317,7 +317,7 @@ func (s *dokumenKebijakanService) GetActiveListPublic(ctx context.Context) ([]mo
 	return items, nil
 }
 
-func (s *dokumenKebijakanService) GetFAQ(ctx context.Context, lang string) (*models.FAQResponse, error) {
+func (s *dokumenKebijakanService) GetFAQ(ctx context.Context, lang string) (*models.FAQLegacyResponse, error) {
 	doc, err := s.repo.FindBySlug(ctx, "faq")
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -337,7 +337,7 @@ func (s *dokumenKebijakanService) GetFAQ(ctx context.Context, lang string) (*mod
 	}
 
 	// Build response based on language
-	response := &models.FAQResponse{
+	response := &models.FAQLegacyResponse{
 		Judul: doc.Judul,
 		Items: make([]models.FAQItem, 0, len(items)),
 	}
