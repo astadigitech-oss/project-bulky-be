@@ -60,7 +60,7 @@ type DokumenKebijakanPublicResponse struct {
 	Konten string `json:"konten"` // Based on lang param
 }
 
-// FAQ DTOs
+// FAQ DTOs (Legacy - untuk backward compatibility dengan dokumen_kebijakan)
 type FAQContentItem struct {
 	Question   string `json:"question"`
 	QuestionEN string `json:"question_en"`
@@ -73,7 +73,7 @@ type FAQItem struct {
 	Answer   string `json:"answer"`
 }
 
-type FAQResponse struct {
+type FAQLegacyResponse struct {
 	Judul string    `json:"judul"`
 	Items []FAQItem `json:"items"`
 }

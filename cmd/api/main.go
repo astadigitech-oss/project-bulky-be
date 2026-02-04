@@ -68,6 +68,7 @@ func main() {
 	disclaimerRepo := repositories.NewDisclaimerRepository(db)
 	formulirPartaiBesarRepo := repositories.NewFormulirPartaiBesarRepository(db)
 	whatsappHandlerRepo := repositories.NewWhatsAppHandlerRepository(db)
+	faqRepo := repositories.NewFAQRepository(db)
 	jadwalGudangRepo := repositories.NewJadwalGudangRepository(db)
 
 	// Auth V2 repositories
@@ -107,7 +108,7 @@ func main() {
 	emailService := services.NewEmailService()
 	formulirPartaiBesarService := services.NewFormulirPartaiBesarService(formulirPartaiBesarRepo, kategoriRepo, reorderService, emailService)
 	whatsappHandlerService := services.NewWhatsAppHandlerService(whatsappHandlerRepo)
-	faqService := services.NewFAQService(db)
+	faqService := services.NewFAQService(faqRepo, reorderService)
 
 	// Auth V2 services
 	authV2Service := services.NewAuthV2Service(authRepo, activityLogRepo)
