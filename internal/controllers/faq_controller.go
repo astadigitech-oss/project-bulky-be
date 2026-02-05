@@ -154,6 +154,28 @@ func (c *FAQController) Delete(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, "FAQ berhasil dihapus", nil)
 }
 
+// ToggleStatus - Toggle FAQ is_active status
+// PATCH /api/panel/faq/:id/toggle-status
+func (c *FAQController) ToggleStatus(ctx *gin.Context) {
+	id, err := uuid.Parse(ctx.Param("id"))
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", nil)
+		return
+	}
+
+	result, err := c.service.ToggleStatus(ctx.Request.Context(), id)
+	if err != nil {
+		if err.Error() == "FAQ tidak ditemukan" {
+			utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
+			return
+		}
+		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Status FAQ berhasil diubah", result)
+}
+
 // Reorder - Reorder FAQ item (up/down)
 // PATCH /api/panel/faq/:id/reorder
 func (c *FAQController) Reorder(ctx *gin.Context) {

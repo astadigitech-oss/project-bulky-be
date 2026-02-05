@@ -510,6 +510,7 @@ func SetupRoutes(
 			faqAdmin.POST("", middleware.RequirePermission("operasional:manage"), faqController.Create)
 			faqAdmin.PUT("/:id", middleware.RequirePermission("operasional:manage"), faqController.Update)
 			faqAdmin.DELETE("/:id", middleware.RequirePermission("operasional:manage"), faqController.Delete)
+			faqAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("operasional:manage"), faqController.ToggleStatus)
 			faqAdmin.PATCH("/:id/reorder", middleware.RequirePermission("operasional:manage"), faqController.Reorder)
 		}
 

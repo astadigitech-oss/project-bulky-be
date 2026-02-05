@@ -19,6 +19,7 @@ type FAQService interface {
 	Create(ctx context.Context, req *models.FAQCreateRequest) (*models.FAQResponse, error)
 	Update(ctx context.Context, id uuid.UUID, req *models.FAQUpdateRequest) (*models.FAQResponse, error)
 	Delete(ctx context.Context, id uuid.UUID) error
+	ToggleStatus(ctx context.Context, id uuid.UUID) (*models.FAQToggleStatusResponse, error)
 	Reorder(ctx context.Context, id uuid.UUID, direction string) (*ReorderResult, error)
 }
 
@@ -197,6 +198,30 @@ func (s *faqService) Delete(ctx context.Context, id uuid.UUID) error {
 
 	// Reorder after delete
 	return s.reorderService.ReorderAfterDelete(ctx, "faq", faq.Urutan, "", nil)
+}
+
+func (s *faqService) ToggleStatus(ctx context.Context, id uuid.UUID) (*models.FAQToggleStatusResponse, error) {
+	faq, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("FAQ tidak ditemukan")
+		}
+		return nil, err
+	}
+
+	// Toggle status
+	faq.IsActive = !faq.IsActive
+
+	if err := s.repo.Update(ctx, faq); err != nil {
+		return nil, err
+	}
+
+	return &models.FAQToggleStatusResponse{
+		ID:        faq.ID.String(),
+		Question:  faq.Question,
+		IsActive:  faq.IsActive,
+		UpdatedAt: faq.UpdatedAt.Format(time.RFC3339),
+	}, nil
 }
 
 func (s *faqService) Reorder(ctx context.Context, id uuid.UUID, direction string) (*ReorderResult, error) {
