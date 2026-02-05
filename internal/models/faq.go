@@ -42,6 +42,25 @@ type FAQUpdateRequest struct {
 	IsActive   *bool  `json:"is_active"`
 }
 
+type FAQFilterRequest struct {
+	PaginationRequest
+	Search   string `form:"search"`
+	IsActive *bool  `form:"is_active"`
+	SortBy   string `form:"sort_by"`
+}
+
+func (p *FAQFilterRequest) SetDefaults() {
+	p.PaginationRequest.SetDefaults()
+
+	// Whitelist sort_by
+	allowedSortBy := map[string]bool{
+		"urutan": true, "question": true, "created_at": true, "updated_at": true,
+	}
+	if p.SortBy == "" || !allowedSortBy[p.SortBy] {
+		p.SortBy = "urutan"
+	}
+}
+
 // FAQ Response DTOs
 type FAQResponse struct {
 	ID         string `json:"id"`
