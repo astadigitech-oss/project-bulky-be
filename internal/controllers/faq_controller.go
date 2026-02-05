@@ -20,16 +20,22 @@ func NewFAQController(service services.FAQService) *FAQController {
 	return &FAQController{service: service}
 }
 
-// GetAll - Get all FAQ items for admin panel
+// GetAll - Get all FAQ items for admin panel with search and pagination
 // GET /api/panel/faq
 func (c *FAQController) GetAll(ctx *gin.Context) {
-	result, err := c.service.GetAll(ctx.Request.Context())
+	var params models.FAQFilterRequest
+	if err := ctx.ShouldBindQuery(&params); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
+		return
+	}
+
+	result, meta, err := c.service.GetAll(ctx.Request.Context(), &params)
 	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 		return
 	}
 
-	utils.SuccessResponse(ctx, "Data FAQ berhasil diambil", result)
+	utils.PaginatedSuccessResponse(ctx, "Data FAQ berhasil diambil", result, *meta)
 }
 
 // GetByID - Get FAQ by ID

@@ -10,7 +10,7 @@ import (
 )
 
 type FAQRepository interface {
-	GetAll(ctx context.Context) ([]models.FAQ, error)
+	GetAll(ctx context.Context, params *models.FAQFilterRequest) ([]models.FAQ, int64, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*models.FAQ, error)
 	GetActive(ctx context.Context, lang string) ([]models.FAQ, error)
 	Create(ctx context.Context, faq *models.FAQ) error
@@ -27,12 +27,43 @@ func NewFAQRepository(db *gorm.DB) FAQRepository {
 	return &faqRepository{db: db}
 }
 
-func (r *faqRepository) GetAll(ctx context.Context) ([]models.FAQ, error) {
+func (r *faqRepository) GetAll(ctx context.Context, params *models.FAQFilterRequest) ([]models.FAQ, int64, error) {
 	var faqs []models.FAQ
-	err := r.db.WithContext(ctx).
-		Order("urutan ASC").
-		Find(&faqs).Error
-	return faqs, err
+	var total int64
+
+	query := r.db.WithContext(ctx).Model(&models.FAQ{})
+
+	// Search in question, question_en, answer, answer_en
+	if params.Search != "" {
+		searchPattern := "%" + params.Search + "%"
+		query = query.Where(
+			"question ILIKE ? OR question_en ILIKE ? OR answer ILIKE ? OR answer_en ILIKE ?",
+			searchPattern, searchPattern, searchPattern, searchPattern,
+		)
+	}
+
+	// Filter by is_active
+	if params.IsActive != nil {
+		query = query.Where("is_active = ?", *params.IsActive)
+	}
+
+	// Count total
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Sorting
+	orderClause := params.SortBy + " " + params.Order
+	query = query.Order(orderClause)
+
+	// Pagination
+	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
+
+	if err := query.Find(&faqs).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return faqs, total, nil
 }
 
 func (r *faqRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.FAQ, error) {

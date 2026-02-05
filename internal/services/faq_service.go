@@ -13,7 +13,7 @@ import (
 )
 
 type FAQService interface {
-	GetAll(ctx context.Context) ([]models.FAQResponse, error)
+	GetAll(ctx context.Context, params *models.FAQFilterRequest) ([]models.FAQResponse, *models.PaginationMeta, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*models.FAQResponse, error)
 	GetPublic(ctx context.Context, lang string) ([]models.FAQPublicResponse, error)
 	Create(ctx context.Context, req *models.FAQCreateRequest) (*models.FAQResponse, error)
@@ -34,10 +34,12 @@ func NewFAQService(repo repositories.FAQRepository, reorderService *ReorderServi
 	}
 }
 
-func (s *faqService) GetAll(ctx context.Context) ([]models.FAQResponse, error) {
-	faqs, err := s.repo.GetAll(ctx)
+func (s *faqService) GetAll(ctx context.Context, params *models.FAQFilterRequest) ([]models.FAQResponse, *models.PaginationMeta, error) {
+	params.SetDefaults()
+
+	faqs, total, err := s.repo.GetAll(ctx, params)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	responses := make([]models.FAQResponse, len(faqs))
@@ -55,7 +57,9 @@ func (s *faqService) GetAll(ctx context.Context) ([]models.FAQResponse, error) {
 		}
 	}
 
-	return responses, nil
+	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
+
+	return responses, &meta, nil
 }
 
 func (s *faqService) GetByID(ctx context.Context, id uuid.UUID) (*models.FAQResponse, error) {
