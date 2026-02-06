@@ -1,0 +1,143 @@
+package dto
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
+// Blog DTOs
+type CreateBlogRequest struct {
+	JudulID            string      `json:"judul_id" validate:"required,max=200"`
+	JudulEN            *string     `json:"judul_en" validate:"omitempty,max=200"`
+	Slug               string      `json:"slug" validate:"required,max=250"`
+	KontenID           string      `json:"konten_id" validate:"required"`
+	KontenEN           *string     `json:"konten_en"`
+	DeskripsiSingkatID string      `json:"deskripsi_singkat_id" validate:"required"`
+	DeskripsiSingkatEN *string     `json:"deskripsi_singkat_en"`
+	FeaturedImageURL   *string     `json:"featured_image_url" validate:"omitempty,max=500"`
+	KategoriID         uuid.UUID   `json:"kategori_id" validate:"required"`
+	MetaTitleID        *string     `json:"meta_title_id" validate:"omitempty,max=200"`
+	MetaTitleEN        *string     `json:"meta_title_en" validate:"omitempty,max=200"`
+	MetaDescriptionID  *string     `json:"meta_description_id"`
+	MetaDescriptionEN  *string     `json:"meta_description_en"`
+	MetaKeywords       *string     `json:"meta_keywords"`
+	IsActive           bool        `json:"is_active"`
+	LabelIDs           []uuid.UUID `json:"label_ids"`
+}
+
+type UpdateBlogRequest struct {
+	JudulID            *string     `json:"judul_id" validate:"omitempty,max=200"`
+	JudulEN            *string     `json:"judul_en" validate:"omitempty,max=200"`
+	Slug               *string     `json:"slug" validate:"omitempty,max=250"`
+	KontenID           *string     `json:"konten_id"`
+	KontenEN           *string     `json:"konten_en"`
+	DeskripsiSingkatID *string     `json:"deskripsi_singkat_id"`
+	DeskripsiSingkatEN *string     `json:"deskripsi_singkat_en"`
+	FeaturedImageURL   *string     `json:"featured_image_url" validate:"omitempty,max=500"`
+	KategoriID         *uuid.UUID  `json:"kategori_id"`
+	MetaTitleID        *string     `json:"meta_title_id" validate:"omitempty,max=200"`
+	MetaTitleEN        *string     `json:"meta_title_en" validate:"omitempty,max=200"`
+	MetaDescriptionID  *string     `json:"meta_description_id"`
+	MetaDescriptionEN  *string     `json:"meta_description_en"`
+	MetaKeywords       *string     `json:"meta_keywords"`
+	IsActive           *bool       `json:"is_active"`
+	LabelIDs           []uuid.UUID `json:"label_ids"`
+}
+
+type BlogResponse struct {
+	ID                 uuid.UUID          `json:"id"`
+	JudulID            string             `json:"judul_id"`
+	JudulEN            *string            `json:"judul_en"`
+	Slug               string             `json:"slug"`
+	KontenID           string             `json:"konten_id"`
+	KontenEN           *string            `json:"konten_en"`
+	DeskripsiSingkatID string             `json:"deskripsi_singkat_id"`
+	DeskripsiSingkatEN *string            `json:"deskripsi_singkat_en"`
+	FeaturedImageURL   *string            `json:"featured_image_url"`
+	KategoriID         uuid.UUID          `json:"kategori_id"`
+	Kategori           *KategoriBlogBrief `json:"kategori,omitempty"`
+	MetaTitleID        *string            `json:"meta_title_id"`
+	MetaTitleEN        *string            `json:"meta_title_en"`
+	MetaDescriptionID  *string            `json:"meta_description_id"`
+	MetaDescriptionEN  *string            `json:"meta_description_en"`
+	MetaKeywords       *string            `json:"meta_keywords"`
+	IsActive           bool               `json:"is_active"`
+	ViewCount          int                `json:"view_count"`
+	PublishedAt        *time.Time         `json:"published_at"`
+	Labels             []LabelBlogBrief   `json:"labels,omitempty"`
+	CreatedAt          time.Time          `json:"created_at"`
+	UpdatedAt          time.Time          `json:"updated_at"`
+}
+
+type BlogListResponse struct {
+	ID                 uuid.UUID          `json:"id"`
+	JudulID            string             `json:"judul_id"`
+	JudulEN            *string            `json:"judul_en"`
+	Slug               string             `json:"slug"`
+	DeskripsiSingkatID string             `json:"deskripsi_singkat_id"`
+	DeskripsiSingkatEN *string            `json:"deskripsi_singkat_en"`
+	FeaturedImageURL   *string            `json:"featured_image_url"`
+	Kategori           *KategoriBlogBrief `json:"kategori,omitempty"`
+	IsActive           bool               `json:"is_active"`
+	ViewCount          int                `json:"view_count"`
+	PublishedAt        *time.Time         `json:"published_at"`
+	Labels             []LabelBlogBrief   `json:"labels,omitempty"`
+	CreatedAt          time.Time          `json:"created_at"`
+}
+
+type KategoriBlogBrief struct {
+	ID     uuid.UUID `json:"id"`
+	NamaID string    `json:"nama_id"`
+	NamaEN *string   `json:"nama_en"`
+	Slug   string    `json:"slug"`
+}
+
+type LabelBlogBrief struct {
+	ID     uuid.UUID `json:"id"`
+	NamaID string    `json:"nama_id"`
+	NamaEN *string   `json:"nama_en"`
+	Slug   string    `json:"slug"`
+}
+
+// Kategori Blog DTOs
+type CreateKategoriBlogRequest struct {
+	NamaID   string  `json:"nama_id" validate:"required,max=100"`
+	NamaEN   *string `json:"nama_en" validate:"omitempty,max=100"`
+	Slug     string  `json:"slug" validate:"required,max=100"`
+	IsActive bool    `json:"is_active"`
+	Urutan   int     `json:"urutan"`
+}
+
+type UpdateKategoriBlogRequest struct {
+	NamaID   *string `json:"nama_id" validate:"omitempty,max=100"`
+	NamaEN   *string `json:"nama_en" validate:"omitempty,max=100"`
+	Slug     *string `json:"slug" validate:"omitempty,max=100"`
+	IsActive *bool   `json:"is_active"`
+	Urutan   *int    `json:"urutan"`
+}
+
+// Label Blog DTOs
+type CreateLabelBlogRequest struct {
+	NamaID string  `json:"nama_id" validate:"required,max=100"`
+	NamaEN *string `json:"nama_en" validate:"omitempty,max=100"`
+	Slug   string  `json:"slug" validate:"required,max=100"`
+	Urutan int     `json:"urutan"`
+}
+
+type UpdateLabelBlogRequest struct {
+	NamaID *string `json:"nama_id" validate:"omitempty,max=100"`
+	NamaEN *string `json:"nama_en" validate:"omitempty,max=100"`
+	Slug   *string `json:"slug" validate:"omitempty,max=100"`
+	Urutan *int    `json:"urutan"`
+}
+
+// Reorder DTO
+type ReorderItem struct {
+	ID     uuid.UUID `json:"id" validate:"required"`
+	Urutan int       `json:"urutan" validate:"required"`
+}
+
+type ReorderRequest struct {
+	Items []ReorderItem `json:"items" validate:"required,min=1"`
+}
