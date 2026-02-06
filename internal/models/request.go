@@ -271,40 +271,47 @@ type BannerTipeProdukFilterRequest struct {
 // ========================================
 
 type CreateProdukRequest struct {
-	Nama               string   `json:"nama" binding:"required,min=2,max=255"`
-	IDCargo            *string  `json:"id_cargo" binding:"omitempty,max=50"`
-	KategoriID         string   `json:"kategori_id" binding:"required,uuid"`
-	MerekID            *string  `json:"merek_id" binding:"omitempty,uuid"`
-	KondisiID          string   `json:"kondisi_id" binding:"required,uuid"`
-	KondisiPaketID     string   `json:"kondisi_paket_id" binding:"required,uuid"`
-	SumberID           *string  `json:"sumber_id" binding:"omitempty,uuid"`
-	WarehouseID        string   `json:"warehouse_id" binding:"required,uuid"`
-	TipeProdukID       string   `json:"tipe_produk_id" binding:"required,uuid"`
-	HargaSebelumDiskon float64  `json:"harga_sebelum_diskon" binding:"required,gt=0"`
-	PersentaseDiskon   float64  `json:"persentase_diskon" binding:"min=0,max=100"`
-	HargaSesudahDiskon float64  `json:"harga_sesudah_diskon" binding:"required,min=0"`
-	Quantity           int      `json:"quantity" binding:"min=0"`
-	Discrepancy        *string  `json:"discrepancy" binding:"omitempty,max=1000"`
-	GambarURLs         []string `json:"gambar_urls" binding:"required,min=1"`
-	GambarUtamaIndex   int      `json:"gambar_utama_index"`
+	Nama               string  `form:"nama" binding:"required,min=2,max=255"`
+	IDCargo            *string `form:"id_cargo" binding:"omitempty,max=50"`
+	KategoriID         string  `form:"kategori_id" binding:"required,uuid"`
+	MerekID            *string `form:"merek_id" binding:"omitempty,uuid"`
+	KondisiID          string  `form:"kondisi_id" binding:"required,uuid"`
+	KondisiPaketID     string  `form:"kondisi_paket_id" binding:"required,uuid"`
+	SumberID           *string `form:"sumber_id" binding:"omitempty,uuid"`
+	WarehouseID        string  `form:"warehouse_id" binding:"required,uuid"`
+	TipeProdukID       string  `form:"tipe_produk_id" binding:"required,uuid"`
+	HargaSebelumDiskon float64 `form:"harga_sebelum_diskon" binding:"required,gt=0"`
+	PersentaseDiskon   float64 `form:"persentase_diskon" binding:"min=0,max=100"`
+	HargaSesudahDiskon float64 `form:"harga_sesudah_diskon" binding:"required,min=0"`
+	Quantity           int     `form:"quantity" binding:"min=0"`
+	Discrepancy        *string `form:"discrepancy" binding:"omitempty,max=1000"`
+	Panjang            float64 `form:"panjang" binding:"required,gt=0"` // cm
+	Lebar              float64 `form:"lebar" binding:"required,gt=0"`   // cm
+	Tinggi             float64 `form:"tinggi" binding:"required,gt=0"`  // cm
+	Berat              float64 `form:"berat" binding:"required,gt=0"`   // kg
+	GambarUtamaIndex   int     `form:"gambar_utama_index"`
 }
 
 type UpdateProdukRequest struct {
-	Nama               *string  `json:"nama" binding:"omitempty,min=2,max=255"`
-	IDCargo            *string  `json:"id_cargo" binding:"omitempty,max=50"`
-	KategoriID         *string  `json:"kategori_id" binding:"omitempty,uuid"`
-	MerekID            *string  `json:"merek_id" binding:"omitempty,uuid"`
-	KondisiID          *string  `json:"kondisi_id" binding:"omitempty,uuid"`
-	KondisiPaketID     *string  `json:"kondisi_paket_id" binding:"omitempty,uuid"`
-	SumberID           *string  `json:"sumber_id" binding:"omitempty,uuid"`
-	WarehouseID        *string  `json:"warehouse_id" binding:"omitempty,uuid"`
-	TipeProdukID       *string  `json:"tipe_produk_id" binding:"omitempty,uuid"`
-	HargaSebelumDiskon *float64 `json:"harga_sebelum_diskon" binding:"omitempty,gt=0"`
-	PersentaseDiskon   *float64 `json:"persentase_diskon" binding:"omitempty,min=0,max=100"`
-	HargaSesudahDiskon *float64 `json:"harga_sesudah_diskon" binding:"omitempty,min=0"`
-	Quantity           *int     `json:"quantity" binding:"omitempty,min=0"`
-	Discrepancy        *string  `json:"discrepancy" binding:"omitempty,max=1000"`
-	IsActive           *bool    `json:"is_active"`
+	Nama               *string  `form:"nama" binding:"omitempty,min=2,max=255"`
+	IDCargo            *string  `form:"id_cargo" binding:"omitempty,max=50"`
+	KategoriID         *string  `form:"kategori_id" binding:"omitempty,uuid"`
+	MerekID            *string  `form:"merek_id" binding:"omitempty,uuid"`
+	KondisiID          *string  `form:"kondisi_id" binding:"omitempty,uuid"`
+	KondisiPaketID     *string  `form:"kondisi_paket_id" binding:"omitempty,uuid"`
+	SumberID           *string  `form:"sumber_id" binding:"omitempty,uuid"`
+	WarehouseID        *string  `form:"warehouse_id" binding:"omitempty,uuid"`
+	TipeProdukID       *string  `form:"tipe_produk_id" binding:"omitempty,uuid"`
+	HargaSebelumDiskon *float64 `form:"harga_sebelum_diskon" binding:"omitempty,gt=0"`
+	PersentaseDiskon   *float64 `form:"persentase_diskon" binding:"omitempty,min=0,max=100"`
+	HargaSesudahDiskon *float64 `form:"harga_sesudah_diskon" binding:"omitempty,min=0"`
+	Quantity           *int     `form:"quantity" binding:"omitempty,min=0"`
+	Discrepancy        *string  `form:"discrepancy" binding:"omitempty,max=1000"`
+	Panjang            *float64 `form:"panjang" binding:"omitempty,gt=0"` // cm
+	Lebar              *float64 `form:"lebar" binding:"omitempty,gt=0"`   // cm
+	Tinggi             *float64 `form:"tinggi" binding:"omitempty,gt=0"`  // cm
+	Berat              *float64 `form:"berat" binding:"omitempty,gt=0"`   // kg
+	IsActive           *bool    `form:"is_active"`
 }
 
 type UpdateStockRequest struct {
@@ -330,12 +337,15 @@ type ProdukFilterRequest struct {
 // ========================================
 
 type CreateProdukGambarRequest struct {
-	GambarURL string `json:"gambar_url" binding:"required,max=500"`
-	IsPrimary bool   `json:"is_primary"`
+	IsPrimary bool `form:"is_primary"`
 }
 
 type UpdateProdukGambarRequest struct {
 	IsPrimary *bool `json:"is_primary"`
+}
+
+type ReorderGambarRequest struct {
+	Direction string `json:"direction" binding:"required,oneof=up down"`
 }
 
 // ========================================
@@ -343,10 +353,7 @@ type UpdateProdukGambarRequest struct {
 // ========================================
 
 type CreateProdukDokumenRequest struct {
-	NamaDokumen string `json:"nama_dokumen" binding:"required,max=255"`
-	FileURL     string `json:"file_url" binding:"required,max=500"`
-	TipeFile    string `json:"tipe_file" binding:"required,max=50"`
-	UkuranFile  *int   `json:"ukuran_file"`
+	NamaDokumen string `form:"nama_dokumen" binding:"required,max=255"`
 }
 
 // ========================================

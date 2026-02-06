@@ -20,6 +20,10 @@ var allowedImageTypes = []string{
 	"image/svg+xml",
 }
 
+var allowedDocumentTypes = []string{
+	"application/pdf",
+}
+
 // IsValidImageType validates if the uploaded file is a valid image type
 func IsValidImageType(file *multipart.FileHeader) bool {
 	contentType := file.Header.Get("Content-Type")
@@ -31,12 +35,24 @@ func IsValidImageType(file *multipart.FileHeader) bool {
 	return false
 }
 
+// IsValidDocumentType validates if the uploaded file is a valid document type
+func IsValidDocumentType(file *multipart.FileHeader) bool {
+	contentType := file.Header.Get("Content-Type")
+	for _, allowed := range allowedDocumentTypes {
+		if contentType == allowed {
+			return true
+		}
+	}
+	return false
+}
+
 // SaveUploadedFile saves an uploaded file to the specified directory
 // Returns the relative path for URL generation (e.g., "product-categories/uuid.png")
+// Supports both images and documents (PDF)
 func SaveUploadedFile(file *multipart.FileHeader, directory string, cfg *config.Config) (string, error) {
-	// Validate image type
-	if !IsValidImageType(file) {
-		return "", errors.New("tipe file tidak didukung. Hanya jpg, png, webp, dan svg yang diperbolehkan")
+	// Validate file type (image or document)
+	if !IsValidImageType(file) && !IsValidDocumentType(file) {
+		return "", errors.New("tipe file tidak didukung. Hanya jpg, png, webp, svg, dan pdf yang diperbolehkan")
 	}
 
 	// Create directory if not exists (use config upload path)
