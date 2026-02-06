@@ -25,6 +25,10 @@ type Produk struct {
 	Quantity           int            `gorm:"not null;default:0" json:"quantity"`
 	QuantityTerjual    int            `gorm:"default:0" json:"quantity_terjual"`
 	Discrepancy        *string        `gorm:"type:text" json:"discrepancy"`
+	Panjang            float64        `gorm:"type:decimal(10,2);not null;default:0" json:"panjang"` // cm
+	Lebar              float64        `gorm:"type:decimal(10,2);not null;default:0" json:"lebar"`   // cm
+	Tinggi             float64        `gorm:"type:decimal(10,2);not null;default:0" json:"tinggi"`  // cm
+	Berat              float64        `gorm:"type:decimal(10,2);not null;default:0" json:"berat"`   // kg
 	IsActive           bool           `gorm:"default:true" json:"is_active"`
 	CreatedAt          time.Time      `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt          time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
@@ -65,6 +69,11 @@ type ProdukResponse struct {
 	Quantity           int       `json:"quantity"`
 	QuantityTerjual    int       `json:"quantity_terjual"`
 	Discrepancy        *string   `json:"discrepancy"`
+	Panjang            float64   `json:"panjang"`          // cm
+	Lebar              float64   `json:"lebar"`            // cm
+	Tinggi             float64   `json:"tinggi"`           // cm
+	Berat              float64   `json:"berat"`            // kg
+	BeratVolumetrik    float64   `json:"berat_volumetrik"` // kg (calculated)
 	IsActive           bool      `json:"is_active"`
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`

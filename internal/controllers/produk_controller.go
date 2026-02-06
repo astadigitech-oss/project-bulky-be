@@ -1,6 +1,9 @@
 package controllers
 
 import (
+	"errors"
+	"fmt"
+	"mime/multipart"
 	"net/http"
 
 	"project-bulky-be/internal/models"
@@ -30,12 +33,56 @@ func NewProdukController(
 
 func (c *ProdukController) Create(ctx *gin.Context) {
 	var req models.CreateProdukRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	if err := ctx.ShouldBind(&req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 		return
 	}
 
-	result, err := c.service.Create(ctx.Request.Context(), &req)
+	// Get multipart form
+	form, err := ctx.MultipartForm()
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Format multipart tidak valid", nil)
+		return
+	}
+
+	// Get gambar files (required, min 1, max 10)
+	gambarFiles := form.File["gambar[]"]
+	if len(gambarFiles) == 0 {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Minimal 1 gambar produk wajib diupload", nil)
+		return
+	}
+	if len(gambarFiles) > 10 {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Maksimal 10 gambar produk", nil)
+		return
+	}
+
+	// Validate gambar files
+	for i, file := range gambarFiles {
+		if err := validateImageFile(file); err != nil {
+			utils.ErrorResponse(ctx, http.StatusBadRequest, fmt.Sprintf("gambar[%d]: %s", i, err.Error()), nil)
+			return
+		}
+	}
+
+	// Get dokumen files (optional, max 5)
+	dokumenFiles := form.File["dokumen[]"]
+	if len(dokumenFiles) > 5 {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Maksimal 5 dokumen", nil)
+		return
+	}
+
+	// Validate dokumen files
+	for i, file := range dokumenFiles {
+		if err := validateDocumentFile(file); err != nil {
+			utils.ErrorResponse(ctx, http.StatusBadRequest, fmt.Sprintf("dokumen[%d]: %s", i, err.Error()), nil)
+			return
+		}
+	}
+
+	// Get dokumen names (parallel array)
+	dokumenNama := ctx.PostFormArray("dokumen_nama[]")
+
+	result, err := c.service.CreateWithFiles(ctx.Request.Context(), &req, gambarFiles, dokumenFiles, dokumenNama)
 	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 		return
@@ -84,12 +131,11 @@ func (c *ProdukController) FindBySlug(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, "Detail produk berhasil diambil", result)
 }
 
-
 func (c *ProdukController) Update(ctx *gin.Context) {
 	id := ctx.Param("id")
 
 	var req models.UpdateProdukRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	if err := ctx.ShouldBind(&req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 		return
 	}
@@ -153,15 +199,28 @@ func (c *ProdukController) UpdateStock(ctx *gin.Context) {
 // ========================================
 
 func (c *ProdukController) AddGambar(ctx *gin.Context) {
-	produkID := ctx.Param("produk_id")
+	produkID := ctx.Param("id")
+
+	// Get file from form
+	file, err := ctx.FormFile("gambar")
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "File gambar wajib diupload", nil)
+		return
+	}
+
+	// Validate file
+	if err := validateImageFile(file); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
 
 	var req models.CreateProdukGambarRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	if err := ctx.ShouldBind(&req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 		return
 	}
 
-	result, err := c.gambarService.Create(ctx.Request.Context(), produkID, &req)
+	result, err := c.gambarService.CreateWithFile(ctx.Request.Context(), produkID, file, req.IsPrimary)
 	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 		return
@@ -170,28 +229,11 @@ func (c *ProdukController) AddGambar(ctx *gin.Context) {
 	utils.CreatedResponse(ctx, "Gambar berhasil ditambahkan", result)
 }
 
-func (c *ProdukController) UpdateGambar(ctx *gin.Context) {
-	id := ctx.Param("id")
-
-	var req models.UpdateProdukGambarRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
-	}
-
-	result, err := c.gambarService.Update(ctx.Request.Context(), id, &req)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, "Gambar berhasil diupdate", result)
-}
-
 func (c *ProdukController) DeleteGambar(ctx *gin.Context) {
-	id := ctx.Param("id")
+	produkID := ctx.Param("id")
+	gambarID := ctx.Param("gambar_id")
 
-	if err := c.gambarService.Delete(ctx.Request.Context(), id); err != nil {
+	if err := c.gambarService.Delete(ctx.Request.Context(), produkID, gambarID); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
@@ -200,18 +242,35 @@ func (c *ProdukController) DeleteGambar(ctx *gin.Context) {
 }
 
 func (c *ProdukController) ReorderGambar(ctx *gin.Context) {
-	var req models.ReorderRequest
+	produkID := ctx.Param("id")
+	gambarID := ctx.Param("gambar_id")
+
+	var req models.ReorderGambarRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 		return
 	}
 
-	if err := c.gambarService.Reorder(ctx.Request.Context(), &req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
+	result, err := c.gambarService.Reorder(ctx.Request.Context(), produkID, gambarID, req.Direction)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
-	utils.SuccessResponse(ctx, "Urutan gambar berhasil diubah", nil)
+	utils.SuccessResponse(ctx, "Urutan gambar berhasil diubah", result)
+}
+
+func (c *ProdukController) SetPrimaryGambar(ctx *gin.Context) {
+	produkID := ctx.Param("id")
+	gambarID := ctx.Param("gambar_id")
+
+	result, err := c.gambarService.SetPrimary(ctx.Request.Context(), produkID, gambarID)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Gambar utama berhasil diubah", result)
 }
 
 // ========================================
@@ -219,15 +278,28 @@ func (c *ProdukController) ReorderGambar(ctx *gin.Context) {
 // ========================================
 
 func (c *ProdukController) AddDokumen(ctx *gin.Context) {
-	produkID := ctx.Param("produk_id")
+	produkID := ctx.Param("id")
+
+	// Get file from form
+	file, err := ctx.FormFile("dokumen")
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "File dokumen wajib diupload", nil)
+		return
+	}
+
+	// Validate file
+	if err := validateDocumentFile(file); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
 
 	var req models.CreateProdukDokumenRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	if err := ctx.ShouldBind(&req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 		return
 	}
 
-	result, err := c.dokumenService.Create(ctx.Request.Context(), produkID, &req)
+	result, err := c.dokumenService.CreateWithFile(ctx.Request.Context(), produkID, file, req.NamaDokumen)
 	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 		return
@@ -237,12 +309,52 @@ func (c *ProdukController) AddDokumen(ctx *gin.Context) {
 }
 
 func (c *ProdukController) DeleteDokumen(ctx *gin.Context) {
-	id := ctx.Param("id")
+	produkID := ctx.Param("id")
+	dokumenID := ctx.Param("dokumen_id")
 
-	if err := c.dokumenService.Delete(ctx.Request.Context(), id); err != nil {
+	if err := c.dokumenService.Delete(ctx.Request.Context(), produkID, dokumenID); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
 	utils.SuccessResponse(ctx, "Dokumen berhasil dihapus", nil)
+}
+
+// ========================================
+// File Validation Helpers
+// ========================================
+
+func validateImageFile(file *multipart.FileHeader) error {
+	// Check size (max 5MB)
+	if file.Size > 5*1024*1024 {
+		return errors.New("ukuran file melebihi 5MB")
+	}
+
+	// Check type
+	allowedTypes := map[string]bool{
+		"image/jpeg": true,
+		"image/png":  true,
+		"image/webp": true,
+	}
+	contentType := file.Header.Get("Content-Type")
+	if !allowedTypes[contentType] {
+		return errors.New("format file tidak didukung. Gunakan JPG, PNG, atau WebP")
+	}
+
+	return nil
+}
+
+func validateDocumentFile(file *multipart.FileHeader) error {
+	// Check size (max 10MB)
+	if file.Size > 10*1024*1024 {
+		return errors.New("ukuran file melebihi 10MB")
+	}
+
+	// Check type
+	contentType := file.Header.Get("Content-Type")
+	if contentType != "application/pdf" {
+		return errors.New("format file harus PDF")
+	}
+
+	return nil
 }

@@ -335,9 +335,9 @@ func SetupRoutes(
 
 			// Gambar - produk:update
 			produkAdmin.POST("/:id/gambar", middleware.RequirePermission("produk:update"), produkController.AddGambar)
-			produkAdmin.PUT("/:id/gambar/:gambar_id", middleware.RequirePermission("produk:update"), produkController.UpdateGambar)
 			produkAdmin.DELETE("/:id/gambar/:gambar_id", middleware.RequirePermission("produk:update"), produkController.DeleteGambar)
-			produkAdmin.PUT("/:id/gambar/reorder", middleware.RequirePermission("produk:update"), produkController.ReorderGambar)
+			produkAdmin.PATCH("/:id/gambar/:gambar_id/reorder", middleware.RequirePermission("produk:update"), produkController.ReorderGambar)
+			produkAdmin.PATCH("/:id/gambar/:gambar_id/set-primary", middleware.RequirePermission("produk:update"), produkController.SetPrimaryGambar)
 
 			// Dokumen - produk:update
 			produkAdmin.POST("/:id/dokumen", middleware.RequirePermission("produk:update"), produkController.AddDokumen)
@@ -510,6 +510,7 @@ func SetupRoutes(
 			faqAdmin.POST("", middleware.RequirePermission("operasional:manage"), faqController.Create)
 			faqAdmin.PUT("/:id", middleware.RequirePermission("operasional:manage"), faqController.Update)
 			faqAdmin.DELETE("/:id", middleware.RequirePermission("operasional:manage"), faqController.Delete)
+			faqAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("operasional:manage"), faqController.ToggleStatus)
 			faqAdmin.PATCH("/:id/reorder", middleware.RequirePermission("operasional:manage"), faqController.Reorder)
 		}
 

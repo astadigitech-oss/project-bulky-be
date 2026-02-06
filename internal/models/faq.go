@@ -80,3 +80,11 @@ type FAQPublicResponse struct {
 	Question string `json:"question"`
 	Answer   string `json:"answer"`
 }
+
+// FAQ Toggle Status Response
+type FAQToggleStatusResponse struct {
+	ID        string `json:"id"`
+	Question  string `json:"question"`
+	IsActive  bool   `json:"is_active"`
+	UpdatedAt string `json:"updated_at"`
+}

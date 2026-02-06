@@ -3,6 +3,9 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
+	"math"
+	"mime/multipart"
 
 	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/models"
@@ -10,10 +13,12 @@ import (
 	"project-bulky-be/pkg/utils"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type ProdukService interface {
 	Create(ctx context.Context, req *models.CreateProdukRequest) (*models.ProdukDetailResponse, error)
+	CreateWithFiles(ctx context.Context, req *models.CreateProdukRequest, gambarFiles, dokumenFiles []*multipart.FileHeader, dokumenNama []string) (*models.ProdukDetailResponse, error)
 	FindByID(ctx context.Context, id string) (*models.ProdukDetailResponse, error)
 	FindBySlug(ctx context.Context, slug string) (*models.ProdukDetailResponse, error)
 	FindAll(ctx context.Context, params *models.ProdukFilterRequest) ([]models.ProdukListResponse, *models.PaginationMeta, error)
@@ -24,20 +29,40 @@ type ProdukService interface {
 }
 
 type produkService struct {
-	repo       repositories.ProdukRepository
-	gambarRepo repositories.ProdukGambarRepository
-	cfg        *config.Config
+	repo        repositories.ProdukRepository
+	gambarRepo  repositories.ProdukGambarRepository
+	dokumenRepo repositories.ProdukDokumenRepository
+	cfg         *config.Config
+	db          *gorm.DB
 }
 
-func NewProdukService(repo repositories.ProdukRepository, gambarRepo repositories.ProdukGambarRepository, cfg *config.Config) ProdukService {
+func NewProdukService(
+	repo repositories.ProdukRepository,
+	gambarRepo repositories.ProdukGambarRepository,
+	dokumenRepo repositories.ProdukDokumenRepository,
+	cfg *config.Config,
+	db *gorm.DB,
+) ProdukService {
 	return &produkService{
-		repo:       repo,
-		gambarRepo: gambarRepo,
-		cfg:        cfg,
+		repo:        repo,
+		gambarRepo:  gambarRepo,
+		dokumenRepo: dokumenRepo,
+		cfg:         cfg,
+		db:          db,
 	}
 }
 
 func (s *produkService) Create(ctx context.Context, req *models.CreateProdukRequest) (*models.ProdukDetailResponse, error) {
+	// This method is deprecated - use CreateWithFiles instead
+	return nil, errors.New("use CreateWithFiles method for multipart form-data")
+}
+
+func (s *produkService) CreateWithFiles(
+	ctx context.Context,
+	req *models.CreateProdukRequest,
+	gambarFiles, dokumenFiles []*multipart.FileHeader,
+	dokumenNama []string,
+) (*models.ProdukDetailResponse, error) {
 	slug := utils.GenerateSlug(req.Nama)
 
 	exists, _ := s.repo.ExistsBySlug(ctx, slug, nil)
@@ -48,7 +73,7 @@ func (s *produkService) Create(ctx context.Context, req *models.CreateProdukRequ
 	if req.IDCargo != nil && *req.IDCargo != "" {
 		exists, _ := s.repo.ExistsByIDCargo(ctx, *req.IDCargo, nil)
 		if exists {
-			return nil, errors.New("id_cargo sudah digunakan")
+			return nil, errors.New("ID Cargo sudah digunakan oleh produk lain")
 		}
 	}
 
@@ -72,6 +97,10 @@ func (s *produkService) Create(ctx context.Context, req *models.CreateProdukRequ
 		HargaSesudahDiskon: req.HargaSesudahDiskon,
 		Quantity:           req.Quantity,
 		Discrepancy:        req.Discrepancy,
+		Panjang:            req.Panjang,
+		Lebar:              req.Lebar,
+		Tinggi:             req.Tinggi,
+		Berat:              req.Berat,
 		IsActive:           true,
 	}
 
@@ -84,23 +113,85 @@ func (s *produkService) Create(ctx context.Context, req *models.CreateProdukRequ
 		produk.SumberID = &sumberID
 	}
 
-	if err := s.repo.Create(ctx, produk); err != nil {
+	// Begin transaction
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 1. Create produk record
+	if err := tx.Create(produk).Error; err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 
-	// Create gambar
-	for i, url := range req.GambarURLs {
+	// 2. Upload and create gambar records
+	produkDir := fmt.Sprintf("products/%s", produk.ID.String())
+	for i, file := range gambarFiles {
+		// Upload to storage
+		relativePath, err := utils.SaveUploadedFile(file, produkDir, s.cfg)
+		if err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("gagal upload gambar: %w", err)
+		}
+
 		gambar := &models.ProdukGambar{
 			ProdukID:  produk.ID,
-			GambarURL: url,
-			Urutan:    i,
+			GambarURL: relativePath,
+			Urutan:    i + 1,
 			IsPrimary: i == req.GambarUtamaIndex,
 		}
-		if err := s.gambarRepo.Create(ctx, gambar); err != nil {
+
+		if err := tx.Create(gambar).Error; err != nil {
+			tx.Rollback()
+			// Cleanup uploaded file
+			utils.DeleteFile(relativePath, s.cfg)
 			return nil, err
 		}
 	}
 
+	// 3. Upload and create dokumen records
+	if len(dokumenFiles) > 0 {
+		dokumenDir := fmt.Sprintf("documents/%s", produk.ID.String())
+		for i, file := range dokumenFiles {
+			// Upload to storage
+			relativePath, err := utils.SaveUploadedFile(file, dokumenDir, s.cfg)
+			if err != nil {
+				tx.Rollback()
+				return nil, fmt.Errorf("gagal upload dokumen: %w", err)
+			}
+
+			// Get document name
+			nama := file.Filename
+			if i < len(dokumenNama) && dokumenNama[i] != "" {
+				nama = dokumenNama[i]
+			}
+
+			dokumen := &models.ProdukDokumen{
+				ProdukID:    produk.ID,
+				NamaDokumen: nama,
+				FileURL:     relativePath,
+				TipeFile:    "pdf",
+				UkuranFile:  intPtr(int(file.Size)),
+			}
+
+			if err := tx.Create(dokumen).Error; err != nil {
+				tx.Rollback()
+				// Cleanup uploaded file
+				utils.DeleteFile(relativePath, s.cfg)
+				return nil, err
+			}
+		}
+	}
+
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		return nil, err
+	}
+
+	// Reload with relations
 	return s.FindByID(ctx, produk.ID.String())
 }
 
@@ -207,6 +298,18 @@ func (s *produkService) Update(ctx context.Context, id string, req *models.Updat
 	if req.Discrepancy != nil {
 		produk.Discrepancy = req.Discrepancy
 	}
+	if req.Panjang != nil {
+		produk.Panjang = *req.Panjang
+	}
+	if req.Lebar != nil {
+		produk.Lebar = *req.Lebar
+	}
+	if req.Tinggi != nil {
+		produk.Tinggi = *req.Tinggi
+	}
+	if req.Berat != nil {
+		produk.Berat = *req.Berat
+	}
 	if req.IsActive != nil {
 		produk.IsActive = *req.IsActive
 	}
@@ -259,59 +362,60 @@ func (s *produkService) UpdateStock(ctx context.Context, id string, req *models.
 
 func (s *produkService) toListResponse(p *models.Produk) *models.ProdukListResponse {
 	resp := &models.ProdukListResponse{
-		ID:      p.ID.String(),
-		Nama:    p.Nama,
-		Slug:    p.Slug,
-		IDCargo: p.IDCargo,
-		Kategori: models.ProdukRelationInfo{
-			ID:   p.Kategori.ID.String(),
+		ID:   p.ID.String(),
+		Nama: p.Nama,
+		// Slug:    p.Slug,
+		// IDCargo: p.IDCargo,
+		Kategori: models.SimpleProdukRelationInfo{
+			// ID:   p.Kategori.ID.String(),
 			Nama: p.Kategori.GetNama().ID,
-			Slug: p.Kategori.Slug,
+			// Slug: p.Kategori.Slug,
 		},
-		Kondisi: models.ProdukRelationInfo{
-			ID:   p.Kondisi.ID.String(),
+		Kondisi: models.SimpleProdukRelationInfo{
+			// ID:   p.Kondisi.ID.String(),
 			Nama: p.Kondisi.GetNama().ID,
-			Slug: p.Kondisi.Slug,
+			// Slug: p.Kondisi.Slug,
 		},
-		KondisiPaket: models.ProdukRelationInfo{
-			ID:   p.KondisiPaket.ID.String(),
-			Nama: p.KondisiPaket.GetNama().ID,
-			Slug: p.KondisiPaket.Slug,
-		},
-		Warehouse: models.ProdukRelationInfo{
-			ID:   p.Warehouse.ID.String(),
+		// KondisiPaket: models.SimpleProdukRelationInfo{
+		// 	// ID:   p.KondisiPaket.ID.String(),
+		// 	Nama: p.KondisiPaket.GetNama().ID,
+		// 	// Slug: p.KondisiPaket.Slug,
+		// },
+		Warehouse: models.SimpleProdukWarehouseInfo{
+			// ID:   p.Warehouse.ID.String(),
 			Nama: p.Warehouse.Nama,
-			Slug: p.Warehouse.Slug,
+			// Slug: p.Warehouse.Slug,
 		},
-		TipeProduk: models.ProdukRelationInfo{
-			ID:   p.TipeProduk.ID.String(),
+		TipeProduk: models.SimpleProdukRelationInfo{
+			// ID:   p.TipeProduk.ID.String(),
 			Nama: p.TipeProduk.Nama,
-			Slug: p.TipeProduk.Slug,
+			// Slug: p.TipeProduk.Slug,
 		},
-		HargaSebelumDiskon: p.HargaSebelumDiskon,
-		PersentaseDiskon:   p.PersentaseDiskon,
+		// HargaSebelumDiskon: p.HargaSebelumDiskon,
+		// PersentaseDiskon:   p.PersentaseDiskon,
 		HargaSesudahDiskon: p.HargaSesudahDiskon,
 		Quantity:           p.Quantity,
 		QuantityTerjual:    p.QuantityTerjual,
+		Berat:              p.Berat,
 		IsActive:           p.IsActive,
 		CreatedAt:          p.CreatedAt,
 		UpdatedAt:          p.UpdatedAt,
 	}
 
 	if p.Merek != nil {
-		resp.Merek = &models.ProdukRelationInfo{
-			ID:   p.Merek.ID.String(),
+		resp.Merek = &models.SimpleProdukRelationInfo{
+			// ID:   p.Merek.ID.String(),
 			Nama: p.Merek.GetNama().ID,
-			Slug: p.Merek.Slug,
+			// Slug: p.Merek.Slug,
 		}
 	}
-	if p.Sumber != nil {
-		resp.Sumber = &models.ProdukRelationInfo{
-			ID:   p.Sumber.ID.String(),
-			Nama: p.Sumber.GetNama().ID,
-			Slug: p.Sumber.Slug,
-		}
-	}
+	// if p.Sumber != nil {
+	// 	resp.Sumber = &models.SimpleProdukRelationInfo{
+	// 		// ID:   p.Sumber.ID.String(),
+	// 		Nama: p.Sumber.GetNama().ID,
+	// 		// Slug: p.Sumber.Slug,
+	// 	}
+	// }
 
 	// Get primary image
 	if len(p.Gambar) > 0 {
@@ -328,31 +432,31 @@ func (s *produkService) toDetailResponse(p *models.Produk) *models.ProdukDetailR
 		Nama:    p.Nama,
 		Slug:    p.Slug,
 		IDCargo: p.IDCargo,
-		Kategori: models.ProdukRelationInfo{
-			ID:   p.Kategori.ID.String(),
+		Kategori: models.SimpleProdukRelationInfo{
+			// ID:   p.Kategori.ID.String(),
 			Nama: p.Kategori.GetNama().ID,
-			Slug: p.Kategori.Slug,
+			// Slug: p.Kategori.Slug,
 		},
-		Kondisi: models.ProdukRelationInfo{
-			ID:   p.Kondisi.ID.String(),
+		Kondisi: models.SimpleProdukRelationInfo{
+			// ID:   p.Kondisi.ID.String(),
 			Nama: p.Kondisi.GetNama().ID,
-			Slug: p.Kondisi.Slug,
+			// Slug: p.Kondisi.Slug,
 		},
-		KondisiPaket: models.ProdukRelationInfo{
-			ID:   p.KondisiPaket.ID.String(),
+		KondisiPaket: models.SimpleProdukRelationInfo{
+			// ID:   p.KondisiPaket.ID.String(),
 			Nama: p.KondisiPaket.GetNama().ID,
-			Slug: p.KondisiPaket.Slug,
+			// Slug: p.KondisiPaket.Slug,
 		},
 		Warehouse: models.ProdukWarehouseInfo{
-			ID:   p.Warehouse.ID.String(),
+			// ID:   p.Warehouse.ID.String(),
 			Nama: p.Warehouse.Nama,
-			Slug: p.Warehouse.Slug,
+			// Slug: p.Warehouse.Slug,
 			Kota: p.Warehouse.Kota,
 		},
-		TipeProduk: models.ProdukRelationInfo{
-			ID:   p.TipeProduk.ID.String(),
+		TipeProduk: models.SimpleProdukRelationInfo{
+			// ID:   p.TipeProduk.ID.String(),
 			Nama: p.TipeProduk.Nama,
-			Slug: p.TipeProduk.Slug,
+			// Slug: p.TipeProduk.Slug,
 		},
 		HargaSebelumDiskon: p.HargaSebelumDiskon,
 		PersentaseDiskon:   p.PersentaseDiskon,
@@ -360,23 +464,28 @@ func (s *produkService) toDetailResponse(p *models.Produk) *models.ProdukDetailR
 		Quantity:           p.Quantity,
 		QuantityTerjual:    p.QuantityTerjual,
 		Discrepancy:        p.Discrepancy,
+		Panjang:            p.Panjang,
+		Lebar:              p.Lebar,
+		Tinggi:             p.Tinggi,
+		Berat:              p.Berat,
+		BeratVolumetrik:    s.calculateBeratVolumetrik(p.Panjang, p.Lebar, p.Tinggi),
 		IsActive:           p.IsActive,
 		CreatedAt:          p.CreatedAt,
 		UpdatedAt:          p.UpdatedAt,
 	}
 
 	if p.Merek != nil {
-		resp.Merek = &models.ProdukRelationInfo{
-			ID:   p.Merek.ID.String(),
+		resp.Merek = &models.SimpleProdukRelationInfo{
+			// ID:   p.Merek.ID.String(),
 			Nama: p.Merek.GetNama().ID,
-			Slug: p.Merek.Slug,
+			// Slug: p.Merek.Slug,
 		}
 	}
 	if p.Sumber != nil {
-		resp.Sumber = &models.ProdukRelationInfo{
-			ID:   p.Sumber.ID.String(),
+		resp.Sumber = &models.SimpleProdukRelationInfo{
+			// ID:   p.Sumber.ID.String(),
 			Nama: p.Sumber.GetNama().ID,
-			Slug: p.Sumber.Slug,
+			// Slug: p.Sumber.Slug,
 		}
 	}
 
@@ -402,4 +511,22 @@ func (s *produkService) toDetailResponse(p *models.Produk) *models.ProdukDetailR
 	}
 
 	return resp
+}
+
+// calculateBeratVolumetrik menghitung berat volumetrik berdasarkan dimensi produk
+// Formula: (Panjang × Lebar × Tinggi) / 6000
+// Hasil dalam kg, dibulatkan 2 desimal
+func (s *produkService) calculateBeratVolumetrik(panjang, lebar, tinggi float64) float64 {
+	if panjang == 0 || lebar == 0 || tinggi == 0 {
+		return 0
+	}
+	// Formula standar: (P × L × T) / 6000
+	// Divisor 6000 untuk konversi cm³ ke kg
+	volumetrik := (panjang * lebar * tinggi) / 6000
+	return math.Round(volumetrik*100) / 100
+}
+
+// Helper function
+func intPtr(i int) *int {
+	return &i
 }
