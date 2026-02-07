@@ -1,65 +1,19 @@
 package models
 
 import (
-	"database/sql/driver"
-	"encoding/json"
-	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
-// TujuanKategori represents single kategori target
-// TypeScript equivalent:
-//
-//	interface TujuanKategori {
-//	    id: string;
-//	    slug: string;
-//	}
-type TujuanKategori struct {
-	ID   string `json:"id"`
-	Slug string `json:"slug"`
-}
-
-// TujuanList is array of TujuanKategori with JSONB support
-// TypeScript equivalent: TujuanKategori[] | null
-type TujuanList []TujuanKategori
-
-// Scan implements sql.Scanner for GORM
-func (t *TujuanList) Scan(value interface{}) error {
-	if value == nil {
-		*t = nil
-		return nil
-	}
-
-	bytes, ok := value.([]byte)
-	if !ok {
-		return errors.New("failed to scan TujuanList: not []byte")
-	}
-
-	if len(bytes) == 0 {
-		*t = nil
-		return nil
-	}
-
-	return json.Unmarshal(bytes, t)
-}
-
-// Value implements driver.Valuer for GORM
-func (t TujuanList) Value() (driver.Value, error) {
-	if len(t) == 0 {
-		return nil, nil
-	}
-	return json.Marshal(t)
-}
-
 type BannerEventPromo struct {
 	ID             uuid.UUID      `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
 	Nama           string         `gorm:"type:varchar(100);not null" json:"nama"`
 	GambarURLID    string         `gorm:"column:gambar_url_id;type:varchar(500);not null" json:"-"`
 	GambarURLEN    string         `gorm:"column:gambar_url_en;type:varchar(500);not null" json:"-"`
-	Tujuan         TujuanList     `gorm:"type:jsonb" json:"tujuan"`
+	Tujuan         *string        `gorm:"type:varchar(1000)" json:"tujuan"` // Comma-separated kategori IDs
 	Urutan         int            `gorm:"default:0" json:"urutan"`
 	TanggalMulai   *time.Time     `json:"tanggal_mulai,omitempty"`
 	TanggalSelesai *time.Time     `gorm:"column:tanggal_selesai" json:"tanggal_selesai,omitempty"`
@@ -77,6 +31,41 @@ func (b *BannerEventPromo) GetGambarURL() TranslatableImage {
 		ID: b.GambarURLID,
 		EN: &b.GambarURLEN,
 	}
+}
+
+// GetTujuanIDs parses comma-separated string to slice of UUIDs
+func (b *BannerEventPromo) GetTujuanIDs() []uuid.UUID {
+	if b.Tujuan == nil || *b.Tujuan == "" {
+		return nil
+	}
+
+	ids := strings.Split(*b.Tujuan, ",")
+	result := make([]uuid.UUID, 0, len(ids))
+
+	for _, idStr := range ids {
+		idStr = strings.TrimSpace(idStr)
+		if id, err := uuid.Parse(idStr); err == nil {
+			result = append(result, id)
+		}
+	}
+
+	return result
+}
+
+// SetTujuanFromIDs sets tujuan from slice of UUIDs
+func (b *BannerEventPromo) SetTujuanFromIDs(ids []uuid.UUID) {
+	if len(ids) == 0 {
+		b.Tujuan = nil
+		return
+	}
+
+	strIDs := make([]string, len(ids))
+	for i, id := range ids {
+		strIDs[i] = id.String()
+	}
+
+	tujuan := strings.Join(strIDs, ",")
+	b.Tujuan = &tujuan
 }
 
 // IsCurrentlyVisible checks if banner should be displayed based on schedule only

@@ -3,6 +3,8 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"project-bulky-be/internal/config"
@@ -39,32 +41,9 @@ func NewBannerEventPromoService(repo repositories.BannerEventPromoRepository, re
 }
 
 func (s *bannerEventPromoService) Create(ctx context.Context, req *models.CreateBannerEventPromoRequest) (*models.BannerEventPromoResponse, error) {
-	// Validate and build Tujuan list
-	var tujuanList models.TujuanList
-	if len(req.Tujuan) > 0 {
-		kategoriIDs := make([]string, len(req.Tujuan))
-		for i, t := range req.Tujuan {
-			kategoriIDs[i] = t.ID
-		}
-
-		// Validate all kategori exist and active
-		existingKategori, err := s.kategoriService.FindActiveByIDs(ctx, kategoriIDs)
-		if err != nil {
-			return nil, errors.New("gagal validasi kategori: " + err.Error())
-		}
-
-		if len(existingKategori) != len(kategoriIDs) {
-			return nil, errors.New("beberapa kategori tidak ditemukan atau tidak aktif")
-		}
-
-		// Build tujuan list
-		tujuanList = make(models.TujuanList, len(existingKategori))
-		for i, k := range existingKategori {
-			tujuanList[i] = models.TujuanKategori{
-				ID:   k.ID.String(),
-				Slug: k.Slug,
-			}
-		}
+	// Validate tujuan
+	if err := s.validateTujuan(req.Tujuan); err != nil {
+		return nil, err
 	}
 
 	// Auto-increment urutan
@@ -78,8 +57,13 @@ func (s *bannerEventPromoService) Create(ctx context.Context, req *models.Create
 		Nama:        req.Nama,
 		GambarURLID: req.GambarID,
 		GambarURLEN: req.GambarEN,
-		Tujuan:      tujuanList,
 		Urutan:      maxUrutan + 1,
+	}
+
+	// Set tujuan (trim whitespace, remove empty)
+	if req.Tujuan != "" {
+		tujuan := s.cleanTujuanString(req.Tujuan)
+		banner.Tujuan = &tujuan
 	}
 
 	if req.TanggalMulai != nil {
@@ -145,32 +129,16 @@ func (s *bannerEventPromoService) Update(ctx context.Context, id string, req *mo
 
 	// Handle tujuan update
 	if req.Tujuan != nil {
-		if len(req.Tujuan) > 0 {
-			kategoriIDs := make([]string, len(req.Tujuan))
-			for i, t := range req.Tujuan {
-				kategoriIDs[i] = t.ID
-			}
-
-			existingKategori, err := s.kategoriService.FindActiveByIDs(ctx, kategoriIDs)
-			if err != nil {
-				return nil, errors.New("gagal validasi kategori: " + err.Error())
-			}
-
-			if len(existingKategori) != len(kategoriIDs) {
-				return nil, errors.New("beberapa kategori tidak ditemukan atau tidak aktif")
-			}
-
-			tujuanList := make(models.TujuanList, len(existingKategori))
-			for i, k := range existingKategori {
-				tujuanList[i] = models.TujuanKategori{
-					ID:   k.ID.String(),
-					Slug: k.Slug,
-				}
-			}
-			banner.Tujuan = tujuanList
-		} else {
-			// Empty array = clear tujuan
+		if *req.Tujuan == "" {
+			// Empty string = clear tujuan
 			banner.Tujuan = nil
+		} else {
+			// Validate and clean tujuan
+			if err := s.validateTujuan(*req.Tujuan); err != nil {
+				return nil, err
+			}
+			tujuan := s.cleanTujuanString(*req.Tujuan)
+			banner.Tujuan = &tujuan
 		}
 	}
 
@@ -227,22 +195,11 @@ func (s *bannerEventPromoService) GetVisibleBanners(ctx context.Context) ([]mode
 
 	items := []models.BannerEventPromoPublicResponse{}
 	for _, b := range banners {
-		var tujuan []models.TujuanKategoriPublicResponse
-		if b.Tujuan != nil {
-			tujuan = make([]models.TujuanKategoriPublicResponse, len(b.Tujuan))
-			for i, t := range b.Tujuan {
-				tujuan[i] = models.TujuanKategoriPublicResponse{
-					ID:   t.ID,
-					Slug: t.Slug,
-				}
-			}
-		}
-
 		items = append(items, models.BannerEventPromoPublicResponse{
 			ID:        b.ID.String(),
 			Nama:      b.Nama,
 			GambarURL: b.GetGambarURL().GetFullURL(s.cfg.BaseURL),
-			Tujuan:    tujuan,
+			Tujuan:    b.Tujuan,
 		})
 	}
 
@@ -250,22 +207,11 @@ func (s *bannerEventPromoService) GetVisibleBanners(ctx context.Context) ([]mode
 }
 
 func (s *bannerEventPromoService) toResponse(b *models.BannerEventPromo) *models.BannerEventPromoResponse {
-	var tujuan []models.TujuanKategoriResponse
-	if b.Tujuan != nil {
-		tujuan = make([]models.TujuanKategoriResponse, len(b.Tujuan))
-		for i, t := range b.Tujuan {
-			tujuan[i] = models.TujuanKategoriResponse{
-				ID:   t.ID,
-				Slug: t.Slug,
-			}
-		}
-	}
-
 	return &models.BannerEventPromoResponse{
 		ID:             b.ID.String(),
 		Nama:           b.Nama,
 		GambarURL:      b.GetGambarURL().GetFullURL(s.cfg.BaseURL),
-		Tujuan:         tujuan,
+		Tujuan:         b.Tujuan,
 		Urutan:         b.Urutan,
 		IsVisible:      b.IsCurrentlyVisible(),
 		TanggalMulai:   b.TanggalMulai,
@@ -276,22 +222,11 @@ func (s *bannerEventPromoService) toResponse(b *models.BannerEventPromo) *models
 }
 
 func (s *bannerEventPromoService) toSimpleResponse(b *models.BannerEventPromo) *models.BannerEventPromoSimpleResponse {
-	var tujuan []models.TujuanKategoriResponse
-	if b.Tujuan != nil {
-		tujuan = make([]models.TujuanKategoriResponse, len(b.Tujuan))
-		for i, t := range b.Tujuan {
-			tujuan[i] = models.TujuanKategoriResponse{
-				ID:   t.ID,
-				Slug: t.Slug,
-			}
-		}
-	}
-
 	return &models.BannerEventPromoSimpleResponse{
 		ID:        b.ID.String(),
 		Nama:      b.Nama,
 		GambarURL: b.GetGambarURL().GetFullURL(s.cfg.BaseURL),
-		// Tujuan:    tujuan,
+		Tujuan:    b.Tujuan,
 		Urutan:    b.Urutan,
 		IsVisible: b.IsCurrentlyVisible(),
 		UpdatedAt: b.UpdatedAt,
@@ -317,4 +252,52 @@ func parseFlexibleDate(dateStr string) (time.Time, error) {
 	}
 
 	return time.Time{}, errors.New("format tanggal tidak valid, gunakan yyyy-mm-dd atau RFC3339")
+}
+
+// validateTujuan validates comma-separated kategori IDs
+func (s *bannerEventPromoService) validateTujuan(tujuanStr string) error {
+	if tujuanStr == "" {
+		return nil // Empty is allowed (no redirect)
+	}
+
+	ids := strings.Split(tujuanStr, ",")
+
+	for _, idStr := range ids {
+		idStr = strings.TrimSpace(idStr)
+		if idStr == "" {
+			continue
+		}
+
+		// Validate UUID format
+		id, err := uuid.Parse(idStr)
+		if err != nil {
+			return fmt.Errorf("invalid UUID format: %s", idStr)
+		}
+
+		// Check if kategori exists
+		existingKategori, err := s.kategoriService.FindActiveByIDs(context.Background(), []string{id.String()})
+		if err != nil {
+			return err
+		}
+		if len(existingKategori) == 0 {
+			return fmt.Errorf("kategori produk tidak ditemukan: %s", idStr)
+		}
+	}
+
+	return nil
+}
+
+// cleanTujuanString removes whitespace and empty entries
+func (s *bannerEventPromoService) cleanTujuanString(tujuan string) string {
+	ids := strings.Split(tujuan, ",")
+	cleaned := make([]string, 0, len(ids))
+
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if id != "" {
+			cleaned = append(cleaned, id)
+		}
+	}
+
+	return strings.Join(cleaned, ",")
 }
