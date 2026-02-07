@@ -70,6 +70,11 @@ func main() {
 	whatsappHandlerRepo := repositories.NewWhatsAppHandlerRepository(db)
 	faqRepo := repositories.NewFAQRepository(db)
 	jadwalGudangRepo := repositories.NewJadwalGudangRepository(db)
+	blogRepo := repositories.NewBlogRepository(db)
+	kategoriBlogRepo := repositories.NewKategoriBlogRepository(db)
+	labelBlogRepo := repositories.NewLabelBlogRepository(db)
+	videoRepo := repositories.NewVideoRepository(db)
+	kategoriVideoRepo := repositories.NewKategoriVideoRepository(db)
 
 	// Auth V2 repositories
 	authRepo := repositories.NewAuthRepository(db)
@@ -97,7 +102,7 @@ func main() {
 	buyerService := services.NewBuyerService(buyerRepo, alamatBuyerRepo)
 	alamatBuyerService := services.NewAlamatBuyerService(alamatBuyerRepo, buyerRepo)
 	heroSectionService := services.NewHeroSectionService(heroSectionRepo, cfg)
-	bannerEventPromoService := services.NewBannerEventPromoService(bannerEventPromoRepo, reorderService, cfg)
+	bannerEventPromoService := services.NewBannerEventPromoService(bannerEventPromoRepo, reorderService, kategoriService, cfg)
 	ulasanService := services.NewUlasanService(ulasanRepo, pesananItemRepo, pesananRepo, cfg.UploadPath, cfg.BaseURL)
 	forceUpdateService := services.NewForceUpdateService(forceUpdateRepo, cfg.PlayStoreURL, cfg.AppStoreURL)
 	modeMaintenanceService := services.NewModeMaintenanceService(modeMaintenanceRepo)
@@ -109,6 +114,11 @@ func main() {
 	formulirPartaiBesarService := services.NewFormulirPartaiBesarService(formulirPartaiBesarRepo, kategoriRepo, reorderService, emailService)
 	whatsappHandlerService := services.NewWhatsAppHandlerService(whatsappHandlerRepo)
 	faqService := services.NewFAQService(faqRepo, reorderService)
+	blogService := services.NewBlogService(blogRepo, kategoriBlogRepo, labelBlogRepo)
+	kategoriBlogService := services.NewKategoriBlogService(kategoriBlogRepo)
+	labelBlogService := services.NewLabelBlogService(labelBlogRepo)
+	videoService := services.NewVideoService(videoRepo, kategoriVideoRepo)
+	kategoriVideoService := services.NewKategoriVideoService(kategoriVideoRepo)
 
 	// Auth V2 services
 	authV2Service := services.NewAuthV2Service(authRepo, activityLogRepo)
@@ -145,6 +155,11 @@ func main() {
 	formulirPartaiBesarController := controllers.NewFormulirPartaiBesarController(formulirPartaiBesarService, reorderService)
 	whatsappHandlerController := controllers.NewWhatsAppHandlerController(whatsappHandlerService)
 	faqController := controllers.NewFAQController(faqService)
+	blogController := controllers.NewBlogController(blogService)
+	kategoriBlogController := controllers.NewKategoriBlogController(kategoriBlogService)
+	labelBlogController := controllers.NewLabelBlogController(labelBlogService)
+	videoController := controllers.NewVideoController(videoService)
+	kategoriVideoController := controllers.NewKategoriVideoController(kategoriVideoService)
 
 	// Auth V2 controllers
 	authV2Controller := controllers.NewAuthV2Controller(authV2Service, adminService, buyerService)
@@ -169,6 +184,8 @@ func main() {
 		dokumenKebijakanController, disclaimerController,
 		formulirPartaiBesarController, whatsappHandlerController,
 		faqController,
+		blogController, kategoriBlogController, labelBlogController,
+		videoController, kategoriVideoController,
 	)
 
 	// Setup Auth V2 routes (new authentication system with roles & permissions)

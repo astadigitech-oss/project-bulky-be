@@ -20,6 +20,8 @@ type KategoriProdukService interface {
 	UpdateWithIcon(ctx context.Context, id string, req *models.UpdateKategoriProdukRequest, iconURL, gambarKondisiURL *string) (*models.KategoriProdukResponse, error)
 	Delete(ctx context.Context, id string) error
 	ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error)
+	FindActiveByIDs(ctx context.Context, ids []string) ([]models.KategoriProduk, error)
+	FindAllActiveForDropdown(ctx context.Context) ([]models.KategoriProduk, error)
 }
 
 type kategoriProdukService struct {
@@ -282,4 +284,12 @@ func (s *kategoriProdukService) toResponse(k *models.KategoriProduk) *models.Kat
 		CreatedAt:           k.CreatedAt,
 		UpdatedAt:           k.UpdatedAt,
 	}
+}
+
+func (s *kategoriProdukService) FindActiveByIDs(ctx context.Context, ids []string) ([]models.KategoriProduk, error) {
+	return s.repo.FindActiveByIDs(ctx, ids)
+}
+
+func (s *kategoriProdukService) FindAllActiveForDropdown(ctx context.Context) ([]models.KategoriProduk, error) {
+	return s.repo.FindAllActiveForDropdown(ctx)
 }

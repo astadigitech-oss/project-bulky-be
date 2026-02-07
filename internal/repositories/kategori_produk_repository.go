@@ -19,6 +19,8 @@ type KategoriProdukRepository interface {
 	Delete(ctx context.Context, kategori *models.KategoriProduk) error
 	ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error)
 	GetAllForDropdown(ctx context.Context) ([]models.KategoriProduk, error)
+	FindActiveByIDs(ctx context.Context, ids []string) ([]models.KategoriProduk, error)
+	FindAllActiveForDropdown(ctx context.Context) ([]models.KategoriProduk, error)
 }
 
 type kategoriProdukRepository struct {
@@ -132,6 +134,24 @@ func (r *kategoriProdukRepository) GetAllForDropdown(ctx context.Context) ([]mod
 		Select("id", "nama_id", "nama_en", "slug").
 		Where("is_active = ?", true).
 		Order("nama_id ASC").
+		Find(&kategoris).Error
+	return kategoris, err
+}
+
+func (r *kategoriProdukRepository) FindActiveByIDs(ctx context.Context, ids []string) ([]models.KategoriProduk, error) {
+	var kategoris []models.KategoriProduk
+	err := r.db.WithContext(ctx).
+		Where("id IN ? AND is_active = ?", ids, true).
+		Find(&kategoris).Error
+	return kategoris, err
+}
+
+func (r *kategoriProdukRepository) FindAllActiveForDropdown(ctx context.Context) ([]models.KategoriProduk, error) {
+	var kategoris []models.KategoriProduk
+	err := r.db.WithContext(ctx).
+		Select("id", "nama_id", "nama_en", "slug").
+		Where("is_active = ?", true).
+		Order("created_at ASC, nama_id ASC").
 		Find(&kategoris).Error
 	return kategoris, err
 }

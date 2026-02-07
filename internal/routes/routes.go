@@ -40,6 +40,11 @@ func SetupRoutes(
 	formulirPartaiBesarController *controllers.FormulirPartaiBesarController,
 	whatsappHandlerController *controllers.WhatsAppHandlerController,
 	faqController *controllers.FAQController,
+	blogController *controllers.BlogController,
+	kategoriBlogController *controllers.KategoriBlogController,
+	labelBlogController *controllers.LabelBlogController,
+	videoController *controllers.VideoController,
+	kategoriVideoController *controllers.KategoriVideoController,
 ) {
 	// Health check
 	router.GET("/api/health", func(c *gin.Context) {
@@ -137,6 +142,7 @@ func SetupRoutes(
 		kategoriAdmin.Use(middleware.AdminOnly())
 		{
 			kategoriAdmin.GET("", middleware.RequirePermission("kategori:read"), kategoriController.FindAll)
+			kategoriAdmin.GET("/dropdown", middleware.RequirePermission("kategori:read"), kategoriController.Dropdown)
 			kategoriAdmin.GET("/:id", middleware.RequirePermission("kategori:read"), kategoriController.FindByID)
 			kategoriAdmin.POST("", middleware.RequirePermission("kategori:manage"), kategoriController.Create)
 			kategoriAdmin.PUT("/:id", middleware.RequirePermission("kategori:manage"), kategoriController.Update)
@@ -602,6 +608,104 @@ func SetupRoutes(
 			informasiPickupAdmin.GET("/jadwal", middleware.RequirePermission("operasional:read"), warehouseController.GetJadwal)
 			informasiPickupAdmin.PUT("/jadwal", middleware.RequirePermission("operasional:manage"), warehouseController.UpdateJadwal)
 		}
+
+		// Blog - Admin
+		blogAdmin := v1.Group("/panel/blog")
+		blogAdmin.Use(middleware.AuthMiddleware())
+		blogAdmin.Use(middleware.AdminOnly())
+		{
+			blogAdmin.GET("", middleware.RequirePermission("marketing:read"), blogController.GetAll)
+			blogAdmin.GET("/statistik", middleware.RequirePermission("marketing:read"), blogController.GetStatistics)
+			blogAdmin.GET("/:id", middleware.RequirePermission("marketing:read"), blogController.GetByID)
+			blogAdmin.POST("", middleware.RequirePermission("marketing:manage"), blogController.Create)
+			blogAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), blogController.Update)
+			blogAdmin.DELETE("/:id", middleware.RequirePermission("marketing:manage"), blogController.Delete)
+			blogAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("marketing:manage"), blogController.ToggleStatus)
+			blogAdmin.GET("/search", middleware.RequirePermission("marketing:read"), blogController.Search)
+		}
+
+		// Blog - Public
+		blogPublic := v1.Group("/public/blog")
+		{
+			blogPublic.GET("", blogController.GetAll)
+			blogPublic.GET("/populer", blogController.GetPopular)
+			blogPublic.GET("/slug/:slug", blogController.GetBySlug)
+			blogPublic.GET("/search", blogController.Search)
+		}
+
+		// Kategori Blog - Admin
+		kategoriBlogAdmin := v1.Group("/panel/kategori-blog")
+		kategoriBlogAdmin.Use(middleware.AuthMiddleware())
+		kategoriBlogAdmin.Use(middleware.AdminOnly())
+		{
+			kategoriBlogAdmin.GET("", middleware.RequirePermission("marketing:read"), kategoriBlogController.GetAll)
+			kategoriBlogAdmin.GET("/:id", middleware.RequirePermission("marketing:read"), kategoriBlogController.GetByID)
+			kategoriBlogAdmin.POST("", middleware.RequirePermission("marketing:manage"), kategoriBlogController.Create)
+			kategoriBlogAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), kategoriBlogController.Update)
+			kategoriBlogAdmin.DELETE("/:id", middleware.RequirePermission("marketing:manage"), kategoriBlogController.Delete)
+			kategoriBlogAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("marketing:manage"), kategoriBlogController.ToggleStatus)
+			kategoriBlogAdmin.PUT("/reorder", middleware.RequirePermission("marketing:manage"), kategoriBlogController.Reorder)
+		}
+
+		// Kategori Blog - Public
+		v1.GET("/public/kategori-blog", kategoriBlogController.GetAllPublic)
+
+		// Label Blog - Admin
+		labelBlogAdmin := v1.Group("/panel/label-blog")
+		labelBlogAdmin.Use(middleware.AuthMiddleware())
+		labelBlogAdmin.Use(middleware.AdminOnly())
+		{
+			labelBlogAdmin.GET("", middleware.RequirePermission("marketing:read"), labelBlogController.GetAll)
+			labelBlogAdmin.GET("/:id", middleware.RequirePermission("marketing:read"), labelBlogController.GetByID)
+			labelBlogAdmin.POST("", middleware.RequirePermission("marketing:manage"), labelBlogController.Create)
+			labelBlogAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), labelBlogController.Update)
+			labelBlogAdmin.DELETE("/:id", middleware.RequirePermission("marketing:manage"), labelBlogController.Delete)
+			labelBlogAdmin.PUT("/reorder", middleware.RequirePermission("marketing:manage"), labelBlogController.Reorder)
+		}
+
+		// Label Blog - Public
+		v1.GET("/public/label-blog", labelBlogController.GetAllPublic)
+
+		// Video - Admin
+		videoAdmin := v1.Group("/panel/video")
+		videoAdmin.Use(middleware.AuthMiddleware())
+		videoAdmin.Use(middleware.AdminOnly())
+		{
+			videoAdmin.GET("", middleware.RequirePermission("marketing:read"), videoController.GetAll)
+			videoAdmin.GET("/statistik", middleware.RequirePermission("marketing:read"), videoController.GetStatistics)
+			videoAdmin.GET("/:id", middleware.RequirePermission("marketing:read"), videoController.GetByID)
+			videoAdmin.POST("", middleware.RequirePermission("marketing:manage"), videoController.Create)
+			videoAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), videoController.Update)
+			videoAdmin.DELETE("/:id", middleware.RequirePermission("marketing:manage"), videoController.Delete)
+			videoAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("marketing:manage"), videoController.ToggleStatus)
+			videoAdmin.GET("/search", middleware.RequirePermission("marketing:read"), videoController.Search)
+		}
+
+		// Video - Public
+		videoPublic := v1.Group("/public/video")
+		{
+			videoPublic.GET("", videoController.GetAll)
+			videoPublic.GET("/slug/:slug", videoController.GetBySlug)
+			videoPublic.GET("/popular", videoController.GetPopular)
+			videoPublic.GET("/search", videoController.Search)
+		}
+
+		// Kategori Video - Admin
+		kategoriVideoAdmin := v1.Group("/panel/kategori-video")
+		kategoriVideoAdmin.Use(middleware.AuthMiddleware())
+		kategoriVideoAdmin.Use(middleware.AdminOnly())
+		{
+			kategoriVideoAdmin.GET("", middleware.RequirePermission("marketing:read"), kategoriVideoController.GetAll)
+			kategoriVideoAdmin.GET("/:id", middleware.RequirePermission("marketing:read"), kategoriVideoController.GetByID)
+			kategoriVideoAdmin.POST("", middleware.RequirePermission("marketing:manage"), kategoriVideoController.Create)
+			kategoriVideoAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), kategoriVideoController.Update)
+			kategoriVideoAdmin.DELETE("/:id", middleware.RequirePermission("marketing:manage"), kategoriVideoController.Delete)
+			kategoriVideoAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("marketing:manage"), kategoriVideoController.ToggleStatus)
+			kategoriVideoAdmin.PUT("/reorder", middleware.RequirePermission("marketing:manage"), kategoriVideoController.Reorder)
+		}
+
+		// Kategori Video - Public
+		v1.GET("/public/kategori-video", kategoriVideoController.GetAllPublic)
 	}
 
 	// Endpoint to list all registered routes

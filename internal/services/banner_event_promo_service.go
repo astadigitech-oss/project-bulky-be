@@ -24,20 +24,50 @@ type BannerEventPromoService interface {
 }
 
 type bannerEventPromoService struct {
-	repo           repositories.BannerEventPromoRepository
-	reorderService *ReorderService
-	cfg            *config.Config
+	repo            repositories.BannerEventPromoRepository
+	reorderService  *ReorderService
+	kategoriService KategoriProdukService
+	cfg             *config.Config
 }
 
-func NewBannerEventPromoService(repo repositories.BannerEventPromoRepository, reorderService *ReorderService, cfg *config.Config) BannerEventPromoService {
+func NewBannerEventPromoService(repo repositories.BannerEventPromoRepository, reorderService *ReorderService, kategoriService KategoriProdukService, cfg *config.Config) BannerEventPromoService {
 	return &bannerEventPromoService{
-		repo:           repo,
-		reorderService: reorderService,
-		cfg:            cfg,
+		repo:            repo,
+		reorderService:  reorderService,
+		kategoriService: kategoriService,
+		cfg:             cfg,
 	}
 }
 
 func (s *bannerEventPromoService) Create(ctx context.Context, req *models.CreateBannerEventPromoRequest) (*models.BannerEventPromoResponse, error) {
+	// Validate and build Tujuan list
+	var tujuanList models.TujuanList
+	if len(req.Tujuan) > 0 {
+		kategoriIDs := make([]string, len(req.Tujuan))
+		for i, t := range req.Tujuan {
+			kategoriIDs[i] = t.ID
+		}
+
+		// Validate all kategori exist and active
+		existingKategori, err := s.kategoriService.FindActiveByIDs(ctx, kategoriIDs)
+		if err != nil {
+			return nil, errors.New("gagal validasi kategori: " + err.Error())
+		}
+
+		if len(existingKategori) != len(kategoriIDs) {
+			return nil, errors.New("beberapa kategori tidak ditemukan atau tidak aktif")
+		}
+
+		// Build tujuan list
+		tujuanList = make(models.TujuanList, len(existingKategori))
+		for i, k := range existingKategori {
+			tujuanList[i] = models.TujuanKategori{
+				ID:   k.ID.String(),
+				Slug: k.Slug,
+			}
+		}
+	}
+
 	// Auto-increment urutan
 	maxUrutan, err := s.repo.GetMaxUrutan(ctx)
 	if err != nil {
@@ -49,7 +79,7 @@ func (s *bannerEventPromoService) Create(ctx context.Context, req *models.Create
 		Nama:        req.Nama,
 		GambarURLID: req.GambarID,
 		GambarURLEN: req.GambarEN,
-		LinkURL:     req.UrlTujuan,
+		Tujuan:      tujuanList,
 		Urutan:      maxUrutan + 1,
 		IsActive:    req.IsActive,
 	}
@@ -62,7 +92,7 @@ func (s *bannerEventPromoService) Create(ctx context.Context, req *models.Create
 
 	if req.TanggalSelesai != nil {
 		if t, err := parseFlexibleDate(*req.TanggalSelesai); err == nil {
-			banner.TanggalAkhir = &t
+			banner.TanggalSelesai = &t
 		}
 	}
 
@@ -114,9 +144,38 @@ func (s *bannerEventPromoService) Update(ctx context.Context, id string, req *mo
 	if req.GambarEN != nil {
 		banner.GambarURLEN = req.GambarEN
 	}
-	if req.UrlTujuan != nil {
-		banner.LinkURL = req.UrlTujuan
+
+	// Handle tujuan update
+	if req.Tujuan != nil {
+		if len(req.Tujuan) > 0 {
+			kategoriIDs := make([]string, len(req.Tujuan))
+			for i, t := range req.Tujuan {
+				kategoriIDs[i] = t.ID
+			}
+
+			existingKategori, err := s.kategoriService.FindActiveByIDs(ctx, kategoriIDs)
+			if err != nil {
+				return nil, errors.New("gagal validasi kategori: " + err.Error())
+			}
+
+			if len(existingKategori) != len(kategoriIDs) {
+				return nil, errors.New("beberapa kategori tidak ditemukan atau tidak aktif")
+			}
+
+			tujuanList := make(models.TujuanList, len(existingKategori))
+			for i, k := range existingKategori {
+				tujuanList[i] = models.TujuanKategori{
+					ID:   k.ID.String(),
+					Slug: k.Slug,
+				}
+			}
+			banner.Tujuan = tujuanList
+		} else {
+			// Empty array = clear tujuan
+			banner.Tujuan = nil
+		}
 	}
+
 	if req.IsActive != nil {
 		banner.IsActive = *req.IsActive
 	}
@@ -127,7 +186,7 @@ func (s *bannerEventPromoService) Update(ctx context.Context, id string, req *mo
 	}
 	if req.TanggalSelesai != nil {
 		if t, err := parseFlexibleDate(*req.TanggalSelesai); err == nil {
-			banner.TanggalAkhir = &t
+			banner.TanggalSelesai = &t
 		}
 	}
 
@@ -190,11 +249,22 @@ func (s *bannerEventPromoService) GetVisibleBanners(ctx context.Context) ([]mode
 
 	items := []models.BannerEventPromoPublicResponse{}
 	for _, b := range banners {
+		var tujuan []models.TujuanKategoriPublicResponse
+		if b.Tujuan != nil {
+			tujuan = make([]models.TujuanKategoriPublicResponse, len(b.Tujuan))
+			for i, t := range b.Tujuan {
+				tujuan[i] = models.TujuanKategoriPublicResponse{
+					ID:   t.ID,
+					Slug: t.Slug,
+				}
+			}
+		}
+
 		items = append(items, models.BannerEventPromoPublicResponse{
 			ID:        b.ID.String(),
 			Nama:      b.Nama,
 			GambarURL: b.GetGambarURL().GetFullURL(s.cfg.BaseURL),
-			LinkURL:   b.LinkURL,
+			Tujuan:    tujuan,
 		})
 	}
 
@@ -202,27 +272,49 @@ func (s *bannerEventPromoService) GetVisibleBanners(ctx context.Context) ([]mode
 }
 
 func (s *bannerEventPromoService) toResponse(b *models.BannerEventPromo) *models.BannerEventPromoResponse {
+	var tujuan []models.TujuanKategoriResponse
+	if b.Tujuan != nil {
+		tujuan = make([]models.TujuanKategoriResponse, len(b.Tujuan))
+		for i, t := range b.Tujuan {
+			tujuan[i] = models.TujuanKategoriResponse{
+				ID:   t.ID,
+				Slug: t.Slug,
+			}
+		}
+	}
+
 	return &models.BannerEventPromoResponse{
-		ID:           b.ID.String(),
-		Nama:         b.Nama,
-		GambarURL:    b.GetGambarURL().GetFullURL(s.cfg.BaseURL),
-		LinkURL:      b.LinkURL,
-		Urutan:       b.Urutan,
-		IsActive:     b.IsActive,
-		TanggalMulai: b.TanggalMulai,
-		TanggalAkhir: b.TanggalAkhir,
-		CreatedAt:    b.CreatedAt,
-		UpdatedAt:    b.UpdatedAt,
+		ID:             b.ID.String(),
+		Nama:           b.Nama,
+		GambarURL:      b.GetGambarURL().GetFullURL(s.cfg.BaseURL),
+		Tujuan:         tujuan,
+		Urutan:         b.Urutan,
+		IsActive:       b.IsActive,
+		TanggalMulai:   b.TanggalMulai,
+		TanggalSelesai: b.TanggalSelesai,
+		CreatedAt:      b.CreatedAt,
+		UpdatedAt:      b.UpdatedAt,
 	}
 }
 
 func (s *bannerEventPromoService) toSimpleResponse(b *models.BannerEventPromo) *models.BannerEventPromoSimpleResponse {
+	var tujuan []models.TujuanKategoriResponse
+	if b.Tujuan != nil {
+		tujuan = make([]models.TujuanKategoriResponse, len(b.Tujuan))
+		for i, t := range b.Tujuan {
+			tujuan[i] = models.TujuanKategoriResponse{
+				ID:   t.ID,
+				Slug: t.Slug,
+			}
+		}
+	}
+
 	return &models.BannerEventPromoSimpleResponse{
 		ID:        b.ID.String(),
 		Nama:      b.Nama,
 		GambarURL: b.GetGambarURL().GetFullURL(s.cfg.BaseURL),
-		LinkURL:   b.LinkURL,
-		Urutan:    b.Urutan, // ADD THIS
+		// Tujuan:    tujuan,
+		Urutan:    b.Urutan,
 		IsActive:  b.IsActive,
 		UpdatedAt: b.UpdatedAt,
 	}
