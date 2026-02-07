@@ -276,3 +276,23 @@ func (c *KategoriProdukController) ToggleStatus(ctx *gin.Context) {
 
 	utils.SuccessResponse(ctx, "Status kategori berhasil diubah", result)
 }
+
+func (c *KategoriProdukController) Dropdown(ctx *gin.Context) {
+	kategoriList, err := c.service.FindAllActiveForDropdown(ctx.Request.Context())
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data kategori", nil)
+		return
+	}
+
+	// Convert to dropdown response
+	response := make([]map[string]interface{}, len(kategoriList))
+	for i, k := range kategoriList {
+		response[i] = map[string]interface{}{
+			"id":   k.ID.String(),
+			"nama": k.GetNama(),
+			"slug": k.Slug,
+		}
+	}
+
+	utils.SuccessResponse(ctx, "Data dropdown kategori produk berhasil diambil", response)
+}

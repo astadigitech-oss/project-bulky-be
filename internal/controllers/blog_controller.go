@@ -27,82 +27,82 @@ func NewBlogController(blogService services.BlogService) *BlogController {
 func (c *BlogController) Create(ctx *gin.Context) {
 	var req dto.CreateBlogRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Invalid request", err.Error())
+		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Data request tidak valid", utils.GetValidationErrorMessage(err))
 		return
 	}
 
 	blog, err := c.blogService.Create(ctx.Request.Context(), &req)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Failed to create blog", err.Error())
+		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat blog", err.Error())
 		return
 	}
 
-	utils.SimpleSuccessResponse(ctx, http.StatusCreated, "Blog created successfully", blog)
+	utils.SimpleSuccessResponse(ctx, http.StatusCreated, "Blog berhasil dibuat", blog)
 }
 
 func (c *BlogController) Update(ctx *gin.Context) {
 	id, err := uuid.Parse(ctx.Param("id"))
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Invalid ID", err.Error())
+		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", utils.GetValidationErrorMessage(err))
 		return
 	}
 
 	var req dto.UpdateBlogRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Invalid request", err.Error())
+		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Data request tidak valid", utils.GetValidationErrorMessage(err))
 		return
 	}
 
 	blog, err := c.blogService.Update(ctx.Request.Context(), id, &req)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Blog not found", err.Error())
+			utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Blog tidak ditemukan", utils.GetValidationErrorMessage(err))
 			return
 		}
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Failed to update blog", err.Error())
+		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal memperbarui blog", utils.GetValidationErrorMessage(err))
 		return
 	}
 
-	utils.SimpleSuccessResponse(ctx, http.StatusOK, "Blog updated successfully", blog)
+	utils.SimpleSuccessResponse(ctx, http.StatusOK, "Blog berhasil diperbarui", blog)
 }
 
 func (c *BlogController) Delete(ctx *gin.Context) {
 	id, err := uuid.Parse(ctx.Param("id"))
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Invalid ID", err.Error())
+		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", utils.GetValidationErrorMessage(err))
 		return
 	}
 
 	if err := c.blogService.Delete(ctx.Request.Context(), id); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Blog not found", err.Error())
+			utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Blog tidak ditemukan", utils.GetValidationErrorMessage(err))
 			return
 		}
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Failed to delete blog", err.Error())
+		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menghapus blog", utils.GetValidationErrorMessage(err))
 		return
 	}
 
-	utils.SimpleSuccessResponse(ctx, http.StatusOK, "Blog deleted successfully", nil)
+	utils.SimpleSuccessResponse(ctx, http.StatusOK, "Blog berhasil dihapus", nil)
 }
 
 func (c *BlogController) GetByID(ctx *gin.Context) {
 	id, err := uuid.Parse(ctx.Param("id"))
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Invalid ID", err.Error())
+		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", utils.GetValidationErrorMessage(err))
 		return
 	}
 
 	blog, err := c.blogService.GetByID(ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Blog not found", err.Error())
+			utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Blog tidak ditemukan", utils.GetValidationErrorMessage(err))
 			return
 		}
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Failed to get blog", err.Error())
+		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mendapatkan blog", utils.GetValidationErrorMessage(err))
 		return
 	}
 
-	utils.SuccessResponse(ctx, "Blog retrieved successfully", blog)
+	utils.SuccessResponse(ctx, "Blog berhasil didapatkan", blog)
 }
 
 func (c *BlogController) GetAll(ctx *gin.Context) {
@@ -125,18 +125,18 @@ func (c *BlogController) GetAll(ctx *gin.Context) {
 
 	blogs, total, err := c.blogService.GetAll(ctx.Request.Context(), isActive, kategoriID, page, limit)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Failed to get blogs", err.Error())
+		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mendapatkan blog", utils.GetValidationErrorMessage(err))
 		return
 	}
 
 	meta := models.NewPaginationMeta(page, limit, total)
-	utils.PaginatedSuccessResponse(ctx, "Blogs retrieved successfully", blogs, meta)
+	utils.PaginatedSuccessResponse(ctx, "Blog berhasil didapatkan", blogs, meta)
 }
 
 func (c *BlogController) Search(ctx *gin.Context) {
 	keyword := ctx.Query("keyword")
 	if keyword == "" {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Keyword is required", "")
+		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Keyword diperlukan", "")
 		return
 	}
 
@@ -151,12 +151,12 @@ func (c *BlogController) Search(ctx *gin.Context) {
 
 	blogs, total, err := c.blogService.Search(ctx.Request.Context(), keyword, isActive, page, limit)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Failed to search blogs", err.Error())
+		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mencari blog", utils.GetValidationErrorMessage(err))
 		return
 	}
 
 	meta := models.NewPaginationMeta(page, limit, total)
-	utils.PaginatedSuccessResponse(ctx, "Blogs retrieved successfully", blogs, meta)
+	utils.PaginatedSuccessResponse(ctx, "Blog berhasil didapatkan", blogs, meta)
 }
 
 // Public endpoints
@@ -166,17 +166,17 @@ func (c *BlogController) GetBySlug(ctx *gin.Context) {
 	blog, err := c.blogService.GetBySlug(ctx.Request.Context(), slug)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Blog not found", err.Error())
+			utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Blog tidak ditemukan", utils.GetValidationErrorMessage(err))
 			return
 		}
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Failed to get blog", err.Error())
+		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mendapatkan blog", utils.GetValidationErrorMessage(err))
 		return
 	}
 
 	// Increment view count
 	_ = c.blogService.IncrementView(ctx.Request.Context(), blog.ID)
 
-	utils.SuccessResponse(ctx, "Blog retrieved successfully", blog)
+	utils.SuccessResponse(ctx, "Blog berhasil didapatkan", blog)
 }
 
 func (c *BlogController) GetPopular(ctx *gin.Context) {
@@ -184,34 +184,34 @@ func (c *BlogController) GetPopular(ctx *gin.Context) {
 
 	blogs, err := c.blogService.GetPopular(ctx.Request.Context(), limit)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Failed to get popular blogs", err.Error())
+		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mendapatkan blog populer", utils.GetValidationErrorMessage(err))
 		return
 	}
 
-	utils.SuccessResponse(ctx, "Popular blogs retrieved successfully", blogs)
+	utils.SuccessResponse(ctx, "Blog populer berhasil didapatkan", blogs)
 }
 
 func (c *BlogController) GetStatistics(ctx *gin.Context) {
 	stats, err := c.blogService.GetStatistics(ctx.Request.Context())
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Failed to get statistics", err.Error())
+		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mendapatkan statistik", utils.GetValidationErrorMessage(err))
 		return
 	}
 
-	utils.SuccessResponse(ctx, "Statistics retrieved successfully", stats)
+	utils.SuccessResponse(ctx, "Statistik berhasil didapatkan", stats)
 }
 
 func (c *BlogController) ToggleStatus(ctx *gin.Context) {
 	id, err := uuid.Parse(ctx.Param("id"))
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Invalid ID", err.Error())
+		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", utils.GetValidationErrorMessage(err))
 		return
 	}
 
 	if err := c.blogService.ToggleStatus(ctx.Request.Context(), id); err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Failed to toggle status", err.Error())
+		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengubah status", utils.GetValidationErrorMessage(err))
 		return
 	}
 
-	utils.SuccessResponse(ctx, "Blog status toggled successfully", nil)
+	utils.SuccessResponse(ctx, "Status blog berhasil diubah", nil)
 }

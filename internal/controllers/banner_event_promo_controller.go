@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -38,9 +39,12 @@ func (c *BannerEventPromoController) Create(ctx *gin.Context) {
 		// Parse form data
 		req.Nama = ctx.PostForm("nama")
 
-		// Parse url_tujuan (optional)
-		if urlTujuan := ctx.PostForm("url_tujuan"); urlTujuan != "" {
-			req.UrlTujuan = &urlTujuan
+		// Parse tujuan JSON (optional)
+		if tujuanStr := ctx.PostForm("tujuan"); tujuanStr != "" {
+			var tujuan []models.TujuanKategoriInput
+			if err := json.Unmarshal([]byte(tujuanStr), &tujuan); err == nil {
+				req.Tujuan = tujuan
+			}
 		}
 
 		req.TanggalMulai = nil
@@ -180,9 +184,15 @@ func (c *BannerEventPromoController) Update(ctx *gin.Context) {
 		if nama := ctx.PostForm("nama"); nama != "" {
 			req.Nama = &nama
 		}
-		if urlTujuan := ctx.PostForm("url_tujuan"); urlTujuan != "" {
-			req.UrlTujuan = &urlTujuan
+
+		// Parse tujuan JSON (optional)
+		if tujuanStr := ctx.PostForm("tujuan"); tujuanStr != "" {
+			var tujuan []models.TujuanKategoriInput
+			if err := json.Unmarshal([]byte(tujuanStr), &tujuan); err == nil {
+				req.Tujuan = tujuan
+			}
 		}
+
 		if tm := ctx.PostForm("tanggal_mulai"); tm != "" {
 			req.TanggalMulai = &tm
 		}

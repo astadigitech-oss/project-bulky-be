@@ -517,23 +517,28 @@ type HeroSectionFilterRequest struct {
 // ========================================
 
 type CreateBannerEventPromoRequest struct {
-	Nama           string  `json:"nama" binding:"required,min=1,max=100"`
-	GambarID       string  `json:"gambar_id" binding:"required,max=255"`
-	GambarEN       *string `json:"gambar_en" binding:"omitempty,max=255"`
-	UrlTujuan      *string `json:"url_tujuan" binding:"omitempty,max=255"`
-	IsActive       bool    `json:"is_active"`
-	TanggalMulai   *string `json:"tanggal_mulai"`
-	TanggalSelesai *string `json:"tanggal_selesai"`
+	Nama           string                `json:"nama" binding:"required,min=1,max=100"`
+	GambarID       string                `json:"gambar_id" binding:"required,max=255"`
+	GambarEN       *string               `json:"gambar_en" binding:"omitempty,max=255"`
+	Tujuan         []TujuanKategoriInput `json:"tujuan" binding:"omitempty,dive"`
+	IsActive       bool                  `json:"is_active"`
+	TanggalMulai   *string               `json:"tanggal_mulai"`
+	TanggalSelesai *string               `json:"tanggal_selesai"`
 }
 
 type UpdateBannerEventPromoRequest struct {
-	Nama           *string `json:"nama" binding:"omitempty,min=1,max=100"`
-	GambarID       *string `json:"gambar_id" binding:"omitempty,max=255"`
-	GambarEN       *string `json:"gambar_en" binding:"omitempty,max=255"`
-	UrlTujuan      *string `json:"url_tujuan" binding:"omitempty,max=255"`
-	IsActive       *bool   `json:"is_active"`
-	TanggalMulai   *string `json:"tanggal_mulai"`
-	TanggalSelesai *string `json:"tanggal_selesai"`
+	Nama           *string               `json:"nama" binding:"omitempty,min=1,max=100"`
+	GambarID       *string               `json:"gambar_id" binding:"omitempty,max=255"`
+	GambarEN       *string               `json:"gambar_en" binding:"omitempty,max=255"`
+	Tujuan         []TujuanKategoriInput `json:"tujuan" binding:"omitempty,dive"`
+	IsActive       *bool                 `json:"is_active"`
+	TanggalMulai   *string               `json:"tanggal_mulai"`
+	TanggalSelesai *string               `json:"tanggal_selesai"`
+}
+
+type TujuanKategoriInput struct {
+	ID   string `json:"id" binding:"required,uuid"`
+	Slug string `json:"slug" binding:"required,max=100"`
 }
 
 type BannerEventPromoFilterRequest struct {

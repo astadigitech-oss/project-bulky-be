@@ -628,35 +628,46 @@ type HeroSectionPublicResponse struct {
 // Banner Event Promo Response
 // ========================================
 
+// TujuanKategoriResponse for API response
+type TujuanKategoriResponse struct {
+	ID   string `json:"id"`
+	Slug string `json:"slug"`
+}
+
+type TujuanKategoriPublicResponse struct {
+	ID   string `json:"id"`
+	Slug string `json:"slug"`
+}
+
 type BannerEventPromoResponse struct {
-	ID           string            `json:"id"`
-	Nama         string            `json:"nama"`
-	GambarURL    TranslatableImage `json:"gambar_url"`
-	LinkURL      *string           `json:"url_tujuan,omitempty"`
-	Urutan       int               `json:"urutan"`
-	IsActive     bool              `json:"is_active"`
-	TanggalMulai *time.Time        `json:"tanggal_mulai,omitempty"`
-	TanggalAkhir *time.Time        `json:"tanggal_selesai,omitempty"`
-	CreatedAt    time.Time         `json:"created_at"`
-	UpdatedAt    time.Time         `json:"updated_at"`
+	ID             string                   `json:"id"`
+	Nama           string                   `json:"nama"`
+	GambarURL      TranslatableImage        `json:"gambar_url"`
+	Tujuan         []TujuanKategoriResponse `json:"tujuan"` // null jika tidak ada
+	Urutan         int                      `json:"urutan"`
+	IsActive       bool                     `json:"is_active"`
+	TanggalMulai   *time.Time               `json:"tanggal_mulai,omitempty"`
+	TanggalSelesai *time.Time               `json:"tanggal_selesai,omitempty"`
+	CreatedAt      time.Time                `json:"created_at"`
+	UpdatedAt      time.Time                `json:"updated_at"`
 }
 
 type BannerEventPromoSimpleResponse struct {
 	ID        string            `json:"id"`
 	Nama      string            `json:"nama"`
 	GambarURL TranslatableImage `json:"gambar_url"`
-	LinkURL   *string           `json:"url_tujuan,omitempty"`
-	Urutan    int               `json:"urutan"` // ADD THIS
-	IsActive  bool              `json:"is_active"`
-	UpdatedAt time.Time         `json:"updated_at"`
+	// Tujuan    []TujuanKategoriResponse `json:"tujuan"` // null jika tidak ada
+	Urutan    int       `json:"urutan"`
+	IsActive  bool      `json:"is_active"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // Public response (minimal data)
 type BannerEventPromoPublicResponse struct {
-	ID        string            `json:"id"`
-	Nama      string            `json:"nama"`
-	GambarURL TranslatableImage `json:"gambar_url"`
-	LinkURL   *string           `json:"url_tujuan,omitempty"`
+	ID        string                         `json:"id"`
+	Nama      string                         `json:"nama"`
+	GambarURL TranslatableImage              `json:"gambar_url"`
+	Tujuan    []TujuanKategoriPublicResponse `json:"tujuan"` // null jika tidak ada
 }
 
 // ========================================

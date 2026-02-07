@@ -142,6 +142,7 @@ func SetupRoutes(
 		kategoriAdmin.Use(middleware.AdminOnly())
 		{
 			kategoriAdmin.GET("", middleware.RequirePermission("kategori:read"), kategoriController.FindAll)
+			kategoriAdmin.GET("/dropdown", middleware.RequirePermission("kategori:read"), kategoriController.Dropdown)
 			kategoriAdmin.GET("/:id", middleware.RequirePermission("kategori:read"), kategoriController.FindByID)
 			kategoriAdmin.POST("", middleware.RequirePermission("kategori:manage"), kategoriController.Create)
 			kategoriAdmin.PUT("/:id", middleware.RequirePermission("kategori:manage"), kategoriController.Update)

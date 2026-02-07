@@ -102,7 +102,7 @@ func main() {
 	buyerService := services.NewBuyerService(buyerRepo, alamatBuyerRepo)
 	alamatBuyerService := services.NewAlamatBuyerService(alamatBuyerRepo, buyerRepo)
 	heroSectionService := services.NewHeroSectionService(heroSectionRepo, cfg)
-	bannerEventPromoService := services.NewBannerEventPromoService(bannerEventPromoRepo, reorderService, cfg)
+	bannerEventPromoService := services.NewBannerEventPromoService(bannerEventPromoRepo, reorderService, kategoriService, cfg)
 	ulasanService := services.NewUlasanService(ulasanRepo, pesananItemRepo, pesananRepo, cfg.UploadPath, cfg.BaseURL)
 	forceUpdateService := services.NewForceUpdateService(forceUpdateRepo, cfg.PlayStoreURL, cfg.AppStoreURL)
 	modeMaintenanceService := services.NewModeMaintenanceService(modeMaintenanceRepo)
