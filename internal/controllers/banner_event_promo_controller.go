@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -39,13 +38,8 @@ func (c *BannerEventPromoController) Create(ctx *gin.Context) {
 		// Parse form data
 		req.Nama = ctx.PostForm("nama")
 
-		// Parse tujuan JSON (optional)
-		if tujuanStr := ctx.PostForm("tujuan"); tujuanStr != "" {
-			var tujuan []models.TujuanKategoriInput
-			if err := json.Unmarshal([]byte(tujuanStr), &tujuan); err == nil {
-				req.Tujuan = tujuan
-			}
-		}
+		// Parse tujuan (comma-separated string)
+		req.Tujuan = ctx.PostForm("tujuan")
 
 		req.TanggalMulai = nil
 		if tm := ctx.PostForm("tanggal_mulai"); tm != "" {
@@ -54,11 +48,6 @@ func (c *BannerEventPromoController) Create(ctx *gin.Context) {
 		req.TanggalSelesai = nil
 		if ts := ctx.PostForm("tanggal_selesai"); ts != "" {
 			req.TanggalSelesai = &ts
-		}
-
-		// Parse is_active (optional, default false)
-		if isActiveStr := ctx.PostForm("is_active"); isActiveStr != "" {
-			req.IsActive = isActiveStr == "true" || isActiveStr == "1"
 		}
 
 		// Validate required fields
@@ -188,12 +177,9 @@ func (c *BannerEventPromoController) Update(ctx *gin.Context) {
 			req.Nama = &nama
 		}
 
-		// Parse tujuan JSON (optional)
-		if tujuanStr := ctx.PostForm("tujuan"); tujuanStr != "" {
-			var tujuan []models.TujuanKategoriInput
-			if err := json.Unmarshal([]byte(tujuanStr), &tujuan); err == nil {
-				req.Tujuan = tujuan
-			}
+		// Parse tujuan (comma-separated string)
+		if tujuanStr := ctx.PostForm("tujuan"); ctx.PostFormArray("tujuan") != nil {
+			req.Tujuan = &tujuanStr
 		}
 
 		if tm := ctx.PostForm("tanggal_mulai"); tm != "" {
@@ -201,10 +187,6 @@ func (c *BannerEventPromoController) Update(ctx *gin.Context) {
 		}
 		if ts := ctx.PostForm("tanggal_selesai"); ts != "" {
 			req.TanggalSelesai = &ts
-		}
-		if isActiveStr := ctx.PostForm("is_active"); isActiveStr != "" {
-			isActive := isActiveStr == "true" || isActiveStr == "1"
-			req.IsActive = &isActive
 		}
 
 		// Handle gambar_id upload (optional for update)
@@ -285,18 +267,6 @@ func (c *BannerEventPromoController) Delete(ctx *gin.Context) {
 	}
 
 	utils.SuccessResponse(ctx, "Banner berhasil dihapus", nil)
-}
-
-func (c *BannerEventPromoController) ToggleStatus(ctx *gin.Context) {
-	id := ctx.Param("id")
-
-	result, err := c.service.ToggleStatus(ctx.Request.Context(), id)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, "Status banner berhasil diubah", result)
 }
 
 func (c *BannerEventPromoController) Reorder(ctx *gin.Context) {

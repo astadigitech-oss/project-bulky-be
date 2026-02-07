@@ -24,12 +24,11 @@ type TujuanKategoriResponse struct {
 // Banner Event Promo Request
 // Note: gambar_id and gambar_en are handled via multipart form files
 type BannerEventPromoRequest struct {
-	Nama           string                  `json:"nama" binding:"required,min=2,max=100"`
-	Tujuan         []TujuanKategoriRequest `json:"tujuan" binding:"omitempty,dive"`
-	Urutan         int                     `json:"urutan,omitempty"`
-	IsActive       *bool                   `json:"is_active,omitempty"`
-	TanggalMulai   *time.Time              `json:"tanggal_mulai,omitempty"`
-	TanggalSelesai *time.Time              `json:"tanggal_selesai,omitempty"`
+	Nama           string     `json:"nama" binding:"required,min=2,max=100"`
+	Tujuan         string     `json:"tujuan"` // Comma-separated IDs
+	Urutan         int        `json:"urutan,omitempty"`
+	TanggalMulai   *time.Time `json:"tanggal_mulai,omitempty"`
+	TanggalSelesai *time.Time `json:"tanggal_selesai,omitempty"`
 }
 
 // Banner Event Promo Response
@@ -37,9 +36,8 @@ type BannerEventPromoListResponse struct {
 	ID        uuid.UUID                `json:"id"`
 	Nama      string                   `json:"nama"`
 	GambarURL models.TranslatableImage `json:"gambar_url"`
-	Tujuan    []TujuanKategoriResponse `json:"tujuan"` // null jika tidak ada
+	Tujuan    *string                  `json:"tujuan"` // Comma-separated IDs or null
 	Urutan    int                      `json:"urutan"`
-	IsActive  bool                     `json:"is_active"`
 	IsVisible bool                     `json:"is_visible"` // computed dari schedule
 	UpdatedAt time.Time                `json:"updated_at"`
 }
@@ -48,9 +46,8 @@ type BannerEventPromoDetailResponse struct {
 	ID             uuid.UUID                `json:"id"`
 	Nama           string                   `json:"nama"`
 	GambarURL      models.TranslatableImage `json:"gambar_url"`
-	Tujuan         []TujuanKategoriResponse `json:"tujuan"` // null jika tidak ada
+	Tujuan         *string                  `json:"tujuan"` // Comma-separated IDs or null
 	Urutan         int                      `json:"urutan"`
-	IsActive       bool                     `json:"is_active"`
 	IsVisible      bool                     `json:"is_visible"`
 	TanggalMulai   *time.Time               `json:"tanggal_mulai,omitempty"`
 	TanggalSelesai *time.Time               `json:"tanggal_selesai,omitempty"`
@@ -64,9 +61,8 @@ func ToBannerEventPromoListResponse(b *models.BannerEventPromo) BannerEventPromo
 		ID:        b.ID,
 		Nama:      b.Nama,
 		GambarURL: b.GetGambarURL(),
-		Tujuan:    toTujuanResponse(b.Tujuan),
+		Tujuan:    b.Tujuan,
 		Urutan:    b.Urutan,
-		IsActive:  b.IsActive,
 		IsVisible: b.IsCurrentlyVisible(),
 		UpdatedAt: b.UpdatedAt,
 	}
@@ -77,30 +73,14 @@ func ToBannerEventPromoDetailResponse(b *models.BannerEventPromo) BannerEventPro
 		ID:             b.ID,
 		Nama:           b.Nama,
 		GambarURL:      b.GetGambarURL(),
-		Tujuan:         toTujuanResponse(b.Tujuan),
+		Tujuan:         b.Tujuan,
 		Urutan:         b.Urutan,
-		IsActive:       b.IsActive,
 		IsVisible:      b.IsCurrentlyVisible(),
 		TanggalMulai:   b.TanggalMulai,
 		TanggalSelesai: b.TanggalSelesai,
 		CreatedAt:      b.CreatedAt,
 		UpdatedAt:      b.UpdatedAt,
 	}
-}
-
-func toTujuanResponse(tujuan models.TujuanList) []TujuanKategoriResponse {
-	if len(tujuan) == 0 {
-		return nil
-	}
-
-	result := make([]TujuanKategoriResponse, len(tujuan))
-	for i, t := range tujuan {
-		result[i] = TujuanKategoriResponse{
-			ID:   t.ID,
-			Slug: t.Slug,
-		}
-	}
-	return result
 }
 
 // Hero Section Request
