@@ -81,6 +81,11 @@ func (b *BannerEventPromo) GetGambarURL() TranslatableImage {
 
 // IsCurrentlyVisible checks if banner should be displayed based on schedule only
 func (b *BannerEventPromo) IsCurrentlyVisible() bool {
+	// Jika tidak ada tanggal sama sekali, tidak tampil
+	if b.TanggalMulai == nil && b.TanggalSelesai == nil {
+		return false
+	}
+
 	now := time.Now()
 
 	if b.TanggalMulai != nil && now.Before(*b.TanggalMulai) {
