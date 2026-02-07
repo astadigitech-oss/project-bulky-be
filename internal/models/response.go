@@ -645,7 +645,7 @@ type BannerEventPromoResponse struct {
 	GambarURL      TranslatableImage        `json:"gambar_url"`
 	Tujuan         []TujuanKategoriResponse `json:"tujuan"` // null jika tidak ada
 	Urutan         int                      `json:"urutan"`
-	IsActive       bool                     `json:"is_active"`
+	IsVisible      bool                     `json:"is_visible"` // Computed from tanggal
 	TanggalMulai   *time.Time               `json:"tanggal_mulai,omitempty"`
 	TanggalSelesai *time.Time               `json:"tanggal_selesai,omitempty"`
 	CreatedAt      time.Time                `json:"created_at"`
@@ -658,7 +658,7 @@ type BannerEventPromoSimpleResponse struct {
 	GambarURL TranslatableImage `json:"gambar_url"`
 	// Tujuan    []TujuanKategoriResponse `json:"tujuan"` // null jika tidak ada
 	Urutan    int       `json:"urutan"`
-	IsActive  bool      `json:"is_active"`
+	IsVisible bool      `json:"is_visible"` // Computed from tanggal
 	UpdatedAt time.Time `json:"updated_at"`
 }
 

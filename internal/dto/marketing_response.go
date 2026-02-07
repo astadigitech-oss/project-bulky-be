@@ -27,7 +27,6 @@ type BannerEventPromoRequest struct {
 	Nama           string                  `json:"nama" binding:"required,min=2,max=100"`
 	Tujuan         []TujuanKategoriRequest `json:"tujuan" binding:"omitempty,dive"`
 	Urutan         int                     `json:"urutan,omitempty"`
-	IsActive       *bool                   `json:"is_active,omitempty"`
 	TanggalMulai   *time.Time              `json:"tanggal_mulai,omitempty"`
 	TanggalSelesai *time.Time              `json:"tanggal_selesai,omitempty"`
 }
@@ -39,7 +38,6 @@ type BannerEventPromoListResponse struct {
 	GambarURL models.TranslatableImage `json:"gambar_url"`
 	Tujuan    []TujuanKategoriResponse `json:"tujuan"` // null jika tidak ada
 	Urutan    int                      `json:"urutan"`
-	IsActive  bool                     `json:"is_active"`
 	IsVisible bool                     `json:"is_visible"` // computed dari schedule
 	UpdatedAt time.Time                `json:"updated_at"`
 }
@@ -50,7 +48,6 @@ type BannerEventPromoDetailResponse struct {
 	GambarURL      models.TranslatableImage `json:"gambar_url"`
 	Tujuan         []TujuanKategoriResponse `json:"tujuan"` // null jika tidak ada
 	Urutan         int                      `json:"urutan"`
-	IsActive       bool                     `json:"is_active"`
 	IsVisible      bool                     `json:"is_visible"`
 	TanggalMulai   *time.Time               `json:"tanggal_mulai,omitempty"`
 	TanggalSelesai *time.Time               `json:"tanggal_selesai,omitempty"`
@@ -66,7 +63,6 @@ func ToBannerEventPromoListResponse(b *models.BannerEventPromo) BannerEventPromo
 		GambarURL: b.GetGambarURL(),
 		Tujuan:    toTujuanResponse(b.Tujuan),
 		Urutan:    b.Urutan,
-		IsActive:  b.IsActive,
 		IsVisible: b.IsCurrentlyVisible(),
 		UpdatedAt: b.UpdatedAt,
 	}
@@ -79,7 +75,6 @@ func ToBannerEventPromoDetailResponse(b *models.BannerEventPromo) BannerEventPro
 		GambarURL:      b.GetGambarURL(),
 		Tujuan:         toTujuanResponse(b.Tujuan),
 		Urutan:         b.Urutan,
-		IsActive:       b.IsActive,
 		IsVisible:      b.IsCurrentlyVisible(),
 		TanggalMulai:   b.TanggalMulai,
 		TanggalSelesai: b.TanggalSelesai,

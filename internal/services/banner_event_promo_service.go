@@ -18,7 +18,6 @@ type BannerEventPromoService interface {
 	FindAll(ctx context.Context, params *models.BannerEventPromoFilterRequest) ([]models.BannerEventPromoSimpleResponse, *models.PaginationMeta, error)
 	Update(ctx context.Context, id string, req *models.UpdateBannerEventPromoRequest) (*models.BannerEventPromoResponse, error)
 	Delete(ctx context.Context, id string) error
-	ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error)
 	Reorder(ctx context.Context, req *models.ReorderRequest) error
 	GetVisibleBanners(ctx context.Context) ([]models.BannerEventPromoPublicResponse, error)
 }
@@ -81,7 +80,6 @@ func (s *bannerEventPromoService) Create(ctx context.Context, req *models.Create
 		GambarURLEN: req.GambarEN,
 		Tujuan:      tujuanList,
 		Urutan:      maxUrutan + 1,
-		IsActive:    req.IsActive,
 	}
 
 	if req.TanggalMulai != nil {
@@ -176,9 +174,6 @@ func (s *bannerEventPromoService) Update(ctx context.Context, id string, req *mo
 		}
 	}
 
-	if req.IsActive != nil {
-		banner.IsActive = *req.IsActive
-	}
 	if req.TanggalMulai != nil {
 		if t, err := parseFlexibleDate(*req.TanggalMulai); err == nil {
 			banner.TanggalMulai = &t
@@ -218,23 +213,6 @@ func (s *bannerEventPromoService) Delete(ctx context.Context, id string) error {
 		"", // No scope
 		nil,
 	)
-}
-
-func (s *bannerEventPromoService) ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error) {
-	banner, err := s.repo.FindByID(ctx, id)
-	if err != nil {
-		return nil, errors.New("banner tidak ditemukan")
-	}
-
-	banner.IsActive = !banner.IsActive
-	if err := s.repo.Update(ctx, banner); err != nil {
-		return nil, err
-	}
-
-	return &models.ToggleStatusResponse{
-		ID:       banner.ID.String(),
-		IsActive: banner.IsActive,
-	}, nil
 }
 
 func (s *bannerEventPromoService) Reorder(ctx context.Context, req *models.ReorderRequest) error {
@@ -289,7 +267,7 @@ func (s *bannerEventPromoService) toResponse(b *models.BannerEventPromo) *models
 		GambarURL:      b.GetGambarURL().GetFullURL(s.cfg.BaseURL),
 		Tujuan:         tujuan,
 		Urutan:         b.Urutan,
-		IsActive:       b.IsActive,
+		IsVisible:      b.IsCurrentlyVisible(),
 		TanggalMulai:   b.TanggalMulai,
 		TanggalSelesai: b.TanggalSelesai,
 		CreatedAt:      b.CreatedAt,
@@ -315,7 +293,7 @@ func (s *bannerEventPromoService) toSimpleResponse(b *models.BannerEventPromo) *
 		GambarURL: b.GetGambarURL().GetFullURL(s.cfg.BaseURL),
 		// Tujuan:    tujuan,
 		Urutan:    b.Urutan,
-		IsActive:  b.IsActive,
+		IsVisible: b.IsCurrentlyVisible(),
 		UpdatedAt: b.UpdatedAt,
 	}
 }

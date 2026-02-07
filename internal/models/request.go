@@ -521,7 +521,6 @@ type CreateBannerEventPromoRequest struct {
 	GambarID       string                `json:"gambar_id" binding:"required,max=255"`
 	GambarEN       string                `json:"gambar_en" binding:"required,max=255"`
 	Tujuan         []TujuanKategoriInput `json:"tujuan" binding:"omitempty,dive"`
-	IsActive       bool                  `json:"is_active"`
 	TanggalMulai   *string               `json:"tanggal_mulai"`
 	TanggalSelesai *string               `json:"tanggal_selesai"`
 }
@@ -531,7 +530,6 @@ type UpdateBannerEventPromoRequest struct {
 	GambarID       *string               `json:"gambar_id" binding:"omitempty,max=255"`
 	GambarEN       *string               `json:"gambar_en" binding:"omitempty,max=255"`
 	Tujuan         []TujuanKategoriInput `json:"tujuan" binding:"omitempty,dive"`
-	IsActive       *bool                 `json:"is_active"`
 	TanggalMulai   *string               `json:"tanggal_mulai"`
 	TanggalSelesai *string               `json:"tanggal_selesai"`
 }
@@ -543,7 +541,6 @@ type TujuanKategoriInput struct {
 
 type BannerEventPromoFilterRequest struct {
 	PaginationRequest
-	IsActive  *bool   `form:"is_active"`
 	UpdatedAt *string `form:"updated_at"`
 }
 

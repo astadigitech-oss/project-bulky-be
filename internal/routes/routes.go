@@ -385,7 +385,6 @@ func SetupRoutes(
 			bannerEventPromoAdmin.POST("", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.Create)
 			bannerEventPromoAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.Update)
 			bannerEventPromoAdmin.DELETE("/:id", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.Delete)
-			bannerEventPromoAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.ToggleStatus)
 			bannerEventPromoAdmin.PUT("/reorder", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.Reorder)
 			bannerEventPromoAdmin.PATCH("/:id/reorder", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.ReorderByDirection)
 		}

@@ -56,11 +56,6 @@ func (c *BannerEventPromoController) Create(ctx *gin.Context) {
 			req.TanggalSelesai = &ts
 		}
 
-		// Parse is_active (optional, default false)
-		if isActiveStr := ctx.PostForm("is_active"); isActiveStr != "" {
-			req.IsActive = isActiveStr == "true" || isActiveStr == "1"
-		}
-
 		// Validate required fields
 		if req.Nama == "" {
 			utils.ErrorResponse(ctx, http.StatusBadRequest, "nama wajib diisi", nil)
@@ -202,10 +197,6 @@ func (c *BannerEventPromoController) Update(ctx *gin.Context) {
 		if ts := ctx.PostForm("tanggal_selesai"); ts != "" {
 			req.TanggalSelesai = &ts
 		}
-		if isActiveStr := ctx.PostForm("is_active"); isActiveStr != "" {
-			isActive := isActiveStr == "true" || isActiveStr == "1"
-			req.IsActive = &isActive
-		}
 
 		// Handle gambar_id upload (optional for update)
 		if file, err := ctx.FormFile("gambar_id"); err == nil {
@@ -285,18 +276,6 @@ func (c *BannerEventPromoController) Delete(ctx *gin.Context) {
 	}
 
 	utils.SuccessResponse(ctx, "Banner berhasil dihapus", nil)
-}
-
-func (c *BannerEventPromoController) ToggleStatus(ctx *gin.Context) {
-	id := ctx.Param("id")
-
-	result, err := c.service.ToggleStatus(ctx.Request.Context(), id)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, "Status banner berhasil diubah", result)
 }
 
 func (c *BannerEventPromoController) Reorder(ctx *gin.Context) {

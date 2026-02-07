@@ -122,6 +122,10 @@ func (s *heroSectionService) Create(ctx context.Context, req *models.CreateHeroS
 		TanggalSelesai: tanggalSelesai,
 	}
 
+	// Note: Database trigger fn_hero_section_auto_sync() will handle:
+	// - If both tanggal_mulai AND tanggal_selesai are set → auto set is_default = true
+	// - If is_default = true → clear tanggal and unset other records' is_default
+
 	if err := s.repo.Create(ctx, hero); err != nil {
 		return nil, err
 	}
@@ -206,6 +210,10 @@ func (s *heroSectionService) Update(ctx context.Context, id string, req *models.
 		hero.TanggalSelesai = tanggalSelesai
 	}
 
+	// Note: Database trigger fn_hero_section_auto_sync() will handle:
+	// - If both tanggal_mulai AND tanggal_selesai are set → auto set is_default = true
+	// - If is_default = true → clear tanggal and unset other records' is_default
+
 	if err := s.repo.Update(ctx, hero); err != nil {
 		return nil, err
 	}
@@ -230,6 +238,11 @@ func (s *heroSectionService) ToggleStatus(ctx context.Context, id string) (*mode
 	}
 
 	hero.IsDefault = !hero.IsDefault
+
+	// Note: Database trigger fn_hero_section_auto_sync() will handle:
+	// - Clear tanggal_mulai & tanggal_selesai when is_default = true
+	// - Unset is_default from other records
+
 	if err := s.repo.Update(ctx, hero); err != nil {
 		return nil, err
 	}

@@ -61,7 +61,6 @@ type BannerEventPromo struct {
 	GambarURLEN    string         `gorm:"column:gambar_url_en;type:varchar(500);not null" json:"-"`
 	Tujuan         TujuanList     `gorm:"type:jsonb" json:"tujuan"`
 	Urutan         int            `gorm:"default:0" json:"urutan"`
-	IsActive       bool           `gorm:"default:true" json:"is_active"`
 	TanggalMulai   *time.Time     `json:"tanggal_mulai,omitempty"`
 	TanggalSelesai *time.Time     `gorm:"column:tanggal_selesai" json:"tanggal_selesai,omitempty"`
 	CreatedAt      time.Time      `gorm:"autoCreateTime" json:"created_at"`
@@ -80,12 +79,8 @@ func (b *BannerEventPromo) GetGambarURL() TranslatableImage {
 	}
 }
 
-// IsCurrentlyVisible checks if banner should be displayed based on schedule
+// IsCurrentlyVisible checks if banner should be displayed based on schedule only
 func (b *BannerEventPromo) IsCurrentlyVisible() bool {
-	if !b.IsActive {
-		return false
-	}
-
 	now := time.Now()
 
 	if b.TanggalMulai != nil && now.Before(*b.TanggalMulai) {

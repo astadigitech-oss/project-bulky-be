@@ -50,11 +50,6 @@ func (r *bannerEventPromoRepository) FindAll(ctx context.Context, params *models
 		query = query.Where("nama ILIKE ?", "%"+params.Search+"%")
 	}
 
-	// Filter is_active
-	if params.IsActive != nil {
-		query = query.Where("is_active = ?", *params.IsActive)
-	}
-
 	// Count total
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -108,7 +103,6 @@ func (r *bannerEventPromoRepository) GetVisibleBanners(ctx context.Context) ([]m
 	now := time.Now()
 
 	err := r.db.WithContext(ctx).
-		Where("is_active = ?", true).
 		Where("tanggal_mulai IS NULL OR tanggal_mulai <= ?", now).
 		Where("tanggal_selesai IS NULL OR tanggal_selesai >= ?", now).
 		Order("urutan ASC").
