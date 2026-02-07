@@ -58,7 +58,7 @@ type BannerEventPromo struct {
 	ID             uuid.UUID      `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
 	Nama           string         `gorm:"type:varchar(100);not null" json:"nama"`
 	GambarURLID    string         `gorm:"column:gambar_url_id;type:varchar(500);not null" json:"-"`
-	GambarURLEN    *string        `gorm:"column:gambar_url_en;type:varchar(500);not null" json:"-"`
+	GambarURLEN    string         `gorm:"column:gambar_url_en;type:varchar(500);not null" json:"-"`
 	Tujuan         TujuanList     `gorm:"type:jsonb" json:"tujuan"`
 	Urutan         int            `gorm:"default:0" json:"urutan"`
 	IsActive       bool           `gorm:"default:true" json:"is_active"`
@@ -76,7 +76,7 @@ func (BannerEventPromo) TableName() string {
 func (b *BannerEventPromo) GetGambarURL() TranslatableImage {
 	return TranslatableImage{
 		ID: b.GambarURLID,
-		EN: b.GambarURLEN,
+		EN: &b.GambarURLEN,
 	}
 }
 

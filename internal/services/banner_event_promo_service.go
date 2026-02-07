@@ -142,7 +142,7 @@ func (s *bannerEventPromoService) Update(ctx context.Context, id string, req *mo
 		banner.GambarURLID = *req.GambarID
 	}
 	if req.GambarEN != nil {
-		banner.GambarURLEN = req.GambarEN
+		banner.GambarURLEN = *req.GambarEN
 	}
 
 	// Handle tujuan update

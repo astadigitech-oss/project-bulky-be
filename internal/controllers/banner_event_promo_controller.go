@@ -84,7 +84,7 @@ func (c *BannerEventPromoController) Create(ctx *gin.Context) {
 			return
 		}
 
-		// Handle gambar_en upload (optional)
+		// Handle gambar_en upload (required)
 		if file, err := ctx.FormFile("gambar_en"); err == nil {
 			if !utils.IsValidImageType(file) {
 				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_en tidak didukung", nil)
@@ -96,10 +96,13 @@ func (c *BannerEventPromoController) Create(ctx *gin.Context) {
 				return
 			}
 			gambarENURL = &savedPath
+		} else {
+			utils.ErrorResponse(ctx, http.StatusBadRequest, "File gambar_en wajib diupload", nil)
+			return
 		}
 
 		req.GambarID = *gambarIDURL
-		req.GambarEN = gambarENURL
+		req.GambarEN = *gambarENURL
 
 		result, err := c.service.Create(ctx.Request.Context(), &req)
 		if err != nil {
