@@ -155,10 +155,10 @@ func main() {
 	formulirPartaiBesarController := controllers.NewFormulirPartaiBesarController(formulirPartaiBesarService, reorderService)
 	whatsappHandlerController := controllers.NewWhatsAppHandlerController(whatsappHandlerService)
 	faqController := controllers.NewFAQController(faqService)
-	blogController := controllers.NewBlogController(blogService)
+	blogController := controllers.NewBlogController(blogService, kategoriBlogService, labelBlogService)
 	kategoriBlogController := controllers.NewKategoriBlogController(kategoriBlogService)
 	labelBlogController := controllers.NewLabelBlogController(labelBlogService)
-	videoController := controllers.NewVideoController(videoService)
+	videoController := controllers.NewVideoController(videoService, kategoriVideoService)
 	kategoriVideoController := controllers.NewKategoriVideoController(kategoriVideoService)
 
 	// Auth V2 controllers

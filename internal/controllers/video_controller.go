@@ -16,11 +16,18 @@ import (
 )
 
 type VideoController struct {
-	videoService services.VideoService
+	videoService          services.VideoService
+	kategoriVideoService  services.KategoriVideoService
 }
 
-func NewVideoController(videoService services.VideoService) *VideoController {
-	return &VideoController{videoService: videoService}
+func NewVideoController(
+	videoService services.VideoService,
+	kategoriVideoService services.KategoriVideoService,
+) *VideoController {
+	return &VideoController{
+		videoService:         videoService,
+		kategoriVideoService: kategoriVideoService,
+	}
 }
 
 // Admin endpoints
@@ -214,4 +221,21 @@ func (c *VideoController) ToggleStatus(ctx *gin.Context) {
 	}
 
 	utils.SuccessResponse(ctx, "Video status toggled successfully", nil)
+}
+
+// GetDropdownOptions returns all active kategori for dropdown
+func (c *VideoController) GetDropdownOptions(ctx *gin.Context) {
+	// Get kategori
+	kategoriVideo, err := c.kategoriVideoService.GetAllActive(ctx.Request.Context())
+	if err != nil {
+		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil kategori", err.Error())
+		return
+	}
+
+	// Build response
+	data := map[string]interface{}{
+		"kategori": kategoriVideo,
+	}
+
+	utils.SuccessResponse(ctx, "Data dropdown berhasil diambil", data)
 }

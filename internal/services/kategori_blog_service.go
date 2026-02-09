@@ -18,6 +18,7 @@ type KategoriBlogService interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*models.KategoriBlog, error)
 	GetBySlug(ctx context.Context, slug string) (*models.KategoriBlog, error)
 	GetAll(ctx context.Context, isActive *bool) ([]models.KategoriBlog, error)
+	GetAllActive(ctx context.Context) ([]dto.KategoriBlogDropdownResponse, error)
 	Reorder(ctx context.Context, items []dto.ReorderItem) error
 	ToggleStatus(ctx context.Context, id uuid.UUID) error
 	GetAllPublicWithCount(ctx context.Context) ([]models.KategoriBlog, error)
@@ -116,6 +117,34 @@ func (s *kategoriBlogService) ToggleStatus(ctx context.Context, id uuid.UUID) er
 	}
 	kategori.IsActive = !kategori.IsActive
 	return s.repo.Update(ctx, kategori)
+}
+
+func (s *kategoriBlogService) GetAllActive(ctx context.Context) ([]dto.KategoriBlogDropdownResponse, error) {
+	isActive := true
+	kategoriList, err := s.repo.FindAll(ctx, &isActive)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []dto.KategoriBlogDropdownResponse
+	for _, k := range kategoriList {
+		nama := map[string]interface{}{
+			"id": k.NamaID,
+		}
+		if k.NamaEN != nil {
+			nama["en"] = *k.NamaEN
+		} else {
+			nama["en"] = k.NamaID
+		}
+
+		result = append(result, dto.KategoriBlogDropdownResponse{
+			ID:   k.ID,
+			Nama: nama,
+			Slug: k.Slug,
+		})
+	}
+
+	return result, nil
 }
 
 func (s *kategoriBlogService) GetAllPublicWithCount(ctx context.Context) ([]models.KategoriBlog, error) {

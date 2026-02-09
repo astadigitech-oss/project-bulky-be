@@ -16,11 +16,21 @@ import (
 )
 
 type BlogController struct {
-	blogService services.BlogService
+	blogService          services.BlogService
+	kategoriBlogService  services.KategoriBlogService
+	labelBlogService     services.LabelBlogService
 }
 
-func NewBlogController(blogService services.BlogService) *BlogController {
-	return &BlogController{blogService: blogService}
+func NewBlogController(
+	blogService services.BlogService,
+	kategoriBlogService services.KategoriBlogService,
+	labelBlogService services.LabelBlogService,
+) *BlogController {
+	return &BlogController{
+		blogService:         blogService,
+		kategoriBlogService: kategoriBlogService,
+		labelBlogService:    labelBlogService,
+	}
 }
 
 // Admin endpoints
@@ -214,4 +224,29 @@ func (c *BlogController) ToggleStatus(ctx *gin.Context) {
 	}
 
 	utils.SuccessResponse(ctx, "Status blog berhasil diubah", nil)
+}
+
+// GetDropdownOptions returns all active kategori and label for dropdown
+func (c *BlogController) GetDropdownOptions(ctx *gin.Context) {
+	// Get kategori
+	kategoriBlog, err := c.kategoriBlogService.GetAllActive(ctx.Request.Context())
+	if err != nil {
+		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil kategori", err.Error())
+		return
+	}
+
+	// Get label
+	labelBlog, err := c.labelBlogService.GetAllActive(ctx.Request.Context())
+	if err != nil {
+		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil label", err.Error())
+		return
+	}
+
+	// Build response
+	data := map[string]interface{}{
+		"kategori": kategoriBlog,
+		"label":    labelBlog,
+	}
+
+	utils.SuccessResponse(ctx, "Data dropdown berhasil diambil", data)
 }

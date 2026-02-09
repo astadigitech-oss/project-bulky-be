@@ -621,6 +621,7 @@ func SetupRoutes(
 		{
 			blogAdmin.GET("", middleware.RequirePermission("marketing:read"), blogController.GetAll)
 			blogAdmin.GET("/statistik", middleware.RequirePermission("marketing:read"), blogController.GetStatistics)
+			blogAdmin.GET("/dropdown", middleware.RequirePermission("marketing:read"), blogController.GetDropdownOptions)
 			blogAdmin.GET("/:id", middleware.RequirePermission("marketing:read"), blogController.GetByID)
 			blogAdmin.POST("", middleware.RequirePermission("marketing:manage"), blogController.Create)
 			blogAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), blogController.Update)
@@ -678,6 +679,7 @@ func SetupRoutes(
 		{
 			videoAdmin.GET("", middleware.RequirePermission("marketing:read"), videoController.GetAll)
 			videoAdmin.GET("/statistik", middleware.RequirePermission("marketing:read"), videoController.GetStatistics)
+			videoAdmin.GET("/dropdown", middleware.RequirePermission("marketing:read"), videoController.GetDropdownOptions)
 			videoAdmin.GET("/:id", middleware.RequirePermission("marketing:read"), videoController.GetByID)
 			videoAdmin.POST("", middleware.RequirePermission("marketing:manage"), videoController.Create)
 			videoAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), videoController.Update)
