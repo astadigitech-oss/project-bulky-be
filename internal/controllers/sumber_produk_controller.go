@@ -118,3 +118,29 @@ func (c *SumberProdukController) ToggleStatus(ctx *gin.Context) {
 
 	utils.SuccessResponse(ctx, "Status sumber produk berhasil diubah", result)
 }
+
+func (c *SumberProdukController) Dropdown(ctx *gin.Context) {
+	// Get all active sumber for dropdown
+	var params models.SumberProdukFilterRequest
+	params.Page = 1
+	params.PerPage = 1000 // Get all
+	isActive := true
+	params.IsActive = &isActive
+
+	sumberList, _, err := c.service.FindAll(ctx.Request.Context(), &params)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data sumber", nil)
+		return
+	}
+
+	// Convert to simple dropdown response
+	response := make([]map[string]interface{}, len(sumberList))
+	for i, s := range sumberList {
+		response[i] = map[string]interface{}{
+			"id":   s.ID,
+			"nama": s.Nama.ID,
+		}
+	}
+
+	utils.SuccessResponse(ctx, "Data dropdown sumber produk berhasil diambil", response)
+}

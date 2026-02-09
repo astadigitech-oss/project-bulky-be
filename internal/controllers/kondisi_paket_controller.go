@@ -178,3 +178,29 @@ func (c *KondisiPaketController) ReorderByDirection(ctx *gin.Context) {
 		},
 	})
 }
+
+func (c *KondisiPaketController) Dropdown(ctx *gin.Context) {
+	// Get all active kondisi paket for dropdown
+	var params models.PaginationRequest
+	params.Page = 1
+	params.PerPage = 1000 // Get all
+	isActive := true
+	params.IsActive = &isActive
+
+	paketList, _, err := c.service.FindAll(ctx.Request.Context(), &params)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data kondisi paket", nil)
+		return
+	}
+
+	// Convert to simple dropdown response
+	response := make([]map[string]interface{}, len(paketList))
+	for i, p := range paketList {
+		response[i] = map[string]interface{}{
+			"id":   p.ID,
+			"nama": p.Nama.ID,
+		}
+	}
+
+	utils.SuccessResponse(ctx, "Data dropdown kondisi paket berhasil diambil", response)
+}

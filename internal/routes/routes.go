@@ -164,6 +164,7 @@ func SetupRoutes(
 		merekAdmin.Use(middleware.AdminOnly())
 		{
 			merekAdmin.GET("", middleware.RequirePermission("brand:read"), merekController.FindAll)
+			merekAdmin.GET("/dropdown", middleware.RequirePermission("brand:read"), merekController.Dropdown)
 			merekAdmin.GET("/:id", middleware.RequirePermission("brand:read"), merekController.FindByID)
 			merekAdmin.POST("", middleware.RequirePermission("brand:manage"), merekController.Create)
 			merekAdmin.PUT("/:id", middleware.RequirePermission("brand:manage"), merekController.Update)
@@ -185,6 +186,7 @@ func SetupRoutes(
 		kondisiAdmin.Use(middleware.AdminOnly())
 		{
 			kondisiAdmin.GET("", middleware.RequirePermission("kondisi:read"), kondisiController.FindAll)
+			kondisiAdmin.GET("/dropdown", middleware.RequirePermission("kondisi:read"), kondisiController.Dropdown)
 			kondisiAdmin.GET("/:id", middleware.RequirePermission("kondisi:read"), kondisiController.FindByID)
 			kondisiAdmin.POST("", middleware.RequirePermission("kondisi:manage"), kondisiController.Create)
 			kondisiAdmin.PUT("/:id", middleware.RequirePermission("kondisi:manage"), kondisiController.Update)
@@ -208,6 +210,7 @@ func SetupRoutes(
 		paketAdmin.Use(middleware.AdminOnly())
 		{
 			paketAdmin.GET("", middleware.RequirePermission("kondisi:read"), kondisiPaketController.FindAll)
+			paketAdmin.GET("/dropdown", middleware.RequirePermission("kondisi:read"), kondisiPaketController.Dropdown)
 			paketAdmin.GET("/:id", middleware.RequirePermission("kondisi:read"), kondisiPaketController.FindByID)
 			paketAdmin.POST("", middleware.RequirePermission("kondisi:manage"), kondisiPaketController.Create)
 			paketAdmin.PUT("/:id", middleware.RequirePermission("kondisi:manage"), kondisiPaketController.Update)
@@ -231,6 +234,7 @@ func SetupRoutes(
 		sumberAdmin.Use(middleware.AdminOnly())
 		{
 			sumberAdmin.GET("", middleware.RequirePermission("kondisi:read"), sumberController.FindAll)
+			sumberAdmin.GET("/dropdown", middleware.RequirePermission("kondisi:read"), sumberController.Dropdown)
 			sumberAdmin.GET("/:id", middleware.RequirePermission("kondisi:read"), sumberController.FindByID)
 			sumberAdmin.POST("", middleware.RequirePermission("kondisi:manage"), sumberController.Create)
 			sumberAdmin.PUT("/:id", middleware.RequirePermission("kondisi:manage"), sumberController.Update)
@@ -247,6 +251,7 @@ func SetupRoutes(
 		warehouseAdmin.Use(middleware.AdminOnly())
 		{
 			warehouseAdmin.GET("", middleware.RequirePermission("operasional:read"), warehouseController.Get)
+			warehouseAdmin.GET("/dropdown", middleware.RequirePermission("operasional:read"), warehouseController.Dropdown)
 			warehouseAdmin.PUT("", middleware.RequirePermission("operasional:manage"), warehouseController.UpdateSingleton)
 		}
 
@@ -264,6 +269,7 @@ func SetupRoutes(
 		tipeProdukAdmin.Use(middleware.AdminOnly())
 		{
 			tipeProdukAdmin.GET("", middleware.RequirePermission("system:read"), tipeProdukController.FindAll)
+			tipeProdukAdmin.GET("/dropdown", middleware.RequirePermission("system:read"), tipeProdukController.Dropdown)
 			tipeProdukAdmin.GET("/with-produk", middleware.RequirePermission("system:read"), tipeProdukController.FindAllWithProduk)
 		}
 

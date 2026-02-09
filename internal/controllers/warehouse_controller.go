@@ -187,3 +187,31 @@ func (c *WarehouseController) UpdateJadwal(ctx *gin.Context) {
 
 	utils.SuccessResponse(ctx, "Jadwal gudang berhasil diupdate", result)
 }
+
+// Dropdown returns all active warehouses for dropdown selection
+// This endpoint is prepared for future scalability when multiple warehouses exist
+func (c *WarehouseController) Dropdown(ctx *gin.Context) {
+	// Get all active warehouses for dropdown
+	var params models.PaginationRequest
+	params.Page = 1
+	params.PerPage = 1000 // Get all
+	isActive := true
+	params.IsActive = &isActive
+
+	warehouseList, _, err := c.service.FindAll(ctx.Request.Context(), &params, "")
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data warehouse", nil)
+		return
+	}
+
+	// Convert to simple dropdown response
+	response := make([]map[string]interface{}, len(warehouseList))
+	for i, w := range warehouseList {
+		response[i] = map[string]interface{}{
+			"id":   w.ID,
+			"nama": w.Nama,
+		}
+	}
+
+	utils.SuccessResponse(ctx, "Data dropdown warehouse berhasil diambil", response)
+}

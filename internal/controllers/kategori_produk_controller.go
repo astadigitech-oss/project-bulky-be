@@ -290,7 +290,6 @@ func (c *KategoriProdukController) Dropdown(ctx *gin.Context) {
 		response[i] = map[string]interface{}{
 			"id":   k.ID.String(),
 			"nama": k.GetNama(),
-			"slug": k.Slug,
 		}
 	}
 
