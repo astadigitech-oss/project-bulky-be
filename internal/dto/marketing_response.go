@@ -25,7 +25,7 @@ type TujuanKategoriResponse struct {
 // Note: gambar_id and gambar_en are handled via multipart form files
 type BannerEventPromoRequest struct {
 	Nama           string     `json:"nama" binding:"required,min=2,max=100"`
-	Tujuan         string     `json:"tujuan"` // Comma-separated IDs
+	Tujuan         []string   `json:"tujuan"` // Array of kategori IDs
 	Urutan         int        `json:"urutan,omitempty"`
 	TanggalMulai   *time.Time `json:"tanggal_mulai,omitempty"`
 	TanggalSelesai *time.Time `json:"tanggal_selesai,omitempty"`
@@ -36,7 +36,7 @@ type BannerEventPromoListResponse struct {
 	ID        uuid.UUID                `json:"id"`
 	Nama      string                   `json:"nama"`
 	GambarURL models.TranslatableImage `json:"gambar_url"`
-	Tujuan    *string                  `json:"tujuan"` // Comma-separated IDs or null
+	Tujuan    []string                 `json:"tujuan"` // Array of kategori ID strings
 	Urutan    int                      `json:"urutan"`
 	IsVisible bool                     `json:"is_visible"` // computed dari schedule
 	UpdatedAt time.Time                `json:"updated_at"`
@@ -46,7 +46,7 @@ type BannerEventPromoDetailResponse struct {
 	ID             uuid.UUID                `json:"id"`
 	Nama           string                   `json:"nama"`
 	GambarURL      models.TranslatableImage `json:"gambar_url"`
-	Tujuan         *string                  `json:"tujuan"` // Comma-separated IDs or null
+	Tujuan         []string                 `json:"tujuan"` // Array of kategori ID strings
 	Urutan         int                      `json:"urutan"`
 	IsVisible      bool                     `json:"is_visible"`
 	TanggalMulai   *time.Time               `json:"tanggal_mulai,omitempty"`
@@ -61,7 +61,7 @@ func ToBannerEventPromoListResponse(b *models.BannerEventPromo) BannerEventPromo
 		ID:        b.ID,
 		Nama:      b.Nama,
 		GambarURL: b.GetGambarURL(),
-		Tujuan:    b.Tujuan,
+		Tujuan:    b.GetKategoriIDStrings(),
 		Urutan:    b.Urutan,
 		IsVisible: b.IsCurrentlyVisible(),
 		UpdatedAt: b.UpdatedAt,
@@ -73,7 +73,7 @@ func ToBannerEventPromoDetailResponse(b *models.BannerEventPromo) BannerEventPro
 		ID:             b.ID,
 		Nama:           b.Nama,
 		GambarURL:      b.GetGambarURL(),
-		Tujuan:         b.Tujuan,
+		Tujuan:         b.GetKategoriIDStrings(),
 		Urutan:         b.Urutan,
 		IsVisible:      b.IsCurrentlyVisible(),
 		TanggalMulai:   b.TanggalMulai,

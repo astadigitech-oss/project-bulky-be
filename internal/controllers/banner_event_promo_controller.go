@@ -38,8 +38,8 @@ func (c *BannerEventPromoController) Create(ctx *gin.Context) {
 		// Parse form data
 		req.Nama = ctx.PostForm("nama")
 
-		// Parse tujuan (comma-separated string)
-		req.Tujuan = ctx.PostForm("tujuan")
+		// Parse tujuan array (multiple form fields with same name)
+		req.Tujuan = ctx.PostFormArray("tujuan")
 
 		req.TanggalMulai = nil
 		if tm := ctx.PostForm("tanggal_mulai"); tm != "" {
@@ -177,9 +177,11 @@ func (c *BannerEventPromoController) Update(ctx *gin.Context) {
 			req.Nama = &nama
 		}
 
-		// Parse tujuan (comma-separated string)
-		if tujuanStr := ctx.PostForm("tujuan"); ctx.PostFormArray("tujuan") != nil {
-			req.Tujuan = &tujuanStr
+		// Parse tujuan array (multiple form fields with same name)
+		// If any tujuan field is present, set the array (even if empty)
+		if ctx.Request.PostForm.Has("tujuan") || len(ctx.PostFormArray("tujuan")) > 0 {
+			tujuanArray := ctx.PostFormArray("tujuan")
+			req.Tujuan = &tujuanArray
 		}
 
 		if tm := ctx.PostForm("tanggal_mulai"); tm != "" {

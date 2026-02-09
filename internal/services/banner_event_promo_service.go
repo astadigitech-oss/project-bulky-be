@@ -41,8 +41,9 @@ func NewBannerEventPromoService(repo repositories.BannerEventPromoRepository, re
 }
 
 func (s *bannerEventPromoService) Create(ctx context.Context, req *models.CreateBannerEventPromoRequest) (*models.BannerEventPromoResponse, error) {
-	// Validate tujuan
-	if err := s.validateTujuan(req.Tujuan); err != nil {
+	// Validate and parse tujuan IDs
+	kategoriIDs, err := s.validateAndParseKategoriIDs(req.Tujuan)
+	if err != nil {
 		return nil, err
 	}
 
@@ -60,12 +61,6 @@ func (s *bannerEventPromoService) Create(ctx context.Context, req *models.Create
 		Urutan:      maxUrutan + 1,
 	}
 
-	// Set tujuan (trim whitespace, remove empty)
-	if req.Tujuan != "" {
-		tujuan := s.cleanTujuanString(req.Tujuan)
-		banner.Tujuan = &tujuan
-	}
-
 	if req.TanggalMulai != nil {
 		if t, err := parseFlexibleDate(*req.TanggalMulai); err == nil {
 			banner.TanggalMulai = &t
@@ -78,7 +73,14 @@ func (s *bannerEventPromoService) Create(ctx context.Context, req *models.Create
 		}
 	}
 
-	if err := s.repo.Create(ctx, banner); err != nil {
+	// Create banner and pivot relations in transaction
+	if err := s.repo.CreateWithKategori(ctx, banner, kategoriIDs); err != nil {
+		return nil, err
+	}
+
+	// Reload with relations
+	banner, err = s.repo.FindByID(ctx, banner.ID.String())
+	if err != nil {
 		return nil, err
 	}
 
@@ -128,17 +130,12 @@ func (s *bannerEventPromoService) Update(ctx context.Context, id string, req *mo
 	}
 
 	// Handle tujuan update
+	var kategoriIDs []uuid.UUID
 	if req.Tujuan != nil {
-		if *req.Tujuan == "" {
-			// Empty string = clear tujuan
-			banner.Tujuan = nil
-		} else {
-			// Validate and clean tujuan
-			if err := s.validateTujuan(*req.Tujuan); err != nil {
-				return nil, err
-			}
-			tujuan := s.cleanTujuanString(*req.Tujuan)
-			banner.Tujuan = &tujuan
+		// Validate and parse kategori IDs
+		kategoriIDs, err = s.validateAndParseKategoriIDs(*req.Tujuan)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -153,7 +150,20 @@ func (s *bannerEventPromoService) Update(ctx context.Context, id string, req *mo
 		}
 	}
 
-	if err := s.repo.Update(ctx, banner); err != nil {
+	// Update banner and replace kategori relations in transaction
+	if req.Tujuan != nil {
+		if err := s.repo.UpdateWithKategori(ctx, banner, kategoriIDs); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := s.repo.Update(ctx, banner); err != nil {
+			return nil, err
+		}
+	}
+
+	// Reload with relations
+	banner, err = s.repo.FindByID(ctx, banner.ID.String())
+	if err != nil {
 		return nil, err
 	}
 
@@ -199,7 +209,7 @@ func (s *bannerEventPromoService) GetVisibleBanners(ctx context.Context) ([]mode
 			ID:        b.ID.String(),
 			Nama:      b.Nama,
 			GambarURL: b.GetGambarURL().GetFullURL(s.cfg.BaseURL),
-			Tujuan:    b.Tujuan,
+			Tujuan:    b.GetKategoriIDStrings(),
 		})
 	}
 
@@ -211,7 +221,7 @@ func (s *bannerEventPromoService) toResponse(b *models.BannerEventPromo) *models
 		ID:             b.ID.String(),
 		Nama:           b.Nama,
 		GambarURL:      b.GetGambarURL().GetFullURL(s.cfg.BaseURL),
-		Tujuan:         b.Tujuan,
+		Tujuan:         b.GetKategoriIDStrings(),
 		Urutan:         b.Urutan,
 		IsVisible:      b.IsCurrentlyVisible(),
 		TanggalMulai:   b.TanggalMulai,
@@ -226,7 +236,7 @@ func (s *bannerEventPromoService) toSimpleResponse(b *models.BannerEventPromo) *
 		ID:        b.ID.String(),
 		Nama:      b.Nama,
 		GambarURL: b.GetGambarURL().GetFullURL(s.cfg.BaseURL),
-		Tujuan:    b.Tujuan,
+		Tujuan:    b.GetKategoriIDStrings(),
 		Urutan:    b.Urutan,
 		IsVisible: b.IsCurrentlyVisible(),
 		UpdatedAt: b.UpdatedAt,
@@ -254,13 +264,13 @@ func parseFlexibleDate(dateStr string) (time.Time, error) {
 	return time.Time{}, errors.New("format tanggal tidak valid, gunakan yyyy-mm-dd atau RFC3339")
 }
 
-// validateTujuan validates comma-separated kategori IDs
-func (s *bannerEventPromoService) validateTujuan(tujuanStr string) error {
-	if tujuanStr == "" {
-		return nil // Empty is allowed (no redirect)
+// validateAndParseKategoriIDs validates and converts string IDs to UUIDs
+func (s *bannerEventPromoService) validateAndParseKategoriIDs(ids []string) ([]uuid.UUID, error) {
+	if len(ids) == 0 {
+		return []uuid.UUID{}, nil
 	}
 
-	ids := strings.Split(tujuanStr, ",")
+	result := make([]uuid.UUID, 0, len(ids))
 
 	for _, idStr := range ids {
 		idStr = strings.TrimSpace(idStr)
@@ -268,36 +278,23 @@ func (s *bannerEventPromoService) validateTujuan(tujuanStr string) error {
 			continue
 		}
 
-		// Validate UUID format
+		// Parse UUID
 		id, err := uuid.Parse(idStr)
 		if err != nil {
-			return fmt.Errorf("invalid UUID format: %s", idStr)
+			return nil, fmt.Errorf("invalid UUID format: %s", idStr)
 		}
 
 		// Check if kategori exists
 		existingKategori, err := s.kategoriService.FindActiveByIDs(context.Background(), []string{id.String()})
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if len(existingKategori) == 0 {
-			return fmt.Errorf("kategori produk tidak ditemukan: %s", idStr)
+			return nil, fmt.Errorf("kategori produk tidak ditemukan: %s", idStr)
 		}
+
+		result = append(result, id)
 	}
 
-	return nil
-}
-
-// cleanTujuanString removes whitespace and empty entries
-func (s *bannerEventPromoService) cleanTujuanString(tujuan string) string {
-	ids := strings.Split(tujuan, ",")
-	cleaned := make([]string, 0, len(ids))
-
-	for _, id := range ids {
-		id = strings.TrimSpace(id)
-		if id != "" {
-			cleaned = append(cleaned, id)
-		}
-	}
-
-	return strings.Join(cleaned, ",")
+	return result, nil
 }

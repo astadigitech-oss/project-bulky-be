@@ -632,7 +632,7 @@ type BannerEventPromoResponse struct {
 	ID             string            `json:"id"`
 	Nama           string            `json:"nama"`
 	GambarURL      TranslatableImage `json:"gambar_url"`
-	Tujuan         *string           `json:"tujuan"` // Comma-separated IDs or null
+	Tujuan         []string          `json:"tujuan"` // Array of kategori ID strings
 	Urutan         int               `json:"urutan"`
 	IsVisible      bool              `json:"is_visible"` // Computed from tanggal
 	TanggalMulai   *time.Time        `json:"tanggal_mulai,omitempty"`
@@ -645,7 +645,7 @@ type BannerEventPromoSimpleResponse struct {
 	ID        string            `json:"id"`
 	Nama      string            `json:"nama"`
 	GambarURL TranslatableImage `json:"gambar_url"`
-	Tujuan    *string           `json:"tujuan"` // Comma-separated IDs or null
+	Tujuan    []string          `json:"tujuan"` // Array of kategori ID strings
 	Urutan    int               `json:"urutan"`
 	IsVisible bool              `json:"is_visible"` // Computed from tanggal
 	UpdatedAt time.Time         `json:"updated_at"`
@@ -656,7 +656,7 @@ type BannerEventPromoPublicResponse struct {
 	ID        string            `json:"id"`
 	Nama      string            `json:"nama"`
 	GambarURL TranslatableImage `json:"gambar_url"`
-	Tujuan    *string           `json:"tujuan"` // Comma-separated IDs or null
+	Tujuan    []string          `json:"tujuan"` // Array of kategori ID strings
 }
 
 // ========================================
