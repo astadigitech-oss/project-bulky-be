@@ -600,8 +600,8 @@ type HeroSectionResponse struct {
 	GambarURL      TranslatableImage `json:"gambar_url"`
 	IsDefault      bool              `json:"is_default"`
 	IsVisible      bool              `json:"is_visible"`
-	TanggalMulai   *time.Time        `json:"tanggal_mulai,omitempty"`
-	TanggalSelesai *time.Time        `json:"tanggal_selesai,omitempty"`
+	TanggalMulai   *time.Time        `json:"tanggal_mulai"`
+	TanggalSelesai *time.Time        `json:"tanggal_selesai"`
 	CreatedAt      time.Time         `json:"created_at"`
 	UpdatedAt      time.Time         `json:"updated_at"`
 }
@@ -612,8 +612,8 @@ type HeroSectionSimpleResponse struct {
 	GambarURL      TranslatableImage `json:"gambar_url"`
 	IsDefault      bool              `json:"is_default"`
 	IsVisible      bool              `json:"is_visible"`
-	TanggalMulai   *time.Time        `json:"tanggal_mulai,omitempty"`
-	TanggalSelesai *time.Time        `json:"tanggal_selesai,omitempty"`
+	TanggalMulai   *time.Time        `json:"tanggal_mulai"`
+	TanggalSelesai *time.Time        `json:"tanggal_selesai"`
 	UpdatedAt      time.Time         `json:"updated_at"`
 }
 
