@@ -67,21 +67,19 @@ func (s *blogService) Create(ctx context.Context, req *dto.CreateBlogRequest) (*
 	}
 
 	blog := &models.Blog{
-		JudulID:            req.JudulID,
-		JudulEN:            req.JudulEN,
-		Slug:               req.Slug,
-		KontenID:           req.KontenID,
-		KontenEN:           req.KontenEN,
-		DeskripsiSingkatID: req.DeskripsiSingkatID,
-		DeskripsiSingkatEN: req.DeskripsiSingkatEN,
-		FeaturedImageURL:   req.FeaturedImageURL,
-		KategoriID:         req.KategoriID,
-		MetaTitleID:        req.MetaTitleID,
-		MetaTitleEN:        req.MetaTitleEN,
-		MetaDescriptionID:  req.MetaDescriptionID,
-		MetaDescriptionEN:  req.MetaDescriptionEN,
-		MetaKeywords:       req.MetaKeywords,
-		IsActive:           req.IsActive,
+		JudulID:           req.JudulID,
+		JudulEN:           req.JudulEN,
+		Slug:              req.Slug,
+		KontenID:          req.KontenID,
+		KontenEN:          req.KontenEN,
+		FeaturedImageURL:  req.FeaturedImageURL,
+		KategoriID:        req.KategoriID,
+		MetaTitleID:       req.MetaTitleID,
+		MetaTitleEN:       req.MetaTitleEN,
+		MetaDescriptionID: req.MetaDescriptionID,
+		MetaDescriptionEN: req.MetaDescriptionEN,
+		MetaKeywords:      req.MetaKeywords,
+		IsActive:          req.IsActive,
 	}
 
 	if err := s.blogRepo.Create(ctx, blog); err != nil {
@@ -118,12 +116,6 @@ func (s *blogService) Update(ctx context.Context, id uuid.UUID, req *dto.UpdateB
 	}
 	if req.KontenEN != nil {
 		blog.KontenEN = req.KontenEN
-	}
-	if req.DeskripsiSingkatID != nil {
-		blog.DeskripsiSingkatID = *req.DeskripsiSingkatID
-	}
-	if req.DeskripsiSingkatEN != nil {
-		blog.DeskripsiSingkatEN = req.DeskripsiSingkatEN
 	}
 	if req.FeaturedImageURL != nil {
 		blog.FeaturedImageURL = req.FeaturedImageURL
@@ -275,26 +267,24 @@ func (s *blogService) ToggleStatus(ctx context.Context, id uuid.UUID) error {
 
 func (s *blogService) toBlogResponse(blog *models.Blog) *dto.BlogResponse {
 	resp := &dto.BlogResponse{
-		ID:                 blog.ID,
-		JudulID:            blog.JudulID,
-		JudulEN:            blog.JudulEN,
-		Slug:               blog.Slug,
-		KontenID:           blog.KontenID,
-		KontenEN:           blog.KontenEN,
-		DeskripsiSingkatID: blog.DeskripsiSingkatID,
-		DeskripsiSingkatEN: blog.DeskripsiSingkatEN,
-		FeaturedImageURL:   blog.FeaturedImageURL,
-		KategoriID:         blog.KategoriID,
-		MetaTitleID:        blog.MetaTitleID,
-		MetaTitleEN:        blog.MetaTitleEN,
-		MetaDescriptionID:  blog.MetaDescriptionID,
-		MetaDescriptionEN:  blog.MetaDescriptionEN,
-		MetaKeywords:       blog.MetaKeywords,
-		IsActive:           blog.IsActive,
-		ViewCount:          blog.ViewCount,
-		PublishedAt:        blog.PublishedAt,
-		CreatedAt:          blog.CreatedAt,
-		UpdatedAt:          blog.UpdatedAt,
+		ID:                blog.ID,
+		JudulID:           blog.JudulID,
+		JudulEN:           blog.JudulEN,
+		Slug:              blog.Slug,
+		KontenID:          blog.KontenID,
+		KontenEN:          blog.KontenEN,
+		FeaturedImageURL:  blog.FeaturedImageURL,
+		KategoriID:        blog.KategoriID,
+		MetaTitleID:       blog.MetaTitleID,
+		MetaTitleEN:       blog.MetaTitleEN,
+		MetaDescriptionID: blog.MetaDescriptionID,
+		MetaDescriptionEN: blog.MetaDescriptionEN,
+		MetaKeywords:      blog.MetaKeywords,
+		IsActive:          blog.IsActive,
+		ViewCount:         blog.ViewCount,
+		PublishedAt:       blog.PublishedAt,
+		CreatedAt:         blog.CreatedAt,
+		UpdatedAt:         blog.UpdatedAt,
 	}
 
 	if blog.Kategori != nil {
@@ -323,17 +313,15 @@ func (s *blogService) toBlogResponse(blog *models.Blog) *dto.BlogResponse {
 
 func (s *blogService) toBlogListResponse(blog *models.Blog) dto.BlogListResponse {
 	resp := dto.BlogListResponse{
-		ID:                 blog.ID,
-		JudulID:            blog.JudulID,
-		JudulEN:            blog.JudulEN,
-		Slug:               blog.Slug,
-		DeskripsiSingkatID: blog.DeskripsiSingkatID,
-		DeskripsiSingkatEN: blog.DeskripsiSingkatEN,
-		FeaturedImageURL:   blog.FeaturedImageURL,
-		IsActive:           blog.IsActive,
-		ViewCount:          blog.ViewCount,
-		PublishedAt:        blog.PublishedAt,
-		CreatedAt:          blog.CreatedAt,
+		ID:               blog.ID,
+		JudulID:          blog.JudulID,
+		JudulEN:          blog.JudulEN,
+		Slug:             blog.Slug,
+		FeaturedImageURL: blog.FeaturedImageURL,
+		IsActive:         blog.IsActive,
+		ViewCount:        blog.ViewCount,
+		PublishedAt:      blog.PublishedAt,
+		CreatedAt:        blog.CreatedAt,
 	}
 
 	if blog.Kategori != nil {

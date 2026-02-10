@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 
+	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/models"
 
 	"github.com/google/uuid"
@@ -15,8 +16,9 @@ type LabelBlogRepository interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 	FindByID(ctx context.Context, id uuid.UUID) (*models.LabelBlog, error)
 	FindBySlug(ctx context.Context, slug string) (*models.LabelBlog, error)
-	FindAll(ctx context.Context) ([]models.LabelBlog, error)
+	FindAll(ctx context.Context, params *dto.LabelBlogFilterRequest) ([]models.LabelBlog, models.PaginationMeta, error)
 	FindByIDs(ctx context.Context, ids []uuid.UUID) ([]models.LabelBlog, error)
+	CountBlogByLabel(ctx context.Context, LabelIDs uuid.UUID) (int64, error)
 	UpdateUrutan(ctx context.Context, id uuid.UUID, urutan int) error
 	FindAllPublicWithCount(ctx context.Context) ([]models.LabelBlog, error)
 }
@@ -41,6 +43,14 @@ func (r *labelBlogRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).Delete(&models.LabelBlog{}, id).Error
 }
 
+func (r *labelBlogRepository) CountBlogByLabel(ctx context.Context, LabelIDs uuid.UUID) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&models.BlogLabel{}).
+		Where("label_id = ?", LabelIDs).
+		Count(&count).Error
+	return count, err
+}
+
 func (r *labelBlogRepository) FindByID(ctx context.Context, id uuid.UUID) (*models.LabelBlog, error) {
 	var label models.LabelBlog
 	err := r.db.WithContext(ctx).First(&label, id).Error
@@ -59,10 +69,10 @@ func (r *labelBlogRepository) FindBySlug(ctx context.Context, slug string) (*mod
 	return &label, nil
 }
 
-func (r *labelBlogRepository) FindAll(ctx context.Context) ([]models.LabelBlog, error) {
+func (r *labelBlogRepository) FindAll(ctx context.Context, params *dto.LabelBlogFilterRequest) ([]models.LabelBlog, models.PaginationMeta, error) {
 	var labels []models.LabelBlog
-	err := r.db.WithContext(ctx).Order("urutan ASC, nama->>'id' ASC").Find(&labels).Error
-	return labels, err
+	err := r.db.WithContext(ctx).Order("urutan ASC, nama_id ASC").Find(&labels).Error
+	return labels, models.PaginationMeta{}, err
 }
 
 func (r *labelBlogRepository) FindByIDs(ctx context.Context, ids []uuid.UUID) ([]models.LabelBlog, error) {

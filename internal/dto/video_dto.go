@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"project-bulky-be/internal/models"
 	"time"
 
 	"github.com/google/uuid"
@@ -91,6 +92,18 @@ type KategoriVideoBrief struct {
 }
 
 // Kategori Video DTOs
+type KategoriVideoFilterRequest struct {
+	models.PaginationRequest
+}
+
+func (p *KategoriVideoFilterRequest) SetDefaults() {
+	p.PaginationRequest.SetDefaults()
+
+	// Hanya sort by urutan
+	p.SortBy = "urutan"
+	p.Order = "asc"
+}
+
 type CreateKategoriVideoRequest struct {
 	NamaID   string  `json:"nama_id" validate:"required,max=100"`
 	NamaEN   *string `json:"nama_en" validate:"omitempty,max=100"`

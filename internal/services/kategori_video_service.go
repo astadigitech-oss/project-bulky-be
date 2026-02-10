@@ -17,8 +17,8 @@ type KategoriVideoService interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*models.KategoriVideo, error)
 	GetBySlug(ctx context.Context, slug string) (*models.KategoriVideo, error)
 	GetAll(ctx context.Context, isActive *bool) ([]models.KategoriVideo, error)
+	GetAllPaginated(ctx context.Context, params *dto.KategoriVideoFilterRequest) ([]models.KategoriVideo, models.PaginationMeta, error)
 	GetAllActive(ctx context.Context) ([]dto.KategoriVideoDropdownResponse, error)
-	Reorder(ctx context.Context, items []dto.ReorderItem) error
 	ToggleStatus(ctx context.Context, id uuid.UUID) error
 	GetAllPublicWithCount(ctx context.Context) ([]models.KategoriVideo, error)
 }
@@ -77,6 +77,11 @@ func (s *kategoriVideoService) Update(ctx context.Context, id uuid.UUID, req *dt
 }
 
 func (s *kategoriVideoService) Delete(ctx context.Context, id uuid.UUID) error {
+	// Check if kategori exists
+	_, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
 	return s.repo.Delete(ctx, id)
 }
 
@@ -92,13 +97,16 @@ func (s *kategoriVideoService) GetAll(ctx context.Context, isActive *bool) ([]mo
 	return s.repo.FindAll(ctx, isActive)
 }
 
-func (s *kategoriVideoService) Reorder(ctx context.Context, items []dto.ReorderItem) error {
-	for _, item := range items {
-		if err := s.repo.UpdateUrutan(ctx, item.ID, item.Urutan); err != nil {
-			return err
-		}
+func (s *kategoriVideoService) GetAllPaginated(ctx context.Context, params *dto.KategoriVideoFilterRequest) ([]models.KategoriVideo, models.PaginationMeta, error) {
+	params.SetDefaults()
+
+	kategoris, total, err := s.repo.FindAllPaginated(ctx, params)
+	if err != nil {
+		return nil, models.PaginationMeta{}, err
 	}
-	return nil
+
+	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
+	return kategoris, meta, nil
 }
 
 func (s *kategoriVideoService) ToggleStatus(ctx context.Context, id uuid.UUID) error {

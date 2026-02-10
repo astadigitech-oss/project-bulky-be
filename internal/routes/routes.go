@@ -651,7 +651,7 @@ func SetupRoutes(
 			kategoriBlogAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), kategoriBlogController.Update)
 			kategoriBlogAdmin.DELETE("/:id", middleware.RequirePermission("marketing:manage"), kategoriBlogController.Delete)
 			kategoriBlogAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("marketing:manage"), kategoriBlogController.ToggleStatus)
-			kategoriBlogAdmin.PUT("/reorder", middleware.RequirePermission("marketing:manage"), kategoriBlogController.Reorder)
+			kategoriBlogAdmin.PATCH("/:id/reorder", middleware.RequirePermission("marketing:manage"), kategoriBlogController.Reorder)
 		}
 
 		// Kategori Blog - Public
@@ -667,7 +667,8 @@ func SetupRoutes(
 			labelBlogAdmin.POST("", middleware.RequirePermission("marketing:manage"), labelBlogController.Create)
 			labelBlogAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), labelBlogController.Update)
 			labelBlogAdmin.DELETE("/:id", middleware.RequirePermission("marketing:manage"), labelBlogController.Delete)
-			labelBlogAdmin.PUT("/reorder", middleware.RequirePermission("marketing:manage"), labelBlogController.Reorder)
+			labelBlogAdmin.GET("/dropdown", middleware.RequirePermission("marketing:read"), labelBlogController.GetDropdownOptions)
+			labelBlogAdmin.PATCH("/:id/reorder", middleware.RequirePermission("marketing:manage"), labelBlogController.Reorder)
 		}
 
 		// Label Blog - Public
@@ -709,7 +710,7 @@ func SetupRoutes(
 			kategoriVideoAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), kategoriVideoController.Update)
 			kategoriVideoAdmin.DELETE("/:id", middleware.RequirePermission("marketing:manage"), kategoriVideoController.Delete)
 			kategoriVideoAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("marketing:manage"), kategoriVideoController.ToggleStatus)
-			kategoriVideoAdmin.PUT("/reorder", middleware.RequirePermission("marketing:manage"), kategoriVideoController.Reorder)
+			kategoriVideoAdmin.PATCH("/:id/reorder", middleware.RequirePermission("marketing:manage"), kategoriVideoController.Reorder)
 		}
 
 		// Kategori Video - Public

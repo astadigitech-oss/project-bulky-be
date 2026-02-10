@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 
+	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/models"
 
 	"github.com/google/uuid"
@@ -16,6 +17,7 @@ type KategoriBlogRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*models.KategoriBlog, error)
 	FindBySlug(ctx context.Context, slug string) (*models.KategoriBlog, error)
 	FindAll(ctx context.Context, isActive *bool) ([]models.KategoriBlog, error)
+	FindAllPaginated(ctx context.Context, params *dto.KategoriBlogFilterRequest) ([]models.KategoriBlog, int64, error)
 	CountBlogByKategori(ctx context.Context, kategoriID uuid.UUID) (int64, error)
 	UpdateUrutan(ctx context.Context, id uuid.UUID, urutan int) error
 	FindAllPublicWithCount(ctx context.Context) ([]models.KategoriBlog, error)
@@ -67,8 +69,37 @@ func (r *kategoriBlogRepository) FindAll(ctx context.Context, isActive *bool) ([
 		query = query.Where("is_active = ?", *isActive)
 	}
 
-	err := query.Order("urutan ASC, nama->>'id' ASC").Find(&kategoris).Error
+	err := query.Order("urutan ASC, nama_id ASC").Find(&kategoris).Error
 	return kategoris, err
+}
+
+func (r *kategoriBlogRepository) FindAllPaginated(ctx context.Context, params *dto.KategoriBlogFilterRequest) ([]models.KategoriBlog, int64, error) {
+	var kategoris []models.KategoriBlog
+	var total int64
+
+	query := r.db.WithContext(ctx).Model(&models.KategoriBlog{})
+
+	// Filter by is_active
+	if params.IsActive != nil {
+		query = query.Where("is_active = ?", *params.IsActive)
+	}
+
+	// Count total
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Apply sorting - always urutan ASC
+	query = query.Order("urutan ASC")
+
+	// Apply pagination
+	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
+
+	if err := query.Find(&kategoris).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return kategoris, total, nil
 }
 
 func (r *kategoriBlogRepository) CountBlogByKategori(ctx context.Context, kategoriID uuid.UUID) (int64, error) {

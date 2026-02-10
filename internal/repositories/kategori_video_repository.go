@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 
+	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/models"
 
 	"github.com/google/uuid"
@@ -16,6 +17,7 @@ type KategoriVideoRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*models.KategoriVideo, error)
 	FindBySlug(ctx context.Context, slug string) (*models.KategoriVideo, error)
 	FindAll(ctx context.Context, isActive *bool) ([]models.KategoriVideo, error)
+	FindAllPaginated(ctx context.Context, params *dto.KategoriVideoFilterRequest) ([]models.KategoriVideo, int64, error)
 	UpdateUrutan(ctx context.Context, id uuid.UUID, urutan int) error
 	FindAllPublicWithCount(ctx context.Context) ([]models.KategoriVideo, error)
 }
@@ -66,8 +68,37 @@ func (r *kategoriVideoRepository) FindAll(ctx context.Context, isActive *bool) (
 		query = query.Where("is_active = ?", *isActive)
 	}
 
-	err := query.Order("urutan ASC, nama->>'id' ASC").Find(&kategoris).Error
+	err := query.Order("urutan ASC, nama_id ASC").Find(&kategoris).Error
 	return kategoris, err
+}
+
+func (r *kategoriVideoRepository) FindAllPaginated(ctx context.Context, params *dto.KategoriVideoFilterRequest) ([]models.KategoriVideo, int64, error) {
+	var kategoris []models.KategoriVideo
+	var total int64
+
+	query := r.db.WithContext(ctx).Model(&models.KategoriVideo{})
+
+	// Filter by is_active
+	if params.IsActive != nil {
+		query = query.Where("is_active = ?", *params.IsActive)
+	}
+
+	// Count total
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Apply sorting - always urutan ASC
+	query = query.Order("urutan ASC")
+
+	// Apply pagination
+	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
+
+	if err := query.Find(&kategoris).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return kategoris, total, nil
 }
 
 func (r *kategoriVideoRepository) UpdateUrutan(ctx context.Context, id uuid.UUID, urutan int) error {

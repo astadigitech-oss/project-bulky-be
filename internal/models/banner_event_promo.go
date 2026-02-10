@@ -59,15 +59,15 @@ func (b *BannerEventPromo) IsCurrentlyVisible() bool {
 		return false
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 
 	// Not visible if NOW is before start date
-	if b.TanggalMulai != nil && now.Before(*b.TanggalMulai) {
+	if b.TanggalMulai != nil && now.Before(b.TanggalMulai.UTC()) {
 		return false
 	}
 
 	// Not visible if NOW is >= end date (includes exact match)
-	if b.TanggalSelesai != nil && !now.Before(*b.TanggalSelesai) {
+	if b.TanggalSelesai != nil && !now.Before(b.TanggalSelesai.UTC()) {
 		return false
 	}
 
