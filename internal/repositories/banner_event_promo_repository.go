@@ -185,8 +185,9 @@ func (r *bannerEventPromoRepository) GetVisibleBanners(ctx context.Context) ([]m
 
 	err := r.db.WithContext(ctx).
 		Preload("KategoriList").
-		Where("tanggal_mulai IS NULL OR tanggal_mulai <= ?", now).
-		Where("tanggal_selesai IS NULL OR tanggal_selesai >= ?", now).
+		Where("tanggal_mulai IS NULL OR tanggal_mulai IS NOT NULL").
+		Where("tanggal_selesai IS NULL OR tanggal_selesai IS NOT NULL").
+		Where("(tanggal_mulai IS NULL OR tanggal_mulai <= ?) AND (tanggal_selesai IS NULL OR tanggal_selesai >= ?)", now, now).
 		Order("urutan ASC").
 		Find(&banners).Error
 

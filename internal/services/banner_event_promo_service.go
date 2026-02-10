@@ -200,23 +200,24 @@ func (s *bannerEventPromoService) ToggleStatus(ctx context.Context, id string) (
 		return nil, false, errors.New("banner tidak ditemukan")
 	}
 
-	now := time.Now()
-	past := now.Add(-1 * time.Second)
+	now := time.Now().UTC()
+	pastStart := now.Add(-5 * time.Minute) // Use 5 minutes ago to ensure it's definitely in the past
+	pastEnd := now.Add(-1 * time.Second)   // Use 1 second ago for end date
 	wasActivated := false
 
 	// SIMPLE LOGIC: Cek tanggal_selesai NULL atau engga
 	if banner.TanggalSelesai == nil {
 		// tanggal_selesai NULL = Banner AKTIF -> DEACTIVATE
-		banner.TanggalSelesai = &past
-		if err := s.repo.UpdateToggleStatus(ctx, id, nil, &past); err != nil {
+		banner.TanggalSelesai = &pastEnd
+		if err := s.repo.UpdateToggleStatus(ctx, id, nil, &pastEnd); err != nil {
 			return nil, false, err
 		}
 		wasActivated = false // We DEACTIVATED
 	} else {
 		// tanggal_selesai ada value = Banner NONAKTIF -> ACTIVATE
-		banner.TanggalMulai = &past
+		banner.TanggalMulai = &pastStart
 		banner.TanggalSelesai = nil
-		if err := s.repo.UpdateToggleStatus(ctx, id, &past, nil); err != nil {
+		if err := s.repo.UpdateToggleStatus(ctx, id, &pastStart, nil); err != nil {
 			return nil, false, err
 		}
 		wasActivated = true // We ACTIVATED

@@ -18,8 +18,8 @@ type KategoriBlogService interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*models.KategoriBlog, error)
 	GetBySlug(ctx context.Context, slug string) (*models.KategoriBlog, error)
 	GetAll(ctx context.Context, isActive *bool) ([]models.KategoriBlog, error)
+	GetAllPaginated(ctx context.Context, params *dto.KategoriBlogFilterRequest) ([]models.KategoriBlog, models.PaginationMeta, error)
 	GetAllActive(ctx context.Context) ([]dto.KategoriBlogDropdownResponse, error)
-	Reorder(ctx context.Context, items []dto.ReorderItem) error
 	ToggleStatus(ctx context.Context, id uuid.UUID) error
 	GetAllPublicWithCount(ctx context.Context) ([]models.KategoriBlog, error)
 }
@@ -78,6 +78,12 @@ func (s *kategoriBlogService) Update(ctx context.Context, id uuid.UUID, req *dto
 }
 
 func (s *kategoriBlogService) Delete(ctx context.Context, id uuid.UUID) error {
+	// Check if kategori exists
+	_, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
 	// Check if kategori has blogs
 	count, err := s.repo.CountBlogByKategori(ctx, id)
 	if err != nil {
@@ -101,13 +107,16 @@ func (s *kategoriBlogService) GetAll(ctx context.Context, isActive *bool) ([]mod
 	return s.repo.FindAll(ctx, isActive)
 }
 
-func (s *kategoriBlogService) Reorder(ctx context.Context, items []dto.ReorderItem) error {
-	for _, item := range items {
-		if err := s.repo.UpdateUrutan(ctx, item.ID, item.Urutan); err != nil {
-			return err
-		}
+func (s *kategoriBlogService) GetAllPaginated(ctx context.Context, params *dto.KategoriBlogFilterRequest) ([]models.KategoriBlog, models.PaginationMeta, error) {
+	params.SetDefaults()
+
+	kategoris, total, err := s.repo.FindAllPaginated(ctx, params)
+	if err != nil {
+		return nil, models.PaginationMeta{}, err
 	}
-	return nil
+
+	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
+	return kategoris, meta, nil
 }
 
 func (s *kategoriBlogService) ToggleStatus(ctx context.Context, id uuid.UUID) error {

@@ -16,9 +16,9 @@ import (
 )
 
 type BlogController struct {
-	blogService          services.BlogService
-	kategoriBlogService  services.KategoriBlogService
-	labelBlogService     services.LabelBlogService
+	blogService         services.BlogService
+	kategoriBlogService services.KategoriBlogService
+	labelBlogService    services.LabelBlogService
 }
 
 func NewBlogController(

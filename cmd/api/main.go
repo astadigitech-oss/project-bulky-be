@@ -156,10 +156,10 @@ func main() {
 	whatsappHandlerController := controllers.NewWhatsAppHandlerController(whatsappHandlerService)
 	faqController := controllers.NewFAQController(faqService)
 	blogController := controllers.NewBlogController(blogService, kategoriBlogService, labelBlogService)
-	kategoriBlogController := controllers.NewKategoriBlogController(kategoriBlogService)
-	labelBlogController := controllers.NewLabelBlogController(labelBlogService)
+	kategoriBlogController := controllers.NewKategoriBlogController(kategoriBlogService, reorderService)
+	labelBlogController := controllers.NewLabelBlogController(labelBlogService, reorderService)
 	videoController := controllers.NewVideoController(videoService, kategoriVideoService)
-	kategoriVideoController := controllers.NewKategoriVideoController(kategoriVideoService)
+	kategoriVideoController := controllers.NewKategoriVideoController(kategoriVideoService, reorderService)
 
 	// Auth V2 controllers
 	authV2Controller := controllers.NewAuthV2Controller(authV2Service, adminService, buyerService)
