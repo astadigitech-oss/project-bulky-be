@@ -271,6 +271,27 @@ func (c *BannerEventPromoController) Delete(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, "Banner berhasil dihapus", nil)
 }
 
+func (c *BannerEventPromoController) ToggleStatus(ctx *gin.Context) {
+	id := ctx.Param("id")
+
+	banner, wasActivated, err := c.service.ToggleStatus(ctx.Request.Context(), id)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if err.Error() == "banner tidak ditemukan" {
+			status = http.StatusNotFound
+		}
+		utils.ErrorResponse(ctx, status, err.Error(), nil)
+		return
+	}
+
+	message := "Banner berhasil dinonaktifkan"
+	if wasActivated {
+		message = "Banner berhasil diaktifkan"
+	}
+
+	utils.SuccessResponse(ctx, message, banner)
+}
+
 func (c *BannerEventPromoController) Reorder(ctx *gin.Context) {
 	var req models.ReorderRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {

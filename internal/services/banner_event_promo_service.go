@@ -20,6 +20,7 @@ type BannerEventPromoService interface {
 	FindAll(ctx context.Context, params *models.BannerEventPromoFilterRequest) ([]models.BannerEventPromoSimpleResponse, *models.PaginationMeta, error)
 	Update(ctx context.Context, id string, req *models.UpdateBannerEventPromoRequest) (*models.BannerEventPromoResponse, error)
 	Delete(ctx context.Context, id string) error
+	ToggleStatus(ctx context.Context, id string) (*models.BannerEventPromoResponse, bool, error) // Returns: response, wasActivated, error
 	Reorder(ctx context.Context, req *models.ReorderRequest) error
 	GetVisibleBanners(ctx context.Context) ([]models.BannerEventPromoPublicResponse, error)
 }
@@ -191,6 +192,43 @@ func (s *bannerEventPromoService) Delete(ctx context.Context, id string) error {
 		"", // No scope
 		nil,
 	)
+}
+
+func (s *bannerEventPromoService) ToggleStatus(ctx context.Context, id string) (*models.BannerEventPromoResponse, bool, error) {
+	banner, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, false, errors.New("banner tidak ditemukan")
+	}
+
+	now := time.Now()
+	past := now.Add(-1 * time.Second)
+	wasActivated := false
+
+	// SIMPLE LOGIC: Cek tanggal_selesai NULL atau engga
+	if banner.TanggalSelesai == nil {
+		// tanggal_selesai NULL = Banner AKTIF -> DEACTIVATE
+		banner.TanggalSelesai = &past
+		if err := s.repo.UpdateToggleStatus(ctx, id, nil, &past); err != nil {
+			return nil, false, err
+		}
+		wasActivated = false // We DEACTIVATED
+	} else {
+		// tanggal_selesai ada value = Banner NONAKTIF -> ACTIVATE
+		banner.TanggalMulai = &past
+		banner.TanggalSelesai = nil
+		if err := s.repo.UpdateToggleStatus(ctx, id, &past, nil); err != nil {
+			return nil, false, err
+		}
+		wasActivated = true // We ACTIVATED
+	}
+
+	// Reload with relations
+	banner, err = s.repo.FindByID(ctx, banner.ID.String())
+	if err != nil {
+		return nil, wasActivated, err
+	}
+
+	return s.toResponse(banner), wasActivated, nil
 }
 
 func (s *bannerEventPromoService) Reorder(ctx context.Context, req *models.ReorderRequest) error {

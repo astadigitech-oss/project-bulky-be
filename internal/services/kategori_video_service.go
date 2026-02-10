@@ -17,6 +17,7 @@ type KategoriVideoService interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*models.KategoriVideo, error)
 	GetBySlug(ctx context.Context, slug string) (*models.KategoriVideo, error)
 	GetAll(ctx context.Context, isActive *bool) ([]models.KategoriVideo, error)
+	GetAllActive(ctx context.Context) ([]dto.KategoriVideoDropdownResponse, error)
 	Reorder(ctx context.Context, items []dto.ReorderItem) error
 	ToggleStatus(ctx context.Context, id uuid.UUID) error
 	GetAllPublicWithCount(ctx context.Context) ([]models.KategoriVideo, error)
@@ -107,6 +108,34 @@ func (s *kategoriVideoService) ToggleStatus(ctx context.Context, id uuid.UUID) e
 	}
 	kategori.IsActive = !kategori.IsActive
 	return s.repo.Update(ctx, kategori)
+}
+
+func (s *kategoriVideoService) GetAllActive(ctx context.Context) ([]dto.KategoriVideoDropdownResponse, error) {
+	isActive := true
+	kategoriList, err := s.repo.FindAll(ctx, &isActive)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []dto.KategoriVideoDropdownResponse
+	for _, k := range kategoriList {
+		nama := map[string]interface{}{
+			"id": k.NamaID,
+		}
+		if k.NamaEN != nil {
+			nama["en"] = *k.NamaEN
+		} else {
+			nama["en"] = k.NamaID
+		}
+
+		result = append(result, dto.KategoriVideoDropdownResponse{
+			ID:   k.ID,
+			Nama: nama,
+			Slug: k.Slug,
+		})
+	}
+
+	return result, nil
 }
 
 func (s *kategoriVideoService) GetAllPublicWithCount(ctx context.Context) ([]models.KategoriVideo, error) {

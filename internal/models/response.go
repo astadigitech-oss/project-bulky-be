@@ -635,8 +635,8 @@ type BannerEventPromoResponse struct {
 	Tujuan         []string          `json:"tujuan"` // Array of kategori ID strings
 	Urutan         int               `json:"urutan"`
 	IsVisible      bool              `json:"is_visible"` // Computed from tanggal
-	TanggalMulai   *time.Time        `json:"tanggal_mulai,omitempty"`
-	TanggalSelesai *time.Time        `json:"tanggal_selesai,omitempty"`
+	TanggalMulai   *time.Time        `json:"tanggal_mulai"`
+	TanggalSelesai *time.Time        `json:"tanggal_selesai"`
 	CreatedAt      time.Time         `json:"created_at"`
 	UpdatedAt      time.Time         `json:"updated_at"`
 }

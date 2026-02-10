@@ -132,6 +132,19 @@ type UpdateLabelBlogRequest struct {
 	Urutan *int    `json:"urutan"`
 }
 
+// Dropdown Response DTOs
+type KategoriBlogDropdownResponse struct {
+	ID   uuid.UUID              `json:"id"`
+	Nama map[string]interface{} `json:"nama"` // {"id": "...", "en": "..."}
+	Slug string                 `json:"slug"`
+}
+
+type LabelBlogDropdownResponse struct {
+	ID   uuid.UUID              `json:"id"`
+	Nama map[string]interface{} `json:"nama"` // {"id": "...", "en": "..."}
+	Slug string                 `json:"slug"`
+}
+
 // Reorder DTO
 type ReorderItem struct {
 	ID     uuid.UUID `json:"id" validate:"required"`

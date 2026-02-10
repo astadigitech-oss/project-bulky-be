@@ -18,6 +18,7 @@ type BannerEventPromoRepository interface {
 	FindAll(ctx context.Context, params *models.BannerEventPromoFilterRequest) ([]models.BannerEventPromo, int64, error)
 	Update(ctx context.Context, banner *models.BannerEventPromo) error
 	UpdateWithKategori(ctx context.Context, banner *models.BannerEventPromo, kategoriIDs []uuid.UUID) error
+	UpdateToggleStatus(ctx context.Context, id string, tanggalMulai, tanggalSelesai *time.Time) error
 	Delete(ctx context.Context, id string) error
 	UpdateOrder(ctx context.Context, items []models.ReorderItem) error
 	GetVisibleBanners(ctx context.Context) ([]models.BannerEventPromo, error)
@@ -128,6 +129,27 @@ func (r *bannerEventPromoRepository) UpdateWithKategori(ctx context.Context, ban
 
 		return nil
 	})
+}
+
+func (r *bannerEventPromoRepository) UpdateToggleStatus(ctx context.Context, id string, tanggalMulai, tanggalSelesai *time.Time) error {
+	updates := map[string]interface{}{
+		"updated_at": time.Now(),
+	}
+
+	if tanggalMulai != nil {
+		updates["tanggal_mulai"] = *tanggalMulai
+	}
+
+	if tanggalSelesai != nil {
+		updates["tanggal_selesai"] = *tanggalSelesai
+	} else {
+		updates["tanggal_selesai"] = nil
+	}
+
+	return r.db.WithContext(ctx).
+		Model(&models.BannerEventPromo{}).
+		Where("id = ?", id).
+		Updates(updates).Error
 }
 
 func (r *bannerEventPromoRepository) Delete(ctx context.Context, id string) error {

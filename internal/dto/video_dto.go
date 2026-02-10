@@ -106,3 +106,10 @@ type UpdateKategoriVideoRequest struct {
 	IsActive *bool   `json:"is_active"`
 	Urutan   *int    `json:"urutan"`
 }
+
+// Dropdown Response DTO
+type KategoriVideoDropdownResponse struct {
+	ID   uuid.UUID              `json:"id"`
+	Nama map[string]interface{} `json:"nama"` // {"id": "...", "en": "..."}
+	Slug string                 `json:"slug"`
+}

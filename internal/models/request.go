@@ -501,7 +501,6 @@ type UpdateHeroSectionRequest struct {
 	Nama           *string `json:"nama" binding:"omitempty,min=1,max=100"`
 	GambarID       *string `json:"gambar_id" binding:"omitempty,max=500"`
 	GambarEN       *string `json:"gambar_en" binding:"omitempty,max=500"`
-	IsDefault      *bool   `json:"is_default"`
 	TanggalMulai   *string `json:"tanggal_mulai"`
 	TanggalSelesai *string `json:"tanggal_selesai"`
 }

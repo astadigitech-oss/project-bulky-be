@@ -44,10 +44,7 @@ func (c *HeroSectionController) Create(ctx *gin.Context) {
 			req.TanggalSelesai = &ts
 		}
 
-		// Parse is_default (optional, default false)
-		if isDefaultStr := ctx.PostForm("is_default"); isDefaultStr != "" {
-			req.IsDefault = isDefaultStr == "true" || isDefaultStr == "1"
-		}
+		// Note: is_default cannot be set on create, use toggle endpoint after creation
 
 		// Validate required fields
 		if req.Nama == "" {
@@ -184,10 +181,7 @@ func (c *HeroSectionController) Update(ctx *gin.Context) {
 		if nama := ctx.PostForm("nama"); nama != "" {
 			req.Nama = &nama
 		}
-		if isDefaultStr := ctx.PostForm("is_default"); isDefaultStr != "" {
-			isDefault := isDefaultStr == "true" || isDefaultStr == "1"
-			req.IsDefault = &isDefault
-		}
+		// Note: is_default cannot be updated here, use toggle endpoint instead
 		if tm := ctx.PostForm("tanggal_mulai"); tm != "" {
 			req.TanggalMulai = &tm
 		}

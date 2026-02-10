@@ -17,6 +17,7 @@ type LabelBlogService interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*models.LabelBlog, error)
 	GetBySlug(ctx context.Context, slug string) (*models.LabelBlog, error)
 	GetAll(ctx context.Context) ([]models.LabelBlog, error)
+	GetAllActive(ctx context.Context) ([]dto.LabelBlogDropdownResponse, error)
 	Reorder(ctx context.Context, items []dto.ReorderItem) error
 	GetAllPublicWithCount(ctx context.Context) ([]models.LabelBlog, error)
 }
@@ -93,6 +94,33 @@ func (s *labelBlogService) Reorder(ctx context.Context, items []dto.ReorderItem)
 		}
 	}
 	return nil
+}
+
+func (s *labelBlogService) GetAllActive(ctx context.Context) ([]dto.LabelBlogDropdownResponse, error) {
+	labelList, err := s.repo.FindAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []dto.LabelBlogDropdownResponse
+	for _, l := range labelList {
+		nama := map[string]interface{}{
+			"id": l.NamaID,
+		}
+		if l.NamaEN != nil {
+			nama["en"] = *l.NamaEN
+		} else {
+			nama["en"] = l.NamaID
+		}
+
+		result = append(result, dto.LabelBlogDropdownResponse{
+			ID:   l.ID,
+			Nama: nama,
+			Slug: l.Slug,
+		})
+	}
+
+	return result, nil
 }
 
 func (s *labelBlogService) GetAllPublicWithCount(ctx context.Context) ([]models.LabelBlog, error) {
