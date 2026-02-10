@@ -200,9 +200,7 @@ func (s *heroSectionService) Update(ctx context.Context, id string, req *models.
 	if req.GambarEN != nil {
 		hero.GambarURLEN = req.GambarEN
 	}
-	if req.IsDefault != nil {
-		hero.IsDefault = *req.IsDefault
-	}
+	// is_default is NOT updated here - only via toggle endpoint
 	if req.TanggalMulai != nil {
 		hero.TanggalMulai = tanggalMulai
 	}
@@ -210,9 +208,8 @@ func (s *heroSectionService) Update(ctx context.Context, id string, req *models.
 		hero.TanggalSelesai = tanggalSelesai
 	}
 
-	// Note: Database trigger fn_hero_section_auto_sync() will handle:
-	// - If both tanggal_mulai AND tanggal_selesai are set → auto set is_default = true
-	// - If is_default = true → clear tanggal and unset other records' is_default
+	// Note: Database trigger fn_hero_section_auto_sync_insert() only runs on INSERT.
+	// For UPDATE, is_default can ONLY be changed via ToggleDefault endpoint.
 
 	if err := s.repo.Update(ctx, hero); err != nil {
 		return nil, err

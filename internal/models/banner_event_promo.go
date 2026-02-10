@@ -13,8 +13,8 @@ type BannerEventPromo struct {
 	GambarURLID    string         `gorm:"column:gambar_url_id;type:varchar(500);not null" json:"-"`
 	GambarURLEN    string         `gorm:"column:gambar_url_en;type:varchar(500);not null" json:"-"`
 	Urutan         int            `gorm:"default:0" json:"urutan"`
-	TanggalMulai   *time.Time     `json:"tanggal_mulai,omitempty"`
-	TanggalSelesai *time.Time     `gorm:"column:tanggal_selesai" json:"tanggal_selesai,omitempty"`
+	TanggalMulai   *time.Time     `json:"tanggal_mulai"`
+	TanggalSelesai *time.Time     `gorm:"column:tanggal_selesai" json:"tanggal_selesai"`
 	CreatedAt      time.Time      `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt      time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
 	DeletedAt      gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
@@ -61,11 +61,13 @@ func (b *BannerEventPromo) IsCurrentlyVisible() bool {
 
 	now := time.Now()
 
+	// Not visible if NOW is before start date
 	if b.TanggalMulai != nil && now.Before(*b.TanggalMulai) {
 		return false
 	}
 
-	if b.TanggalSelesai != nil && now.After(*b.TanggalSelesai) {
+	// Not visible if NOW is >= end date (includes exact match)
+	if b.TanggalSelesai != nil && !now.Before(*b.TanggalSelesai) {
 		return false
 	}
 
