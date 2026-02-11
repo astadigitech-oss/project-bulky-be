@@ -12,7 +12,7 @@ type ProdukGambar struct {
 	GambarURL string    `gorm:"type:varchar(500);not null;column:gambar_url" json:"gambar_url"`
 	Urutan    int       `gorm:"default:0" json:"urutan"`
 	IsPrimary bool      `gorm:"default:false" json:"is_primary"`
-	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+	CreatedAt time.Time `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
 }
 
 func (ProdukGambar) TableName() string {

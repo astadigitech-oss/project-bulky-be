@@ -13,9 +13,9 @@ type LabelBlog struct {
 	NamaEN    string         `gorm:"type:varchar(100);not null" json:"nama_en"`
 	Slug      string         `gorm:"type:varchar(100);uniqueIndex;not null" json:"slug"`
 	Urutan    int            `gorm:"default:0" json:"urutan"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
+	CreatedAt time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time      `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"type:timestamptz;index" json:"deleted_at,omitempty"`
 }
 
 func (LabelBlog) TableName() string {

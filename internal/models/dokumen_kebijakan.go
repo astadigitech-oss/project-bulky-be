@@ -15,9 +15,9 @@ type DokumenKebijakan struct {
 	Konten    string         `gorm:"type:text;not null" json:"konten"`                     // HTML content (Indonesian) or JSON for FAQ
 	KontenEN  string         `gorm:"column:konten_en;type:text;not null" json:"konten_en"` // HTML content (English)
 	IsActive  bool           `gorm:"default:true" json:"is_active"`
-	CreatedAt time.Time      `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	CreatedAt time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time      `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"type:timestamptz;index" json:"-"`
 }
 
 func (DokumenKebijakan) TableName() string {

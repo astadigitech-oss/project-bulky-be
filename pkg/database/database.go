@@ -18,7 +18,7 @@ var DB *gorm.DB
 
 func InitDB(cfg *config.Config) {
 	dsn := fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Jakarta",
+		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
 		cfg.DBHost,
 		cfg.DBUser,
 		cfg.DBPassword,
@@ -36,6 +36,10 @@ func InitDB(cfg *config.Config) {
 
 	gormConfig := &gorm.Config{
 		Logger: logger.Default.LogMode(logLevel),
+		NowFunc: func() time.Time {
+			// Store all timestamps in UTC
+			return time.Now().UTC()
+		},
 	}
 
 	var err error

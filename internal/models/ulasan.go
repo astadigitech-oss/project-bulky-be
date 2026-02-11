@@ -19,12 +19,12 @@ type Ulasan struct {
 	Gambar   *string `gorm:"type:varchar(255)" json:"gambar"`
 
 	IsApproved bool       `gorm:"default:false" json:"is_approved"`
-	ApprovedAt *time.Time `json:"approved_at"`
+	ApprovedAt *time.Time `gorm:"type:timestamptz" json:"approved_at"`
 	ApprovedBy *uuid.UUID `gorm:"type:uuid" json:"approved_by"`
 
-	CreatedAt time.Time      `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	CreatedAt time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time      `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"type:timestamptz;index" json:"-"`
 
 	// Relations
 	Pesanan     Pesanan     `gorm:"foreignKey:PesananID" json:"pesanan,omitempty"`

@@ -23,10 +23,10 @@ type Blog struct {
 	MetaKeywords      *string        `gorm:"type:text" json:"meta_keywords"`
 	IsActive          bool           `gorm:"default:false" json:"is_active"`
 	ViewCount         int            `gorm:"default:0" json:"view_count"`
-	PublishedAt       *time.Time     `json:"published_at"`
-	CreatedAt         time.Time      `json:"created_at"`
-	UpdatedAt         time.Time      `json:"updated_at"`
-	DeletedAt         gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
+	PublishedAt       *time.Time     `gorm:"type:timestamptz" json:"published_at"`
+	CreatedAt         time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt         time.Time      `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
+	DeletedAt         gorm.DeletedAt `gorm:"type:timestamptz;index" json:"deleted_at,omitempty"`
 
 	// Relations
 	Kategori *KategoriBlog `gorm:"foreignKey:KategoriID" json:"kategori,omitempty"`

@@ -22,9 +22,9 @@ type ModeMaintenance struct {
 	TipeMaintenance MaintenanceType `gorm:"type:maintenance_type;not null" json:"tipe_maintenance"`
 	Deskripsi       string          `gorm:"type:text;not null" json:"deskripsi"`
 	IsActive        bool            `gorm:"default:false" json:"is_active"`
-	CreatedAt       time.Time       `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt       time.Time       `gorm:"autoUpdateTime" json:"updated_at"`
-	DeletedAt       gorm.DeletedAt  `gorm:"index" json:"-"`
+	CreatedAt       time.Time       `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt       time.Time       `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
+	DeletedAt       gorm.DeletedAt  `gorm:"type:timestamptz;index" json:"-"`
 }
 
 func (ModeMaintenance) TableName() string {

@@ -15,8 +15,8 @@ import (
 type FormulirPartaiBesarConfig struct {
 	ID          uuid.UUID `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
 	DaftarEmail string    `gorm:"type:text;not null;default:'[]'" json:"daftar_email"` // JSON array
-	CreatedAt   time.Time `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt   time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+	CreatedAt   time.Time `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt   time.Time `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
 }
 
 func (FormulirPartaiBesarConfig) TableName() string {
@@ -44,9 +44,9 @@ type FormulirPartaiBesarAnggaran struct {
 	ID        uuid.UUID      `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
 	Label     string         `gorm:"type:varchar(100);not null" json:"label"`
 	Urutan    int            `gorm:"default:0" json:"urutan"`
-	CreatedAt time.Time      `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	CreatedAt time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time      `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"type:timestamptz;index" json:"-"`
 }
 
 func (FormulirPartaiBesarAnggaran) TableName() string {
@@ -66,8 +66,8 @@ type FormulirPartaiBesarSubmission struct {
 	AnggaranID  *uuid.UUID `gorm:"type:uuid" json:"anggaran_id"`
 	KategoriIDs string     `gorm:"type:text;not null;default:'[]'" json:"kategori_ids"` // JSON array
 	EmailSent   bool       `gorm:"default:false" json:"email_sent"`
-	EmailSentAt *time.Time `json:"email_sent_at"`
-	CreatedAt   time.Time  `gorm:"autoCreateTime" json:"created_at"`
+	EmailSentAt *time.Time `gorm:"type:timestamptz" json:"email_sent_at"`
+	CreatedAt   time.Time  `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
 
 	// Relations
 	Buyer    *Buyer                       `gorm:"foreignKey:BuyerID" json:"buyer,omitempty"`

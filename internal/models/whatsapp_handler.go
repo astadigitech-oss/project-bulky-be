@@ -14,9 +14,9 @@ type WhatsAppHandler struct {
 	NomorWA   string         `gorm:"type:varchar(20);not null" json:"nomor_wa"`
 	PesanAwal string         `gorm:"type:text;not null" json:"pesan_awal"`
 	IsActive  bool           `gorm:"default:false" json:"is_active"`
-	CreatedAt time.Time      `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	CreatedAt time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time      `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"type:timestamptz;index" json:"-"`
 }
 
 func (WhatsAppHandler) TableName() string {

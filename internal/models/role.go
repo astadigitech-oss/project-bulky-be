@@ -14,9 +14,9 @@ type Role struct {
 	Kode      string         `gorm:"type:varchar(30);not null;unique" json:"kode"`
 	Deskripsi *string        `gorm:"type:text" json:"deskripsi"`
 	IsActive  bool           `gorm:"default:true" json:"is_active"`
-	CreatedAt time.Time      `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	CreatedAt time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time      `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"type:timestamptz;index" json:"-"`
 
 	// Relations
 	Permissions []Permission `gorm:"many2many:role_permission;" json:"permissions,omitempty"`

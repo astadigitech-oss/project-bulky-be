@@ -15,9 +15,9 @@ type KondisiProduk struct {
 	Deskripsi *string        `gorm:"type:text" json:"deskripsi,omitempty"`
 	Urutan    int            `gorm:"default:0" json:"urutan"`
 	IsActive  bool           `gorm:"default:true" json:"is_active"`
-	CreatedAt time.Time      `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
+	CreatedAt time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time      `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"type:timestamptz;index" json:"deleted_at,omitempty"`
 }
 
 func (KondisiProduk) TableName() string {

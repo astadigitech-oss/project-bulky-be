@@ -13,11 +13,11 @@ type BannerEventPromo struct {
 	GambarURLID    string         `gorm:"column:gambar_url_id;type:varchar(500);not null" json:"-"`
 	GambarURLEN    string         `gorm:"column:gambar_url_en;type:varchar(500);not null" json:"-"`
 	Urutan         int            `gorm:"default:0" json:"urutan"`
-	TanggalMulai   *time.Time     `json:"tanggal_mulai"`
-	TanggalSelesai *time.Time     `gorm:"column:tanggal_selesai" json:"tanggal_selesai"`
-	CreatedAt      time.Time      `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt      time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
-	DeletedAt      gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
+	TanggalMulai   *time.Time     `gorm:"type:timestamptz" json:"tanggal_mulai"`
+	TanggalSelesai *time.Time     `gorm:"type:timestamptz;column:tanggal_selesai" json:"tanggal_selesai"`
+	CreatedAt      time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt      time.Time      `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
+	DeletedAt      gorm.DeletedAt `gorm:"type:timestamptz;index" json:"deleted_at,omitempty"`
 
 	// Relations
 	KategoriList []BannerEPKategoriProduk `gorm:"foreignKey:BannerID" json:"kategori_list,omitempty"`

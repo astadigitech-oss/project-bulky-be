@@ -19,9 +19,9 @@ type Warehouse struct {
 	Longitude      *float64       `gorm:"type:decimal(11,8)" json:"longitude"`
 	JamOperasional *string        `gorm:"type:varchar(100)" json:"jam_operasional"`
 	IsActive       bool           `gorm:"default:true" json:"is_active"`
-	CreatedAt      time.Time      `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt      time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
-	DeletedAt      gorm.DeletedAt `gorm:"index" json:"-"`
+	CreatedAt      time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt      time.Time      `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
+	DeletedAt      gorm.DeletedAt `gorm:"type:timestamptz;index" json:"-"`
 
 	// Relations
 	JadwalGudang []JadwalGudang `gorm:"foreignKey:WarehouseID" json:"jadwal_gudang,omitempty"`
