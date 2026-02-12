@@ -9,7 +9,8 @@ import (
 
 type Produk struct {
 	ID                 uuid.UUID      `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
-	Nama               string         `gorm:"type:varchar(255);not null" json:"nama"`
+	NamaID             string         `gorm:"type:varchar(255);not null" json:"nama_id"`
+	NamaEN             string         `gorm:"type:varchar(255);not null" json:"nama_en"`
 	Slug               string         `gorm:"type:varchar(280);unique;not null" json:"slug"`
 	IDCargo            *string        `gorm:"type:varchar(50);unique;column:id_cargo" json:"id_cargo"`
 	KategoriID         uuid.UUID      `gorm:"type:uuid;not null" json:"kategori_id"`
@@ -53,7 +54,8 @@ func (Produk) TableName() string {
 // Response DTO
 type ProdukResponse struct {
 	ID                 string    `json:"id"`
-	Nama               string    `json:"nama"`
+	NamaID             string    `json:"nama_id"`
+	NamaEN             string    `json:"nama_en"`
 	Slug               string    `json:"slug"`
 	IDCargo            *string   `json:"id_cargo"`
 	KategoriID         string    `json:"kategori_id"`

@@ -408,8 +408,9 @@ type ProdukDokumenResponse struct {
 }
 
 type ProdukListResponse struct {
-	ID   string `json:"id"`
-	Nama string `json:"nama"`
+	ID     string `json:"id"`
+	NamaID string `json:"nama_id"`
+	NamaEN string `json:"nama_en"`
 	// Slug               string                    `json:"slug"`
 	// IDCargo            *string                   `json:"id_cargo"`
 	Kategori SimpleProdukRelationInfo  `json:"kategori"`
@@ -433,7 +434,8 @@ type ProdukListResponse struct {
 
 type ProdukDetailResponse struct {
 	ID                 string                    `json:"id"`
-	Nama               string                    `json:"nama"`
+	NamaID             string                    `json:"nama_id"`
+	NamaEN             string                    `json:"nama_en"`
 	Slug               string                    `json:"slug"`
 	IDCargo            *string                   `json:"id_cargo"`
 	Kategori           SimpleProdukRelationInfo  `json:"kategori"`

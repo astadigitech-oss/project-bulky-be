@@ -271,7 +271,8 @@ type BannerTipeProdukFilterRequest struct {
 // ========================================
 
 type CreateProdukRequest struct {
-	Nama               string  `form:"nama" binding:"required,min=2,max=255"`
+	NamaID             string  `form:"nama_id" binding:"required,min=2,max=255"`
+	NamaEN             string  `form:"nama_en" binding:"required,min=2,max=255"`
 	IDCargo            *string `form:"id_cargo" binding:"omitempty,max=50"`
 	KategoriID         string  `form:"kategori_id" binding:"required,uuid"`
 	MerekID            *string `form:"merek_id" binding:"omitempty,uuid"`
@@ -293,7 +294,8 @@ type CreateProdukRequest struct {
 }
 
 type UpdateProdukRequest struct {
-	Nama               *string  `form:"nama" binding:"omitempty,min=2,max=255"`
+	NamaID             *string  `form:"nama_id" binding:"omitempty,min=2,max=255"`
+	NamaEN             *string  `form:"nama_en" binding:"omitempty,min=2,max=255"`
 	IDCargo            *string  `form:"id_cargo" binding:"omitempty,max=50"`
 	KategoriID         *string  `form:"kategori_id" binding:"omitempty,uuid"`
 	MerekID            *string  `form:"merek_id" binding:"omitempty,uuid"`

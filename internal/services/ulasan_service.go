@@ -78,7 +78,7 @@ func (s *ulasanService) AdminFindAll(filters map[string]interface{}, page, perPa
 			NamaBuyer:   u.Buyer.Nama,
 			EmailBuyer:  u.Buyer.Email,
 			KodePesanan: u.Pesanan.Kode,
-			NamaProduk:  u.Produk.Nama,
+			NamaProduk:  u.Produk.NamaID,
 			Rating:      u.Rating,
 			Komentar:    u.Komentar,
 			Gambar:      u.Gambar,
@@ -124,7 +124,7 @@ func (s *ulasanService) AdminFindByID(id string) (*models.UlasanAdminDetailRespo
 			SKU  string `json:"sku"`
 		}{
 			ID:   ulasan.Produk.ID.String(),
-			Nama: ulasan.Produk.Nama,
+			Nama: ulasan.Produk.NamaID,
 			SKU: func() string {
 				if ulasan.Produk.IDCargo != nil {
 					return *ulasan.Produk.IDCargo
@@ -201,7 +201,7 @@ func (s *ulasanService) GetPendingReviews(buyerID uuid.UUID) ([]models.BuyerPend
 			PesananItemID: item.ID.String(),
 			PesananKode:   item.Pesanan.Kode,
 			ProdukID:      item.ProdukID.String(),
-			NamaProduk:    item.Produk.Nama,
+			NamaProduk:    item.Produk.NamaID,
 			GambarProduk:  gambarProduk,
 			Qty:           item.Qty,
 			CompletedAt:   item.Pesanan.UpdatedAt, // Use pesanan updated_at as completed_at
@@ -226,7 +226,7 @@ func (s *ulasanService) BuyerFindAll(buyerID uuid.UUID, page, perPage int) ([]mo
 
 		response[i] = models.BuyerUlasanResponse{
 			ID:           u.ID.String(),
-			NamaProduk:   u.Produk.Nama,
+			NamaProduk:   u.Produk.NamaID,
 			GambarProduk: gambarProduk,
 			Rating:       u.Rating,
 			Komentar:     u.Komentar,

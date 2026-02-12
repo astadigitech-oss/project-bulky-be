@@ -362,3 +362,24 @@ func (c *BannerEventPromoController) ReorderByDirection(ctx *gin.Context) {
 		},
 	})
 }
+
+// GetSchedules godoc
+// @Summary      Get banner schedules for calendar
+// @Description  Returns list of banner schedules with label, date_start, date_end
+// @Tags         Banner Event Promo
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  utils.Response
+// @Failure      401  {object}  utils.ErrorResponse
+// @Failure      500  {object}  utils.ErrorResponse
+// @Security     BearerAuth
+// @Router       /panel/banner-event-promo/schedule [get]
+func (c *BannerEventPromoController) GetSchedules(ctx *gin.Context) {
+	schedules, err := c.service.GetSchedules(ctx.Request.Context())
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil jadwal banner", nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Jadwal banner berhasil diambil", schedules)
+}

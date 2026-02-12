@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"project-bulky-be/internal/config"
+	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
 
@@ -23,6 +24,7 @@ type BannerEventPromoService interface {
 	ToggleStatus(ctx context.Context, id string) (*models.BannerEventPromoResponse, bool, error) // Returns: response, wasActivated, error
 	Reorder(ctx context.Context, req *models.ReorderRequest) error
 	GetVisibleBanners(ctx context.Context) ([]models.BannerEventPromoPublicResponse, error)
+	GetSchedules(ctx context.Context) ([]dto.BannerScheduleItem, error)
 }
 
 type bannerEventPromoService struct {
@@ -336,4 +338,22 @@ func (s *bannerEventPromoService) validateAndParseKategoriIDs(ids []string) ([]u
 	}
 
 	return result, nil
+}
+
+func (s *bannerEventPromoService) GetSchedules(ctx context.Context) ([]dto.BannerScheduleItem, error) {
+	banners, err := s.repo.GetSchedules(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	schedules := make([]dto.BannerScheduleItem, len(banners))
+	for i, banner := range banners {
+		schedules[i] = dto.BannerScheduleItem{
+			Label:     banner.Nama,
+			DateStart: *banner.TanggalMulai,
+			DateEnd:   *banner.TanggalSelesai,
+		}
+	}
+
+	return schedules, nil
 }
