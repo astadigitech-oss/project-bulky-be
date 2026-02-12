@@ -12,9 +12,9 @@ type PPN struct {
 	ID         uuid.UUID       `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
 	Persentase decimal.Decimal `gorm:"type:decimal(5,2);not null;uniqueIndex" json:"persentase"`
 	IsActive   bool            `gorm:"default:false" json:"is_active"`
-	CreatedAt  time.Time       `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt  time.Time       `gorm:"autoUpdateTime" json:"updated_at"`
-	DeletedAt  gorm.DeletedAt  `gorm:"index" json:"-"`
+	CreatedAt  time.Time       `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt  time.Time       `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
+	DeletedAt  gorm.DeletedAt  `gorm:"type:timestamptz;index" json:"-"`
 }
 
 func (PPN) TableName() string {

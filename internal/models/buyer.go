@@ -17,11 +17,11 @@ type Buyer struct {
 	FotoURL         *string        `gorm:"type:text" json:"foto_url"`
 	IsActive        bool           `gorm:"default:true" json:"is_active"`
 	IsVerified      bool           `gorm:"default:false" json:"is_verified"`
-	EmailVerifiedAt *time.Time     `json:"email_verified_at"`
-	LastLoginAt     *time.Time     `json:"last_login_at"`
-	CreatedAt       time.Time      `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt       time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
-	DeletedAt       gorm.DeletedAt `gorm:"index" json:"-"`
+	EmailVerifiedAt *time.Time     `gorm:"type:timestamptz" json:"email_verified_at"`
+	LastLoginAt     *time.Time     `gorm:"type:timestamptz" json:"last_login_at"`
+	CreatedAt       time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt       time.Time      `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
+	DeletedAt       gorm.DeletedAt `gorm:"type:timestamptz;index" json:"-"`
 
 	// Relations
 	Alamat []AlamatBuyer `gorm:"foreignKey:BuyerID" json:"alamat,omitempty"`

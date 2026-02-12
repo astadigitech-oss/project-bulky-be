@@ -13,7 +13,7 @@ type ProdukDokumen struct {
 	FileURL     string    `gorm:"type:varchar(500);not null;column:file_url" json:"file_url"`
 	TipeFile    string    `gorm:"type:varchar(50);not null" json:"tipe_file"`
 	UkuranFile  *int      `gorm:"type:integer" json:"ukuran_file"`
-	CreatedAt   time.Time `gorm:"autoCreateTime" json:"created_at"`
+	CreatedAt   time.Time `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
 }
 
 func (ProdukDokumen) TableName() string {

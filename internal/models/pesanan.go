@@ -52,19 +52,19 @@ type Pesanan struct {
 	Total               decimal.Decimal `gorm:"type:decimal(15,2);not null;default:0" json:"total"`
 	Catatan             *string         `gorm:"type:text" json:"catatan"`
 	CatatanAdmin        *string         `gorm:"type:text" json:"catatan_admin"`
-	ExpiredAt           *time.Time      `json:"expired_at"`
-	PaidAt              *time.Time      `json:"paid_at"`
-	ProcessedAt         *time.Time      `json:"processed_at"`
-	ReadyAt             *time.Time      `json:"ready_at"`
-	ShippedAt           *time.Time      `json:"shipped_at"`
-	CompletedAt         *time.Time      `json:"completed_at"`
-	CancelledAt         *time.Time      `json:"cancelled_at"`
+	ExpiredAt           *time.Time      `gorm:"type:timestamptz" json:"expired_at"`
+	PaidAt              *time.Time      `gorm:"type:timestamptz" json:"paid_at"`
+	ProcessedAt         *time.Time      `gorm:"type:timestamptz" json:"processed_at"`
+	ReadyAt             *time.Time      `gorm:"type:timestamptz" json:"ready_at"`
+	ShippedAt           *time.Time      `gorm:"type:timestamptz" json:"shipped_at"`
+	CompletedAt         *time.Time      `gorm:"type:timestamptz" json:"completed_at"`
+	CancelledAt         *time.Time      `gorm:"type:timestamptz" json:"cancelled_at"`
 	CancelledReason     *string         `gorm:"type:text" json:"cancelled_reason"`
 	DelivereeBookingID  *string         `gorm:"type:varchar(100)" json:"deliveree_booking_id"`
 	ForwarderTrackingNo *string         `gorm:"type:varchar(100)" json:"forwarder_tracking_no"`
-	CreatedAt           time.Time       `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt           time.Time       `gorm:"autoUpdateTime" json:"updated_at"`
-	DeletedAt           gorm.DeletedAt  `gorm:"index" json:"-"`
+	CreatedAt           time.Time       `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt           time.Time       `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
+	DeletedAt           gorm.DeletedAt  `gorm:"type:timestamptz;index" json:"-"`
 
 	// Relations
 	Buyer       Buyer               `gorm:"foreignKey:BuyerID" json:"buyer,omitempty"`

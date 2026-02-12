@@ -20,9 +20,9 @@ type ForceUpdateApp struct {
 	UpdateType      UpdateType     `gorm:"type:update_type;not null" json:"update_type"`
 	InformasiUpdate string         `gorm:"type:text;not null" json:"informasi_update"`
 	IsActive        bool           `gorm:"default:false" json:"is_active"`
-	CreatedAt       time.Time      `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt       time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
-	DeletedAt       gorm.DeletedAt `gorm:"index" json:"-"`
+	CreatedAt       time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt       time.Time      `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
+	DeletedAt       gorm.DeletedAt `gorm:"type:timestamptz;index" json:"-"`
 }
 
 func (ForceUpdateApp) TableName() string {

@@ -17,8 +17,8 @@ type PesananItem struct {
 	HargaSatuan  decimal.Decimal `gorm:"type:decimal(15,2);not null" json:"harga_satuan"`
 	DiskonSatuan decimal.Decimal `gorm:"type:decimal(15,2);default:0" json:"diskon_satuan"`
 	Subtotal     decimal.Decimal `gorm:"type:decimal(15,2);not null" json:"subtotal"`
-	CreatedAt    time.Time       `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt    time.Time       `gorm:"autoUpdateTime" json:"updated_at"`
+	CreatedAt    time.Time       `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt    time.Time       `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
 
 	// Relations
 	Pesanan Pesanan `gorm:"foreignKey:PesananID" json:"pesanan,omitempty"`

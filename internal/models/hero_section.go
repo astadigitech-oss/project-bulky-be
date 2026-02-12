@@ -13,11 +13,11 @@ type HeroSection struct {
 	GambarURLID    string         `gorm:"column:gambar_url_id;type:varchar(500);not null" json:"-"`
 	GambarURLEN    *string        `gorm:"column:gambar_url_en;type:varchar(500)" json:"-"`
 	IsDefault      bool           `gorm:"default:false" json:"is_default"`
-	TanggalMulai   *time.Time     `gorm:"type:timestamp" json:"tanggal_mulai,omitempty"`
-	TanggalSelesai *time.Time     `gorm:"type:timestamp" json:"tanggal_selesai,omitempty"`
-	CreatedAt      time.Time      `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt      time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
-	DeletedAt      gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
+	TanggalMulai   *time.Time     `gorm:"type:timestamptz" json:"tanggal_mulai,omitempty"`
+	TanggalSelesai *time.Time     `gorm:"type:timestamptz" json:"tanggal_selesai,omitempty"`
+	CreatedAt      time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt      time.Time      `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
+	DeletedAt      gorm.DeletedAt `gorm:"type:timestamptz;index" json:"deleted_at,omitempty"`
 }
 
 func (HeroSection) TableName() string {

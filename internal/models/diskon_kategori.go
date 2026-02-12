@@ -15,9 +15,9 @@ type DiskonKategori struct {
 	TanggalMulai     *time.Time     `gorm:"type:date" json:"tanggal_mulai"`
 	TanggalSelesai   *time.Time     `gorm:"type:date" json:"tanggal_selesai"`
 	IsActive         bool           `gorm:"default:true" json:"is_active"`
-	CreatedAt        time.Time      `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt        time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
-	DeletedAt        gorm.DeletedAt `gorm:"index" json:"-"`
+	CreatedAt        time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt        time.Time      `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
+	DeletedAt        gorm.DeletedAt `gorm:"type:timestamptz;index" json:"-"`
 
 	// Relations
 	Kategori KategoriProduk `gorm:"foreignKey:KategoriID" json:"kategori,omitempty"`

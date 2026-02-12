@@ -21,7 +21,7 @@ type PesananStatusHistory struct {
 	StatusType StatusHistoryType `gorm:"type:status_history_type;not null" json:"status_type"`
 	ChangedBy  *uuid.UUID        `gorm:"type:uuid" json:"changed_by"`
 	Note       *string           `gorm:"type:text" json:"note"`
-	CreatedAt  time.Time         `gorm:"autoCreateTime" json:"created_at"`
+	CreatedAt  time.Time         `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
 
 	// Relations
 	Admin *Admin `gorm:"foreignKey:ChangedBy" json:"admin,omitempty"`

@@ -12,8 +12,8 @@ type AdminSession struct {
 	Token     string    `gorm:"type:varchar(500);uniqueIndex;not null" json:"-"`
 	IPAddress *string   `gorm:"type:varchar(45)" json:"ip_address"`
 	UserAgent *string   `gorm:"type:varchar(500)" json:"user_agent"`
-	ExpiresAt time.Time `gorm:"not null" json:"expires_at"`
-	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+	ExpiresAt time.Time `gorm:"type:timestamptz;not null" json:"expires_at"`
+	CreatedAt time.Time `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
 
 	// Relations
 	Admin Admin `gorm:"foreignKey:AdminID" json:"admin,omitempty"`

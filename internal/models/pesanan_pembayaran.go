@@ -18,10 +18,10 @@ type PesananPembayaran struct {
 	XenditExternalID    *string         `gorm:"type:varchar(100);unique" json:"xendit_external_id"`
 	XenditPaymentURL    *string         `gorm:"type:text" json:"xendit_payment_url"`
 	XenditPaymentMethod *string         `gorm:"type:varchar(50)" json:"xendit_payment_method"`
-	ExpiredAt           *time.Time      `json:"expired_at"`
-	PaidAt              *time.Time      `json:"paid_at"`
-	CreatedAt           time.Time       `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt           time.Time       `gorm:"autoUpdateTime" json:"updated_at"`
+	ExpiredAt           *time.Time      `gorm:"type:timestamptz" json:"expired_at"`
+	PaidAt              *time.Time      `gorm:"type:timestamptz" json:"paid_at"`
+	CreatedAt           time.Time       `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt           time.Time       `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
 
 	// Relations
 	Buyer            Buyer             `gorm:"foreignKey:BuyerID" json:"buyer,omitempty"`

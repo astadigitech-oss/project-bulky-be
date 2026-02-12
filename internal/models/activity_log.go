@@ -38,7 +38,7 @@ type ActivityLog struct {
 	NewData    json.RawMessage `gorm:"type:jsonb" json:"new_data,omitempty"`
 	IPAddress  *string         `gorm:"type:varchar(50)" json:"ip_address"`
 	UserAgent  *string         `gorm:"type:text" json:"user_agent"`
-	CreatedAt  time.Time       `gorm:"autoCreateTime" json:"created_at"`
+	CreatedAt  time.Time       `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
 }
 
 func (ActivityLog) TableName() string {

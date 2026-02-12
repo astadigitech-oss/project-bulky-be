@@ -22,10 +22,10 @@ type RefreshToken struct {
 	Token      string     `gorm:"type:varchar(500);not null;unique" json:"token"`
 	DeviceInfo *string    `gorm:"type:varchar(255)" json:"device_info"`
 	IPAddress  *string    `gorm:"type:varchar(50)" json:"ip_address"`
-	ExpiredAt  time.Time  `gorm:"not null" json:"expired_at"`
+	ExpiredAt  time.Time  `gorm:"type:timestamptz;not null" json:"expired_at"`
 	IsRevoked  bool       `gorm:"default:false" json:"is_revoked"`
-	RevokedAt  *time.Time `json:"revoked_at"`
-	CreatedAt  time.Time  `gorm:"autoCreateTime" json:"created_at"`
+	RevokedAt  *time.Time `gorm:"type:timestamptz" json:"revoked_at"`
+	CreatedAt  time.Time  `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
 }
 
 func (RefreshToken) TableName() string {

@@ -9,7 +9,7 @@ import (
 type BannerEPKategoriProduk struct {
 	BannerID         uuid.UUID `gorm:"type:uuid;primaryKey" json:"banner_id"`
 	KategoriProdukID uuid.UUID `gorm:"type:uuid;primaryKey" json:"kategori_produk_id"`
-	CreatedAt        time.Time `gorm:"autoCreateTime" json:"created_at"`
+	CreatedAt        time.Time `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
 
 	// Relations (for preload)
 	KategoriProduk *KategoriProduk `gorm:"foreignKey:KategoriProdukID" json:"kategori_produk,omitempty"`

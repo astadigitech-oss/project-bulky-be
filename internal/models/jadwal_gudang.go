@@ -13,8 +13,8 @@ type JadwalGudang struct {
 	JamBuka     *string   `gorm:"type:time" json:"jam_buka"`
 	JamTutup    *string   `gorm:"type:time" json:"jam_tutup"`
 	IsBuka      bool      `gorm:"default:false" json:"is_buka"`
-	CreatedAt   time.Time `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt   time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+	CreatedAt   time.Time `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt   time.Time `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
 }
 
 func (JadwalGudang) TableName() string {
