@@ -4,7 +4,9 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
+	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/services"
@@ -19,23 +21,132 @@ type BlogController struct {
 	blogService         services.BlogService
 	kategoriBlogService services.KategoriBlogService
 	labelBlogService    services.LabelBlogService
+	cfg                 *config.Config
 }
 
 func NewBlogController(
 	blogService services.BlogService,
 	kategoriBlogService services.KategoriBlogService,
 	labelBlogService services.LabelBlogService,
+	cfg *config.Config,
 ) *BlogController {
 	return &BlogController{
 		blogService:         blogService,
 		kategoriBlogService: kategoriBlogService,
 		labelBlogService:    labelBlogService,
+		cfg:                 cfg,
 	}
 }
 
 // Admin endpoints
 func (c *BlogController) Create(ctx *gin.Context) {
 	var req dto.CreateBlogRequest
+	var featuredImageURL *string
+
+	contentType := ctx.GetHeader("Content-Type")
+
+	// Handle multipart/form-data (with file upload)
+	if strings.Contains(contentType, "multipart/form-data") {
+		// Parse form data
+		req.JudulID = ctx.PostForm("judul_id")
+		judulEN := ctx.PostForm("judul_en")
+		if judulEN != "" {
+			req.JudulEN = &judulEN
+		}
+		req.Slug = ctx.PostForm("slug")
+		req.KontenID = ctx.PostForm("konten_id")
+		kontenEN := ctx.PostForm("konten_en")
+		if kontenEN != "" {
+			req.KontenEN = &kontenEN
+		}
+
+		// Parse kategori_id
+		kategoriIDStr := ctx.PostForm("kategori_id")
+		if kategoriIDStr != "" {
+			kategoriID, err := uuid.Parse(kategoriIDStr)
+			if err != nil {
+				utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "kategori_id tidak valid", err.Error())
+				return
+			}
+			req.KategoriID = kategoriID
+		}
+
+		// Parse label_ids (array)
+		labelIDsStr := ctx.PostFormArray("label_ids")
+		req.LabelIDs = []uuid.UUID{}
+		for _, idStr := range labelIDsStr {
+			if idStr != "" {
+				id, err := uuid.Parse(idStr)
+				if err == nil {
+					req.LabelIDs = append(req.LabelIDs, id)
+				}
+			}
+		}
+
+		// Parse meta fields
+		if metaTitleID := ctx.PostForm("meta_title_id"); metaTitleID != "" {
+			req.MetaTitleID = &metaTitleID
+		}
+		if metaTitleEN := ctx.PostForm("meta_title_en"); metaTitleEN != "" {
+			req.MetaTitleEN = &metaTitleEN
+		}
+		if metaDescID := ctx.PostForm("meta_description_id"); metaDescID != "" {
+			req.MetaDescriptionID = &metaDescID
+		}
+		if metaDescEN := ctx.PostForm("meta_description_en"); metaDescEN != "" {
+			req.MetaDescriptionEN = &metaDescEN
+		}
+		if metaKeywords := ctx.PostForm("meta_keywords"); metaKeywords != "" {
+			req.MetaKeywords = &metaKeywords
+		}
+
+		// Parse is_active
+		req.IsActive = ctx.PostForm("is_active") == "true"
+
+		// Validate required fields
+		if req.JudulID == "" {
+			utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "judul_id wajib diisi", "")
+			return
+		}
+		if req.Slug == "" {
+			utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "slug wajib diisi", "")
+			return
+		}
+		if req.KontenID == "" {
+			utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "konten_id wajib diisi", "")
+			return
+		}
+
+		// Handle featured_image upload (optional)
+		if file, err := ctx.FormFile("featured_image"); err == nil {
+			if !utils.IsValidImageType(file) {
+				utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file featured_image tidak didukung", "")
+				return
+			}
+			savedPath, err := utils.SaveUploadedFile(file, "blog", c.cfg)
+			if err != nil {
+				utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file: "+err.Error(), "")
+				return
+			}
+			featuredImageURL = &savedPath
+			req.FeaturedImageURL = featuredImageURL
+		}
+
+		blog, err := c.blogService.Create(ctx.Request.Context(), &req)
+		if err != nil {
+			// Rollback: delete uploaded file if creation fails
+			if featuredImageURL != nil {
+				utils.DeleteFile(*featuredImageURL, c.cfg)
+			}
+			utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat blog", err.Error())
+			return
+		}
+
+		utils.SimpleSuccessResponse(ctx, http.StatusCreated, "Blog berhasil dibuat", blog)
+		return
+	}
+
+	// Handle JSON request (for backward compatibility)
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Data request tidak valid", utils.GetValidationErrorMessage(err))
 		return
@@ -58,6 +169,110 @@ func (c *BlogController) Update(ctx *gin.Context) {
 	}
 
 	var req dto.UpdateBlogRequest
+	var featuredImageURL *string
+
+	contentType := ctx.GetHeader("Content-Type")
+
+	// Handle multipart/form-data (with file upload)
+	if strings.Contains(contentType, "multipart/form-data") {
+		// Parse form data
+		if judulID := ctx.PostForm("judul_id"); judulID != "" {
+			req.JudulID = &judulID
+		}
+		if judulEN := ctx.PostForm("judul_en"); judulEN != "" {
+			req.JudulEN = &judulEN
+		}
+		if slug := ctx.PostForm("slug"); slug != "" {
+			req.Slug = &slug
+		}
+		if kontenID := ctx.PostForm("konten_id"); kontenID != "" {
+			req.KontenID = &kontenID
+		}
+		if kontenEN := ctx.PostForm("konten_en"); kontenEN != "" {
+			req.KontenEN = &kontenEN
+		}
+
+		// Parse kategori_id
+		if kategoriIDStr := ctx.PostForm("kategori_id"); kategoriIDStr != "" {
+			kategoriID, err := uuid.Parse(kategoriIDStr)
+			if err != nil {
+				utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "kategori_id tidak valid", err.Error())
+				return
+			}
+			req.KategoriID = &kategoriID
+		}
+
+		// Parse label_ids (array)
+		labelIDsStr := ctx.PostFormArray("label_ids")
+		if len(labelIDsStr) > 0 {
+			req.LabelIDs = []uuid.UUID{}
+			for _, idStr := range labelIDsStr {
+				if idStr != "" {
+					id, err := uuid.Parse(idStr)
+					if err == nil {
+						req.LabelIDs = append(req.LabelIDs, id)
+					}
+				}
+			}
+		}
+
+		// Parse meta fields
+		if metaTitleID := ctx.PostForm("meta_title_id"); metaTitleID != "" {
+			req.MetaTitleID = &metaTitleID
+		}
+		if metaTitleEN := ctx.PostForm("meta_title_en"); metaTitleEN != "" {
+			req.MetaTitleEN = &metaTitleEN
+		}
+		if metaDescID := ctx.PostForm("meta_description_id"); metaDescID != "" {
+			req.MetaDescriptionID = &metaDescID
+		}
+		if metaDescEN := ctx.PostForm("meta_description_en"); metaDescEN != "" {
+			req.MetaDescriptionEN = &metaDescEN
+		}
+		if metaKeywords := ctx.PostForm("meta_keywords"); metaKeywords != "" {
+			req.MetaKeywords = &metaKeywords
+		}
+
+		// Parse is_active
+		if isActiveStr := ctx.PostForm("is_active"); isActiveStr != "" {
+			isActive := isActiveStr == "true"
+			req.IsActive = &isActive
+		}
+
+		// Handle featured_image upload (optional)
+		if file, err := ctx.FormFile("featured_image"); err == nil {
+			if !utils.IsValidImageType(file) {
+				utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file featured_image tidak didukung", "")
+				return
+			}
+			savedPath, err := utils.SaveUploadedFile(file, "blog", c.cfg)
+			if err != nil {
+				utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file: "+err.Error(), "")
+				return
+			}
+			featuredImageURL = &savedPath
+			req.FeaturedImageURL = featuredImageURL
+		}
+
+		blog, err := c.blogService.Update(ctx.Request.Context(), id, &req)
+		if err != nil {
+			// Rollback: delete uploaded file if update fails
+			if featuredImageURL != nil {
+				utils.DeleteFile(*featuredImageURL, c.cfg)
+			}
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Blog tidak ditemukan", utils.GetValidationErrorMessage(err))
+				return
+			}
+			utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal memperbarui blog", utils.GetValidationErrorMessage(err))
+			return
+		}
+
+		utils.SimpleSuccessResponse(ctx, http.StatusOK, "Blog berhasil diperbarui", blog)
+		return
+	}
+
+	// Handle JSON request (for backward compatibility)
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Data request tidak valid", utils.GetValidationErrorMessage(err))
 		return

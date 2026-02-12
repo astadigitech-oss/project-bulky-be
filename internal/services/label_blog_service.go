@@ -19,7 +19,6 @@ type LabelBlogService interface {
 	GetBySlug(ctx context.Context, slug string) (*models.LabelBlog, error)
 	GetAll(ctx context.Context, params *dto.LabelBlogFilterRequest) ([]models.LabelBlog, models.PaginationMeta, error)
 	GetAllActive(ctx context.Context) ([]dto.LabelBlogDropdownResponse, error)
-	Reorder(ctx context.Context, items []dto.ReorderItem) error
 	GetAllPublicWithCount(ctx context.Context) ([]models.LabelBlog, error)
 }
 
@@ -101,15 +100,6 @@ func (s *labelBlogService) GetBySlug(ctx context.Context, slug string) (*models.
 
 func (s *labelBlogService) GetAll(ctx context.Context, params *dto.LabelBlogFilterRequest) ([]models.LabelBlog, models.PaginationMeta, error) {
 	return s.repo.FindAll(ctx, params)
-}
-
-func (s *labelBlogService) Reorder(ctx context.Context, items []dto.ReorderItem) error {
-	for _, item := range items {
-		if err := s.repo.UpdateUrutan(ctx, item.ID, item.Urutan); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (s *labelBlogService) GetAllActive(ctx context.Context) ([]dto.LabelBlogDropdownResponse, error) {
