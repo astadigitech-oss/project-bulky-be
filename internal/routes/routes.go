@@ -387,6 +387,7 @@ func SetupRoutes(
 		bannerEventPromoAdmin.Use(middleware.AdminOnly())
 		{
 			bannerEventPromoAdmin.GET("", middleware.RequirePermission("marketing:read"), bannerEventPromoController.FindAll)
+			bannerEventPromoAdmin.GET("/schedule", middleware.RequirePermission("marketing:read"), bannerEventPromoController.GetSchedules)
 			bannerEventPromoAdmin.GET("/:id", middleware.RequirePermission("marketing:read"), bannerEventPromoController.FindByID)
 			bannerEventPromoAdmin.POST("", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.Create)
 			bannerEventPromoAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.Update)

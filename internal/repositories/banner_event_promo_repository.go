@@ -23,6 +23,7 @@ type BannerEventPromoRepository interface {
 	UpdateOrder(ctx context.Context, items []models.ReorderItem) error
 	GetVisibleBanners(ctx context.Context) ([]models.BannerEventPromo, error)
 	GetMaxUrutan(ctx context.Context) (int, error)
+	GetSchedules(ctx context.Context) ([]models.BannerEventPromo, error)
 }
 
 type bannerEventPromoRepository struct {
@@ -201,4 +202,18 @@ func (r *bannerEventPromoRepository) GetMaxUrutan(ctx context.Context) (int, err
 		Select("COALESCE(MAX(urutan), 0)").
 		Scan(&maxUrutan).Error
 	return maxUrutan, err
+}
+
+// GetSchedules returns all banners that have both tanggal_mulai and tanggal_selesai
+func (r *bannerEventPromoRepository) GetSchedules(ctx context.Context) ([]models.BannerEventPromo, error) {
+	var banners []models.BannerEventPromo
+
+	err := r.db.WithContext(ctx).
+		Where("tanggal_mulai IS NOT NULL").
+		Where("tanggal_selesai IS NOT NULL").
+		Order("tanggal_mulai ASC").
+		Select("nama", "tanggal_mulai", "tanggal_selesai").
+		Find(&banners).Error
+
+	return banners, err
 }

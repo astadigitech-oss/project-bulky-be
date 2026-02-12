@@ -55,6 +55,14 @@ type BannerEventPromoDetailResponse struct {
 	UpdatedAt      time.Time                `json:"updated_at"`
 }
 
+// Banner Schedule Item for calendar view
+// TypeScript: interface BannerScheduleItem { label: string; date_start: Date; date_end: Date; }
+type BannerScheduleItem struct {
+	Label     string    `json:"label"`
+	DateStart time.Time `json:"date_start"`
+	DateEnd   time.Time `json:"date_end"`
+}
+
 // Converters
 func ToBannerEventPromoListResponse(b *models.BannerEventPromo) BannerEventPromoListResponse {
 	return BannerEventPromoListResponse{

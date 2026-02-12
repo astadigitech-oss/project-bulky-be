@@ -63,7 +63,7 @@ func (s *produkService) CreateWithFiles(
 	gambarFiles, dokumenFiles []*multipart.FileHeader,
 	dokumenNama []string,
 ) (*models.ProdukDetailResponse, error) {
-	slug := utils.GenerateSlug(req.Nama)
+	slug := utils.GenerateSlug(req.NamaID)
 
 	exists, _ := s.repo.ExistsBySlug(ctx, slug, nil)
 	if exists {
@@ -84,7 +84,8 @@ func (s *produkService) CreateWithFiles(
 	tipeProdukID, _ := uuid.Parse(req.TipeProdukID)
 
 	produk := &models.Produk{
-		Nama:               req.Nama,
+		NamaID:             req.NamaID,
+		NamaEN:             req.NamaEN,
 		Slug:               slug,
 		IDCargo:            req.IDCargo,
 		KategoriID:         kategoriID,
@@ -235,14 +236,18 @@ func (s *produkService) Update(ctx context.Context, id string, req *models.Updat
 		return nil, errors.New("produk tidak ditemukan")
 	}
 
-	if req.Nama != nil {
-		newSlug := utils.GenerateSlug(*req.Nama)
+	if req.NamaID != nil {
+		newSlug := utils.GenerateSlug(*req.NamaID)
 		exists, _ := s.repo.ExistsBySlug(ctx, newSlug, &id)
 		if exists {
 			return nil, errors.New("produk dengan nama tersebut sudah ada")
 		}
-		produk.Nama = *req.Nama
+		produk.NamaID = *req.NamaID
 		produk.Slug = newSlug
+	}
+
+	if req.NamaEN != nil {
+		produk.NamaEN = *req.NamaEN
 	}
 
 	if req.IDCargo != nil {
@@ -362,8 +367,9 @@ func (s *produkService) UpdateStock(ctx context.Context, id string, req *models.
 
 func (s *produkService) toListResponse(p *models.Produk) *models.ProdukListResponse {
 	resp := &models.ProdukListResponse{
-		ID:   p.ID.String(),
-		Nama: p.Nama,
+		ID:     p.ID.String(),
+		NamaID: p.NamaID,
+		NamaEN: p.NamaEN,
 		// Slug:    p.Slug,
 		// IDCargo: p.IDCargo,
 		Kategori: models.SimpleProdukRelationInfo{
@@ -429,7 +435,8 @@ func (s *produkService) toListResponse(p *models.Produk) *models.ProdukListRespo
 func (s *produkService) toDetailResponse(p *models.Produk) *models.ProdukDetailResponse {
 	resp := &models.ProdukDetailResponse{
 		ID:      p.ID.String(),
-		Nama:    p.Nama,
+		NamaID:  p.NamaID,
+		NamaEN:  p.NamaEN,
 		Slug:    p.Slug,
 		IDCargo: p.IDCargo,
 		Kategori: models.SimpleProdukRelationInfo{
