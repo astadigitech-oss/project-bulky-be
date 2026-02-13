@@ -105,9 +105,9 @@ func (p *KategoriVideoFilterRequest) SetDefaults() {
 }
 
 type CreateKategoriVideoRequest struct {
-	NamaID   string  `json:"nama_id" validate:"required,max=100"`
-	NamaEN   *string `json:"nama_en" validate:"omitempty,max=100"`
-	Slug     string  `json:"slug" validate:"required,max=100"`
+	NamaID   string  `json:"nama_id" binding:"required,max=100"`
+	NamaEN   *string `json:"nama_en" binding:"required,max=100"`
+	Slug     string  `json:"slug" binding:"required,max=100"`
 	IsActive bool    `json:"is_active"`
 	Urutan   int     `json:"urutan"`
 }

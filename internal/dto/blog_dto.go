@@ -93,6 +93,30 @@ type LabelBlogBrief struct {
 	Slug   string    `json:"slug"`
 }
 
+// Blog Filter Request
+type BlogFilterRequest struct {
+	models.PaginationRequest
+	KategoriID *uuid.UUID `form:"kategori_id"`
+	LabelID    *uuid.UUID `form:"label_id"`
+}
+
+func (p *BlogFilterRequest) SetDefaults() {
+	p.PaginationRequest.SetDefaults()
+
+	// Default sort by updated_at desc
+	if p.SortBy == "" {
+		p.SortBy = "updated_at"
+	}
+	if p.Order == "" {
+		p.Order = "desc"
+	}
+
+	// Validate sort_by - only allow is_active and updated_at
+	if p.SortBy != "is_active" && p.SortBy != "updated_at" {
+		p.SortBy = "updated_at"
+	}
+}
+
 // Kategori Blog DTOs
 type KategoriBlogFilterRequest struct {
 	models.PaginationRequest

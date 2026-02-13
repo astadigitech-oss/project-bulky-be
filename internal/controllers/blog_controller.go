@@ -331,31 +331,21 @@ func (c *BlogController) GetByID(ctx *gin.Context) {
 }
 
 func (c *BlogController) GetAll(ctx *gin.Context) {
-	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
-
-	var isActive *bool
-	if ctx.Query("is_active") != "" {
-		val := ctx.Query("is_active") == "true"
-		isActive = &val
+	var params dto.BlogFilterRequest
+	if err := ctx.ShouldBindQuery(&params); err != nil {
+		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", err.Error())
+		return
 	}
 
-	var kategoriID *uuid.UUID
-	if ctx.Query("kategori_id") != "" {
-		id, err := uuid.Parse(ctx.Query("kategori_id"))
-		if err == nil {
-			kategoriID = &id
-		}
-	}
+	params.SetDefaults()
 
-	blogs, total, err := c.blogService.GetAll(ctx.Request.Context(), isActive, kategoriID, page, limit)
+	blogs, meta, err := c.blogService.GetAll(ctx.Request.Context(), &params)
 	if err != nil {
 		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mendapatkan blog", utils.GetValidationErrorMessage(err))
 		return
 	}
 
-	meta := models.NewPaginationMeta(page, limit, total)
-	utils.PaginatedSuccessResponse(ctx, "Blog berhasil didapatkan", blogs, meta)
+	utils.PaginatedSuccessResponse(ctx, "Blog berhasil didapatkan", blogs, *meta)
 }
 
 func (c *BlogController) Search(ctx *gin.Context) {
@@ -434,6 +424,11 @@ func (c *BlogController) ToggleStatus(ctx *gin.Context) {
 	}
 
 	if err := c.blogService.ToggleStatus(ctx.Request.Context(), id); err != nil {
+		// if blog not found, return 404
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Blog tidak ditemukan", utils.GetValidationErrorMessage(err))
+			return
+		}
 		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengubah status", utils.GetValidationErrorMessage(err))
 		return
 	}

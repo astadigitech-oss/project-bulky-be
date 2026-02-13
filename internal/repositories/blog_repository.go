@@ -15,7 +15,7 @@ type BlogRepository interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 	FindByID(ctx context.Context, id uuid.UUID) (*models.Blog, error)
 	FindBySlug(ctx context.Context, slug string) (*models.Blog, error)
-	FindAll(ctx context.Context, isActive *bool, kategoriID *uuid.UUID, limit, offset int) ([]models.Blog, int64, error)
+	FindAll(ctx context.Context, isActive *bool, kategoriID, labelID *uuid.UUID, search, sortBy, order string, limit, offset int) ([]models.Blog, int64, error)
 	Search(ctx context.Context, keyword string, isActive *bool, limit, offset int) ([]models.Blog, int64, error)
 	IncrementViewCount(ctx context.Context, id uuid.UUID) error
 	AddLabels(ctx context.Context, blogID uuid.UUID, labelIDs []uuid.UUID) error
@@ -43,7 +43,17 @@ func (r *blogRepository) Update(ctx context.Context, blog *models.Blog) error {
 }
 
 func (r *blogRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	return r.db.WithContext(ctx).Delete(&models.Blog{}, id).Error
+	result := r.db.WithContext(ctx).Delete(&models.Blog{}, id)
+	
+	if result.Error != nil {
+		return result.Error
+	}
+	
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	
+	return nil
 }
 
 func (r *blogRepository) FindByID(ctx context.Context, id uuid.UUID) (*models.Blog, error) {
@@ -71,7 +81,7 @@ func (r *blogRepository) FindBySlug(ctx context.Context, slug string) (*models.B
 	return &blog, nil
 }
 
-func (r *blogRepository) FindAll(ctx context.Context, isActive *bool, kategoriID *uuid.UUID, limit, offset int) ([]models.Blog, int64, error) {
+func (r *blogRepository) FindAll(ctx context.Context, isActive *bool, kategoriID, labelID *uuid.UUID, search, sortBy, order string, limit, offset int) ([]models.Blog, int64, error) {
 	var blogs []models.Blog
 	var total int64
 
@@ -85,15 +95,41 @@ func (r *blogRepository) FindAll(ctx context.Context, isActive *bool, kategoriID
 		query = query.Where("kategori_id = ?", *kategoriID)
 	}
 
+	if labelID != nil {
+		query = query.Joins("JOIN blog_labels ON blogs.id = blog_labels.blog_id").
+			Where("blog_labels.label_id = ?", *labelID)
+	}
+
+	if search != "" {
+		searchPattern := "%" + search + "%"
+		query = query.Where("judul_id ILIKE ? OR judul_en ILIKE ?", searchPattern, searchPattern)
+	}
+
 	err := query.Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
+	// Build order clause
+	orderClause := "updated_at DESC"
+	if sortBy == "is_active" {
+		if order == "asc" {
+			orderClause = "is_active ASC, updated_at DESC"
+		} else {
+			orderClause = "is_active DESC, updated_at DESC"
+		}
+	} else if sortBy == "updated_at" {
+		if order == "asc" {
+			orderClause = "updated_at ASC"
+		} else {
+			orderClause = "updated_at DESC"
+		}
+	}
+
 	err = query.
 		Preload("Kategori").
 		Preload("Labels").
-		Order("published_at DESC NULLS LAST, created_at DESC").
+		Order(orderClause).
 		Limit(limit).
 		Offset(offset).
 		Find(&blogs).Error
@@ -207,8 +243,17 @@ func (r *blogRepository) GetStatistics(ctx context.Context) (map[string]interfac
 }
 
 func (r *blogRepository) ToggleStatus(ctx context.Context, id uuid.UUID) error {
-	return r.db.WithContext(ctx).Model(&models.Blog{}).
+	result := r.db.WithContext(ctx).Model(&models.Blog{}).
 		Where("id = ?", id).
-		Update("is_active", gorm.Expr("NOT is_active")).
-		Error
+		Update("is_active", gorm.Expr("NOT is_active"))
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+
+	return nil
 }
