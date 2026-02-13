@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 
+	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
+	"project-bulky-be/pkg/utils"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -31,17 +33,22 @@ type blogService struct {
 	blogRepo     repositories.BlogRepository
 	kategoriRepo repositories.KategoriBlogRepository
 	labelRepo    repositories.LabelBlogRepository
+	sanitizer    *HTMLSanitizer
+	cfg          *config.Config
 }
 
 func NewBlogService(
 	blogRepo repositories.BlogRepository,
 	kategoriRepo repositories.KategoriBlogRepository,
 	labelRepo repositories.LabelBlogRepository,
+	cfg *config.Config,
 ) BlogService {
 	return &blogService{
 		blogRepo:     blogRepo,
 		kategoriRepo: kategoriRepo,
 		labelRepo:    labelRepo,
+		sanitizer:    NewHTMLSanitizer(),
+		cfg:          cfg,
 	}
 }
 
@@ -66,12 +73,20 @@ func (s *blogService) Create(ctx context.Context, req *dto.CreateBlogRequest) (*
 		}
 	}
 
+	// Sanitize HTML content
+	sanitizedKontenID := s.sanitizer.Sanitize(req.KontenID)
+	var sanitizedKontenEN *string
+	if req.KontenEN != nil {
+		sanitized := s.sanitizer.Sanitize(*req.KontenEN)
+		sanitizedKontenEN = &sanitized
+	}
+
 	blog := &models.Blog{
 		JudulID:           req.JudulID,
 		JudulEN:           req.JudulEN,
 		Slug:              req.Slug,
-		KontenID:          req.KontenID,
-		KontenEN:          req.KontenEN,
+		KontenID:          sanitizedKontenID,
+		KontenEN:          sanitizedKontenEN,
 		FeaturedImageURL:  req.FeaturedImageURL,
 		KategoriID:        req.KategoriID,
 		MetaTitleID:       req.MetaTitleID,
@@ -112,10 +127,14 @@ func (s *blogService) Update(ctx context.Context, id uuid.UUID, req *dto.UpdateB
 		blog.Slug = *req.Slug
 	}
 	if req.KontenID != nil {
-		blog.KontenID = *req.KontenID
+		// Sanitize HTML content
+		sanitized := s.sanitizer.Sanitize(*req.KontenID)
+		blog.KontenID = sanitized
 	}
 	if req.KontenEN != nil {
-		blog.KontenEN = req.KontenEN
+		// Sanitize HTML content
+		sanitized := s.sanitizer.Sanitize(*req.KontenEN)
+		blog.KontenEN = &sanitized
 	}
 	if req.FeaturedImageURL != nil {
 		blog.FeaturedImageURL = req.FeaturedImageURL
@@ -273,7 +292,7 @@ func (s *blogService) toBlogResponse(blog *models.Blog) *dto.BlogResponse {
 		Slug:              blog.Slug,
 		KontenID:          blog.KontenID,
 		KontenEN:          blog.KontenEN,
-		FeaturedImageURL:  blog.FeaturedImageURL,
+		FeaturedImageURL:  utils.GetFileURLPtr(blog.FeaturedImageURL, s.cfg),
 		KategoriID:        blog.KategoriID,
 		MetaTitleID:       blog.MetaTitleID,
 		MetaTitleEN:       blog.MetaTitleEN,
@@ -317,7 +336,7 @@ func (s *blogService) toBlogListResponse(blog *models.Blog) dto.BlogListResponse
 		JudulID:          blog.JudulID,
 		JudulEN:          blog.JudulEN,
 		Slug:             blog.Slug,
-		FeaturedImageURL: blog.FeaturedImageURL,
+		FeaturedImageURL: utils.GetFileURLPtr(blog.FeaturedImageURL, s.cfg),
 		IsActive:         blog.IsActive,
 		ViewCount:        blog.ViewCount,
 		PublishedAt:      blog.PublishedAt,
