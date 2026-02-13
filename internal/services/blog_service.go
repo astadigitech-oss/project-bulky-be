@@ -20,7 +20,7 @@ type BlogService interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 	GetByID(ctx context.Context, id uuid.UUID) (*dto.BlogResponse, error)
 	GetBySlug(ctx context.Context, slug string) (*dto.BlogResponse, error)
-	GetAll(ctx context.Context, isActive *bool, kategoriID *uuid.UUID, page, limit int) ([]dto.BlogListResponse, int64, error)
+	GetAll(ctx context.Context, params *dto.BlogFilterRequest) ([]dto.BlogListResponse, *models.PaginationMeta, error)
 	Search(ctx context.Context, keyword string, isActive *bool, page, limit int) ([]dto.BlogListResponse, int64, error)
 	IncrementView(ctx context.Context, id uuid.UUID) error
 	GetRelated(ctx context.Context, blogID uuid.UUID, limit int) ([]dto.BlogListResponse, error)
@@ -200,11 +200,21 @@ func (s *blogService) GetBySlug(ctx context.Context, slug string) (*dto.BlogResp
 	return s.toBlogResponse(blog), nil
 }
 
-func (s *blogService) GetAll(ctx context.Context, isActive *bool, kategoriID *uuid.UUID, page, limit int) ([]dto.BlogListResponse, int64, error) {
-	offset := (page - 1) * limit
-	blogs, total, err := s.blogRepo.FindAll(ctx, isActive, kategoriID, limit, offset)
+func (s *blogService) GetAll(ctx context.Context, params *dto.BlogFilterRequest) ([]dto.BlogListResponse, *models.PaginationMeta, error) {
+	offset := params.GetOffset()
+	blogs, total, err := s.blogRepo.FindAll(
+		ctx,
+		params.IsActive,
+		params.KategoriID,
+		params.LabelID,
+		params.Search,
+		params.SortBy,
+		params.Order,
+		params.PerPage,
+		offset,
+	)
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
 
 	responses := make([]dto.BlogListResponse, len(blogs))
@@ -212,7 +222,8 @@ func (s *blogService) GetAll(ctx context.Context, isActive *bool, kategoriID *uu
 		responses[i] = s.toBlogListResponse(&blog)
 	}
 
-	return responses, total, nil
+	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
+	return responses, &meta, nil
 }
 
 func (s *blogService) Search(ctx context.Context, keyword string, isActive *bool, page, limit int) ([]dto.BlogListResponse, int64, error) {

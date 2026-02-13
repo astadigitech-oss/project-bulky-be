@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 
 	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/models"
@@ -32,6 +33,12 @@ func NewKategoriVideoService(repo repositories.KategoriVideoRepository) Kategori
 }
 
 func (s *kategoriVideoService) Create(ctx context.Context, req *dto.CreateKategoriVideoRequest) (*models.KategoriVideo, error) {
+	// Check slug duplicate
+	existing, err := s.repo.FindBySlug(ctx, req.Slug)
+	if err == nil && existing != nil {
+		return nil, errors.New("slug sudah digunakan")
+	}
+
 	kategori := &models.KategoriVideo{
 		NamaID:   req.NamaID,
 		NamaEN:   req.NamaEN,
@@ -51,6 +58,14 @@ func (s *kategoriVideoService) Update(ctx context.Context, id uuid.UUID, req *dt
 	kategori, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
+	}
+
+	// Check slug duplicate if slug is being updated
+	if req.Slug != nil && *req.Slug != kategori.Slug {
+		existing, err := s.repo.FindBySlug(ctx, *req.Slug)
+		if err == nil && existing != nil && existing.ID != id {
+			return nil, errors.New("slug sudah digunakan")
+		}
 	}
 
 	if req.NamaID != nil {

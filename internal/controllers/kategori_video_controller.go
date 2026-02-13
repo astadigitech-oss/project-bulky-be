@@ -28,7 +28,7 @@ func NewKategoriVideoController(service services.KategoriVideoService, reorderSe
 func (c *KategoriVideoController) Create(ctx *gin.Context) {
 	var req dto.CreateKategoriVideoRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Request tidak valid", err.Error())
+		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Request tidak valid", utils.GetValidationErrorMessage(err))
 		return
 	}
 
@@ -50,7 +50,7 @@ func (c *KategoriVideoController) Update(ctx *gin.Context) {
 
 	var req dto.UpdateKategoriVideoRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Request tidak valid", err.Error())
+		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Request tidak valid", utils.GetValidationErrorMessage(err))
 		return
 	}
 
