@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"math"
 	"mime/multipart"
+	"strings"
 
 	"project-bulky-be/internal/config"
+	"project-bulky-be/internal/constants"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
 	"project-bulky-be/pkg/utils"
@@ -18,7 +20,7 @@ import (
 
 type ProdukService interface {
 	Create(ctx context.Context, req *models.CreateProdukRequest) (*models.ProdukDetailResponse, error)
-	CreateWithFiles(ctx context.Context, req *models.CreateProdukRequest, gambarFiles, dokumenFiles []*multipart.FileHeader, dokumenNama []string) (*models.ProdukDetailResponse, error)
+	CreateWithFiles(ctx context.Context, req *models.CreateProdukRequest, isActive bool, gambarFiles, dokumenFiles []*multipart.FileHeader, dokumenNama []string) (*models.ProdukDetailResponse, error)
 	FindByID(ctx context.Context, id string) (*models.ProdukDetailResponse, error)
 	FindBySlug(ctx context.Context, slug string) (*models.ProdukDetailResponse, error)
 	FindAll(ctx context.Context, params *models.ProdukFilterRequest) ([]models.ProdukListResponse, *models.PaginationMeta, error)
@@ -29,26 +31,32 @@ type ProdukService interface {
 }
 
 type produkService struct {
-	repo        repositories.ProdukRepository
-	gambarRepo  repositories.ProdukGambarRepository
-	dokumenRepo repositories.ProdukDokumenRepository
-	cfg         *config.Config
-	db          *gorm.DB
+	repo           repositories.ProdukRepository
+	gambarRepo     repositories.ProdukGambarRepository
+	dokumenRepo    repositories.ProdukDokumenRepository
+	warehouseRepo  repositories.WarehouseRepository
+	tipeProdukRepo repositories.TipeProdukRepository
+	cfg            *config.Config
+	db             *gorm.DB
 }
 
 func NewProdukService(
 	repo repositories.ProdukRepository,
 	gambarRepo repositories.ProdukGambarRepository,
 	dokumenRepo repositories.ProdukDokumenRepository,
+	warehouseRepo repositories.WarehouseRepository,
+	tipeProdukRepo repositories.TipeProdukRepository,
 	cfg *config.Config,
 	db *gorm.DB,
 ) ProdukService {
 	return &produkService{
-		repo:        repo,
-		gambarRepo:  gambarRepo,
-		dokumenRepo: dokumenRepo,
-		cfg:         cfg,
-		db:          db,
+		repo:           repo,
+		gambarRepo:     gambarRepo,
+		dokumenRepo:    dokumenRepo,
+		warehouseRepo:  warehouseRepo,
+		tipeProdukRepo: tipeProdukRepo,
+		cfg:            cfg,
+		db:             db,
 	}
 }
 
@@ -60,6 +68,7 @@ func (s *produkService) Create(ctx context.Context, req *models.CreateProdukRequ
 func (s *produkService) CreateWithFiles(
 	ctx context.Context,
 	req *models.CreateProdukRequest,
+	isActive bool,
 	gambarFiles, dokumenFiles []*multipart.FileHeader,
 	dokumenNama []string,
 ) (*models.ProdukDetailResponse, error) {
@@ -80,8 +89,20 @@ func (s *produkService) CreateWithFiles(
 	kategoriID, _ := uuid.Parse(req.KategoriID)
 	kondisiID, _ := uuid.Parse(req.KondisiID)
 	kondisiPaketID, _ := uuid.Parse(req.KondisiPaketID)
-	warehouseID, _ := uuid.Parse(req.WarehouseID)
-	tipeProdukID, _ := uuid.Parse(req.TipeProdukID)
+
+	// Auto-set warehouse_id by querying slug
+	warehouse, err := s.warehouseRepo.FindBySlug(ctx, constants.DefaultWarehouseSlug)
+	if err != nil {
+		return nil, fmt.Errorf("warehouse default '%s' tidak ditemukan", constants.DefaultWarehouseSlug)
+	}
+	warehouseID := warehouse.ID
+
+	// Auto-set tipe_produk_id by querying slug
+	tipeProduk, err := s.tipeProdukRepo.FindBySlug(ctx, constants.DefaultTipeProdukSlug)
+	if err != nil {
+		return nil, fmt.Errorf("tipe produk default '%s' tidak ditemukan", constants.DefaultTipeProdukSlug)
+	}
+	tipeProdukID := tipeProduk.ID
 
 	produk := &models.Produk{
 		NamaID:             req.NamaID,
@@ -94,7 +115,6 @@ func (s *produkService) CreateWithFiles(
 		WarehouseID:        warehouseID,
 		TipeProdukID:       tipeProdukID,
 		HargaSebelumDiskon: req.HargaSebelumDiskon,
-		PersentaseDiskon:   req.PersentaseDiskon,
 		HargaSesudahDiskon: req.HargaSesudahDiskon,
 		Quantity:           req.Quantity,
 		Discrepancy:        req.Discrepancy,
@@ -102,13 +122,9 @@ func (s *produkService) CreateWithFiles(
 		Lebar:              req.Lebar,
 		Tinggi:             req.Tinggi,
 		Berat:              req.Berat,
-		IsActive:           true,
+		IsActive:           isActive,
 	}
 
-	if req.MerekID != nil {
-		merekID, _ := uuid.Parse(*req.MerekID)
-		produk.MerekID = &merekID
-	}
 	if req.SumberID != nil {
 		sumberID, _ := uuid.Parse(*req.SumberID)
 		produk.SumberID = &sumberID
@@ -128,7 +144,24 @@ func (s *produkService) CreateWithFiles(
 		return nil, err
 	}
 
-	// 2. Upload and create gambar records
+	// 2. Create produk_merek relations (many-to-many)
+	merekIDs := req.GetMerekIDs()
+	if len(merekIDs) > 0 {
+		produkMereks := make([]models.ProdukMerek, len(merekIDs))
+		for i, merekID := range merekIDs {
+			produkMereks[i] = models.ProdukMerek{
+				ProdukID: produk.ID,
+				MerekID:  merekID,
+			}
+		}
+
+		// Batch insert relation records
+		if err := tx.Create(&produkMereks).Error; err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("gagal membuat relasi merek: %w", err)
+		}
+	}
+	// 3. Upload and create gambar records
 	produkDir := fmt.Sprintf("products/%s", produk.ID.String())
 	for i, file := range gambarFiles {
 		// Upload to storage
@@ -153,7 +186,7 @@ func (s *produkService) CreateWithFiles(
 		}
 	}
 
-	// 3. Upload and create dokumen records
+	// 4. Upload and create dokumen records
 	if len(dokumenFiles) > 0 {
 		dokumenDir := fmt.Sprintf("documents/%s", produk.ID.String())
 		for i, file := range dokumenFiles {
@@ -264,10 +297,6 @@ func (s *produkService) Update(ctx context.Context, id string, req *models.Updat
 		kategoriID, _ := uuid.Parse(*req.KategoriID)
 		produk.KategoriID = kategoriID
 	}
-	if req.MerekID != nil {
-		merekID, _ := uuid.Parse(*req.MerekID)
-		produk.MerekID = &merekID
-	}
 	if req.KondisiID != nil {
 		kondisiID, _ := uuid.Parse(*req.KondisiID)
 		produk.KondisiID = kondisiID
@@ -280,19 +309,10 @@ func (s *produkService) Update(ctx context.Context, id string, req *models.Updat
 		sumberID, _ := uuid.Parse(*req.SumberID)
 		produk.SumberID = &sumberID
 	}
-	if req.WarehouseID != nil {
-		warehouseID, _ := uuid.Parse(*req.WarehouseID)
-		produk.WarehouseID = warehouseID
-	}
-	if req.TipeProdukID != nil {
-		tipeProdukID, _ := uuid.Parse(*req.TipeProdukID)
-		produk.TipeProdukID = tipeProdukID
-	}
+	// Note: warehouse_id, tipe_produk_id, persentase_diskon are auto-managed
+	// Use dedicated endpoints if these need to be changed
 	if req.HargaSebelumDiskon != nil {
 		produk.HargaSebelumDiskon = *req.HargaSebelumDiskon
-	}
-	if req.PersentaseDiskon != nil {
-		produk.PersentaseDiskon = *req.PersentaseDiskon
 	}
 	if req.HargaSesudahDiskon != nil {
 		produk.HargaSesudahDiskon = *req.HargaSesudahDiskon
@@ -316,10 +336,54 @@ func (s *produkService) Update(ctx context.Context, id string, req *models.Updat
 		produk.Berat = *req.Berat
 	}
 	if req.IsActive != nil {
-		produk.IsActive = *req.IsActive
+		// Parse string to bool: "true"/"1" = true, "false"/"0" = false
+		val := strings.ToLower(strings.TrimSpace(*req.IsActive))
+		produk.IsActive = (val == "true" || val == "1")
 	}
 
-	if err := s.repo.Update(ctx, produk); err != nil {
+	// Begin transaction for update
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Update produk record
+	if err := tx.Save(produk).Error; err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	// Update merek relations if merek_ids provided
+	if merekIDs, shouldUpdate := req.GetMerekIDs(); shouldUpdate {
+		produkID := produk.ID
+
+		// Delete existing relations
+		if err := tx.Where("produk_id = ?", produkID).Delete(&models.ProdukMerek{}).Error; err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("gagal menghapus relasi merek lama: %w", err)
+		}
+
+		// Create new relations if any
+		if len(merekIDs) > 0 {
+			produkMereks := make([]models.ProdukMerek, len(merekIDs))
+			for i, merekID := range merekIDs {
+				produkMereks[i] = models.ProdukMerek{
+					ProdukID: produkID,
+					MerekID:  merekID,
+				}
+			}
+
+			if err := tx.Create(&produkMereks).Error; err != nil {
+				tx.Rollback()
+				return nil, fmt.Errorf("gagal membuat relasi merek baru: %w", err)
+			}
+		}
+	}
+
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
 		return nil, err
 	}
 
@@ -408,13 +472,16 @@ func (s *produkService) toListResponse(p *models.Produk) *models.ProdukListRespo
 		UpdatedAt:          p.UpdatedAt,
 	}
 
-	if p.Merek != nil {
-		resp.Merek = &models.SimpleProdukRelationInfo{
-			// ID:   p.Merek.ID.String(),
-			Nama: p.Merek.GetNama().ID,
-			// Slug: p.Merek.Slug,
-		}
+	// Map multiple mereks
+	resp.Mereks = make([]models.SimpleProdukRelationInfo, 0, len(p.Mereks))
+	for _, merek := range p.Mereks {
+		resp.Mereks = append(resp.Mereks, models.SimpleProdukRelationInfo{
+			// ID:   merek.ID.String(),
+			Nama: merek.GetNama().ID,
+			// Slug: merek.Slug,
+		})
 	}
+
 	// if p.Sumber != nil {
 	// 	resp.Sumber = &models.SimpleProdukRelationInfo{
 	// 		// ID:   p.Sumber.ID.String(),
@@ -466,7 +533,6 @@ func (s *produkService) toDetailResponse(p *models.Produk) *models.ProdukDetailR
 			// Slug: p.TipeProduk.Slug,
 		},
 		HargaSebelumDiskon: p.HargaSebelumDiskon,
-		PersentaseDiskon:   p.PersentaseDiskon,
 		HargaSesudahDiskon: p.HargaSesudahDiskon,
 		Quantity:           p.Quantity,
 		QuantityTerjual:    p.QuantityTerjual,
@@ -481,13 +547,16 @@ func (s *produkService) toDetailResponse(p *models.Produk) *models.ProdukDetailR
 		UpdatedAt:          p.UpdatedAt,
 	}
 
-	if p.Merek != nil {
-		resp.Merek = &models.SimpleProdukRelationInfo{
-			// ID:   p.Merek.ID.String(),
-			Nama: p.Merek.GetNama().ID,
-			// Slug: p.Merek.Slug,
-		}
+	// Map multiple mereks
+	resp.Mereks = make([]models.SimpleProdukRelationInfo, 0, len(p.Mereks))
+	for _, merek := range p.Mereks {
+		resp.Mereks = append(resp.Mereks, models.SimpleProdukRelationInfo{
+			// ID:   merek.ID.String(),
+			Nama: merek.GetNama().ID,
+			// Slug: merek.Slug,
+		})
 	}
+
 	if p.Sumber != nil {
 		resp.Sumber = &models.SimpleProdukRelationInfo{
 			// ID:   p.Sumber.ID.String(),

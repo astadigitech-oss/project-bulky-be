@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"project-bulky-be/internal/config"
+	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
 
@@ -20,6 +21,7 @@ type HeroSectionService interface {
 	Delete(ctx context.Context, id string) error
 	ToggleStatus(ctx context.Context, id string) (*models.ToggleDefaultResponse, error)
 	GetVisibleHero(ctx context.Context) (*models.HeroSectionPublicResponse, error)
+	GetSchedules(ctx context.Context) ([]dto.BannerScheduleItem, error)
 }
 
 type heroSectionService struct {
@@ -261,6 +263,24 @@ func (s *heroSectionService) GetVisibleHero(ctx context.Context) (*models.HeroSe
 		Nama:      hero.Nama,
 		GambarURL: hero.GetGambarURL().GetFullURL(s.cfg.BaseURL),
 	}, nil
+}
+
+func (s *heroSectionService) GetSchedules(ctx context.Context) ([]dto.BannerScheduleItem, error) {
+	banners, err := s.repo.GetSchedules(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	schedules := make([]dto.BannerScheduleItem, len(banners))
+	for i, banner := range banners {
+		schedules[i] = dto.BannerScheduleItem{
+			Label:     banner.Nama,
+			DateStart: *banner.TanggalMulai,
+			DateEnd:   *banner.TanggalSelesai,
+		}
+	}
+
+	return schedules, nil
 }
 
 func (s *heroSectionService) toResponse(h *models.HeroSection) *models.HeroSectionResponse {

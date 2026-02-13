@@ -373,6 +373,7 @@ func SetupRoutes(
 			heroSectionAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), heroSectionController.Update)
 			heroSectionAdmin.DELETE("/:id", middleware.RequirePermission("marketing:manage"), heroSectionController.Delete)
 			heroSectionAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("marketing:manage"), heroSectionController.ToggleStatus)
+			heroSectionAdmin.GET("/schedule", middleware.RequirePermission("marketing:read"), heroSectionController.GetSchedules)
 		}
 
 		// Hero Section (Public)
@@ -387,7 +388,7 @@ func SetupRoutes(
 		bannerEventPromoAdmin.Use(middleware.AdminOnly())
 		{
 			bannerEventPromoAdmin.GET("", middleware.RequirePermission("marketing:read"), bannerEventPromoController.FindAll)
-			bannerEventPromoAdmin.GET("/schedule", middleware.RequirePermission("marketing:read"), bannerEventPromoController.GetSchedules)
+			// bannerEventPromoAdmin.GET("/schedule", middleware.RequirePermission("marketing:read"), bannerEventPromoController.GetSchedules)
 			bannerEventPromoAdmin.GET("/:id", middleware.RequirePermission("marketing:read"), bannerEventPromoController.FindByID)
 			bannerEventPromoAdmin.POST("", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.Create)
 			bannerEventPromoAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.Update)
