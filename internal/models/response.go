@@ -413,9 +413,9 @@ type ProdukListResponse struct {
 	NamaEN string `json:"nama_en"`
 	// Slug               string                    `json:"slug"`
 	// IDCargo            *string                   `json:"id_cargo"`
-	Kategori SimpleProdukRelationInfo  `json:"kategori"`
-	Merek    *SimpleProdukRelationInfo `json:"merek"`
-	Kondisi  SimpleProdukRelationInfo  `json:"kondisi"`
+	Kategori SimpleProdukRelationInfo   `json:"kategori"`
+	Mereks   []SimpleProdukRelationInfo `json:"mereks"`
+	Kondisi  SimpleProdukRelationInfo   `json:"kondisi"`
 	// KondisiPaket       SimpleProdukRelationInfo  `json:"kondisi_paket"`
 	// Sumber             *SimpleProdukRelationInfo `json:"sumber"`
 	Warehouse  SimpleProdukWarehouseInfo `json:"warehouse"`
@@ -433,34 +433,33 @@ type ProdukListResponse struct {
 }
 
 type ProdukDetailResponse struct {
-	ID                 string                    `json:"id"`
-	NamaID             string                    `json:"nama_id"`
-	NamaEN             string                    `json:"nama_en"`
-	Slug               string                    `json:"slug"`
-	IDCargo            *string                   `json:"id_cargo"`
-	Kategori           SimpleProdukRelationInfo  `json:"kategori"`
-	Merek              *SimpleProdukRelationInfo `json:"merek"`
-	Kondisi            SimpleProdukRelationInfo  `json:"kondisi"`
-	KondisiPaket       SimpleProdukRelationInfo  `json:"kondisi_paket"`
-	Sumber             *SimpleProdukRelationInfo `json:"sumber"`
-	Warehouse          ProdukWarehouseInfo       `json:"warehouse"`
-	TipeProduk         SimpleProdukRelationInfo  `json:"tipe_produk"`
-	HargaSebelumDiskon float64                   `json:"harga_sebelum_diskon"`
-	PersentaseDiskon   float64                   `json:"persentase_diskon"`
-	HargaSesudahDiskon float64                   `json:"harga_sesudah_diskon"`
-	Quantity           int                       `json:"quantity"`
-	QuantityTerjual    int                       `json:"quantity_terjual"`
-	Discrepancy        *string                   `json:"discrepancy"`
-	Panjang            float64                   `json:"panjang"`          // cm
-	Lebar              float64                   `json:"lebar"`            // cm
-	Tinggi             float64                   `json:"tinggi"`           // cm
-	Berat              float64                   `json:"berat"`            // kg
-	BeratVolumetrik    float64                   `json:"berat_volumetrik"` // kg (calculated)
-	Gambar             []ProdukGambarResponse    `json:"gambar"`
-	Dokumen            []ProdukDokumenResponse   `json:"dokumen"`
-	IsActive           bool                      `json:"is_active"`
-	CreatedAt          time.Time                 `json:"created_at"`
-	UpdatedAt          time.Time                 `json:"updated_at"`
+	ID                 string                     `json:"id"`
+	NamaID             string                     `json:"nama_id"`
+	NamaEN             string                     `json:"nama_en"`
+	Slug               string                     `json:"slug"`
+	IDCargo            *string                    `json:"id_cargo"`
+	Kategori           SimpleProdukRelationInfo   `json:"kategori"`
+	Mereks             []SimpleProdukRelationInfo `json:"mereks"`
+	Kondisi            SimpleProdukRelationInfo   `json:"kondisi"`
+	KondisiPaket       SimpleProdukRelationInfo   `json:"kondisi_paket"`
+	Sumber             *SimpleProdukRelationInfo  `json:"sumber"`
+	Warehouse          ProdukWarehouseInfo        `json:"warehouse"`
+	TipeProduk         SimpleProdukRelationInfo   `json:"tipe_produk"`
+	HargaSebelumDiskon float64                    `json:"harga_sebelum_diskon"`
+	HargaSesudahDiskon float64                    `json:"harga_sesudah_diskon"`
+	Quantity           int                        `json:"quantity"`
+	QuantityTerjual    int                        `json:"quantity_terjual"`
+	Discrepancy        *string                    `json:"discrepancy"`
+	Panjang            float64                    `json:"panjang"`          // cm
+	Lebar              float64                    `json:"lebar"`            // cm
+	Tinggi             float64                    `json:"tinggi"`           // cm
+	Berat              float64                    `json:"berat"`            // kg
+	BeratVolumetrik    float64                    `json:"berat_volumetrik"` // kg (calculated)
+	Gambar             []ProdukGambarResponse     `json:"gambar"`
+	Dokumen            []ProdukDokumenResponse    `json:"dokumen"`
+	IsActive           bool                       `json:"is_active"`
+	CreatedAt          time.Time                  `json:"created_at"`
+	UpdatedAt          time.Time                  `json:"updated_at"`
 }
 
 // ========================================

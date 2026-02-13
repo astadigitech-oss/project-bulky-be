@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"strings"
 
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/services"
@@ -82,7 +83,23 @@ func (c *ProdukController) Create(ctx *gin.Context) {
 	// Get dokumen names (parallel array)
 	dokumenNama := ctx.PostFormArray("dokumen_nama[]")
 
-	result, err := c.service.CreateWithFiles(ctx.Request.Context(), &req, gambarFiles, dokumenFiles, dokumenNama)
+	// Handle merek_id array field
+	if req.MerekIDs == nil || *req.MerekIDs == "" {
+		merekIDArray := ctx.PostFormArray("merek_id")
+		if len(merekIDArray) > 0 {
+			merekIDStr := strings.Join(merekIDArray, ",")
+			req.MerekIDs = &merekIDStr
+		}
+	}
+
+	// Handle is_active from form - default false (draft)
+	isActive := false
+	isActiveStr := strings.ToLower(strings.TrimSpace(ctx.PostForm("is_active")))
+	if isActiveStr == "true" || isActiveStr == "1" {
+		isActive = true
+	}
+
+	result, err := c.service.CreateWithFiles(ctx.Request.Context(), &req, isActive, gambarFiles, dokumenFiles, dokumenNama)
 	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 		return
@@ -138,6 +155,15 @@ func (c *ProdukController) Update(ctx *gin.Context) {
 	if err := ctx.ShouldBind(&req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 		return
+	}
+
+	// Handle merek_id array field
+	if req.MerekIDs == nil || *req.MerekIDs == "" {
+		merekIDArray := ctx.PostFormArray("merek_id")
+		if len(merekIDArray) > 0 {
+			merekIDStr := strings.Join(merekIDArray, ",")
+			req.MerekIDs = &merekIDStr
+		}
 	}
 
 	result, err := c.service.Update(ctx.Request.Context(), id, &req)

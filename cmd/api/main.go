@@ -95,7 +95,7 @@ func main() {
 	bannerTipeProdukService := services.NewBannerTipeProdukService(bannerTipeProdukRepo, tipeProdukRepo, reorderService, cfg)
 	produkGambarService := services.NewProdukGambarService(produkGambarRepo, cfg)
 	produkDokumenService := services.NewProdukDokumenService(produkDokumenRepo, cfg)
-	produkService := services.NewProdukService(produkRepo, produkGambarRepo, produkDokumenRepo, cfg, db)
+	produkService := services.NewProdukService(produkRepo, produkGambarRepo, produkDokumenRepo, warehouseRepo, tipeProdukRepo, cfg, db)
 	authService := services.NewAuthService(adminRepo, adminSessionRepo)
 	adminService := services.NewAdminService(adminRepo, adminSessionRepo)
 	masterService := services.NewMasterService(kategoriRepo, merekRepo, kondisiRepo, kondisiPaketRepo, sumberRepo)

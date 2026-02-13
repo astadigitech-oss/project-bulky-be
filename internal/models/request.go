@@ -1,6 +1,11 @@
 package models
 
-import "time"
+import (
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // ========================================
 // Pagination Request
@@ -271,18 +276,18 @@ type BannerTipeProdukFilterRequest struct {
 // ========================================
 
 type CreateProdukRequest struct {
-	NamaID             string  `form:"nama_id" binding:"required,min=2,max=255"`
-	NamaEN             string  `form:"nama_en" binding:"required,min=2,max=255"`
-	IDCargo            *string `form:"id_cargo" binding:"omitempty,max=50"`
-	KategoriID         string  `form:"kategori_id" binding:"required,uuid"`
-	MerekID            *string `form:"merek_id" binding:"omitempty,uuid"`
-	KondisiID          string  `form:"kondisi_id" binding:"required,uuid"`
-	KondisiPaketID     string  `form:"kondisi_paket_id" binding:"required,uuid"`
-	SumberID           *string `form:"sumber_id" binding:"omitempty,uuid"`
-	WarehouseID        string  `form:"warehouse_id" binding:"required,uuid"`
-	TipeProdukID       string  `form:"tipe_produk_id" binding:"required,uuid"`
+	NamaID         string  `form:"nama_id" binding:"required,min=2,max=255"`
+	NamaEN         string  `form:"nama_en" binding:"required,min=2,max=255"`
+	IDCargo        *string `form:"id_cargo" binding:"omitempty,max=50"`
+	KategoriID     string  `form:"kategori_id" binding:"required,uuid"`
+	MerekIDs       *string `form:"merek_ids" binding:"omitempty"` // Comma-separated UUIDs: "uuid1,uuid2,uuid3"
+	KondisiID      string  `form:"kondisi_id" binding:"required,uuid"`
+	KondisiPaketID string  `form:"kondisi_paket_id" binding:"required,uuid"`
+	SumberID       *string `form:"sumber_id" binding:"omitempty,uuid"`
+	// WarehouseID: Auto-set to "Gudang Cilodong" by backend
+	// TipeProdukID: Auto-set to "Palet load" by backend
 	HargaSebelumDiskon float64 `form:"harga_sebelum_diskon" binding:"required,gt=0"`
-	PersentaseDiskon   float64 `form:"persentase_diskon" binding:"min=0,max=100"`
+	// PersentaseDiskon: Auto-set from diskon kategori or 0
 	HargaSesudahDiskon float64 `form:"harga_sesudah_diskon" binding:"required,min=0"`
 	Quantity           int     `form:"quantity" binding:"min=0"`
 	Discrepancy        *string `form:"discrepancy" binding:"omitempty,max=1000"`
@@ -291,21 +296,22 @@ type CreateProdukRequest struct {
 	Tinggi             float64 `form:"tinggi" binding:"required,gt=0"`  // cm
 	Berat              float64 `form:"berat" binding:"required,gt=0"`   // kg
 	GambarUtamaIndex   int     `form:"gambar_utama_index"`
+	// IsActive: handled manually in controller, accepts "true"/"false" or "1"/"0"
 }
 
 type UpdateProdukRequest struct {
-	NamaID             *string  `form:"nama_id" binding:"omitempty,min=2,max=255"`
-	NamaEN             *string  `form:"nama_en" binding:"omitempty,min=2,max=255"`
-	IDCargo            *string  `form:"id_cargo" binding:"omitempty,max=50"`
-	KategoriID         *string  `form:"kategori_id" binding:"omitempty,uuid"`
-	MerekID            *string  `form:"merek_id" binding:"omitempty,uuid"`
-	KondisiID          *string  `form:"kondisi_id" binding:"omitempty,uuid"`
-	KondisiPaketID     *string  `form:"kondisi_paket_id" binding:"omitempty,uuid"`
-	SumberID           *string  `form:"sumber_id" binding:"omitempty,uuid"`
-	WarehouseID        *string  `form:"warehouse_id" binding:"omitempty,uuid"`
-	TipeProdukID       *string  `form:"tipe_produk_id" binding:"omitempty,uuid"`
+	NamaID         *string `form:"nama_id" binding:"omitempty,min=2,max=255"`
+	NamaEN         *string `form:"nama_en" binding:"omitempty,min=2,max=255"`
+	IDCargo        *string `form:"id_cargo" binding:"omitempty,max=50"`
+	KategoriID     *string `form:"kategori_id" binding:"omitempty,uuid"`
+	MerekIDs       *string `form:"merek_ids" binding:"omitempty"` // Comma-separated UUIDs: "uuid1,uuid2,uuid3"
+	KondisiID      *string `form:"kondisi_id" binding:"omitempty,uuid"`
+	KondisiPaketID *string `form:"kondisi_paket_id" binding:"omitempty,uuid"`
+	SumberID       *string `form:"sumber_id" binding:"omitempty,uuid"`
+	// WarehouseID: Auto-managed, use dedicated endpoint if needed
+	// TipeProdukID: Auto-managed, use dedicated endpoint if needed
 	HargaSebelumDiskon *float64 `form:"harga_sebelum_diskon" binding:"omitempty,gt=0"`
-	PersentaseDiskon   *float64 `form:"persentase_diskon" binding:"omitempty,min=0,max=100"`
+	// PersentaseDiskon: Auto-set from diskon kategori, use dedicated endpoint to change
 	HargaSesudahDiskon *float64 `form:"harga_sesudah_diskon" binding:"omitempty,min=0"`
 	Quantity           *int     `form:"quantity" binding:"omitempty,min=0"`
 	Discrepancy        *string  `form:"discrepancy" binding:"omitempty,max=1000"`
@@ -313,7 +319,51 @@ type UpdateProdukRequest struct {
 	Lebar              *float64 `form:"lebar" binding:"omitempty,gt=0"`   // cm
 	Tinggi             *float64 `form:"tinggi" binding:"omitempty,gt=0"`  // cm
 	Berat              *float64 `form:"berat" binding:"omitempty,gt=0"`   // kg
-	IsActive           *bool    `form:"is_active"`
+	IsActive           *string  `form:"is_active" binding:"omitempty,oneof=true false 0 1"`
+}
+
+// GetMerekIDs parses comma-separated merek_ids string into UUID slice for CreateProdukRequest
+func (r *CreateProdukRequest) GetMerekIDs() []uuid.UUID {
+	if r.MerekIDs == nil || *r.MerekIDs == "" {
+		return nil
+	}
+
+	ids := strings.Split(*r.MerekIDs, ",")
+	result := make([]uuid.UUID, 0, len(ids))
+
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if parsed, err := uuid.Parse(id); err == nil {
+			result = append(result, parsed)
+		}
+	}
+
+	return result
+}
+
+// GetMerekIDs parses comma-separated merek_ids string into UUID slice for UpdateProdukRequest
+func (r *UpdateProdukRequest) GetMerekIDs() ([]uuid.UUID, bool) {
+	// Return false if merek_ids not provided (not part of update)
+	if r.MerekIDs == nil {
+		return nil, false
+	}
+
+	// Empty string means clear all mereks
+	if *r.MerekIDs == "" {
+		return []uuid.UUID{}, true
+	}
+
+	ids := strings.Split(*r.MerekIDs, ",")
+	result := make([]uuid.UUID, 0, len(ids))
+
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if parsed, err := uuid.Parse(id); err == nil {
+			result = append(result, parsed)
+		}
+	}
+
+	return result, true
 }
 
 type UpdateStockRequest struct {

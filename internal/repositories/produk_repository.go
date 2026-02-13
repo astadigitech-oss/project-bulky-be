@@ -37,7 +37,7 @@ func (r *produkRepository) FindByID(ctx context.Context, id string) (*models.Pro
 	var produk models.Produk
 	err := r.db.WithContext(ctx).
 		Preload("Kategori").
-		Preload("Merek").
+		Preload("Mereks").
 		Preload("Kondisi").
 		Preload("KondisiPaket").
 		Preload("Sumber").
@@ -59,7 +59,7 @@ func (r *produkRepository) FindBySlug(ctx context.Context, slug string) (*models
 	var produk models.Produk
 	err := r.db.WithContext(ctx).
 		Preload("Kategori").
-		Preload("Merek").
+		Preload("Mereks").
 		Preload("Kondisi").
 		Preload("KondisiPaket").
 		Preload("Sumber").
@@ -83,7 +83,7 @@ func (r *produkRepository) FindAll(ctx context.Context, params *models.ProdukFil
 
 	query := r.db.WithContext(ctx).Model(&models.Produk{}).
 		Preload("Kategori").
-		Preload("Merek").
+		Preload("Mereks").
 		Preload("Kondisi").
 		Preload("KondisiPaket").
 		Preload("Sumber").
@@ -101,7 +101,9 @@ func (r *produkRepository) FindAll(ctx context.Context, params *models.ProdukFil
 		query = query.Where("kategori_id = ?", params.KategoriID)
 	}
 	if params.MerekID != "" {
-		query = query.Where("merek_id = ?", params.MerekID)
+		// Filter by merek using many-to-many join
+		query = query.Joins("JOIN produk_merek ON produk_merek.produk_id = produk.id").
+			Where("produk_merek.merek_id = ?", params.MerekID)
 	}
 	if params.KondisiID != "" {
 		query = query.Where("kondisi_id = ?", params.KondisiID)
