@@ -308,3 +308,13 @@ func (c *HeroSectionController) GetActive(ctx *gin.Context) {
 
 	utils.SuccessResponse(ctx, "Hero section aktif berhasil diambil", result)
 }
+
+func (c *HeroSectionController) GetSchedules(ctx *gin.Context) {
+	result, err := c.service.GetSchedules(ctx.Request.Context())
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil jadwal hero section: "+err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Jadwal hero section berhasil diambil", result)
+}

@@ -17,6 +17,7 @@ type HeroSectionRepository interface {
 	Delete(ctx context.Context, id string) error
 	GetVisibleHero(ctx context.Context) (*models.HeroSection, error)
 	CheckDateRangeOverlap(ctx context.Context, tanggalMulai, tanggalSelesai *time.Time, excludeID *string) (bool, error)
+	GetSchedules(ctx context.Context) ([]models.HeroSection, error)
 }
 
 type heroSectionRepository struct {
@@ -128,4 +129,18 @@ func (r *heroSectionRepository) CheckDateRangeOverlap(ctx context.Context, tangg
 	}
 
 	return count > 0, nil
+}
+
+// GetSchedules returns all hero sections that have both tanggal_mulai and tanggal_selesai
+func (r *heroSectionRepository) GetSchedules(ctx context.Context) ([]models.HeroSection, error) {
+	var banners []models.HeroSection
+
+	err := r.db.WithContext(ctx).
+		Where("tanggal_mulai IS NOT NULL").
+		Where("tanggal_selesai IS NOT NULL").
+		Order("tanggal_mulai ASC").
+		Select("nama", "tanggal_mulai", "tanggal_selesai").
+		Find(&banners).Error
+
+	return banners, err
 }
