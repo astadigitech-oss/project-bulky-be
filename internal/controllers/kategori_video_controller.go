@@ -137,6 +137,16 @@ func (c *KategoriVideoController) ToggleStatus(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, "Status kategori berhasil diubah", nil)
 }
 
+func (c *KategoriVideoController) GetDropdownOptions(ctx *gin.Context) {
+	kategoris, err := c.service.GetAllActive(ctx.Request.Context())
+	if err != nil {
+		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data kategori", err.Error())
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Data dropdown kategori video berhasil diambil", kategoris)
+}
+
 func (c *KategoriVideoController) Reorder(ctx *gin.Context) {
 	id, err := uuid.Parse(ctx.Param("id"))
 	if err != nil {

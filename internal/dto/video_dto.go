@@ -10,20 +10,20 @@ import (
 // Video DTOs
 type CreateVideoRequest struct {
 	JudulID           string    `json:"judul_id" validate:"required,max=200"`
-	JudulEN           *string   `json:"judul_en" validate:"omitempty,max=200"`
+	JudulEN           string    `json:"judul_en" validate:"required,max=200"`
 	Slug              string    `json:"slug" validate:"required,max=250"`
 	DeskripsiID       string    `json:"deskripsi_id" validate:"required"`
-	DeskripsiEN       *string   `json:"deskripsi_en"`
+	DeskripsiEN       string    `json:"deskripsi_en" validate:"required"`
 	VideoURL          string    `json:"video_url" validate:"required,max=500"`
 	ThumbnailURL      *string   `json:"thumbnail_url" validate:"omitempty,max=500"`
 	KategoriID        uuid.UUID `json:"kategori_id" validate:"required"`
-	DurasiDetik       int       `json:"durasi_detik" validate:"required,gt=0"`
+	DurasiDetik       int       `json:"durasi_detik" validate:"omitempty,gt=0"` // Optional: auto-detected from uploaded video file
 	MetaTitleID       *string   `json:"meta_title_id" validate:"omitempty,max=200"`
 	MetaTitleEN       *string   `json:"meta_title_en" validate:"omitempty,max=200"`
 	MetaDescriptionID *string   `json:"meta_description_id"`
 	MetaDescriptionEN *string   `json:"meta_description_en"`
 	MetaKeywords      *string   `json:"meta_keywords"`
-	IsActive          bool      `json:"is_active"`
+	IsActive          string    `json:"is_active" validate:"required,oneof=true false"`
 }
 
 type UpdateVideoRequest struct {
@@ -41,7 +41,7 @@ type UpdateVideoRequest struct {
 	MetaDescriptionID *string    `json:"meta_description_id"`
 	MetaDescriptionEN *string    `json:"meta_description_en"`
 	MetaKeywords      *string    `json:"meta_keywords"`
-	IsActive          *bool      `json:"is_active"`
+	IsActive          *string    `json:"is_active" validate:"omitempty,oneof=true false"`
 }
 
 type VideoResponse struct {
@@ -89,6 +89,37 @@ type KategoriVideoBrief struct {
 	NamaID string    `json:"nama_id"`
 	NamaEN *string   `json:"nama_en"`
 	Slug   string    `json:"slug"`
+}
+
+// Video Filter Request
+type VideoFilterRequest struct {
+	models.PaginationRequest
+	KategoriID *uuid.UUID `form:"kategori_id"`
+}
+
+func (p *VideoFilterRequest) SetDefaults() {
+	p.PaginationRequest.SetDefaults()
+
+	// Default sort by updated_at desc
+	if p.SortBy == "" {
+		p.SortBy = "updated_at"
+	}
+	if p.Order == "" {
+		p.Order = "desc"
+	}
+
+	// Validate sort_by - only allow specific fields
+	allowedSortBy := []string{"created_at", "updated_at", "view_count", "judul_id"}
+	isValid := false
+	for _, field := range allowedSortBy {
+		if p.SortBy == field {
+			isValid = true
+			break
+		}
+	}
+	if !isValid {
+		p.SortBy = "updated_at"
+	}
 }
 
 // Kategori Video DTOs

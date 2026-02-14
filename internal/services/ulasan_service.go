@@ -9,6 +9,7 @@ import (
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
 	"project-bulky-be/pkg/utils"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -302,7 +303,7 @@ func (s *ulasanService) Create(req models.CreateUlasanRequest, buyerID uuid.UUID
 	if err := s.repo.Create(ulasan); err != nil {
 		// Cleanup uploaded image if create fails
 		if gambarPath != nil {
-			os.Remove(filepath.Join(s.uploadPath, *gambarPath))
+			os.Remove(filepath.Join(s.uploadPath, filepath.FromSlash(*gambarPath)))
 		}
 		return nil, err
 	}
@@ -389,7 +390,9 @@ func (s *ulasanService) uploadImage(file *multipart.FileHeader) (string, error) 
 	// Generate unique filename
 	filename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
 	relativePath := filepath.Join("ulasan", filename)
-	fullPath := filepath.Join(s.uploadPath, relativePath)
+	// Normalize to forward slash for URL
+	relativePath = strings.ReplaceAll(relativePath, "\\", "/")
+	fullPath := filepath.Join(s.uploadPath, filepath.FromSlash(relativePath))
 
 	// Create directory if not exists
 	dir := filepath.Dir(fullPath)
@@ -408,9 +411,20 @@ func (s *ulasanService) uploadImage(file *multipart.FileHeader) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	defer dst.Close()
 
 	if _, err := dst.ReadFrom(src); err != nil {
+		dst.Close()
+		return "", err
+	}
+
+	// Ensure file is fully written to disk
+	if err := dst.Sync(); err != nil {
+		dst.Close()
+		return "", err
+	}
+
+	// Close file explicitly
+	if err := dst.Close(); err != nil {
 		return "", err
 	}
 

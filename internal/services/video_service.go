@@ -18,7 +18,7 @@ type VideoService interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 	GetByID(ctx context.Context, id uuid.UUID) (*dto.VideoResponse, error)
 	GetBySlug(ctx context.Context, slug string) (*dto.VideoResponse, error)
-	GetAll(ctx context.Context, isActive *bool, kategoriID *uuid.UUID, page, limit int) ([]dto.VideoListResponse, int64, error)
+	GetAll(ctx context.Context, params *dto.VideoFilterRequest) ([]dto.VideoListResponse, *models.PaginationMeta, error)
 	Search(ctx context.Context, keyword string, isActive *bool, page, limit int) ([]dto.VideoListResponse, int64, error)
 	GetPopular(ctx context.Context, limit int) ([]dto.VideoListResponse, error)
 	IncrementView(ctx context.Context, id uuid.UUID) error
@@ -52,12 +52,20 @@ func (s *videoService) Create(ctx context.Context, req *dto.CreateVideoRequest) 
 		return nil, err
 	}
 
+	// Validate duration is provided (should be auto-detected or manually provided)
+	if req.DurasiDetik <= 0 {
+		return nil, errors.New("durasi_detik is required and must be greater than 0")
+	}
+
+	// Convert is_active string to boolean
+	isActive := req.IsActive == "true"
+
 	video := &models.Video{
 		JudulID:           req.JudulID,
-		JudulEN:           req.JudulEN,
+		JudulEN:           &req.JudulEN,
 		Slug:              req.Slug,
 		DeskripsiID:       req.DeskripsiID,
-		DeskripsiEN:       req.DeskripsiEN,
+		DeskripsiEN:       &req.DeskripsiEN,
 		VideoURL:          req.VideoURL,
 		ThumbnailURL:      req.ThumbnailURL,
 		KategoriID:        req.KategoriID,
@@ -67,7 +75,7 @@ func (s *videoService) Create(ctx context.Context, req *dto.CreateVideoRequest) 
 		MetaDescriptionID: req.MetaDescriptionID,
 		MetaDescriptionEN: req.MetaDescriptionEN,
 		MetaKeywords:      req.MetaKeywords,
-		IsActive:          req.IsActive,
+		IsActive:          isActive,
 	}
 
 	if err := s.videoRepo.Create(ctx, video); err != nil {
@@ -126,7 +134,9 @@ func (s *videoService) Update(ctx context.Context, id uuid.UUID, req *dto.Update
 		video.MetaKeywords = req.MetaKeywords
 	}
 	if req.IsActive != nil {
-		video.IsActive = *req.IsActive
+		// Convert string to boolean
+		isActive := *req.IsActive == "true"
+		video.IsActive = isActive
 	}
 
 	if err := s.videoRepo.Update(ctx, video); err != nil {
@@ -156,11 +166,11 @@ func (s *videoService) GetBySlug(ctx context.Context, slug string) (*dto.VideoRe
 	return s.toVideoResponse(video), nil
 }
 
-func (s *videoService) GetAll(ctx context.Context, isActive *bool, kategoriID *uuid.UUID, page, limit int) ([]dto.VideoListResponse, int64, error) {
-	offset := (page - 1) * limit
-	videos, total, err := s.videoRepo.FindAll(ctx, isActive, kategoriID, limit, offset)
+func (s *videoService) GetAll(ctx context.Context, params *dto.VideoFilterRequest) ([]dto.VideoListResponse, *models.PaginationMeta, error) {
+	offset := params.GetOffset()
+	videos, total, err := s.videoRepo.FindAll(ctx, params.IsActive, params.KategoriID, params.SortBy, params.Order, params.PerPage, offset)
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
 
 	responses := make([]dto.VideoListResponse, len(videos))
@@ -168,7 +178,8 @@ func (s *videoService) GetAll(ctx context.Context, isActive *bool, kategoriID *u
 		responses[i] = s.toVideoListResponse(&video)
 	}
 
-	return responses, total, nil
+	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
+	return responses, &meta, nil
 }
 
 func (s *videoService) Search(ctx context.Context, keyword string, isActive *bool, page, limit int) ([]dto.VideoListResponse, int64, error) {

@@ -24,6 +24,19 @@ var allowedDocumentTypes = []string{
 	"application/pdf",
 }
 
+// allowedVideoTypes - Limited to MP4-based formats supported by go-mp4 library
+// Supported: MP4, MOV, M4V (for auto-duration detection)
+var allowedVideoTypes = []string{
+	"video/mp4",
+	"video/quicktime", // MOV
+}
+
+var allowedVideoExtensions = []string{
+	".mp4",
+	".mov",
+	".m4v",
+}
+
 // IsValidImageType validates if the uploaded file is a valid image type
 func IsValidImageType(file *multipart.FileHeader) bool {
 	contentType := file.Header.Get("Content-Type")
@@ -46,13 +59,40 @@ func IsValidDocumentType(file *multipart.FileHeader) bool {
 	return false
 }
 
+// IsValidVideoType validates if the uploaded file is a valid video type
+// Only supports MP4-based formats (MP4, MOV, M4V) for auto-duration detection
+func IsValidVideoType(file *multipart.FileHeader) bool {
+	// Check Content-Type
+	contentType := file.Header.Get("Content-Type")
+	validContentType := false
+	for _, allowed := range allowedVideoTypes {
+		if contentType == allowed {
+			validContentType = true
+			break
+		}
+	}
+
+	// Check file extension as additional validation
+	filename := strings.ToLower(file.Filename)
+	validExtension := false
+	for _, ext := range allowedVideoExtensions {
+		if strings.HasSuffix(filename, ext) {
+			validExtension = true
+			break
+		}
+	}
+
+	// Both content type and extension must be valid
+	return validContentType && validExtension
+}
+
 // SaveUploadedFile saves an uploaded file to the specified directory
 // Returns the relative path for URL generation (e.g., "product-categories/uuid.png")
-// Supports both images and documents (PDF)
+// Supports images, documents (PDF), and videos (MP4, MOV, M4V)
 func SaveUploadedFile(file *multipart.FileHeader, directory string, cfg *config.Config) (string, error) {
-	// Validate file type (image or document)
-	if !IsValidImageType(file) && !IsValidDocumentType(file) {
-		return "", errors.New("tipe file tidak didukung. Hanya jpg, png, webp, svg, dan pdf yang diperbolehkan")
+	// Validate file type (image, document, or video)
+	if !IsValidImageType(file) && !IsValidDocumentType(file) && !IsValidVideoType(file) {
+		return "", errors.New("tipe file tidak didukung. Hanya jpg, png, webp, svg, pdf, dan video (mp4, mov, m4v) yang diperbolehkan")
 	}
 
 	// Create directory if not exists (use config upload path)
@@ -78,11 +118,22 @@ func SaveUploadedFile(file *multipart.FileHeader, directory string, cfg *config.
 	if err != nil {
 		return "", fmt.Errorf("gagal membuat file: %w", err)
 	}
-	defer dst.Close()
 
 	// Copy file
 	if _, err = dst.ReadFrom(src); err != nil {
+		dst.Close()
 		return "", fmt.Errorf("gagal menyimpan file: %w", err)
+	}
+
+	// Ensure file is fully written to disk before returning
+	if err := dst.Sync(); err != nil {
+		dst.Close()
+		return "", fmt.Errorf("gagal sync file: %w", err)
+	}
+
+	// Close file explicitly before returning path
+	if err := dst.Close(); err != nil {
+		return "", fmt.Errorf("gagal close file: %w", err)
 	}
 
 	// Return relative path for URL (without upload path prefix)
@@ -97,8 +148,8 @@ func DeleteFile(filePath string, cfg *config.Config) error {
 		return nil
 	}
 
-	// Build full path
-	fullPath := filepath.Join(cfg.UploadPath, filePath)
+	// Build full path (normalize path separator for OS)
+	fullPath := filepath.Join(cfg.UploadPath, filepath.FromSlash(filePath))
 
 	// Check if file exists
 	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
@@ -151,11 +202,22 @@ func SaveUploadedFileWithCustomName(file *multipart.FileHeader, directory, custo
 	if err != nil {
 		return "", fmt.Errorf("gagal membuat file: %w", err)
 	}
-	defer dst.Close()
 
 	// Copy file
 	if _, err = dst.ReadFrom(src); err != nil {
+		dst.Close()
 		return "", fmt.Errorf("gagal menyimpan file: %w", err)
+	}
+
+	// Ensure file is fully written to disk before returning
+	if err := dst.Sync(); err != nil {
+		dst.Close()
+		return "", fmt.Errorf("gagal sync file: %w", err)
+	}
+
+	// Close file explicitly before returning path
+	if err := dst.Close(); err != nil {
+		return "", fmt.Errorf("gagal close file: %w", err)
 	}
 
 	// Return relative path for URL (without upload path prefix)

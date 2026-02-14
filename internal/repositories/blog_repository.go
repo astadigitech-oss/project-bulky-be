@@ -44,15 +44,15 @@ func (r *blogRepository) Update(ctx context.Context, blog *models.Blog) error {
 
 func (r *blogRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	result := r.db.WithContext(ctx).Delete(&models.Blog{}, id)
-	
+
 	if result.Error != nil {
 		return result.Error
 	}
-	
+
 	if result.RowsAffected == 0 {
 		return gorm.ErrRecordNotFound
 	}
-	
+
 	return nil
 }
 

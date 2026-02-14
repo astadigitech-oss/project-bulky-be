@@ -708,6 +708,7 @@ func SetupRoutes(
 		{
 			kategoriVideoAdmin.GET("", middleware.RequirePermission("marketing:read"), kategoriVideoController.GetAll)
 			kategoriVideoAdmin.GET("/:id", middleware.RequirePermission("marketing:read"), kategoriVideoController.GetByID)
+			kategoriVideoAdmin.GET("/dropdown", middleware.RequirePermission("marketing:read"), kategoriVideoController.GetDropdownOptions)
 			kategoriVideoAdmin.POST("", middleware.RequirePermission("marketing:manage"), kategoriVideoController.Create)
 			kategoriVideoAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), kategoriVideoController.Update)
 			kategoriVideoAdmin.DELETE("/:id", middleware.RequirePermission("marketing:manage"), kategoriVideoController.Delete)
@@ -717,6 +718,7 @@ func SetupRoutes(
 
 		// Kategori Video - Public
 		v1.GET("/public/kategori-video", kategoriVideoController.GetAllPublic)
+		v1.GET("/public/kategori-video/dropdown", kategoriVideoController.GetDropdownOptions)
 	}
 
 	// Endpoint to list all registered routes
