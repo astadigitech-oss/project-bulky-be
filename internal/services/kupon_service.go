@@ -59,7 +59,7 @@ func (s *kuponService) Create(ctx context.Context, req *dto.CreateKuponRequest) 
 	}
 
 	// Validate kategori if not all kategori
-	if !req.IsAllKategori && len(req.KategoriIDs) > 0 {
+	if req.IsAllKategori != nil && !*req.IsAllKategori && len(req.KategoriIDs) > 0 {
 		for _, kategoriID := range req.KategoriIDs {
 			_, err := s.kategoriRepo.FindByID(ctx, kategoriID.String())
 			if err != nil {
@@ -78,6 +78,7 @@ func (s *kuponService) Create(ctx context.Context, req *dto.CreateKuponRequest) 
 	}
 
 	// Create kupon
+	isActiveTrue := true
 	kupon := &models.Kupon{
 		Kode:              req.Kode,
 		Nama:              req.Nama,
@@ -88,7 +89,7 @@ func (s *kuponService) Create(ctx context.Context, req *dto.CreateKuponRequest) 
 		LimitPemakaian:    req.LimitPemakaian,
 		TanggalKedaluarsa: tanggal,
 		IsAllKategori:     req.IsAllKategori,
-		IsActive:          true,
+		IsActive:          &isActiveTrue,
 	}
 
 	if err := s.kuponRepo.Create(ctx, kupon); err != nil {
@@ -96,7 +97,7 @@ func (s *kuponService) Create(ctx context.Context, req *dto.CreateKuponRequest) 
 	}
 
 	// Add kategori if not all kategori
-	if !req.IsAllKategori && len(req.KategoriIDs) > 0 {
+	if req.IsAllKategori != nil && !*req.IsAllKategori && len(req.KategoriIDs) > 0 {
 		if err := s.kuponRepo.AddKategori(ctx, kupon.ID, req.KategoriIDs); err != nil {
 			return nil, err
 		}
@@ -136,7 +137,7 @@ func (s *kuponService) Update(ctx context.Context, id uuid.UUID, req *dto.Update
 	}
 
 	// Validate kategori if not all kategori
-	if !req.IsAllKategori && len(req.KategoriIDs) > 0 {
+	if req.IsAllKategori != nil && !*req.IsAllKategori && len(req.KategoriIDs) > 0 {
 		for _, kategoriID := range req.KategoriIDs {
 			_, err := s.kategoriRepo.FindByID(ctx, kategoriID.String())
 			if err != nil {
@@ -174,7 +175,7 @@ func (s *kuponService) Update(ctx context.Context, id uuid.UUID, req *dto.Update
 		return nil, err
 	}
 
-	if !req.IsAllKategori && len(req.KategoriIDs) > 0 {
+	if req.IsAllKategori != nil && !*req.IsAllKategori && len(req.KategoriIDs) > 0 {
 		if err := s.kuponRepo.AddKategori(ctx, id, req.KategoriIDs); err != nil {
 			return nil, err
 		}
@@ -267,7 +268,7 @@ func (s *kuponService) ToggleStatus(ctx context.Context, id uuid.UUID) (*dto.Tog
 	return &dto.ToggleStatusResponse{
 		ID:        updated.ID,
 		Kode:      updated.Kode,
-		IsActive:  updated.IsActive,
+		IsActive:  updated.IsActive != nil && *updated.IsActive,
 		UpdatedAt: updated.UpdatedAt,
 	}, nil
 }
@@ -363,7 +364,7 @@ func (s *kuponService) toListResponse(kupon *models.Kupon) dto.KuponListResponse
 
 	// Count kategori
 	kategoriCount := 0
-	if !kupon.IsAllKategori {
+	if kupon.IsAllKategori != nil && !*kupon.IsAllKategori {
 		var count int64
 		s.db.Model(&models.KuponKategori{}).Where("kupon_id = ?", kupon.ID).Count(&count)
 		kategoriCount = int(count)
@@ -381,9 +382,9 @@ func (s *kuponService) toListResponse(kupon *models.Kupon) dto.KuponListResponse
 		TotalUsage:        totalUsage,
 		RemainingUsage:    remainingUsage,
 		TanggalKedaluarsa: kupon.TanggalKedaluarsa.Format("2006-01-02"),
-		IsAllKategori:     kupon.IsAllKategori,
+		IsAllKategori:     kupon.IsAllKategori != nil && *kupon.IsAllKategori,
 		KategoriCount:     kategoriCount,
-		IsActive:          kupon.IsActive,
+		IsActive:          kupon.IsActive != nil && *kupon.IsActive,
 		IsExpired:         kupon.IsExpired(),
 		CreatedAt:         kupon.CreatedAt,
 		UpdatedAt:         kupon.UpdatedAt,
@@ -395,7 +396,7 @@ func (s *kuponService) toDetailResponse(kupon *models.Kupon) *dto.KuponDetailRes
 	remainingUsage := kupon.GetRemainingUsage(s.db)
 
 	kategoriResponses := make([]dto.KuponKategoriResponse, 0)
-	if !kupon.IsAllKategori && len(kupon.Kategori) > 0 {
+	if kupon.IsAllKategori != nil && !*kupon.IsAllKategori && len(kupon.Kategori) > 0 {
 		for _, kk := range kupon.Kategori {
 			if kk.Kategori != nil {
 				kategoriResponses = append(kategoriResponses, dto.KuponKategoriResponse{
@@ -419,9 +420,9 @@ func (s *kuponService) toDetailResponse(kupon *models.Kupon) *dto.KuponDetailRes
 		TotalUsage:        totalUsage,
 		RemainingUsage:    remainingUsage,
 		TanggalKedaluarsa: kupon.TanggalKedaluarsa.Format("2006-01-02"),
-		IsAllKategori:     kupon.IsAllKategori,
+		IsAllKategori:     kupon.IsAllKategori != nil && *kupon.IsAllKategori,
 		Kategori:          kategoriResponses,
-		IsActive:          kupon.IsActive,
+		IsActive:          kupon.IsActive != nil && *kupon.IsActive,
 		IsExpired:         kupon.IsExpired(),
 		CreatedAt:         kupon.CreatedAt,
 		UpdatedAt:         kupon.UpdatedAt,

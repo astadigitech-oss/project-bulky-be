@@ -33,6 +33,20 @@ func (c *KuponController) GetAll(ctx *gin.Context) {
 		return
 	}
 
+	// Manual validation for required fields (to catch empty string cases)
+	if params.Page < 1 {
+		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", "Parameter 'page' wajib diisi dan minimal 1")
+		return
+	}
+	if params.PerPage < 1 {
+		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", "Parameter 'per_page' wajib diisi dan minimal 1")
+		return
+	}
+	if params.PerPage > 100 {
+		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", "Parameter 'per_page' maksimal 100")
+		return
+	}
+
 	params.SetDefaults()
 
 	kupons, meta, err := c.kuponService.GetAll(ctx.Request.Context(), &params)

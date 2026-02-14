@@ -208,7 +208,7 @@ func (r *kuponRepository) IsKategoriAllowed(ctx context.Context, kuponID, katego
 		return false, err
 	}
 
-	if kupon.IsAllKategori {
+	if kupon.IsAllKategori != nil && *kupon.IsAllKategori {
 		return true, nil
 	}
 

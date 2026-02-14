@@ -17,8 +17,8 @@ type CreateKuponRequest struct {
 	MinimalPembelian  float64     `json:"minimal_pembelian" validate:"required,gte=0"`
 	LimitPemakaian    *int        `json:"limit_pemakaian" validate:"omitempty,gt=0"`
 	TanggalKedaluarsa string      `json:"tanggal_kedaluarsa" validate:"required"`
-	IsAllKategori     bool        `json:"is_all_kategori"`
-	KategoriIDs       []uuid.UUID `json:"kategori_ids" validate:"omitempty,dive,uuid"`
+	IsAllKategori     *bool       `json:"is_all_kategori" validate:"required"`
+	KategoriIDs       []uuid.UUID `json:"kategori" validate:"omitempty,dive,uuid"`
 }
 
 // Validate performs custom validation for CreateKuponRequest
@@ -39,8 +39,18 @@ func (r *CreateKuponRequest) Validate() error {
 		return errors.New("tanggal kedaluarsa harus hari ini atau setelahnya")
 	}
 
-	// Validate kategori_ids required if not all kategori
-	if !r.IsAllKategori && len(r.KategoriIDs) == 0 {
+	// Validate is_all_kategori required
+	if r.IsAllKategori == nil {
+		return errors.New("is_all_kategori wajib diisi")
+	}
+
+	// Validate is_all_kategori and kategori consistency
+	if *r.IsAllKategori && len(r.KategoriIDs) > 0 {
+		return errors.New("jika kupon berlaku untuk semua kategori, kategori harus kosong")
+	}
+
+	// Validate kategori required if not all kategori
+	if !*r.IsAllKategori && len(r.KategoriIDs) == 0 {
 		return errors.New("kategori wajib dipilih jika tidak berlaku semua kategori")
 	}
 
@@ -57,8 +67,8 @@ type UpdateKuponRequest struct {
 	MinimalPembelian  float64     `json:"minimal_pembelian" validate:"required,gte=0"`
 	LimitPemakaian    *int        `json:"limit_pemakaian" validate:"omitempty,gt=0"`
 	TanggalKedaluarsa string      `json:"tanggal_kedaluarsa" validate:"required"`
-	IsAllKategori     bool        `json:"is_all_kategori"`
-	KategoriIDs       []uuid.UUID `json:"kategori_ids" validate:"omitempty,dive,uuid"`
+	IsAllKategori     *bool       `json:"is_all_kategori" validate:"required"`
+	KategoriIDs       []uuid.UUID `json:"kategori" validate:"omitempty,dive,uuid"`
 }
 
 // Validate performs custom validation for UpdateKuponRequest
@@ -79,8 +89,18 @@ func (r *UpdateKuponRequest) Validate() error {
 		return errors.New("tanggal kedaluarsa harus hari ini atau setelahnya")
 	}
 
-	// Validate kategori_ids required if not all kategori
-	if !r.IsAllKategori && len(r.KategoriIDs) == 0 {
+	// Validate is_all_kategori required
+	if r.IsAllKategori == nil {
+		return errors.New("is_all_kategori wajib diisi")
+	}
+
+	// Validate is_all_kategori and kategori consistency
+	if *r.IsAllKategori && len(r.KategoriIDs) > 0 {
+		return errors.New("jika kupon berlaku untuk semua kategori, kategori harus kosong")
+	}
+
+	// Validate kategori required if not all kategori
+	if !*r.IsAllKategori && len(r.KategoriIDs) == 0 {
 		return errors.New("kategori wajib dipilih jika tidak berlaku semua kategori")
 	}
 

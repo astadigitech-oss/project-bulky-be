@@ -24,8 +24,8 @@ type Kupon struct {
 	MinimalPembelian  float64        `gorm:"type:decimal(15,2);not null;default:0" json:"minimal_pembelian"`
 	LimitPemakaian    *int           `gorm:"type:integer" json:"limit_pemakaian"`
 	TanggalKedaluarsa time.Time      `gorm:"type:date;not null" json:"tanggal_kedaluarsa"`
-	IsAllKategori     bool           `gorm:"not null;default:true" json:"is_all_kategori"`
-	IsActive          bool           `gorm:"not null;default:true" json:"is_active"`
+	IsAllKategori     *bool          `gorm:"not null;default:true" json:"is_all_kategori"`
+	IsActive          *bool          `gorm:"not null;default:true" json:"is_active"`
 	CreatedAt         time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
 	UpdatedAt         time.Time      `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
 	DeletedAt         gorm.DeletedAt `gorm:"type:timestamptz;index" json:"deleted_at,omitempty"`
