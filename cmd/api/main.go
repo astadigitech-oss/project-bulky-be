@@ -158,7 +158,7 @@ func main() {
 	blogController := controllers.NewBlogController(blogService, kategoriBlogService, labelBlogService, cfg)
 	kategoriBlogController := controllers.NewKategoriBlogController(kategoriBlogService, reorderService)
 	labelBlogController := controllers.NewLabelBlogController(labelBlogService, reorderService)
-	videoController := controllers.NewVideoController(videoService, kategoriVideoService)
+	videoController := controllers.NewVideoController(videoService, kategoriVideoService, cfg)
 	kategoriVideoController := controllers.NewKategoriVideoController(kategoriVideoService, reorderService)
 
 	// Auth V2 controllers

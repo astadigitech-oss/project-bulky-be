@@ -15,7 +15,7 @@ type VideoRepository interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 	FindByID(ctx context.Context, id uuid.UUID) (*models.Video, error)
 	FindBySlug(ctx context.Context, slug string) (*models.Video, error)
-	FindAll(ctx context.Context, isActive *bool, kategoriID *uuid.UUID, limit, offset int) ([]models.Video, int64, error)
+	FindAll(ctx context.Context, isActive *bool, kategoriID *uuid.UUID, sortBy, order string, limit, offset int) ([]models.Video, int64, error)
 	Search(ctx context.Context, keyword string, isActive *bool, limit, offset int) ([]models.Video, int64, error)
 	IncrementViewCount(ctx context.Context, id uuid.UUID) error
 	FindPopular(ctx context.Context, limit int) ([]models.Video, error)
@@ -41,7 +41,17 @@ func (r *videoRepository) Update(ctx context.Context, video *models.Video) error
 }
 
 func (r *videoRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	return r.db.WithContext(ctx).Delete(&models.Video{}, id).Error
+	result := r.db.WithContext(ctx).Delete(&models.Video{}, id)
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+
+	return nil
 }
 
 func (r *videoRepository) FindByID(ctx context.Context, id uuid.UUID) (*models.Video, error) {
@@ -67,7 +77,7 @@ func (r *videoRepository) FindBySlug(ctx context.Context, slug string) (*models.
 	return &video, nil
 }
 
-func (r *videoRepository) FindAll(ctx context.Context, isActive *bool, kategoriID *uuid.UUID, limit, offset int) ([]models.Video, int64, error) {
+func (r *videoRepository) FindAll(ctx context.Context, isActive *bool, kategoriID *uuid.UUID, sortBy, order string, limit, offset int) ([]models.Video, int64, error) {
 	var videos []models.Video
 	var total int64
 
@@ -86,9 +96,12 @@ func (r *videoRepository) FindAll(ctx context.Context, isActive *bool, kategoriI
 		return nil, 0, err
 	}
 
+	// Build order clause
+	orderClause := sortBy + " " + order
+
 	err = query.
 		Preload("Kategori").
-		Order("published_at DESC NULLS LAST, created_at DESC").
+		Order(orderClause).
 		Limit(limit).
 		Offset(offset).
 		Find(&videos).Error
@@ -182,8 +195,17 @@ func (r *videoRepository) GetStatistics(ctx context.Context) (map[string]interfa
 }
 
 func (r *videoRepository) ToggleStatus(ctx context.Context, id uuid.UUID) error {
-	return r.db.WithContext(ctx).Model(&models.Video{}).
+	result := r.db.WithContext(ctx).Model(&models.Video{}).
 		Where("id = ?", id).
-		Update("is_active", gorm.Expr("NOT is_active")).
-		Error
+		Update("is_active", gorm.Expr("NOT is_active"))
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+
+	return nil
 }
