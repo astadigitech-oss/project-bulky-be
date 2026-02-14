@@ -45,6 +45,7 @@ func SetupRoutes(
 	labelBlogController *controllers.LabelBlogController,
 	videoController *controllers.VideoController,
 	kategoriVideoController *controllers.KategoriVideoController,
+	kuponController *controllers.KuponController,
 ) {
 	// Health check
 	router.GET("/api/health", func(c *gin.Context) {
@@ -292,6 +293,22 @@ func SetupRoutes(
 			diskonKategoriAdmin.PUT("/:id", middleware.RequirePermission("diskon:manage"), diskonKategoriController.Update)
 			diskonKategoriAdmin.DELETE("/:id", middleware.RequirePermission("diskon:manage"), diskonKategoriController.Delete)
 			diskonKategoriAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("diskon:manage"), diskonKategoriController.ToggleStatus)
+		}
+
+		// Kupon - Admin Only
+		kuponAdmin := v1.Group("/panel/kupon")
+		kuponAdmin.Use(middleware.AuthMiddleware())
+		kuponAdmin.Use(middleware.AdminOnly())
+		{
+			kuponAdmin.GET("", middleware.RequirePermission("kupon:read"), kuponController.GetAll)
+			kuponAdmin.GET("/dropdown/kategori", middleware.RequirePermission("kupon:read"), kuponController.GetKategoriDropdown)
+			kuponAdmin.GET("/:id", middleware.RequirePermission("kupon:read"), kuponController.GetByID)
+			kuponAdmin.GET("/:id/usages", middleware.RequirePermission("kupon:read"), kuponController.GetUsages)
+			kuponAdmin.POST("", middleware.RequirePermission("kupon:manage"), kuponController.Create)
+			kuponAdmin.POST("/generate-kode", middleware.RequirePermission("kupon:manage"), kuponController.GenerateKode)
+			kuponAdmin.PUT("/:id", middleware.RequirePermission("kupon:manage"), kuponController.Update)
+			kuponAdmin.DELETE("/:id", middleware.RequirePermission("kupon:manage"), kuponController.Delete)
+			kuponAdmin.PATCH("/:id/toggle-status", middleware.RequirePermission("kupon:manage"), kuponController.ToggleStatus)
 		}
 
 		// Banner Tipe Produk - Public (Read Only)
