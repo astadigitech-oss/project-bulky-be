@@ -30,6 +30,8 @@ func SetupRoutes(
 	heroSectionController *controllers.HeroSectionController,
 	bannerEventPromoController *controllers.BannerEventPromoController,
 	ulasanController *controllers.UlasanController,
+	ulasanAdminController *controllers.UlasanAdminController,
+	pesananAdminController *controllers.PesananAdminController,
 	forceUpdateController *controllers.ForceUpdateController,
 	modeMaintenanceController *controllers.ModeMaintenanceController,
 	appStatusController *controllers.AppStatusController,
@@ -426,11 +428,24 @@ func SetupRoutes(
 		ulasanAdmin.Use(middleware.AuthMiddleware())
 		ulasanAdmin.Use(middleware.AdminOnly())
 		{
-			ulasanAdmin.GET("", middleware.RequirePermission("ulasan:read"), ulasanController.AdminFindAll)
-			ulasanAdmin.GET("/:id", middleware.RequirePermission("ulasan:read"), ulasanController.AdminFindByID)
-			ulasanAdmin.PATCH("/:id/approve", middleware.RequirePermission("ulasan:manage"), ulasanController.Approve)
-			ulasanAdmin.PATCH("/bulk-approve", middleware.RequirePermission("ulasan:manage"), ulasanController.BulkApprove)
-			ulasanAdmin.DELETE("/:id", middleware.RequirePermission("ulasan:manage"), ulasanController.Delete)
+			ulasanAdmin.GET("", middleware.RequirePermission("ulasan:read"), ulasanAdminController.GetAll)
+			ulasanAdmin.GET("/:id", middleware.RequirePermission("ulasan:read"), ulasanAdminController.GetByID)
+			ulasanAdmin.PATCH("/:id/approve", middleware.RequirePermission("ulasan:manage"), ulasanAdminController.Approve)
+			ulasanAdmin.PATCH("/:id/reject", middleware.RequirePermission("ulasan:manage"), ulasanAdminController.Reject)
+			ulasanAdmin.PATCH("/bulk-approve", middleware.RequirePermission("ulasan:manage"), ulasanAdminController.BulkApprove)
+			ulasanAdmin.DELETE("/:id", middleware.RequirePermission("ulasan:manage"), ulasanAdminController.Delete)
+		}
+
+		// Pesanan - Admin
+		pesananAdmin := v1.Group("/panel/pesanan")
+		pesananAdmin.Use(middleware.AuthMiddleware())
+		pesananAdmin.Use(middleware.AdminOnly())
+		{
+			pesananAdmin.GET("", middleware.RequirePermission("pesanan:read"), pesananAdminController.GetAll)
+			pesananAdmin.GET("/statistics", middleware.RequirePermission("pesanan:read"), pesananAdminController.GetStatistics)
+			pesananAdmin.GET("/:id", middleware.RequirePermission("pesanan:read"), pesananAdminController.GetByID)
+			pesananAdmin.PATCH("/:id/update-status", middleware.RequirePermission("pesanan:update_status"), pesananAdminController.UpdateStatus)
+			pesananAdmin.DELETE("/:id", middleware.RequirePermission("pesanan:delete"), pesananAdminController.Delete)
 		}
 
 		// Ulasan - Buyer

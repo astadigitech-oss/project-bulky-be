@@ -143,3 +143,9 @@ func (q *KuponQueryParams) SetDefaults() {
 		q.Order = "desc"
 	}
 }
+
+// KuponUsagesQueryParams DTO for query parameters in get kupon usages
+type KuponUsagesQueryParams struct {
+	Page    int `form:"page" validate:"required,min=1"`
+	PerPage int `form:"per_page" validate:"required,min=1,max=100"`
+}

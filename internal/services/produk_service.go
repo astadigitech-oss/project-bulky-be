@@ -23,7 +23,7 @@ type ProdukService interface {
 	CreateWithFiles(ctx context.Context, req *models.CreateProdukRequest, isActive bool, gambarFiles, dokumenFiles []*multipart.FileHeader, dokumenNama []string) (*models.ProdukDetailResponse, error)
 	FindByID(ctx context.Context, id string) (*models.ProdukDetailResponse, error)
 	FindBySlug(ctx context.Context, slug string) (*models.ProdukDetailResponse, error)
-	FindAll(ctx context.Context, params *models.ProdukFilterRequest) ([]models.ProdukListResponse, *models.PaginationMeta, error)
+	FindAll(ctx context.Context, params *models.ProdukFilterRequest) ([]models.ProdukPanelListResponse, *models.PaginationMeta, error)
 	Update(ctx context.Context, id string, req *models.UpdateProdukRequest) (*models.ProdukDetailResponse, error)
 	Delete(ctx context.Context, id string) error
 	ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error)
@@ -109,6 +109,7 @@ func (s *produkService) CreateWithFiles(
 		NamaEN:             req.NamaEN,
 		Slug:               slug,
 		IDCargo:            req.IDCargo,
+		ReferenceID:        req.ReferenceID,
 		KategoriID:         kategoriID,
 		KondisiID:          kondisiID,
 		KondisiPaketID:     kondisiPaketID,
@@ -245,7 +246,7 @@ func (s *produkService) FindBySlug(ctx context.Context, slug string) (*models.Pr
 	return s.toDetailResponse(produk), nil
 }
 
-func (s *produkService) FindAll(ctx context.Context, params *models.ProdukFilterRequest) ([]models.ProdukListResponse, *models.PaginationMeta, error) {
+func (s *produkService) FindAll(ctx context.Context, params *models.ProdukFilterRequest) ([]models.ProdukPanelListResponse, *models.PaginationMeta, error) {
 	params.SetDefaults()
 
 	produks, total, err := s.repo.FindAll(ctx, params)
@@ -253,9 +254,9 @@ func (s *produkService) FindAll(ctx context.Context, params *models.ProdukFilter
 		return nil, nil, err
 	}
 
-	items := []models.ProdukListResponse{}
+	items := []models.ProdukPanelListResponse{}
 	for _, p := range produks {
-		items = append(items, *s.toListResponse(&p))
+		items = append(items, *s.toPanelListResponse(&p))
 	}
 
 	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
@@ -291,6 +292,10 @@ func (s *produkService) Update(ctx context.Context, id string, req *models.Updat
 			}
 		}
 		produk.IDCargo = req.IDCargo
+	}
+
+	if req.ReferenceID != nil {
+		produk.ReferenceID = req.ReferenceID
 	}
 
 	if req.KategoriID != nil {
@@ -499,13 +504,42 @@ func (s *produkService) toListResponse(p *models.Produk) *models.ProdukListRespo
 	return resp
 }
 
+// toPanelListResponse converts Produk to simplified ProdukPanelListResponse for admin panel
+func (s *produkService) toPanelListResponse(p *models.Produk) *models.ProdukPanelListResponse {
+	resp := &models.ProdukPanelListResponse{
+		ID:          p.ID.String(),
+		NamaID:      p.NamaID,
+		NamaEN:      p.NamaEN,
+		ReferenceID: p.ReferenceID,
+		Status:      p.IsActive,
+	}
+
+	// Get primary/first image
+	if len(p.Gambar) > 0 {
+		fullURL := utils.GetFileURL(p.Gambar[0].GambarURL, s.cfg)
+		resp.GambarUtama = &fullURL
+	}
+
+	// Get first PDF document
+	for _, dok := range p.Dokumen {
+		if strings.HasSuffix(strings.ToLower(dok.FileURL), ".pdf") {
+			fullURL := utils.GetFileURL(dok.FileURL, s.cfg)
+			resp.FilePDF = &fullURL
+			break
+		}
+	}
+
+	return resp
+}
+
 func (s *produkService) toDetailResponse(p *models.Produk) *models.ProdukDetailResponse {
 	resp := &models.ProdukDetailResponse{
-		ID:      p.ID.String(),
-		NamaID:  p.NamaID,
-		NamaEN:  p.NamaEN,
-		Slug:    p.Slug,
-		IDCargo: p.IDCargo,
+		ID:          p.ID.String(),
+		NamaID:      p.NamaID,
+		NamaEN:      p.NamaEN,
+		Slug:        p.Slug,
+		IDCargo:     p.IDCargo,
+		ReferenceID: p.ReferenceID,
 		Kategori: models.SimpleProdukRelationInfo{
 			// ID:   p.Kategori.ID.String(),
 			Nama: p.Kategori.GetNama().ID,

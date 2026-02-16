@@ -169,7 +169,12 @@ func (s *ulasanService) BulkApprove(ids []string, isApproved bool, adminID uuid.
 		uuids[i] = parsed
 	}
 
-	return s.repo.BulkApprove(uuids, isApproved, adminID)
+	approvedIDs, err := s.repo.BulkApprove(uuids, isApproved, adminID)
+	if err != nil {
+		return 0, err
+	}
+
+	return int64(len(approvedIDs)), nil
 }
 
 func (s *ulasanService) Delete(id string) error {

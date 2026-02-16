@@ -14,7 +14,7 @@ type UlasanRepository interface {
 	AdminFindAll(filters map[string]interface{}, page, perPage int, sortBy, sortOrder string) ([]models.Ulasan, int64, error)
 	AdminFindByID(id uuid.UUID) (*models.Ulasan, error)
 	Approve(id uuid.UUID, isApproved bool, adminID uuid.UUID) error
-	BulkApprove(ids []uuid.UUID, isApproved bool, adminID uuid.UUID) (int64, error)
+	BulkApprove(ids []uuid.UUID, isApproved bool, adminID uuid.UUID) ([]uuid.UUID, error)
 	Delete(id uuid.UUID) error
 	GetSummary() (map[string]int64, error)
 
@@ -122,7 +122,25 @@ func (r *ulasanRepository) Approve(id uuid.UUID, isApproved bool, adminID uuid.U
 	return r.db.Model(&models.Ulasan{}).Where("id = ?", id).Updates(updates).Error
 }
 
-func (r *ulasanRepository) BulkApprove(ids []uuid.UUID, isApproved bool, adminID uuid.UUID) (int64, error) {
+func (r *ulasanRepository) BulkApprove(ids []uuid.UUID, isApproved bool, adminID uuid.UUID) ([]uuid.UUID, error) {
+	// First, get valid IDs that exist in database
+	var validUlasan []models.Ulasan
+	if err := r.db.Model(&models.Ulasan{}).Select("id").Where("id IN ?", ids).Find(&validUlasan).Error; err != nil {
+		return nil, err
+	}
+
+	// If no valid IDs found, return error
+	if len(validUlasan) == 0 {
+		return nil, fmt.Errorf("tidak ada ulasan yang valid untuk di-approve")
+	}
+
+	// Extract valid IDs
+	var validIDs []uuid.UUID
+	for _, ulasan := range validUlasan {
+		validIDs = append(validIDs, ulasan.ID)
+	}
+
+	// Prepare updates
 	updates := map[string]interface{}{
 		"is_approved": isApproved,
 		"approved_by": adminID,
@@ -134,8 +152,12 @@ func (r *ulasanRepository) BulkApprove(ids []uuid.UUID, isApproved bool, adminID
 		updates["approved_at"] = nil
 	}
 
-	result := r.db.Model(&models.Ulasan{}).Where("id IN ?", ids).Updates(updates)
-	return result.RowsAffected, result.Error
+	// Update only valid IDs
+	if err := r.db.Model(&models.Ulasan{}).Where("id IN ?", validIDs).Updates(updates).Error; err != nil {
+		return nil, err
+	}
+
+	return validIDs, nil
 }
 
 func (r *ulasanRepository) Delete(id uuid.UUID) error {

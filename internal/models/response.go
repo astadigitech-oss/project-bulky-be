@@ -432,12 +432,24 @@ type ProdukListResponse struct {
 	UpdatedAt          time.Time `json:"updated_at"`
 }
 
+// ProdukPanelListResponse - Simplified response for admin panel list
+type ProdukPanelListResponse struct {
+	ID          string  `json:"id"`
+	NamaID      string  `json:"nama_id"`
+	NamaEN      string  `json:"nama_en"`
+	ReferenceID *string `json:"reference_id"` // Reference ID for WMS linking
+	Status      bool    `json:"status"`       // is_active
+	GambarUtama *string `json:"gambar_utama"` // Primary image URL
+	FilePDF     *string `json:"file_pdf"`     // First PDF document URL
+}
+
 type ProdukDetailResponse struct {
 	ID                 string                     `json:"id"`
 	NamaID             string                     `json:"nama_id"`
 	NamaEN             string                     `json:"nama_en"`
 	Slug               string                     `json:"slug"`
 	IDCargo            *string                    `json:"id_cargo"`
+	ReferenceID        *string                    `json:"reference_id"`
 	Kategori           SimpleProdukRelationInfo   `json:"kategori"`
 	Mereks             []SimpleProdukRelationInfo `json:"mereks"`
 	Kondisi            SimpleProdukRelationInfo   `json:"kondisi"`

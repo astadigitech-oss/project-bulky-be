@@ -3,7 +3,6 @@ package controllers
 import (
 	"errors"
 	"net/http"
-	"strconv"
 
 	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/services"
@@ -232,22 +231,28 @@ func (c *KuponController) GetUsages(ctx *gin.Context) {
 		return
 	}
 
-	page := 1
-	limit := 10
+	var params dto.KuponUsagesQueryParams
 
-	if halaman := ctx.Query("halaman"); halaman != "" {
-		if val, err := strconv.Atoi(halaman); err == nil && val > 0 {
-			page = val
-		}
+	if err := ctx.ShouldBindQuery(&params); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", parseValidationErrors(err))
+		return
 	}
 
-	if perHalaman := ctx.Query("per_halaman"); perHalaman != "" {
-		if val, err := strconv.Atoi(perHalaman); err == nil && val > 0 {
-			limit = val
-		}
+	// Manual validation for required fields (to catch empty string cases)
+	if params.Page < 1 {
+		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", "Parameter 'page' wajib diisi dan minimal 1")
+		return
+	}
+	if params.PerPage < 1 {
+		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", "Parameter 'per_page' wajib diisi dan minimal 1")
+		return
+	}
+	if params.PerPage > 100 {
+		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", "Parameter 'per_page' maksimal 100")
+		return
 	}
 
-	result, meta, err := c.kuponService.GetUsages(ctx.Request.Context(), id, page, limit)
+	result, meta, err := c.kuponService.GetUsages(ctx.Request.Context(), id, params.Page, params.PerPage)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) || err.Error() == "kupon tidak ditemukan" {
 			utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Kupon tidak ditemukan", "")

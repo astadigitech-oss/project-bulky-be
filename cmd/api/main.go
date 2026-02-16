@@ -105,6 +105,8 @@ func main() {
 	heroSectionService := services.NewHeroSectionService(heroSectionRepo, cfg)
 	bannerEventPromoService := services.NewBannerEventPromoService(bannerEventPromoRepo, reorderService, kategoriService, cfg)
 	ulasanService := services.NewUlasanService(ulasanRepo, pesananItemRepo, pesananRepo, cfg.UploadPath, cfg.BaseURL)
+	ulasanAdminService := services.NewUlasanAdminService(ulasanRepo)
+	pesananAdminService := services.NewPesananAdminService(pesananRepo, db)
 	forceUpdateService := services.NewForceUpdateService(forceUpdateRepo, cfg.PlayStoreURL, cfg.AppStoreURL)
 	modeMaintenanceService := services.NewModeMaintenanceService(modeMaintenanceRepo)
 	ppnService := services.NewPPNService(ppnRepo)
@@ -147,6 +149,8 @@ func main() {
 	heroSectionController := controllers.NewHeroSectionController(heroSectionService, cfg)
 	bannerEventPromoController := controllers.NewBannerEventPromoController(bannerEventPromoService, reorderService, cfg)
 	ulasanController := controllers.NewUlasanController(ulasanService)
+	ulasanAdminController := controllers.NewUlasanAdminController(ulasanAdminService)
+	pesananAdminController := controllers.NewPesananAdminController(pesananAdminService)
 	forceUpdateController := controllers.NewForceUpdateController(forceUpdateService)
 	modeMaintenanceController := controllers.NewModeMaintenanceController(modeMaintenanceService)
 	appStatusController := controllers.NewAppStatusController(forceUpdateService, modeMaintenanceService)
@@ -181,6 +185,7 @@ func main() {
 		buyerController, alamatBuyerController,
 		heroSectionController, bannerEventPromoController,
 		ulasanController,
+		ulasanAdminController, pesananAdminController,
 		forceUpdateController, modeMaintenanceController, appStatusController,
 		ppnController,
 		metodePembayaranController,
