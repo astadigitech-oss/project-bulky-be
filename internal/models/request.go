@@ -279,6 +279,7 @@ type CreateProdukRequest struct {
 	NamaID         string  `form:"nama_id" binding:"required,min=2,max=255"`
 	NamaEN         string  `form:"nama_en" binding:"required,min=2,max=255"`
 	IDCargo        *string `form:"id_cargo" binding:"omitempty,max=50"`
+	ReferenceID    *string `form:"reference_id" binding:"omitempty,max=100"`
 	KategoriID     string  `form:"kategori_id" binding:"required,uuid"`
 	MerekIDs       *string `form:"merek_ids" binding:"omitempty"` // Comma-separated UUIDs: "uuid1,uuid2,uuid3"
 	KondisiID      string  `form:"kondisi_id" binding:"required,uuid"`
@@ -303,6 +304,7 @@ type UpdateProdukRequest struct {
 	NamaID         *string `form:"nama_id" binding:"omitempty,min=2,max=255"`
 	NamaEN         *string `form:"nama_en" binding:"omitempty,min=2,max=255"`
 	IDCargo        *string `form:"id_cargo" binding:"omitempty,max=50"`
+	ReferenceID    *string `form:"reference_id" binding:"omitempty,max=100"`
 	KategoriID     *string `form:"kategori_id" binding:"omitempty,uuid"`
 	MerekIDs       *string `form:"merek_ids" binding:"omitempty"` // Comma-separated UUIDs: "uuid1,uuid2,uuid3"
 	KondisiID      *string `form:"kondisi_id" binding:"omitempty,uuid"`

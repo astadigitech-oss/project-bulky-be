@@ -75,6 +75,7 @@ func main() {
 	labelBlogRepo := repositories.NewLabelBlogRepository(db)
 	videoRepo := repositories.NewVideoRepository(db)
 	kategoriVideoRepo := repositories.NewKategoriVideoRepository(db)
+	kuponRepo := repositories.NewKuponRepository(db)
 
 	// Auth V2 repositories
 	authRepo := repositories.NewAuthRepository(db)
@@ -104,6 +105,8 @@ func main() {
 	heroSectionService := services.NewHeroSectionService(heroSectionRepo, cfg)
 	bannerEventPromoService := services.NewBannerEventPromoService(bannerEventPromoRepo, reorderService, kategoriService, cfg)
 	ulasanService := services.NewUlasanService(ulasanRepo, pesananItemRepo, pesananRepo, cfg.UploadPath, cfg.BaseURL)
+	ulasanAdminService := services.NewUlasanAdminService(ulasanRepo)
+	pesananAdminService := services.NewPesananAdminService(pesananRepo, db)
 	forceUpdateService := services.NewForceUpdateService(forceUpdateRepo, cfg.PlayStoreURL, cfg.AppStoreURL)
 	modeMaintenanceService := services.NewModeMaintenanceService(modeMaintenanceRepo)
 	ppnService := services.NewPPNService(ppnRepo)
@@ -119,6 +122,7 @@ func main() {
 	labelBlogService := services.NewLabelBlogService(labelBlogRepo)
 	videoService := services.NewVideoService(videoRepo, kategoriVideoRepo)
 	kategoriVideoService := services.NewKategoriVideoService(kategoriVideoRepo)
+	kuponService := services.NewKuponService(kuponRepo, kategoriRepo, db)
 
 	// Auth V2 services
 	authV2Service := services.NewAuthV2Service(authRepo, activityLogRepo)
@@ -145,6 +149,8 @@ func main() {
 	heroSectionController := controllers.NewHeroSectionController(heroSectionService, cfg)
 	bannerEventPromoController := controllers.NewBannerEventPromoController(bannerEventPromoService, reorderService, cfg)
 	ulasanController := controllers.NewUlasanController(ulasanService)
+	ulasanAdminController := controllers.NewUlasanAdminController(ulasanAdminService)
+	pesananAdminController := controllers.NewPesananAdminController(pesananAdminService)
 	forceUpdateController := controllers.NewForceUpdateController(forceUpdateService)
 	modeMaintenanceController := controllers.NewModeMaintenanceController(modeMaintenanceService)
 	appStatusController := controllers.NewAppStatusController(forceUpdateService, modeMaintenanceService)
@@ -160,6 +166,7 @@ func main() {
 	labelBlogController := controllers.NewLabelBlogController(labelBlogService, reorderService)
 	videoController := controllers.NewVideoController(videoService, kategoriVideoService, cfg)
 	kategoriVideoController := controllers.NewKategoriVideoController(kategoriVideoService, reorderService)
+	kuponController := controllers.NewKuponController(kuponService)
 
 	// Auth V2 controllers
 	authV2Controller := controllers.NewAuthV2Controller(authV2Service, adminService, buyerService)
@@ -178,6 +185,7 @@ func main() {
 		buyerController, alamatBuyerController,
 		heroSectionController, bannerEventPromoController,
 		ulasanController,
+		ulasanAdminController, pesananAdminController,
 		forceUpdateController, modeMaintenanceController, appStatusController,
 		ppnController,
 		metodePembayaranController,
@@ -186,6 +194,7 @@ func main() {
 		faqController,
 		blogController, kategoriBlogController, labelBlogController,
 		videoController, kategoriVideoController,
+		kuponController,
 	)
 
 	// Setup Auth V2 routes (new authentication system with roles & permissions)

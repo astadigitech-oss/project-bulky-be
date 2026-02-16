@@ -91,7 +91,8 @@ func (r *produkRepository) FindAll(ctx context.Context, params *models.ProdukFil
 		Preload("TipeProduk").
 		Preload("Gambar", func(db *gorm.DB) *gorm.DB {
 			return db.Where("is_primary = ?", true).Or("urutan = ?", 0).Limit(1)
-		})
+		}).
+		Preload("Dokumen")
 
 	// Apply filters
 	if params.Search != "" {
