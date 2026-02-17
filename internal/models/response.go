@@ -379,8 +379,8 @@ type SimpleProdukRelationInfo struct {
 }
 
 type ProdukWarehouseInfo struct {
-	ID   string  `json:"id"`
-	Nama string  `json:"nama"`
+	ID   string `json:"id"`
+	Nama string `json:"nama"`
 	// Slug string  `json:"slug"`
 	Kota *string `json:"kota"`
 }
