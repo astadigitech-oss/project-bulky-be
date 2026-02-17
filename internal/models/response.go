@@ -373,13 +373,13 @@ type ProdukRelationInfo struct {
 }
 
 type SimpleProdukRelationInfo struct {
-	// ID   string `json:"id"`
+	ID   string `json:"id"`
 	Nama string `json:"nama"`
 	// Slug string `json:"slug"`
 }
 
 type ProdukWarehouseInfo struct {
-	// ID   string  `json:"id"`
+	ID   string `json:"id"`
 	Nama string `json:"nama"`
 	// Slug string  `json:"slug"`
 	Kota *string `json:"kota"`
@@ -437,7 +437,6 @@ type ProdukPanelListResponse struct {
 	ID          string  `json:"id"`
 	NamaID      string  `json:"nama_id"`
 	NamaEN      string  `json:"nama_en"`
-	ReferenceID *string `json:"reference_id"` // Reference ID for WMS linking
 	Status      bool    `json:"status"`       // is_active
 	GambarUtama *string `json:"gambar_utama"` // Primary image URL
 	FilePDF     *string `json:"file_pdf"`     // First PDF document URL

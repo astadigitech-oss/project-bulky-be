@@ -176,7 +176,7 @@ func (s *produkService) CreateWithFiles(
 			ProdukID:  produk.ID,
 			GambarURL: relativePath,
 			Urutan:    i + 1,
-			IsPrimary: i == req.GambarUtamaIndex,
+			IsPrimary: i == 0, // Gambar pertama otomatis jadi primary
 		}
 
 		if err := tx.Create(gambar).Error; err != nil {
@@ -507,16 +507,27 @@ func (s *produkService) toListResponse(p *models.Produk) *models.ProdukListRespo
 // toPanelListResponse converts Produk to simplified ProdukPanelListResponse for admin panel
 func (s *produkService) toPanelListResponse(p *models.Produk) *models.ProdukPanelListResponse {
 	resp := &models.ProdukPanelListResponse{
-		ID:          p.ID.String(),
-		NamaID:      p.NamaID,
-		NamaEN:      p.NamaEN,
-		ReferenceID: p.ReferenceID,
-		Status:      p.IsActive,
+		ID:     p.ID.String(),
+		NamaID: p.NamaID,
+		NamaEN: p.NamaEN,
+		Status: p.IsActive,
 	}
 
-	// Get primary/first image
+	// Get primary/first image - prioritize is_primary, fallback to first by urutan
 	if len(p.Gambar) > 0 {
-		fullURL := utils.GetFileURL(p.Gambar[0].GambarURL, s.cfg)
+		var selectedGambar *models.ProdukGambar
+		// Find primary image first
+		for i := range p.Gambar {
+			if p.Gambar[i].IsPrimary {
+				selectedGambar = &p.Gambar[i]
+				break
+			}
+		}
+		// If no primary, use first one
+		if selectedGambar == nil {
+			selectedGambar = &p.Gambar[0]
+		}
+		fullURL := utils.GetFileURL(selectedGambar.GambarURL, s.cfg)
 		resp.GambarUtama = &fullURL
 	}
 
@@ -541,28 +552,28 @@ func (s *produkService) toDetailResponse(p *models.Produk) *models.ProdukDetailR
 		IDCargo:     p.IDCargo,
 		ReferenceID: p.ReferenceID,
 		Kategori: models.SimpleProdukRelationInfo{
-			// ID:   p.Kategori.ID.String(),
+			ID:   p.Kategori.ID.String(),
 			Nama: p.Kategori.GetNama().ID,
 			// Slug: p.Kategori.Slug,
 		},
 		Kondisi: models.SimpleProdukRelationInfo{
-			// ID:   p.Kondisi.ID.String(),
+			ID:   p.Kondisi.ID.String(),
 			Nama: p.Kondisi.GetNama().ID,
 			// Slug: p.Kondisi.Slug,
 		},
 		KondisiPaket: models.SimpleProdukRelationInfo{
-			// ID:   p.KondisiPaket.ID.String(),
+			ID:   p.KondisiPaket.ID.String(),
 			Nama: p.KondisiPaket.GetNama().ID,
 			// Slug: p.KondisiPaket.Slug,
 		},
 		Warehouse: models.ProdukWarehouseInfo{
-			// ID:   p.Warehouse.ID.String(),
+			ID:   p.Warehouse.ID.String(),
 			Nama: p.Warehouse.Nama,
 			// Slug: p.Warehouse.Slug,
 			Kota: p.Warehouse.Kota,
 		},
 		TipeProduk: models.SimpleProdukRelationInfo{
-			// ID:   p.TipeProduk.ID.String(),
+			ID:   p.TipeProduk.ID.String(),
 			Nama: p.TipeProduk.Nama,
 			// Slug: p.TipeProduk.Slug,
 		},
@@ -585,7 +596,7 @@ func (s *produkService) toDetailResponse(p *models.Produk) *models.ProdukDetailR
 	resp.Mereks = make([]models.SimpleProdukRelationInfo, 0, len(p.Mereks))
 	for _, merek := range p.Mereks {
 		resp.Mereks = append(resp.Mereks, models.SimpleProdukRelationInfo{
-			// ID:   merek.ID.String(),
+			ID:   merek.ID.String(),
 			Nama: merek.GetNama().ID,
 			// Slug: merek.Slug,
 		})
@@ -593,7 +604,7 @@ func (s *produkService) toDetailResponse(p *models.Produk) *models.ProdukDetailR
 
 	if p.Sumber != nil {
 		resp.Sumber = &models.SimpleProdukRelationInfo{
-			// ID:   p.Sumber.ID.String(),
+			ID:   p.Sumber.ID.String(),
 			Nama: p.Sumber.GetNama().ID,
 			// Slug: p.Sumber.Slug,
 		}
