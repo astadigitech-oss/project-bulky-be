@@ -90,13 +90,13 @@ func (r *produkRepository) FindAll(ctx context.Context, params *models.ProdukFil
 		Preload("Warehouse").
 		Preload("TipeProduk").
 		Preload("Gambar", func(db *gorm.DB) *gorm.DB {
-			return db.Where("is_primary = ?", true).Or("urutan = ?", 0).Limit(1)
+			return db.Order("urutan ASC")
 		}).
 		Preload("Dokumen")
 
 	// Apply filters
 	if params.Search != "" {
-		query = query.Where("nama ILIKE ? OR id_cargo ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")
+		query = query.Where("nama_id ILIKE ? OR nama_en ILIKE ? OR id_cargo ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%", "%"+params.Search+"%")
 	}
 	if params.KategoriID != "" {
 		query = query.Where("kategori_id = ?", params.KategoriID)

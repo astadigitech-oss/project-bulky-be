@@ -296,7 +296,6 @@ type CreateProdukRequest struct {
 	Lebar              float64 `form:"lebar" binding:"required,gt=0"`   // cm
 	Tinggi             float64 `form:"tinggi" binding:"required,gt=0"`  // cm
 	Berat              float64 `form:"berat" binding:"required,gt=0"`   // kg
-	GambarUtamaIndex   int     `form:"gambar_utama_index"`
 	// IsActive: handled manually in controller, accepts "true"/"false" or "1"/"0"
 }
 
