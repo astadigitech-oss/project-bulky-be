@@ -304,19 +304,6 @@ func (c *ProdukController) ReorderGambar(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, "Urutan gambar berhasil diubah", result)
 }
 
-func (c *ProdukController) SetPrimaryGambar(ctx *gin.Context) {
-	produkID := ctx.Param("id")
-	gambarID := ctx.Param("gambar_id")
-
-	result, err := c.gambarService.SetPrimary(ctx.Request.Context(), produkID, gambarID)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, "Gambar utama berhasil diubah", result)
-}
-
 // ========================================
 // Produk Dokumen Handlers
 // ========================================

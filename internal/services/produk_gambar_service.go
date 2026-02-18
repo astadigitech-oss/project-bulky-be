@@ -18,7 +18,6 @@ type ProdukGambarService interface {
 	CreateWithFile(ctx context.Context, produkID string, file *multipart.FileHeader, isPrimary bool) (*models.ProdukGambarResponse, error)
 	Delete(ctx context.Context, produkID, gambarID string) error
 	Reorder(ctx context.Context, produkID, gambarID, direction string) (map[string]interface{}, error)
-	SetPrimary(ctx context.Context, produkID, gambarID string) (*models.ProdukGambarResponse, error)
 }
 
 type produkGambarService struct {
@@ -102,7 +101,18 @@ func (s *produkGambarService) Delete(ctx context.Context, produkID, gambarID str
 	}
 
 	// Delete from database
-	return s.repo.Delete(ctx, gambarID)
+	if err := s.repo.Delete(ctx, gambarID); err != nil {
+		return err
+	}
+
+	// If deleted gambar was primary, auto-set primary to lowest urutan remaining
+	if gambar.IsPrimary {
+		if err := s.autoSetPrimaryByLowestUrutan(ctx, produkID); err != nil {
+			fmt.Printf("Warning: failed to auto-set primary after delete: %v\n", err)
+		}
+	}
+
+	return nil
 }
 
 func (s *produkGambarService) Reorder(ctx context.Context, produkID, gambarID, direction string) (map[string]interface{}, error) {
@@ -165,40 +175,43 @@ func (s *produkGambarService) Reorder(ctx context.Context, produkID, gambarID, d
 		return nil, err
 	}
 
+	// Auto-set primary to gambar with lowest urutan after reorder
+	if err := s.autoSetPrimaryByLowestUrutan(ctx, produkID); err != nil {
+		fmt.Printf("Warning: failed to auto-set primary after reorder: %v\n", err)
+	}
+
+	// Reload updated gambar to reflect new is_primary value
+	gambar, _ = s.repo.FindByID(ctx, gambarID)
+	swappedGambar, _ = func() (*models.ProdukGambar, error) { return s.repo.FindByID(ctx, swappedGambar.ID.String()) }()
+
 	return map[string]interface{}{
 		"item": map[string]interface{}{
-			"id":     gambar.ID.String(),
-			"urutan": gambar.Urutan,
+			"id":         gambar.ID.String(),
+			"urutan":     gambar.Urutan,
+			"is_primary": gambar.IsPrimary,
 		},
 		"swapped_with": map[string]interface{}{
-			"id":     swappedGambar.ID.String(),
-			"urutan": swappedGambar.Urutan,
+			"id":         swappedGambar.ID.String(),
+			"urutan":     swappedGambar.Urutan,
+			"is_primary": swappedGambar.IsPrimary,
 		},
 	}, nil
 }
 
-func (s *produkGambarService) SetPrimary(ctx context.Context, produkID, gambarID string) (*models.ProdukGambarResponse, error) {
-	gambar, err := s.repo.FindByID(ctx, gambarID)
-	if err != nil {
-		return nil, errors.New("gambar tidak ditemukan")
+// autoSetPrimaryByLowestUrutan sets the gambar with the lowest urutan as primary.
+func (s *produkGambarService) autoSetPrimaryByLowestUrutan(ctx context.Context, produkID string) error {
+	gambars, err := s.repo.FindByProdukID(ctx, produkID)
+	if err != nil || len(gambars) == 0 {
+		return err
 	}
 
-	// Verify produk ownership
-	if gambar.ProdukID.String() != produkID {
-		return nil, errors.New("gambar tidak ditemukan")
+	// Find gambar with smallest urutan
+	lowest := &gambars[0]
+	for i := range gambars {
+		if gambars[i].Urutan < lowest.Urutan {
+			lowest = &gambars[i]
+		}
 	}
 
-	// Set as primary
-	if err := s.repo.SetPrimary(ctx, produkID, gambarID); err != nil {
-		return nil, err
-	}
-
-	gambar.IsPrimary = true
-
-	return &models.ProdukGambarResponse{
-		ID:        gambar.ID.String(),
-		GambarURL: utils.GetFileURL(gambar.GambarURL, s.cfg),
-		Urutan:    gambar.Urutan,
-		IsPrimary: gambar.IsPrimary,
-	}, nil
+	return s.repo.SetPrimary(ctx, produkID, lowest.ID.String())
 }
