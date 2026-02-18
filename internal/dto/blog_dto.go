@@ -161,10 +161,10 @@ type UpdateKategoriBlogRequest struct {
 
 // Label Blog DTOs
 type CreateLabelBlogRequest struct {
-	NamaID string `json:"nama_id" binding:"required,max=100" validate:"required,max=100"`
-	NamaEN string `json:"nama_en" binding:"required,max=100" validate:"required,max=100"`
-	Slug   string `json:"slug" binding:"required,max=100" validate:"required,max=100"`
-	Urutan int    `json:"urutan"`
+	NamaID string  `json:"nama_id" binding:"required,max=100" validate:"required,max=100"`
+	NamaEN string  `json:"nama_en" binding:"required,max=100" validate:"required,max=100"`
+	Slug   *string `json:"slug" binding:"omitempty,max=100" validate:"omitempty,max=100"`
+	Urutan int     `json:"urutan"`
 }
 
 type UpdateLabelBlogRequest struct {

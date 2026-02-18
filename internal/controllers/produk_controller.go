@@ -166,7 +166,25 @@ func (c *ProdukController) Update(ctx *gin.Context) {
 		}
 	}
 
-	result, err := c.service.Update(ctx.Request.Context(), id, &req)
+	// Get dokumen files (optional - if provided, replaces all existing dokumen)
+	var dokumenFiles []*multipart.FileHeader
+	var dokumenNama []string
+	if form, err := ctx.MultipartForm(); err == nil {
+		dokumenFiles = form.File["dokumen[]"]
+		if len(dokumenFiles) > 5 {
+			utils.ErrorResponse(ctx, http.StatusBadRequest, "Maksimal 5 dokumen", nil)
+			return
+		}
+		for i, file := range dokumenFiles {
+			if err := validateDocumentFile(file); err != nil {
+				utils.ErrorResponse(ctx, http.StatusBadRequest, fmt.Sprintf("dokumen[%d]: %s", i, err.Error()), nil)
+				return
+			}
+		}
+		dokumenNama = ctx.PostFormArray("dokumen_nama[]")
+	}
+
+	result, err := c.service.UpdateWithFiles(ctx.Request.Context(), id, &req, dokumenFiles, dokumenNama)
 	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 		return

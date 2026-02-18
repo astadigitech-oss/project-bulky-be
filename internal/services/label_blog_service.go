@@ -7,6 +7,7 @@ import (
 	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
+	"project-bulky-be/pkg/utils"
 
 	"github.com/google/uuid"
 )
@@ -31,10 +32,17 @@ func NewLabelBlogService(repo repositories.LabelBlogRepository) LabelBlogService
 }
 
 func (s *labelBlogService) Create(ctx context.Context, req *dto.CreateLabelBlogRequest) (*models.LabelBlog, error) {
+	slug := ""
+	if req.Slug != nil && *req.Slug != "" {
+		slug = *req.Slug
+	} else {
+		slug = utils.GenerateSlug(req.NamaID)
+	}
+
 	label := &models.LabelBlog{
 		NamaID: req.NamaID,
 		NamaEN: req.NamaEN,
-		Slug:   req.Slug,
+		Slug:   slug,
 		Urutan: req.Urutan,
 	}
 
@@ -58,7 +66,15 @@ func (s *labelBlogService) Update(ctx context.Context, id uuid.UUID, req *dto.Up
 		label.NamaEN = *req.NamaEN
 	}
 	if req.Slug != nil {
-		label.Slug = *req.Slug
+		if *req.Slug != "" {
+			label.Slug = *req.Slug
+		} else if req.NamaID != nil {
+			// Slug explicitly set to empty string but NamaID is changing -> auto-generate from new NamaID
+			label.Slug = utils.GenerateSlug(*req.NamaID)
+		}
+	} else if req.NamaID != nil {
+		// Slug not provided at all but NamaID is changing -> auto-generate from new NamaID
+		label.Slug = utils.GenerateSlug(*req.NamaID)
 	}
 	if req.Urutan != nil {
 		label.Urutan = *req.Urutan
@@ -99,6 +115,7 @@ func (s *labelBlogService) GetBySlug(ctx context.Context, slug string) (*models.
 }
 
 func (s *labelBlogService) GetAll(ctx context.Context, params *dto.LabelBlogFilterRequest) ([]models.LabelBlog, models.PaginationMeta, error) {
+	params.SetDefaults()
 	return s.repo.FindAll(ctx, params)
 }
 

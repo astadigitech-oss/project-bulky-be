@@ -25,6 +25,7 @@ type ProdukService interface {
 	FindBySlug(ctx context.Context, slug string) (*models.ProdukDetailResponse, error)
 	FindAll(ctx context.Context, params *models.ProdukFilterRequest) ([]models.ProdukPanelListResponse, *models.PaginationMeta, error)
 	Update(ctx context.Context, id string, req *models.UpdateProdukRequest) (*models.ProdukDetailResponse, error)
+	UpdateWithFiles(ctx context.Context, id string, req *models.UpdateProdukRequest, dokumenFiles []*multipart.FileHeader, dokumenNama []string) (*models.ProdukDetailResponse, error)
 	Delete(ctx context.Context, id string) error
 	ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error)
 	UpdateStock(ctx context.Context, id string, req *models.UpdateStockRequest) (*models.ProdukDetailResponse, error)
@@ -388,6 +389,88 @@ func (s *produkService) Update(ctx context.Context, id string, req *models.Updat
 	}
 
 	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		return nil, err
+	}
+
+	return s.FindByID(ctx, id)
+}
+
+func (s *produkService) UpdateWithFiles(ctx context.Context, id string, req *models.UpdateProdukRequest, dokumenFiles []*multipart.FileHeader, dokumenNama []string) (*models.ProdukDetailResponse, error) {
+	// First do the regular product update
+	result, err := s.Update(ctx, id, req)
+	if err != nil {
+		return nil, err
+	}
+
+	// If no new dokumen files, return the result as-is
+	if len(dokumenFiles) == 0 {
+		return result, nil
+	}
+
+	// Validate max 5 dokumen
+	if len(dokumenFiles) > 5 {
+		return nil, errors.New("maksimal 5 dokumen")
+	}
+
+	// Begin transaction for dokumen replacement
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Fetch existing dokumen to delete files from storage
+	existingDokumens, err := s.dokumenRepo.FindByProdukID(ctx, id)
+	if err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("gagal mengambil dokumen lama: %w", err)
+	}
+
+	// Delete all existing dokumen files from storage
+	for _, dok := range existingDokumens {
+		if err := utils.DeleteFile(dok.FileURL, s.cfg); err != nil {
+			fmt.Printf("Warning: gagal menghapus file dokumen %s: %v\n", dok.FileURL, err)
+		}
+	}
+
+	// Delete all existing dokumen records from DB
+	produkUUID, _ := uuid.Parse(id)
+	if err := tx.Where("produk_id = ?", produkUUID).Delete(&models.ProdukDokumen{}).Error; err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("gagal menghapus dokumen lama: %w", err)
+	}
+
+	// Upload and insert new dokumen
+	dokumenDir := fmt.Sprintf("documents/%s", id)
+	for i, file := range dokumenFiles {
+		relativePath, err := utils.SaveUploadedFile(file, dokumenDir, s.cfg)
+		if err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("gagal upload dokumen: %w", err)
+		}
+
+		nama := file.Filename
+		if i < len(dokumenNama) && dokumenNama[i] != "" {
+			nama = dokumenNama[i]
+		}
+
+		dokumen := &models.ProdukDokumen{
+			ProdukID:    produkUUID,
+			NamaDokumen: nama,
+			FileURL:     relativePath,
+			TipeFile:    "pdf",
+			UkuranFile:  intPtr(int(file.Size)),
+		}
+
+		if err := tx.Create(dokumen).Error; err != nil {
+			tx.Rollback()
+			utils.DeleteFile(relativePath, s.cfg)
+			return nil, err
+		}
+	}
+
 	if err := tx.Commit().Error; err != nil {
 		return nil, err
 	}
