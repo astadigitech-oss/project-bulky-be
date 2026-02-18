@@ -42,20 +42,14 @@ func (p *PesananAdminQueryParams) SetDefaults() {
 
 // PesananAdminListResponse simple response for pesanan list (admin)
 type PesananAdminListResponse struct {
-	ID              uuid.UUID                 `json:"id"`
-	Kode            string                    `json:"kode"`
-	Buyer           PesananAdminBuyerResponse `json:"buyer"`
-	DeliveryType    string                    `json:"delivery_type"`
-	PaymentType     string                    `json:"payment_type"`
-	PaymentStatus   string                    `json:"payment_status"`
-	OrderStatus     string                    `json:"order_status"`
-	TotalItem       int                       `json:"total_item"`
-	BiayaProduk     decimal.Decimal           `json:"biaya_produk"`
-	BiayaPengiriman decimal.Decimal           `json:"biaya_pengiriman"`
-	BiayaPPN        decimal.Decimal           `json:"biaya_ppn"`
-	TotalBayar      decimal.Decimal           `json:"total_bayar"`
-	CreatedAt       time.Time                 `json:"created_at"`
-	UpdatedAt       time.Time                 `json:"updated_at"`
+	ID          uuid.UUID                 `json:"id"`
+	Buyer       PesananAdminBuyerResponse `json:"buyer"`
+	Kode        string                    `json:"kode"`
+	TotalBayar  decimal.Decimal           `json:"total_bayar"`
+	TotalItem   int                       `json:"total_item"`
+	PaymentType string                    `json:"payment_type"`
+	Status      string                    `json:"status"`
+	OrderAt     *time.Time                `json:"order_at"`
 }
 
 // PesananAdminDetailResponse detailed response for pesanan (admin)
@@ -84,9 +78,8 @@ type PesananAdminDetailResponse struct {
 
 // PesananAdminBuyerResponse buyer info for list
 type PesananAdminBuyerResponse struct {
-	ID    uuid.UUID `json:"id"`
-	Nama  string    `json:"nama"`
-	Email string    `json:"email"`
+	ID   uuid.UUID `json:"id"`
+	Nama string    `json:"nama"`
 }
 
 // PesananAdminBuyerDetailResponse buyer info with phone for detail

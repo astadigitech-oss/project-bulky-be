@@ -23,7 +23,7 @@ type Kupon struct {
 	NilaiDiskon       float64        `gorm:"type:decimal(15,2);not null" json:"nilai_diskon"`
 	MinimalPembelian  float64        `gorm:"type:decimal(15,2);not null;default:0" json:"minimal_pembelian"`
 	LimitPemakaian    *int           `gorm:"type:integer" json:"limit_pemakaian"`
-	TanggalKedaluarsa time.Time      `gorm:"type:date;not null" json:"tanggal_kedaluarsa"`
+	TanggalKedaluarsa time.Time      `gorm:"type:timestamptz;not null" json:"tanggal_kedaluarsa"`
 	IsAllKategori     *bool          `gorm:"not null;default:true" json:"is_all_kategori"`
 	IsActive          *bool          `gorm:"not null;default:true" json:"is_active"`
 	CreatedAt         time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
@@ -48,16 +48,7 @@ func (k *Kupon) GetUsageCount(db *gorm.DB) int64 {
 
 // IsExpired checks if kupon is expired
 func (k *Kupon) IsExpired() bool {
-	now := time.Now()
-	// Set to end of day for comparison
-	endOfDay := time.Date(
-		k.TanggalKedaluarsa.Year(),
-		k.TanggalKedaluarsa.Month(),
-		k.TanggalKedaluarsa.Day(),
-		23, 59, 59, 999999999,
-		time.Local,
-	)
-	return now.After(endOfDay)
+	return time.Now().UTC().After(k.TanggalKedaluarsa.UTC())
 }
 
 // IsLimitReached checks if usage limit is reached

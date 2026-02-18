@@ -121,7 +121,7 @@ func (s *pesananAdminService) UpdateStatus(ctx context.Context, id uuid.UUID, re
 		Kode:           pesanan.Kode,
 		OrderStatus:    req.OrderStatus,
 		PreviousStatus: previousStatus,
-		UpdatedAt:      time.Now(),
+		UpdatedAt:      time.Now().UTC(),
 		UpdatedBy:      adminID,
 	}, nil
 }
@@ -190,25 +190,24 @@ func (s *pesananAdminService) GetStatistics(ctx context.Context, tanggalDari, ta
 func (s *pesananAdminService) mapToListResponse(p *models.Pesanan) dto.PesananAdminListResponse {
 	totalItem := len(p.Items)
 
+	var orderAt *time.Time
+	if p.PaidAt != nil {
+		t := p.PaidAt.UTC()
+		orderAt = &t
+	}
+
 	return dto.PesananAdminListResponse{
-		ID:   p.ID,
-		Kode: p.Kode,
+		ID: p.ID,
 		Buyer: dto.PesananAdminBuyerResponse{
-			ID:    p.BuyerID,
-			Nama:  p.Buyer.Nama,
-			Email: p.Buyer.Email,
+			ID:   p.BuyerID,
+			Nama: p.Buyer.Nama,
 		},
-		DeliveryType:    string(p.DeliveryType),
-		PaymentType:     string(p.PaymentType),
-		PaymentStatus:   string(p.PaymentStatus),
-		OrderStatus:     string(p.OrderStatus),
-		TotalItem:       totalItem,
-		BiayaProduk:     p.BiayaProduk,
-		BiayaPengiriman: p.BiayaPengiriman,
-		BiayaPPN:        p.BiayaPPN,
-		TotalBayar:      p.Total,
-		CreatedAt:       p.CreatedAt,
-		UpdatedAt:       p.UpdatedAt,
+		Kode:        p.Kode,
+		TotalBayar:  p.Total,
+		TotalItem:   totalItem,
+		PaymentType: string(p.PaymentType),
+		Status:      string(p.OrderStatus),
+		OrderAt:     orderAt,
 	}
 }
 
@@ -247,12 +246,18 @@ func (s *pesananAdminService) mapToDetailResponse(p *models.Pesanan, statusHisto
 	pembayaran := make([]dto.PesananAdminPembayaranResponse, len(p.Pembayaran))
 	for i, bayar := range p.Pembayaran {
 		pembayaran[i] = dto.PesananAdminPembayaranResponse{
-			ID:              bayar.ID,
-			BuyerID:         bayar.BuyerID,
-			NamaPembayar:    bayar.Buyer.Nama,
-			Jumlah:          bayar.Jumlah,
-			Status:          string(bayar.Status),
-			PaidAt:          bayar.PaidAt,
+			ID:           bayar.ID,
+			BuyerID:      bayar.BuyerID,
+			NamaPembayar: bayar.Buyer.Nama,
+			Jumlah:       bayar.Jumlah,
+			Status:       string(bayar.Status),
+			PaidAt: func() *time.Time {
+				if bayar.PaidAt == nil {
+					return nil
+				}
+				t := bayar.PaidAt.UTC()
+				return &t
+			}(),
 			XenditInvoiceID: bayar.XenditInvoiceID,
 		}
 
@@ -273,7 +278,7 @@ func (s *pesananAdminService) mapToDetailResponse(p *models.Pesanan, statusHisto
 			StatusTo:   h.StatusTo,
 			StatusType: string(h.StatusType),
 			Note:       h.Note,
-			CreatedAt:  h.CreatedAt,
+			CreatedAt:  h.CreatedAt.UTC(),
 		}
 	}
 
@@ -305,8 +310,8 @@ func (s *pesananAdminService) mapToDetailResponse(p *models.Pesanan, statusHisto
 		TotalBayar:      p.Total,
 		CatatanBuyer:    p.Catatan,
 		CatatanAdmin:    p.CatatanAdmin,
-		CreatedAt:       p.CreatedAt,
-		UpdatedAt:       p.UpdatedAt,
+		CreatedAt:       p.CreatedAt.UTC(),
+		UpdatedAt:       p.UpdatedAt.UTC(),
 	}
 
 	// Map alamat if exists

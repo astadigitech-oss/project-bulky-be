@@ -173,8 +173,9 @@ func (s *diskonKategoriService) ToggleStatus(ctx context.Context, id string) (*m
 	}
 
 	return &models.ToggleStatusResponse{
-		ID:       diskon.ID.String(),
-		IsActive: diskon.IsActive,
+		ID:        diskon.ID.String(),
+		IsActive:  diskon.IsActive,
+		UpdatedAt: diskon.UpdatedAt.UTC(),
 	}, nil
 }
 
@@ -201,7 +202,7 @@ func (s *diskonKategoriService) toResponse(d *models.DiskonKategori) *models.Dis
 		TanggalMulai:     tanggalMulai,
 		TanggalSelesai:   tanggalSelesai,
 		IsActive:         d.IsActive,
-		CreatedAt:        d.CreatedAt,
-		UpdatedAt:        d.UpdatedAt,
+		CreatedAt:        d.CreatedAt.UTC(),
+		UpdatedAt:        d.UpdatedAt.UTC(),
 	}
 }

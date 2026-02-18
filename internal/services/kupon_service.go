@@ -71,12 +71,6 @@ func (s *kuponService) Create(ctx context.Context, req *dto.CreateKuponRequest) 
 		}
 	}
 
-	// Parse tanggal_kedaluarsa
-	tanggal, err := time.Parse("2006-01-02", req.TanggalKedaluarsa)
-	if err != nil {
-		return nil, errors.New("format tanggal kedaluarsa tidak valid")
-	}
-
 	// Create kupon
 	isActiveTrue := true
 	kupon := &models.Kupon{
@@ -87,7 +81,7 @@ func (s *kuponService) Create(ctx context.Context, req *dto.CreateKuponRequest) 
 		NilaiDiskon:       req.NilaiDiskon,
 		MinimalPembelian:  req.MinimalPembelian,
 		LimitPemakaian:    req.LimitPemakaian,
-		TanggalKedaluarsa: tanggal,
+		TanggalKedaluarsa: req.TanggalKedaluarsa.UTC(),
 		IsAllKategori:     req.IsAllKategori,
 		IsActive:          &isActiveTrue,
 	}
@@ -149,12 +143,6 @@ func (s *kuponService) Update(ctx context.Context, id uuid.UUID, req *dto.Update
 		}
 	}
 
-	// Parse tanggal_kedaluarsa
-	tanggal, err := time.Parse("2006-01-02", req.TanggalKedaluarsa)
-	if err != nil {
-		return nil, errors.New("format tanggal kedaluarsa tidak valid")
-	}
-
 	// Update kupon fields
 	kupon.Kode = req.Kode
 	kupon.Nama = req.Nama
@@ -163,7 +151,7 @@ func (s *kuponService) Update(ctx context.Context, id uuid.UUID, req *dto.Update
 	kupon.NilaiDiskon = req.NilaiDiskon
 	kupon.MinimalPembelian = req.MinimalPembelian
 	kupon.LimitPemakaian = req.LimitPemakaian
-	kupon.TanggalKedaluarsa = tanggal
+	kupon.TanggalKedaluarsa = req.TanggalKedaluarsa.UTC()
 	kupon.IsAllKategori = req.IsAllKategori
 
 	if err := s.kuponRepo.Update(ctx, kupon); err != nil {
@@ -269,7 +257,7 @@ func (s *kuponService) ToggleStatus(ctx context.Context, id uuid.UUID) (*dto.Tog
 		ID:        updated.ID,
 		Kode:      updated.Kode,
 		IsActive:  updated.IsActive != nil && *updated.IsActive,
-		UpdatedAt: updated.UpdatedAt,
+		UpdatedAt: updated.UpdatedAt.UTC(),
 	}, nil
 }
 
@@ -321,7 +309,7 @@ func (s *kuponService) GetUsages(ctx context.Context, kuponID uuid.UUID, page, l
 				Kode: usage.Pesanan.Kode,
 			},
 			NilaiPotongan: usage.NilaiPotongan,
-			CreatedAt:     usage.CreatedAt,
+			CreatedAt:     usage.CreatedAt.UTC(),
 		}
 	}
 
@@ -359,35 +347,14 @@ func (s *kuponService) GetKategoriDropdown(ctx context.Context) ([]dto.KategoriD
 // Helper methods
 
 func (s *kuponService) toListResponse(kupon *models.Kupon) dto.KuponListResponse {
-	totalUsage := int(kupon.GetUsageCount(s.db))
-	remainingUsage := kupon.GetRemainingUsage(s.db)
-
-	// Count kategori
-	kategoriCount := 0
-	if kupon.IsAllKategori != nil && !*kupon.IsAllKategori {
-		var count int64
-		s.db.Model(&models.KuponKategori{}).Where("kupon_id = ?", kupon.ID).Count(&count)
-		kategoriCount = int(count)
-	}
-
 	return dto.KuponListResponse{
-		ID:                kupon.ID,
-		Kode:              kupon.Kode,
-		Nama:              kupon.Nama,
-		Deskripsi:         kupon.Deskripsi,
-		JenisDiskon:       string(kupon.JenisDiskon),
-		NilaiDiskon:       kupon.NilaiDiskon,
-		MinimalPembelian:  kupon.MinimalPembelian,
-		LimitPemakaian:    kupon.LimitPemakaian,
-		TotalUsage:        totalUsage,
-		RemainingUsage:    remainingUsage,
-		TanggalKedaluarsa: kupon.TanggalKedaluarsa.Format("2006-01-02"),
-		IsAllKategori:     kupon.IsAllKategori != nil && *kupon.IsAllKategori,
-		KategoriCount:     kategoriCount,
-		IsActive:          kupon.IsActive != nil && *kupon.IsActive,
-		IsExpired:         kupon.IsExpired(),
-		CreatedAt:         kupon.CreatedAt,
-		UpdatedAt:         kupon.UpdatedAt,
+		ID:          kupon.ID,
+		Status:      kupon.IsActive != nil && *kupon.IsActive,
+		JenisDiskon: string(kupon.JenisDiskon),
+		Kode:        kupon.Kode,
+		Nama:        kupon.Nama,
+		NilaiDiskon: kupon.NilaiDiskon,
+		UpdatedAt:   kupon.UpdatedAt.UTC(),
 	}
 }
 
@@ -419,13 +386,13 @@ func (s *kuponService) toDetailResponse(kupon *models.Kupon) *dto.KuponDetailRes
 		LimitPemakaian:    kupon.LimitPemakaian,
 		TotalUsage:        totalUsage,
 		RemainingUsage:    remainingUsage,
-		TanggalKedaluarsa: kupon.TanggalKedaluarsa.Format("2006-01-02"),
+		TanggalKedaluarsa: kupon.TanggalKedaluarsa.UTC(),
 		IsAllKategori:     kupon.IsAllKategori != nil && *kupon.IsAllKategori,
 		Kategori:          kategoriResponses,
 		IsActive:          kupon.IsActive != nil && *kupon.IsActive,
 		IsExpired:         kupon.IsExpired(),
-		CreatedAt:         kupon.CreatedAt,
-		UpdatedAt:         kupon.UpdatedAt,
+		CreatedAt:         kupon.CreatedAt.UTC(),
+		UpdatedAt:         kupon.UpdatedAt.UTC(),
 	}
 }
 

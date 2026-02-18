@@ -69,8 +69,9 @@ type FieldError struct {
 // ========================================
 
 type ToggleStatusResponse struct {
-	ID       string `json:"id"`
-	IsActive bool   `json:"is_active"`
+	ID        string    `json:"id"`
+	IsActive  bool      `json:"is_active"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type ToggleDefaultResponse struct {

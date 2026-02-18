@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"os"
+	"time"
+
 	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
@@ -140,49 +142,37 @@ func (s *ulasanAdminService) Delete(ctx context.Context, id uuid.UUID) error {
 // Helper functions to map models to DTOs
 
 func (s *ulasanAdminService) mapToListResponse(u *models.Ulasan) dto.UlasanAdminListResponse {
-	baseURL := os.Getenv("BASE_URL")
-	if baseURL == "" {
-		baseURL = "http://localhost:8080"
+	var approvedBy *string
+	if u.ApprovedBy != nil && u.Approver != nil {
+		nama := u.Approver.Nama
+		approvedBy = &nama
 	}
 
-	var gambarURL *string
-	if u.Gambar != nil {
-		url := baseURL + "/uploads/" + *u.Gambar
-		gambarURL = &url
+	var approvedAt *time.Time
+	if u.ApprovedAt != nil {
+		t := u.ApprovedAt.UTC()
+		approvedAt = &t
 	}
 
-	response := dto.UlasanAdminListResponse{
-		ID: u.ID,
+	return dto.UlasanAdminListResponse{
+		ID:     u.ID,
+		Rating: u.Rating,
 		Buyer: dto.UlasanAdminBuyerResponse{
-			ID:    u.BuyerID,
-			Nama:  u.Buyer.Nama,
-			Email: u.Buyer.Email,
+			ID:   u.BuyerID,
+			Nama: u.Buyer.Nama,
 		},
+		Approved: dto.UlasanAdminApprovedInfo{
+			At:     approvedAt,
+			By:     approvedBy,
+			Status: u.IsApproved,
+		},
+		Gambar:    u.Gambar != nil,
+		CreatedAt: u.CreatedAt.UTC(),
 		Pesanan: dto.UlasanAdminPesananResponse{
 			ID:   u.PesananID,
 			Kode: u.Pesanan.Kode,
 		},
-		Produk: dto.UlasanAdminProdukResponse{
-			ID:   u.ProdukID,
-			Nama: u.Produk.NamaID,
-			Slug: u.Produk.Slug,
-		},
-		Rating:     u.Rating,
-		Komentar:   u.Komentar,
-		GambarURL:  gambarURL,
-		IsApproved: u.IsApproved,
-		ApprovedAt: u.ApprovedAt,
-		CreatedAt:  u.CreatedAt,
 	}
-
-	if u.ApprovedBy != nil && u.Approver != nil {
-		response.ApprovedBy = &dto.UlasanAdminApproverResponse{
-			ID:   *u.ApprovedBy,
-			Nama: u.Approver.Nama,
-		}
-	}
-
-	return response
 }
 
 func (s *ulasanAdminService) mapToDetailResponse(u *models.Ulasan) *dto.UlasanAdminDetailResponse {
@@ -220,7 +210,7 @@ func (s *ulasanAdminService) mapToDetailResponse(u *models.Ulasan) *dto.UlasanAd
 			ID:          u.PesananID,
 			Kode:        u.Pesanan.Kode,
 			OrderStatus: string(u.Pesanan.OrderStatus),
-			CreatedAt:   u.Pesanan.CreatedAt,
+			CreatedAt:   u.Pesanan.CreatedAt.UTC(),
 		},
 		Produk: dto.UlasanAdminProdukDetailResponse{
 			ID:        u.ProdukID,
@@ -232,9 +222,15 @@ func (s *ulasanAdminService) mapToDetailResponse(u *models.Ulasan) *dto.UlasanAd
 		Komentar:   u.Komentar,
 		GambarURL:  gambarURL,
 		IsApproved: u.IsApproved,
-		ApprovedAt: u.ApprovedAt,
-		CreatedAt:  u.CreatedAt,
-		UpdatedAt:  u.UpdatedAt,
+		ApprovedAt: func() *time.Time {
+			if u.ApprovedAt == nil {
+				return nil
+			}
+			t := u.ApprovedAt.UTC()
+			return &t
+		}(),
+		CreatedAt: u.CreatedAt.UTC(),
+		UpdatedAt: u.UpdatedAt.UTC(),
 	}
 
 	if u.ApprovedBy != nil && u.Approver != nil {
