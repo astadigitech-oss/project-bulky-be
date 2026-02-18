@@ -152,6 +152,25 @@ type UpdateKategoriVideoRequest struct {
 }
 
 // Dropdown Response DTO
+// Kategori Video panel list/detail response
+type KategoriVideoListResponse struct {
+	ID        string    `json:"id"`
+	NamaID    string    `json:"nama_id"`
+	NamaEN    *string   `json:"nama_en"`
+	Urutan    int       `json:"urutan"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type KategoriVideoDetailResponse struct {
+	ID        string    `json:"id"`
+	NamaID    string    `json:"nama_id"`
+	NamaEN    *string   `json:"nama_en"`
+	Slug      string    `json:"slug"`
+	Urutan    int       `json:"urutan"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 type KategoriVideoDropdownResponse struct {
 	ID   uuid.UUID              `json:"id"`
 	Nama map[string]interface{} `json:"nama"` // {"id": "...", "en": "..."}

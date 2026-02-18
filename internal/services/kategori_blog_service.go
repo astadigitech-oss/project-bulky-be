@@ -15,10 +15,10 @@ type KategoriBlogService interface {
 	Create(ctx context.Context, req *dto.CreateKategoriBlogRequest) (*models.KategoriBlog, error)
 	Update(ctx context.Context, id uuid.UUID, req *dto.UpdateKategoriBlogRequest) (*models.KategoriBlog, error)
 	Delete(ctx context.Context, id uuid.UUID) error
-	GetByID(ctx context.Context, id uuid.UUID) (*models.KategoriBlog, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*dto.KategoriBlogDetailResponse, error)
 	GetBySlug(ctx context.Context, slug string) (*models.KategoriBlog, error)
 	GetAll(ctx context.Context, isActive *bool) ([]models.KategoriBlog, error)
-	GetAllPaginated(ctx context.Context, params *dto.KategoriBlogFilterRequest) ([]models.KategoriBlog, models.PaginationMeta, error)
+	GetAllPaginated(ctx context.Context, params *dto.KategoriBlogFilterRequest) ([]dto.KategoriBlogListResponse, models.PaginationMeta, error)
 	GetAllActive(ctx context.Context) ([]dto.KategoriBlogDropdownResponse, error)
 	ToggleStatus(ctx context.Context, id uuid.UUID) error
 	GetAllPublicWithCount(ctx context.Context) ([]models.KategoriBlog, error)
@@ -95,8 +95,20 @@ func (s *kategoriBlogService) Delete(ctx context.Context, id uuid.UUID) error {
 	return s.repo.Delete(ctx, id)
 }
 
-func (s *kategoriBlogService) GetByID(ctx context.Context, id uuid.UUID) (*models.KategoriBlog, error) {
-	return s.repo.FindByID(ctx, id)
+func (s *kategoriBlogService) GetByID(ctx context.Context, id uuid.UUID) (*dto.KategoriBlogDetailResponse, error) {
+	k, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &dto.KategoriBlogDetailResponse{
+		ID:        k.ID.String(),
+		NamaID:    k.NamaID,
+		NamaEN:    k.NamaEN,
+		Slug:      k.Slug,
+		Urutan:    k.Urutan,
+		CreatedAt: k.CreatedAt,
+		UpdatedAt: k.UpdatedAt,
+	}, nil
 }
 
 func (s *kategoriBlogService) GetBySlug(ctx context.Context, slug string) (*models.KategoriBlog, error) {
@@ -107,7 +119,7 @@ func (s *kategoriBlogService) GetAll(ctx context.Context, isActive *bool) ([]mod
 	return s.repo.FindAll(ctx, isActive)
 }
 
-func (s *kategoriBlogService) GetAllPaginated(ctx context.Context, params *dto.KategoriBlogFilterRequest) ([]models.KategoriBlog, models.PaginationMeta, error) {
+func (s *kategoriBlogService) GetAllPaginated(ctx context.Context, params *dto.KategoriBlogFilterRequest) ([]dto.KategoriBlogListResponse, models.PaginationMeta, error) {
 	params.SetDefaults()
 
 	kategoris, total, err := s.repo.FindAllPaginated(ctx, params)
@@ -115,8 +127,19 @@ func (s *kategoriBlogService) GetAllPaginated(ctx context.Context, params *dto.K
 		return nil, models.PaginationMeta{}, err
 	}
 
+	result := make([]dto.KategoriBlogListResponse, len(kategoris))
+	for i, k := range kategoris {
+		result[i] = dto.KategoriBlogListResponse{
+			ID:        k.ID.String(),
+			NamaID:    k.NamaID,
+			NamaEN:    k.NamaEN,
+			Urutan:    k.Urutan,
+			UpdatedAt: k.UpdatedAt,
+		}
+	}
+
 	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
-	return kategoris, meta, nil
+	return result, meta, nil
 }
 
 func (s *kategoriBlogService) ToggleStatus(ctx context.Context, id uuid.UUID) error {

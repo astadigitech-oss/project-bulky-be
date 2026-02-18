@@ -16,9 +16,9 @@ type LabelBlogService interface {
 	Create(ctx context.Context, req *dto.CreateLabelBlogRequest) (*models.LabelBlog, error)
 	Update(ctx context.Context, id uuid.UUID, req *dto.UpdateLabelBlogRequest) (*models.LabelBlog, error)
 	Delete(ctx context.Context, id uuid.UUID) error
-	GetByID(ctx context.Context, id uuid.UUID) (*models.LabelBlog, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*dto.LabelBlogDetailResponse, error)
 	GetBySlug(ctx context.Context, slug string) (*models.LabelBlog, error)
-	GetAll(ctx context.Context, params *dto.LabelBlogFilterRequest) ([]models.LabelBlog, models.PaginationMeta, error)
+	GetAll(ctx context.Context, params *dto.LabelBlogFilterRequest) ([]dto.LabelBlogListResponse, models.PaginationMeta, error)
 	GetAllActive(ctx context.Context) ([]dto.LabelBlogDropdownResponse, error)
 	GetAllPublicWithCount(ctx context.Context) ([]models.LabelBlog, error)
 }
@@ -106,17 +106,46 @@ func (s *labelBlogService) Delete(ctx context.Context, id uuid.UUID) error {
 	return s.repo.Delete(ctx, id)
 }
 
-func (s *labelBlogService) GetByID(ctx context.Context, id uuid.UUID) (*models.LabelBlog, error) {
-	return s.repo.FindByID(ctx, id)
+func (s *labelBlogService) GetByID(ctx context.Context, id uuid.UUID) (*dto.LabelBlogDetailResponse, error) {
+	l, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &dto.LabelBlogDetailResponse{
+		ID:        l.ID.String(),
+		NamaID:    l.NamaID,
+		NamaEN:    l.NamaEN,
+		Slug:      l.Slug,
+		Urutan:    l.Urutan,
+		CreatedAt: l.CreatedAt,
+		UpdatedAt: l.UpdatedAt,
+	}, nil
 }
 
 func (s *labelBlogService) GetBySlug(ctx context.Context, slug string) (*models.LabelBlog, error) {
 	return s.repo.FindBySlug(ctx, slug)
 }
 
-func (s *labelBlogService) GetAll(ctx context.Context, params *dto.LabelBlogFilterRequest) ([]models.LabelBlog, models.PaginationMeta, error) {
+func (s *labelBlogService) GetAll(ctx context.Context, params *dto.LabelBlogFilterRequest) ([]dto.LabelBlogListResponse, models.PaginationMeta, error) {
 	params.SetDefaults()
-	return s.repo.FindAll(ctx, params)
+
+	labels, meta, err := s.repo.FindAll(ctx, params)
+	if err != nil {
+		return nil, models.PaginationMeta{}, err
+	}
+
+	result := make([]dto.LabelBlogListResponse, len(labels))
+	for i, l := range labels {
+		result[i] = dto.LabelBlogListResponse{
+			ID:        l.ID.String(),
+			NamaID:    l.NamaID,
+			NamaEN:    l.NamaEN,
+			Urutan:    l.Urutan,
+			UpdatedAt: l.UpdatedAt,
+		}
+	}
+
+	return result, meta, nil
 }
 
 func (s *labelBlogService) GetAllActive(ctx context.Context) ([]dto.LabelBlogDropdownResponse, error) {

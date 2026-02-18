@@ -174,6 +174,44 @@ type UpdateLabelBlogRequest struct {
 	Urutan *int    `json:"urutan"`
 }
 
+// Kategori Blog panel list/detail response
+type KategoriBlogListResponse struct {
+	ID        string    `json:"id"`
+	NamaID    string    `json:"nama_id"`
+	NamaEN    *string   `json:"nama_en"`
+	Urutan    int       `json:"urutan"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type KategoriBlogDetailResponse struct {
+	ID        string    `json:"id"`
+	NamaID    string    `json:"nama_id"`
+	NamaEN    *string   `json:"nama_en"`
+	Slug      string    `json:"slug"`
+	Urutan    int       `json:"urutan"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// Label Blog panel list/detail response
+type LabelBlogListResponse struct {
+	ID        string    `json:"id"`
+	NamaID    string    `json:"nama_id"`
+	NamaEN    string    `json:"nama_en"`
+	Urutan    int       `json:"urutan"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type LabelBlogDetailResponse struct {
+	ID        string    `json:"id"`
+	NamaID    string    `json:"nama_id"`
+	NamaEN    string    `json:"nama_en"`
+	Slug      string    `json:"slug"`
+	Urutan    int       `json:"urutan"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 // Dropdown Response DTOs
 type KategoriBlogDropdownResponse struct {
 	ID   uuid.UUID              `json:"id"`
