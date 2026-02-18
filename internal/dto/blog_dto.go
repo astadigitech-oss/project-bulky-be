@@ -161,10 +161,10 @@ type UpdateKategoriBlogRequest struct {
 
 // Label Blog DTOs
 type CreateLabelBlogRequest struct {
-	NamaID string `json:"nama_id" binding:"required,max=100" validate:"required,max=100"`
-	NamaEN string `json:"nama_en" binding:"required,max=100" validate:"required,max=100"`
-	Slug   string `json:"slug" binding:"required,max=100" validate:"required,max=100"`
-	Urutan int    `json:"urutan"`
+	NamaID string  `json:"nama_id" binding:"required,max=100" validate:"required,max=100"`
+	NamaEN string  `json:"nama_en" binding:"required,max=100" validate:"required,max=100"`
+	Slug   *string `json:"slug" binding:"omitempty,max=100" validate:"omitempty,max=100"`
+	Urutan int     `json:"urutan"`
 }
 
 type UpdateLabelBlogRequest struct {
@@ -172,6 +172,44 @@ type UpdateLabelBlogRequest struct {
 	NamaEN *string `json:"nama_en" validate:"omitempty,max=100"`
 	Slug   *string `json:"slug" validate:"omitempty,max=100"`
 	Urutan *int    `json:"urutan"`
+}
+
+// Kategori Blog panel list/detail response
+type KategoriBlogListResponse struct {
+	ID        string    `json:"id"`
+	NamaID    string    `json:"nama_id"`
+	NamaEN    *string   `json:"nama_en"`
+	Urutan    int       `json:"urutan"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type KategoriBlogDetailResponse struct {
+	ID        string    `json:"id"`
+	NamaID    string    `json:"nama_id"`
+	NamaEN    *string   `json:"nama_en"`
+	Slug      string    `json:"slug"`
+	Urutan    int       `json:"urutan"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// Label Blog panel list/detail response
+type LabelBlogListResponse struct {
+	ID        string    `json:"id"`
+	NamaID    string    `json:"nama_id"`
+	NamaEN    string    `json:"nama_en"`
+	Urutan    int       `json:"urutan"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type LabelBlogDetailResponse struct {
+	ID        string    `json:"id"`
+	NamaID    string    `json:"nama_id"`
+	NamaEN    string    `json:"nama_en"`
+	Slug      string    `json:"slug"`
+	Urutan    int       `json:"urutan"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // Dropdown Response DTOs

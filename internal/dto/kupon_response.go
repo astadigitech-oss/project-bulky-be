@@ -9,44 +9,34 @@ import (
 
 // KuponListResponse DTO for kupon list item
 type KuponListResponse struct {
-	ID                uuid.UUID `json:"id"`
-	Kode              string    `json:"kode"`
-	Nama              *string   `json:"nama"`
-	Deskripsi         *string   `json:"deskripsi"`
-	JenisDiskon       string    `json:"jenis_diskon"`
-	NilaiDiskon       float64   `json:"nilai_diskon"`
-	MinimalPembelian  float64   `json:"minimal_pembelian"`
-	LimitPemakaian    *int      `json:"limit_pemakaian"`
-	TotalUsage        int       `json:"total_usage"`
-	RemainingUsage    *int      `json:"remaining_usage"`
-	TanggalKedaluarsa string    `json:"tanggal_kedaluarsa"`
-	IsAllKategori     bool      `json:"is_all_kategori"`
-	KategoriCount     int       `json:"kategori_count"`
-	IsActive          bool      `json:"is_active"`
-	IsExpired         bool      `json:"is_expired"`
-	CreatedAt         time.Time `json:"created_at"`
-	UpdatedAt         time.Time `json:"updated_at"`
+	ID          uuid.UUID `json:"id"`
+	Status      bool      `json:"status"`
+	JenisDiskon string    `json:"jenis_diskon"`
+	Kode        string    `json:"kode"`
+	Nama        *string   `json:"nama"`
+	NilaiDiskon float64   `json:"nilai_diskon"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // KuponDetailResponse DTO for kupon detail
 type KuponDetailResponse struct {
-	ID                uuid.UUID                `json:"id"`
-	Kode              string                   `json:"kode"`
-	Nama              *string                  `json:"nama"`
-	Deskripsi         *string                  `json:"deskripsi"`
-	JenisDiskon       string                   `json:"jenis_diskon"`
-	NilaiDiskon       float64                  `json:"nilai_diskon"`
-	MinimalPembelian  float64                  `json:"minimal_pembelian"`
-	LimitPemakaian    *int                     `json:"limit_pemakaian"`
-	TotalUsage        int                      `json:"total_usage"`
-	RemainingUsage    *int                     `json:"remaining_usage"`
-	TanggalKedaluarsa string                   `json:"tanggal_kedaluarsa"`
-	IsAllKategori     bool                     `json:"is_all_kategori"`
-	Kategori          []KuponKategoriResponse  `json:"kategori"`
-	IsActive          bool                     `json:"is_active"`
-	IsExpired         bool                     `json:"is_expired"`
-	CreatedAt         time.Time                `json:"created_at"`
-	UpdatedAt         time.Time                `json:"updated_at"`
+	ID                uuid.UUID               `json:"id"`
+	Kode              string                  `json:"kode"`
+	Nama              *string                 `json:"nama"`
+	Deskripsi         *string                 `json:"deskripsi"`
+	JenisDiskon       string                  `json:"jenis_diskon"`
+	NilaiDiskon       float64                 `json:"nilai_diskon"`
+	MinimalPembelian  float64                 `json:"minimal_pembelian"`
+	LimitPemakaian    *int                    `json:"limit_pemakaian"`
+	TotalUsage        int                     `json:"total_usage"`
+	RemainingUsage    *int                    `json:"remaining_usage"`
+	TanggalKedaluarsa time.Time               `json:"tanggal_kedaluarsa"`
+	IsAllKategori     bool                    `json:"is_all_kategori"`
+	Kategori          []KuponKategoriResponse `json:"kategori"`
+	IsActive          bool                    `json:"is_active"`
+	IsExpired         bool                    `json:"is_expired"`
+	CreatedAt         time.Time               `json:"created_at"`
+	UpdatedAt         time.Time               `json:"updated_at"`
 }
 
 // KuponKategoriResponse DTO for kategori in kupon
@@ -58,11 +48,11 @@ type KuponKategoriResponse struct {
 
 // KuponUsageItemResponse DTO for kupon usage item
 type KuponUsageItemResponse struct {
-	ID            uuid.UUID               `json:"id"`
-	Buyer         KuponUsageBuyerInfo     `json:"buyer"`
-	Pesanan       KuponUsagePesananInfo   `json:"pesanan"`
-	NilaiPotongan float64                 `json:"nilai_potongan"`
-	CreatedAt     time.Time               `json:"created_at"`
+	ID            uuid.UUID             `json:"id"`
+	Buyer         KuponUsageBuyerInfo   `json:"buyer"`
+	Pesanan       KuponUsagePesananInfo `json:"pesanan"`
+	NilaiPotongan float64               `json:"nilai_potongan"`
+	CreatedAt     time.Time             `json:"created_at"`
 }
 
 // KuponUsageBuyerInfo DTO for buyer info in usage

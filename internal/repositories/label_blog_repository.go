@@ -71,8 +71,41 @@ func (r *labelBlogRepository) FindBySlug(ctx context.Context, slug string) (*mod
 
 func (r *labelBlogRepository) FindAll(ctx context.Context, params *dto.LabelBlogFilterRequest) ([]models.LabelBlog, models.PaginationMeta, error) {
 	var labels []models.LabelBlog
-	err := r.db.WithContext(ctx).Order("urutan ASC, nama_id ASC").Find(&labels).Error
-	return labels, models.PaginationMeta{}, err
+	var total int64
+
+	query := r.db.WithContext(ctx).Model(&models.LabelBlog{})
+
+	// Search filter
+	if params.Search != "" {
+		search := "%" + params.Search + "%"
+		query = query.Where("nama_id ILIKE ? OR nama_en ILIKE ? OR slug ILIKE ?", search, search, search)
+	}
+
+	// Count total
+	if err := query.Count(&total).Error; err != nil {
+		return nil, models.PaginationMeta{}, err
+	}
+
+	// Sorting
+	sortBy := params.SortBy
+	if sortBy == "" {
+		sortBy = "urutan"
+	}
+	order := params.Order
+	if order == "" {
+		order = "asc"
+	}
+	query = query.Order(sortBy + " " + order)
+
+	// Pagination
+	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
+
+	if err := query.Find(&labels).Error; err != nil {
+		return nil, models.PaginationMeta{}, err
+	}
+
+	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
+	return labels, meta, nil
 }
 
 func (r *labelBlogRepository) FindByIDs(ctx context.Context, ids []uuid.UUID) ([]models.LabelBlog, error) {

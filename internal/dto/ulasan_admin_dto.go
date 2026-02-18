@@ -38,17 +38,20 @@ func (p *UlasanAdminQueryParams) SetDefaults() {
 
 // UlasanAdminListResponse simple response for ulasan list (admin)
 type UlasanAdminListResponse struct {
-	ID         uuid.UUID                    `json:"id"`
-	Buyer      UlasanAdminBuyerResponse     `json:"buyer"`
-	Pesanan    UlasanAdminPesananResponse   `json:"pesanan"`
-	Produk     UlasanAdminProdukResponse    `json:"produk"`
-	Rating     int                          `json:"rating"`
-	Komentar   *string                      `json:"komentar"`
-	GambarURL  *string                      `json:"gambar_url"`
-	IsApproved bool                         `json:"is_approved"`
-	ApprovedAt *time.Time                   `json:"approved_at"`
-	ApprovedBy *UlasanAdminApproverResponse `json:"approved_by"`
-	CreatedAt  time.Time                    `json:"created_at"`
+	ID        uuid.UUID                  `json:"id"`
+	Rating    int                        `json:"rating"`
+	Buyer     UlasanAdminBuyerResponse   `json:"buyer"`
+	Approved  UlasanAdminApprovedInfo    `json:"approved"`
+	Gambar    bool                       `json:"gambar"`
+	CreatedAt time.Time                  `json:"created_at"`
+	Pesanan   UlasanAdminPesananResponse `json:"pesanan"`
+}
+
+// UlasanAdminApprovedInfo nested approved info for list
+type UlasanAdminApprovedInfo struct {
+	At     *time.Time `json:"at"`
+	By     *string    `json:"by"`
+	Status bool       `json:"status"`
 }
 
 // UlasanAdminDetailResponse detailed response for ulasan (admin)
@@ -69,9 +72,8 @@ type UlasanAdminDetailResponse struct {
 
 // UlasanAdminBuyerResponse buyer info for list
 type UlasanAdminBuyerResponse struct {
-	ID    uuid.UUID `json:"id"`
-	Nama  string    `json:"nama"`
-	Email string    `json:"email"`
+	ID   uuid.UUID `json:"id"`
+	Nama string    `json:"nama"`
 }
 
 // UlasanAdminBuyerDetailResponse buyer info with phone for detail

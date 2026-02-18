@@ -16,7 +16,7 @@ type CreateKuponRequest struct {
 	NilaiDiskon       float64     `json:"nilai_diskon" validate:"required,gt=0"`
 	MinimalPembelian  float64     `json:"minimal_pembelian" validate:"required,gte=0"`
 	LimitPemakaian    *int        `json:"limit_pemakaian" validate:"omitempty,gt=0"`
-	TanggalKedaluarsa string      `json:"tanggal_kedaluarsa" validate:"required"`
+	TanggalKedaluarsa time.Time   `json:"tanggal_kedaluarsa" validate:"required"`
 	IsAllKategori     *bool       `json:"is_all_kategori" validate:"required"`
 	KategoriIDs       []uuid.UUID `json:"kategori" validate:"omitempty,dive,uuid"`
 }
@@ -28,14 +28,12 @@ func (r *CreateKuponRequest) Validate() error {
 		return errors.New("nilai persentase maksimal 100")
 	}
 
-	// Validate date format and not in the past
-	tanggal, err := time.Parse("2006-01-02", r.TanggalKedaluarsa)
-	if err != nil {
-		return errors.New("format tanggal kedaluarsa tidak valid (gunakan YYYY-MM-DD)")
+	// Validate tanggal kedaluarsa not in the past
+	if r.TanggalKedaluarsa.IsZero() {
+		return errors.New("tanggal kedaluarsa wajib diisi")
 	}
-
-	today := time.Now().Truncate(24 * time.Hour)
-	if tanggal.Before(today) {
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	if r.TanggalKedaluarsa.UTC().Before(today) {
 		return errors.New("tanggal kedaluarsa harus hari ini atau setelahnya")
 	}
 
@@ -66,7 +64,7 @@ type UpdateKuponRequest struct {
 	NilaiDiskon       float64     `json:"nilai_diskon" validate:"required,gt=0"`
 	MinimalPembelian  float64     `json:"minimal_pembelian" validate:"required,gte=0"`
 	LimitPemakaian    *int        `json:"limit_pemakaian" validate:"omitempty,gt=0"`
-	TanggalKedaluarsa string      `json:"tanggal_kedaluarsa" validate:"required"`
+	TanggalKedaluarsa time.Time   `json:"tanggal_kedaluarsa" validate:"required"`
 	IsAllKategori     *bool       `json:"is_all_kategori" validate:"required"`
 	KategoriIDs       []uuid.UUID `json:"kategori" validate:"omitempty,dive,uuid"`
 }
@@ -78,14 +76,12 @@ func (r *UpdateKuponRequest) Validate() error {
 		return errors.New("nilai persentase maksimal 100")
 	}
 
-	// Validate date format and not in the past
-	tanggal, err := time.Parse("2006-01-02", r.TanggalKedaluarsa)
-	if err != nil {
-		return errors.New("format tanggal kedaluarsa tidak valid (gunakan YYYY-MM-DD)")
+	// Validate tanggal kedaluarsa not in the past
+	if r.TanggalKedaluarsa.IsZero() {
+		return errors.New("tanggal kedaluarsa wajib diisi")
 	}
-
-	today := time.Now().Truncate(24 * time.Hour)
-	if tanggal.Before(today) {
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	if r.TanggalKedaluarsa.UTC().Before(today) {
 		return errors.New("tanggal kedaluarsa harus hari ini atau setelahnya")
 	}
 
