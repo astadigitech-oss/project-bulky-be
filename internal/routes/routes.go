@@ -368,7 +368,6 @@ func SetupRoutes(
 			produkAdmin.POST("/:id/gambar", middleware.RequirePermission("produk:update"), produkController.AddGambar)
 			produkAdmin.DELETE("/:id/gambar/:gambar_id", middleware.RequirePermission("produk:update"), produkController.DeleteGambar)
 			produkAdmin.PATCH("/:id/gambar/:gambar_id/reorder", middleware.RequirePermission("produk:update"), produkController.ReorderGambar)
-			produkAdmin.PATCH("/:id/gambar/:gambar_id/set-primary", middleware.RequirePermission("produk:update"), produkController.SetPrimaryGambar)
 
 			// Dokumen - produk:update
 			produkAdmin.POST("/:id/dokumen", middleware.RequirePermission("produk:update"), produkController.AddDokumen)
