@@ -618,10 +618,11 @@ func (s *produkService) toListResponse(p *models.Produk) *models.ProdukListRespo
 // toPanelListResponse converts Produk to simplified ProdukPanelListResponse for admin panel
 func (s *produkService) toPanelListResponse(p *models.Produk) *models.ProdukPanelListResponse {
 	resp := &models.ProdukPanelListResponse{
-		ID:     p.ID.String(),
-		NamaID: p.NamaID,
-		NamaEN: p.NamaEN,
-		Status: p.IsActive,
+		ID:      p.ID.String(),
+		NamaID:  p.NamaID,
+		NamaEN:  p.NamaEN,
+		IDCargo: p.IDCargo,
+		Status:  p.IsActive,
 	}
 
 	// Get primary/first image - prioritize is_primary, fallback to first by urutan

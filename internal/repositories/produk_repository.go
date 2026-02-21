@@ -134,22 +134,28 @@ func (r *produkRepository) FindAll(ctx context.Context, params *models.ProdukFil
 		return nil, 0, err
 	}
 
-	validSortFields := map[string]bool{
-		"nama_id":    true,
-		"nama_en":    true,
-		"is_active":  true,
-		"updated_at": true,
-		"created_at": true,
+	validSortFields := map[string]string{
+		"nama_id":    "nama_id",
+		"nama_en":    "nama_en",
+		"id_cargo":   "id_cargo",
+		"is_active":  "is_active",
+		"status":     "is_active",
+		"updated_at": "updated_at",
+		"created_at": "created_at",
 	}
-	sortBy := params.SortBy
-	if !validSortFields[sortBy] {
-		sortBy = "nama_id"
+	sortBy := "nama_id"
+	if col, ok := validSortFields[params.SortBy]; ok {
+		sortBy = col
 	}
 	order := params.Order
 	if order != "asc" && order != "desc" {
 		order = "asc"
 	}
-	orderClause := sortBy + " " + order
+	nullsLast := ""
+	if sortBy == "id_cargo" || sortBy == "nama_en" {
+		nullsLast = " NULLS LAST"
+	}
+	orderClause := sortBy + " " + order + nullsLast
 	query = query.Order(orderClause)
 	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
 

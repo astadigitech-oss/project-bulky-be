@@ -446,6 +446,7 @@ type ProdukPanelListResponse struct {
 	ID          string  `json:"id"`
 	NamaID      string  `json:"nama_id"`
 	NamaEN      string  `json:"nama_en"`
+	IDCargo     *string `json:"id_cargo"`
 	Status      bool    `json:"status"`       // is_active
 	GambarUtama *string `json:"gambar_utama"` // Primary image URL
 	FilePDF     *string `json:"file_pdf"`     // First PDF document URL
