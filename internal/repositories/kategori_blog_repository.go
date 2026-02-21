@@ -21,6 +21,9 @@ type KategoriBlogRepository interface {
 	CountBlogByKategori(ctx context.Context, kategoriID uuid.UUID) (int64, error)
 	UpdateUrutan(ctx context.Context, id uuid.UUID, urutan int) error
 	FindAllPublicWithCount(ctx context.Context) ([]models.KategoriBlog, error)
+	GetMaxUrutan(ctx context.Context) (int, error)
+	FindAllOrdered(ctx context.Context) ([]models.KategoriBlog, error)
+	UpdateSlugs(ctx context.Context, id uuid.UUID, slug string, slugID *string, slugEN *string) error
 }
 
 type kategoriBlogRepository struct {
@@ -54,7 +57,7 @@ func (r *kategoriBlogRepository) FindByID(ctx context.Context, id uuid.UUID) (*m
 
 func (r *kategoriBlogRepository) FindBySlug(ctx context.Context, slug string) (*models.KategoriBlog, error) {
 	var kategori models.KategoriBlog
-	err := r.db.WithContext(ctx).Where("slug = ?", slug).First(&kategori).Error
+	err := r.db.WithContext(ctx).Where("slug_id = ? OR slug_en = ?", slug, slug).First(&kategori).Error
 	if err != nil {
 		return nil, err
 	}
@@ -84,13 +87,27 @@ func (r *kategoriBlogRepository) FindAllPaginated(ctx context.Context, params *d
 		query = query.Where("is_active = ?", *params.IsActive)
 	}
 
+	// Search filter
+	if params.Search != "" {
+		search := "%" + params.Search + "%"
+		query = query.Where("nama_id ILIKE ? OR nama_en ILIKE ?", search, search)
+	}
+
 	// Count total
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Apply sorting - always urutan ASC
-	query = query.Order("urutan ASC")
+	// Apply sorting
+	sortBy := params.SortBy
+	if sortBy == "" {
+		sortBy = "urutan"
+	}
+	order := params.Order
+	if order == "" {
+		order = "asc"
+	}
+	query = query.Order(sortBy + " " + order)
 
 	// Apply pagination
 	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
@@ -114,6 +131,29 @@ func (r *kategoriBlogRepository) UpdateUrutan(ctx context.Context, id uuid.UUID,
 	return r.db.WithContext(ctx).Model(&models.KategoriBlog{}).
 		Where("id = ?", id).
 		Update("urutan", urutan).Error
+}
+
+func (r *kategoriBlogRepository) UpdateSlugs(ctx context.Context, id uuid.UUID, slug string, slugID *string, slugEN *string) error {
+	updates := map[string]interface{}{"slug": slug}
+	if slugID != nil {
+		updates["slug_id"] = *slugID
+	}
+	if slugEN != nil {
+		updates["slug_en"] = *slugEN
+	}
+	return r.db.WithContext(ctx).Model(&models.KategoriBlog{}).Where("id = ?", id).Updates(updates).Error
+}
+
+func (r *kategoriBlogRepository) GetMaxUrutan(ctx context.Context) (int, error) {
+	var maxUrutan int
+	err := r.db.WithContext(ctx).Model(&models.KategoriBlog{}).Select("COALESCE(MAX(urutan), 0)").Scan(&maxUrutan).Error
+	return maxUrutan, err
+}
+
+func (r *kategoriBlogRepository) FindAllOrdered(ctx context.Context) ([]models.KategoriBlog, error) {
+	var kategoris []models.KategoriBlog
+	err := r.db.WithContext(ctx).Order("urutan ASC").Find(&kategoris).Error
+	return kategoris, err
 }
 
 func (r *kategoriBlogRepository) FindAllPublicWithCount(ctx context.Context) ([]models.KategoriBlog, error) {

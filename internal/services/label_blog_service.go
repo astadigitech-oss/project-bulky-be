@@ -32,18 +32,41 @@ func NewLabelBlogService(repo repositories.LabelBlogRepository) LabelBlogService
 }
 
 func (s *labelBlogService) Create(ctx context.Context, req *dto.CreateLabelBlogRequest) (*models.LabelBlog, error) {
-	slug := ""
-	if req.Slug != nil && *req.Slug != "" {
-		slug = *req.Slug
+	// Generate/use slug_id
+	var slugIDVal string
+	if req.SlugID != nil && *req.SlugID != "" {
+		slugIDVal = *req.SlugID
 	} else {
-		slug = utils.GenerateSlug(req.NamaID)
+		slugIDVal = utils.GenerateSlug(req.NamaID)
+	}
+	slugIDPtr := &slugIDVal
+
+	// Generate/use slug_en
+	var slugEN *string
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		slugEN = req.SlugEN
+	} else if req.NamaEN != "" {
+		s := utils.GenerateSlug(req.NamaEN)
+		slugEN = &s
+	}
+
+	// Auto-assign urutan jika tidak disertakan
+	urutan := req.Urutan
+	if urutan == 0 {
+		maxUrutan, err := s.repo.GetMaxUrutan(ctx)
+		if err != nil {
+			return nil, err
+		}
+		urutan = maxUrutan + 1
 	}
 
 	label := &models.LabelBlog{
 		NamaID: req.NamaID,
 		NamaEN: req.NamaEN,
-		Slug:   slug,
-		Urutan: req.Urutan,
+		Slug:   slugIDVal,
+		SlugID: slugIDPtr,
+		SlugEN: slugEN,
+		Urutan: urutan,
 	}
 
 	if err := s.repo.Create(ctx, label); err != nil {
@@ -65,17 +88,25 @@ func (s *labelBlogService) Update(ctx context.Context, id uuid.UUID, req *dto.Up
 	if req.NamaEN != nil {
 		label.NamaEN = *req.NamaEN
 	}
-	if req.Slug != nil {
-		if *req.Slug != "" {
-			label.Slug = *req.Slug
-		} else if req.NamaID != nil {
-			// Slug explicitly set to empty string but NamaID is changing -> auto-generate from new NamaID
-			label.Slug = utils.GenerateSlug(*req.NamaID)
-		}
+
+	// SlugID: explicit > auto dari NamaID > keep existing
+	if req.SlugID != nil && *req.SlugID != "" {
+		label.SlugID = req.SlugID
+		label.Slug = *req.SlugID
 	} else if req.NamaID != nil {
-		// Slug not provided at all but NamaID is changing -> auto-generate from new NamaID
-		label.Slug = utils.GenerateSlug(*req.NamaID)
+		generated := utils.GenerateSlug(*req.NamaID)
+		label.SlugID = &generated
+		label.Slug = generated
 	}
+
+	// SlugEN: explicit > auto dari NamaEN > keep existing
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		label.SlugEN = req.SlugEN
+	} else if req.NamaEN != nil && label.NamaEN != "" {
+		generated := utils.GenerateSlug(label.NamaEN)
+		label.SlugEN = &generated
+	}
+
 	if req.Urutan != nil {
 		label.Urutan = *req.Urutan
 	}
@@ -89,7 +120,7 @@ func (s *labelBlogService) Update(ctx context.Context, id uuid.UUID, req *dto.Up
 
 func (s *labelBlogService) Delete(ctx context.Context, id uuid.UUID) error {
 	// Check if label exists
-	_, err := s.repo.FindByID(ctx, id)
+	label, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -103,7 +134,38 @@ func (s *labelBlogService) Delete(ctx context.Context, id uuid.UUID) error {
 		return errors.New("label tidak dapat dihapus karena masih memiliki artikel blog")
 	}
 
-	return s.repo.Delete(ctx, id)
+	// Rename slug sebelum soft-delete agar slug lama bisa dipakai ulang
+	suffix := "_deleted_" + id.String()[:8]
+	var newSlugID *string
+	if label.SlugID != nil {
+		v := *label.SlugID + suffix
+		newSlugID = &v
+	}
+	var newSlugEN *string
+	if label.SlugEN != nil {
+		v := *label.SlugEN + suffix
+		newSlugEN = &v
+	}
+	if err := s.repo.UpdateSlugs(ctx, id, label.Slug+suffix, newSlugID, newSlugEN); err != nil {
+		return err
+	}
+
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return err
+	}
+
+	// Reorder ulang setelah delete
+	allLabels, err := s.repo.FindAllOrdered(ctx)
+	if err != nil {
+		return err
+	}
+	for i, l := range allLabels {
+		if err := s.repo.UpdateUrutan(ctx, l.ID, i+1); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *labelBlogService) GetByID(ctx context.Context, id uuid.UUID) (*dto.LabelBlogDetailResponse, error) {
@@ -115,7 +177,8 @@ func (s *labelBlogService) GetByID(ctx context.Context, id uuid.UUID) (*dto.Labe
 		ID:        l.ID.String(),
 		NamaID:    l.NamaID,
 		NamaEN:    l.NamaEN,
-		Slug:      l.Slug,
+		SlugID:    l.SlugID,
+		SlugEN:    l.SlugEN,
 		Urutan:    l.Urutan,
 		CreatedAt: l.CreatedAt,
 		UpdatedAt: l.UpdatedAt,
@@ -149,7 +212,10 @@ func (s *labelBlogService) GetAll(ctx context.Context, params *dto.LabelBlogFilt
 }
 
 func (s *labelBlogService) GetAllActive(ctx context.Context) ([]dto.LabelBlogDropdownResponse, error) {
-	labelList, _, err := s.repo.FindAll(ctx, &dto.LabelBlogFilterRequest{})
+	params := &dto.LabelBlogFilterRequest{}
+	params.SetDefaults()
+	params.PerPage = 1000
+	labelList, _, err := s.repo.FindAll(ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -166,9 +232,10 @@ func (s *labelBlogService) GetAllActive(ctx context.Context) ([]dto.LabelBlogDro
 		}
 
 		result = append(result, dto.LabelBlogDropdownResponse{
-			ID:   l.ID,
-			Nama: nama,
-			Slug: l.Slug,
+			ID:     l.ID,
+			Nama:   nama,
+			SlugID: l.SlugID,
+			SlugEN: l.SlugEN,
 		})
 	}
 

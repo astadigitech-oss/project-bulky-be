@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"project-bulky-be/internal/models"
@@ -14,7 +13,7 @@ type MerekProdukRepository interface {
 	Create(ctx context.Context, merek *models.MerekProduk) error
 	FindByID(ctx context.Context, id string) (*models.MerekProduk, error)
 	FindBySlug(ctx context.Context, slug string) (*models.MerekProduk, error)
-	FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.MerekProdukSimpleResponse, int64, error)
+	FindAll(ctx context.Context, params *models.MerekProdukFilterRequest) ([]models.MerekProdukSimpleResponse, int64, error)
 	Update(ctx context.Context, merek *models.MerekProduk) error
 	Delete(ctx context.Context, merek *models.MerekProduk) error
 	ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error)
@@ -44,15 +43,15 @@ func (r *merekProdukRepository) FindByID(ctx context.Context, id string) (*model
 
 func (r *merekProdukRepository) FindBySlug(ctx context.Context, slug string) (*models.MerekProduk, error) {
 	var merek models.MerekProduk
-	err := r.db.WithContext(ctx).Where("slug = ?", slug).First(&merek).Error
+	err := r.db.WithContext(ctx).Where("slug_id = ? OR slug_en = ?", slug, slug).First(&merek).Error
 	if err != nil {
 		return nil, err
 	}
 	return &merek, nil
 }
 
-func (r *merekProdukRepository) FindAll(ctx context.Context, params *models.PaginationRequest) ([]models.MerekProdukSimpleResponse, int64, error) {
-	var mereks []struct {
+func (r *merekProdukRepository) FindAll(ctx context.Context, params *models.MerekProdukFilterRequest) ([]models.MerekProdukSimpleResponse, int64, error) {
+	type row struct {
 		ID        string    `json:"id"`
 		NamaID    string    `json:"nama_id"`
 		NamaEN    *string   `json:"nama_en"`
@@ -60,23 +59,17 @@ func (r *merekProdukRepository) FindAll(ctx context.Context, params *models.Pagi
 		IsActive  bool      `json:"is_active"`
 		UpdatedAt time.Time `json:"updated_at"`
 	}
+	var mereks []row
 	var total int64
 
-	// Base query with simplified fields for list view
 	query := r.db.WithContext(ctx).
 		Model(&models.MerekProduk{}).
-		Select(`
-			id,
-			nama_id,
-			nama_en,
-			logo_url,
-			is_active,
-			updated_at
-		`)
+		Select("id, nama_id, nama_en, logo_url, is_active, updated_at")
 
-	// Search filter
+	// Search dengan ILIKE pada nama_id dan nama_en
 	if params.Search != "" {
-		query = query.Where("nama_id ILIKE ? OR nama_en ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")
+		search := "%" + params.Search + "%"
+		query = query.Where("nama_id ILIKE ? OR nama_en ILIKE ?", search, search)
 	}
 
 	// IsActive filter
@@ -84,41 +77,26 @@ func (r *merekProdukRepository) FindAll(ctx context.Context, params *models.Pagi
 		query = query.Where("is_active = ?", *params.IsActive)
 	}
 
-	// Count total
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Valid sort fields for list response
-	validSortFields := map[string]bool{
-		"id":         true,
-		"nama_id":    true,
-		"logo_url":   true,
-		"is_active":  true,
-		"updated_at": true,
+	// sort_by: is_active atau updated_at
+	sortColumn := "updated_at"
+	if params.SortBy == "is_active" {
+		sortColumn = "is_active"
 	}
-
-	// Validate sort_by field
-	sortBy := params.SortBy
-	if !validSortFields[sortBy] {
-		sortBy = "nama_id" // Default sort field
+	orderDir := "DESC"
+	if params.Order == "asc" {
+		orderDir = "ASC"
 	}
-
-	// Validate order direction
-	order := params.Order
-	if order != "asc" && order != "desc" {
-		order = "asc" // Default order
-	}
-
-	orderClause := sortBy + " " + order
-	query = query.Order(orderClause)
+	query = query.Order(sortColumn + " " + orderDir)
 	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
 
 	if err := query.Scan(&mereks).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Convert to response format
 	responses := make([]models.MerekProdukSimpleResponse, len(mereks))
 	for i, m := range mereks {
 		responses[i] = models.MerekProdukSimpleResponse{
@@ -141,29 +119,12 @@ func (r *merekProdukRepository) Update(ctx context.Context, merek *models.MerekP
 }
 
 func (r *merekProdukRepository) Delete(ctx context.Context, merek *models.MerekProduk) error {
-	// Manual update slug untuk soft delete
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		now := time.Now()
-		deletedSlug := fmt.Sprintf("%s-deleted-%d%06d",
-			merek.Slug,
-			now.Unix(),
-			now.Nanosecond()/1000,
-		)
-
-		if err := tx.Model(merek).Updates(map[string]interface{}{
-			"slug":       deletedSlug,
-			"deleted_at": now,
-		}).Error; err != nil {
-			return err
-		}
-
-		return nil
-	})
+	return r.db.WithContext(ctx).Delete(merek).Error
 }
 
 func (r *merekProdukRepository) ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error) {
 	var count int64
-	query := r.db.WithContext(ctx).Model(&models.MerekProduk{}).Where("slug = ?", slug)
+	query := r.db.WithContext(ctx).Model(&models.MerekProduk{}).Where("slug_id = ? OR slug_en = ?", slug, slug)
 	if excludeID != nil {
 		query = query.Where("id != ?", *excludeID)
 	}
@@ -174,9 +135,9 @@ func (r *merekProdukRepository) ExistsBySlug(ctx context.Context, slug string, e
 func (r *merekProdukRepository) GetAllForDropdown(ctx context.Context) ([]models.MerekProduk, error) {
 	var mereks []models.MerekProduk
 	err := r.db.WithContext(ctx).
-		Select("id", "nama", "slug").
+		Select("id", "nama_id", "nama_en").
 		Where("is_active = ?", true).
-		Order("nama ASC").
+		Order("nama_id ASC").
 		Find(&mereks).Error
 	return mereks, err
 }

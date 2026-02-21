@@ -37,17 +37,32 @@ func NewKategoriProdukService(repo repositories.KategoriProdukRepository, cfg *c
 }
 
 func (s *kategoriProdukService) Create(ctx context.Context, req *models.CreateKategoriProdukRequest) (*models.KategoriProdukResponse, error) {
-	slug := utils.GenerateSlug(req.NamaID)
+	// Generate slug_id
+	var slugID *string
+	if req.SlugID != nil && *req.SlugID != "" {
+		s := *req.SlugID
+		slugID = &s
+	} else {
+		s := utils.GenerateSlug(req.NamaID)
+		slugID = &s
+	}
 
-	exists, _ := s.repo.ExistsBySlug(ctx, slug, nil)
-	if exists {
-		return nil, errors.New("kategori dengan nama tersebut sudah ada")
+	// Generate slug_en
+	var slugEN *string
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		s := *req.SlugEN
+		slugEN = &s
+	} else if req.NamaEN != nil && *req.NamaEN != "" {
+		s := utils.GenerateSlug(*req.NamaEN)
+		slugEN = &s
 	}
 
 	kategori := &models.KategoriProduk{
 		NamaID:              req.NamaID,
 		NamaEN:              req.NamaEN,
-		Slug:                slug,
+		Slug:                *slugID,
+		SlugID:              slugID,
+		SlugEN:              slugEN,
 		Deskripsi:           req.Deskripsi,
 		TipeKondisiTambahan: req.TipeKondisiTambahan,
 		TeksKondisi:         req.TeksKondisi,
@@ -62,17 +77,32 @@ func (s *kategoriProdukService) Create(ctx context.Context, req *models.CreateKa
 }
 
 func (s *kategoriProdukService) CreateWithIcon(ctx context.Context, req *models.CreateKategoriProdukRequest, iconURL, gambarKondisiURL *string) (*models.KategoriProdukResponse, error) {
-	slug := utils.GenerateSlug(req.NamaID)
+	// Generate slug_id
+	var slugID *string
+	if req.SlugID != nil && *req.SlugID != "" {
+		s := *req.SlugID
+		slugID = &s
+	} else {
+		s := utils.GenerateSlug(req.NamaID)
+		slugID = &s
+	}
 
-	exists, _ := s.repo.ExistsBySlug(ctx, slug, nil)
-	if exists {
-		return nil, errors.New("kategori dengan nama tersebut sudah ada")
+	// Generate slug_en
+	var slugEN *string
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		s := *req.SlugEN
+		slugEN = &s
+	} else if req.NamaEN != nil && *req.NamaEN != "" {
+		s := utils.GenerateSlug(*req.NamaEN)
+		slugEN = &s
 	}
 
 	kategori := &models.KategoriProduk{
 		NamaID:              req.NamaID,
 		NamaEN:              req.NamaEN,
-		Slug:                slug,
+		Slug:                *slugID,
+		SlugID:              slugID,
+		SlugEN:              slugEN,
 		Deskripsi:           req.Deskripsi,
 		IconURL:             iconURL,
 		TipeKondisiTambahan: req.TipeKondisiTambahan,
@@ -116,11 +146,11 @@ func (s *kategoriProdukService) FindAll(ctx context.Context, params *models.Kate
 	items := []models.KategoriProdukSimpleResponse{}
 	for _, k := range kategoris {
 		items = append(items, models.KategoriProdukSimpleResponse{
-			ID:      k.ID.String(),
-			Nama:    k.GetNama(),
-			IconURL: utils.GetFileURL(k.IconURL, s.cfg),
-			// TipeKondisiTambahan: k.TipeKondisiTambahan,
-			IsActive: k.IsActive,
+			ID:        k.ID.String(),
+			Nama:      k.GetNama(),
+			IconURL:   utils.GetFileURL(k.IconURL, s.cfg),
+			IsActive:  k.IsActive,
+			UpdatedAt: k.UpdatedAt,
 		})
 	}
 
@@ -136,16 +166,28 @@ func (s *kategoriProdukService) Update(ctx context.Context, id string, req *mode
 	}
 
 	if req.NamaID != nil {
-		newSlug := utils.GenerateSlug(*req.NamaID)
-		exists, _ := s.repo.ExistsBySlug(ctx, newSlug, &id)
-		if exists {
-			return nil, errors.New("kategori dengan nama tersebut sudah ada")
-		}
 		kategori.NamaID = *req.NamaID
-		kategori.Slug = newSlug
+		// Regenerate slug_id from new nama_id (unless manually provided)
+		if req.SlugID == nil || *req.SlugID == "" {
+			s := utils.GenerateSlug(*req.NamaID)
+			kategori.SlugID = &s
+			kategori.Slug = s // backward compat
+		}
+	}
+	if req.SlugID != nil && *req.SlugID != "" {
+		kategori.SlugID = req.SlugID
+		kategori.Slug = *req.SlugID // backward compat
 	}
 	if req.NamaEN != nil {
 		kategori.NamaEN = req.NamaEN
+		// Regenerate slug_en from new nama_en (unless manually provided)
+		if (req.SlugEN == nil || *req.SlugEN == "") && *req.NamaEN != "" {
+			s := utils.GenerateSlug(*req.NamaEN)
+			kategori.SlugEN = &s
+		}
+	}
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		kategori.SlugEN = req.SlugEN
 	}
 	if req.Deskripsi != nil {
 		kategori.Deskripsi = req.Deskripsi
@@ -175,16 +217,28 @@ func (s *kategoriProdukService) UpdateWithIcon(ctx context.Context, id string, r
 
 	// Update text fields
 	if req.NamaID != nil {
-		newSlug := utils.GenerateSlug(*req.NamaID)
-		exists, _ := s.repo.ExistsBySlug(ctx, newSlug, &id)
-		if exists {
-			return nil, errors.New("kategori dengan nama tersebut sudah ada")
-		}
 		kategori.NamaID = *req.NamaID
-		kategori.Slug = newSlug
+		// Regenerate slug_id from new nama_id (unless manually provided)
+		if req.SlugID == nil || *req.SlugID == "" {
+			s := utils.GenerateSlug(*req.NamaID)
+			kategori.SlugID = &s
+			kategori.Slug = s // backward compat
+		}
+	}
+	if req.SlugID != nil && *req.SlugID != "" {
+		kategori.SlugID = req.SlugID
+		kategori.Slug = *req.SlugID // backward compat
 	}
 	if req.NamaEN != nil {
 		kategori.NamaEN = req.NamaEN
+		// Regenerate slug_en from new nama_en (unless manually provided)
+		if (req.SlugEN == nil || *req.SlugEN == "") && *req.NamaEN != "" {
+			s := utils.GenerateSlug(*req.NamaEN)
+			kategori.SlugEN = &s
+		}
+	}
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		kategori.SlugEN = req.SlugEN
 	}
 	if req.Deskripsi != nil {
 		kategori.Deskripsi = req.Deskripsi
@@ -230,6 +284,21 @@ func (s *kategoriProdukService) Delete(ctx context.Context, id string) error {
 		return errors.New("kategori produk tidak ditemukan")
 	}
 
+	// Rename slug dengan suffix _deleted_{8-char-id} agar tidak conflict unique constraint
+	suffix := "_deleted_" + id[:8]
+	kategori.Slug = kategori.Slug + suffix
+	if kategori.SlugID != nil {
+		v := *kategori.SlugID + suffix
+		kategori.SlugID = &v
+	}
+	if kategori.SlugEN != nil {
+		v := *kategori.SlugEN + suffix
+		kategori.SlugEN = &v
+	}
+	if err := s.repo.Update(ctx, kategori); err != nil {
+		return err
+	}
+
 	return s.repo.Delete(ctx, kategori)
 }
 
@@ -245,8 +314,9 @@ func (s *kategoriProdukService) ToggleStatus(ctx context.Context, id string) (*m
 	}
 
 	return &models.ToggleStatusResponse{
-		ID:       kategori.ID.String(),
-		IsActive: kategori.IsActive,
+		ID:        kategori.ID.String(),
+		IsActive:  kategori.IsActive,
+		UpdatedAt: kategori.UpdatedAt,
 	}, nil
 }
 
@@ -274,7 +344,8 @@ func (s *kategoriProdukService) toResponse(k *models.KategoriProduk) *models.Kat
 	return &models.KategoriProdukResponse{
 		ID:                  k.ID.String(),
 		Nama:                k.GetNama(),
-		Slug:                k.Slug,
+		SlugID:              k.SlugID,
+		SlugEN:              k.SlugEN,
 		Deskripsi:           models.SafeString(k.Deskripsi),
 		IconURL:             utils.GetFileURL(k.IconURL, s.cfg),
 		TipeKondisiTambahan: k.TipeKondisiTambahan,

@@ -120,7 +120,7 @@ func main() {
 	blogService := services.NewBlogService(blogRepo, kategoriBlogRepo, labelBlogRepo, cfg)
 	kategoriBlogService := services.NewKategoriBlogService(kategoriBlogRepo)
 	labelBlogService := services.NewLabelBlogService(labelBlogRepo)
-	videoService := services.NewVideoService(videoRepo, kategoriVideoRepo)
+	videoService := services.NewVideoService(videoRepo, kategoriVideoRepo, cfg)
 	kategoriVideoService := services.NewKategoriVideoService(kategoriVideoRepo)
 	kuponService := services.NewKuponService(kuponRepo, kategoriRepo, db)
 
@@ -161,7 +161,7 @@ func main() {
 	formulirPartaiBesarController := controllers.NewFormulirPartaiBesarController(formulirPartaiBesarService, reorderService)
 	whatsappHandlerController := controllers.NewWhatsAppHandlerController(whatsappHandlerService)
 	faqController := controllers.NewFAQController(faqService)
-	blogController := controllers.NewBlogController(blogService, kategoriBlogService, labelBlogService, cfg)
+	blogController := controllers.NewBlogController(blogService, cfg)
 	kategoriBlogController := controllers.NewKategoriBlogController(kategoriBlogService, reorderService)
 	labelBlogController := controllers.NewLabelBlogController(labelBlogService, reorderService)
 	videoController := controllers.NewVideoController(videoService, kategoriVideoService, cfg)

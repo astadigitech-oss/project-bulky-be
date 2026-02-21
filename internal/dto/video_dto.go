@@ -11,13 +11,13 @@ import (
 type CreateVideoRequest struct {
 	JudulID           string    `json:"judul_id" validate:"required,max=200"`
 	JudulEN           string    `json:"judul_en" validate:"required,max=200"`
-	Slug              string    `json:"slug" validate:"required,max=250"`
+	SlugID            *string   `json:"slug_id" validate:"omitempty,max=250"`
+	SlugEN            *string   `json:"slug_en" validate:"omitempty,max=250"`
 	DeskripsiID       string    `json:"deskripsi_id" validate:"required"`
 	DeskripsiEN       string    `json:"deskripsi_en" validate:"required"`
 	VideoURL          string    `json:"video_url" validate:"required,max=500"`
 	ThumbnailURL      *string   `json:"thumbnail_url" validate:"omitempty,max=500"`
 	KategoriID        uuid.UUID `json:"kategori_id" validate:"required"`
-	DurasiDetik       int       `json:"durasi_detik" validate:"omitempty,gt=0"` // Optional: auto-detected from uploaded video file
 	MetaTitleID       *string   `json:"meta_title_id" validate:"omitempty,max=200"`
 	MetaTitleEN       *string   `json:"meta_title_en" validate:"omitempty,max=200"`
 	MetaDescriptionID *string   `json:"meta_description_id"`
@@ -29,13 +29,13 @@ type CreateVideoRequest struct {
 type UpdateVideoRequest struct {
 	JudulID           *string    `json:"judul_id" validate:"omitempty,max=200"`
 	JudulEN           *string    `json:"judul_en" validate:"omitempty,max=200"`
-	Slug              *string    `json:"slug" validate:"omitempty,max=250"`
+	SlugID            *string    `json:"slug_id" validate:"omitempty,max=250"`
+	SlugEN            *string    `json:"slug_en" validate:"omitempty,max=250"`
 	DeskripsiID       *string    `json:"deskripsi_id"`
 	DeskripsiEN       *string    `json:"deskripsi_en"`
 	VideoURL          *string    `json:"video_url" validate:"omitempty,max=500"`
 	ThumbnailURL      *string    `json:"thumbnail_url" validate:"omitempty,max=500"`
 	KategoriID        *uuid.UUID `json:"kategori_id"`
-	DurasiDetik       *int       `json:"durasi_detik" validate:"omitempty,gt=0"`
 	MetaTitleID       *string    `json:"meta_title_id" validate:"omitempty,max=200"`
 	MetaTitleEN       *string    `json:"meta_title_en" validate:"omitempty,max=200"`
 	MetaDescriptionID *string    `json:"meta_description_id"`
@@ -48,14 +48,14 @@ type VideoResponse struct {
 	ID                uuid.UUID           `json:"id"`
 	JudulID           string              `json:"judul_id"`
 	JudulEN           *string             `json:"judul_en"`
-	Slug              string              `json:"slug"`
+	SlugID            *string             `json:"slug_id"`
+	SlugEN            *string             `json:"slug_en"`
 	DeskripsiID       string              `json:"deskripsi_id"`
 	DeskripsiEN       *string             `json:"deskripsi_en"`
 	VideoURL          string              `json:"video_url"`
 	ThumbnailURL      *string             `json:"thumbnail_url"`
 	KategoriID        uuid.UUID           `json:"kategori_id"`
 	Kategori          *KategoriVideoBrief `json:"kategori,omitempty"`
-	DurasiDetik       int                 `json:"durasi_detik"`
 	MetaTitleID       *string             `json:"meta_title_id"`
 	MetaTitleEN       *string             `json:"meta_title_en"`
 	MetaDescriptionID *string             `json:"meta_description_id"`
@@ -72,12 +72,12 @@ type VideoListResponse struct {
 	ID           uuid.UUID           `json:"id"`
 	JudulID      string              `json:"judul_id"`
 	JudulEN      *string             `json:"judul_en"`
-	Slug         string              `json:"slug"`
+	SlugID       *string             `json:"slug_id"`
+	SlugEN       *string             `json:"slug_en"`
 	DeskripsiID  string              `json:"deskripsi_id"`
 	DeskripsiEN  *string             `json:"deskripsi_en"`
 	ThumbnailURL *string             `json:"thumbnail_url"`
 	Kategori     *KategoriVideoBrief `json:"kategori,omitempty"`
-	DurasiDetik  int                 `json:"durasi_detik"`
 	IsActive     bool                `json:"is_active"`
 	ViewCount    int                 `json:"view_count"`
 	PublishedAt  *time.Time          `json:"published_at"`
@@ -88,7 +88,8 @@ type KategoriVideoBrief struct {
 	ID     uuid.UUID `json:"id"`
 	NamaID string    `json:"nama_id"`
 	NamaEN *string   `json:"nama_en"`
-	Slug   string    `json:"slug"`
+	SlugID *string   `json:"slug_id"`
+	SlugEN *string   `json:"slug_en"`
 }
 
 // Video Filter Request
@@ -109,7 +110,7 @@ func (p *VideoFilterRequest) SetDefaults() {
 	}
 
 	// Validate sort_by - only allow specific fields
-	allowedSortBy := []string{"created_at", "updated_at", "view_count", "judul_id"}
+	allowedSortBy := []string{"created_at", "updated_at", "view_count", "judul_id", "is_active", "published_at"}
 	isValid := false
 	for _, field := range allowedSortBy {
 		if p.SortBy == field {
@@ -130,23 +131,30 @@ type KategoriVideoFilterRequest struct {
 func (p *KategoriVideoFilterRequest) SetDefaults() {
 	p.PaginationRequest.SetDefaults()
 
-	// Hanya sort by urutan
-	p.SortBy = "urutan"
-	p.Order = "asc"
+	// Validate sort_by: urutan dan updated_at
+	if p.SortBy != "urutan" && p.SortBy != "updated_at" {
+		p.SortBy = "urutan"
+		p.Order = "asc"
+	}
+	// Validate order
+	if p.Order != "asc" && p.Order != "desc" {
+		p.Order = "asc"
+	}
 }
 
 type CreateKategoriVideoRequest struct {
 	NamaID   string  `json:"nama_id" binding:"required,max=100"`
-	NamaEN   *string `json:"nama_en" binding:"required,max=100"`
-	Slug     string  `json:"slug" binding:"required,max=100"`
+	NamaEN   *string `json:"nama_en" binding:"omitempty,max=100"`
+	SlugID   *string `json:"slug_id" binding:"omitempty,max=100"`
+	SlugEN   *string `json:"slug_en" binding:"omitempty,max=100"`
 	IsActive bool    `json:"is_active"`
-	Urutan   int     `json:"urutan"`
 }
 
 type UpdateKategoriVideoRequest struct {
 	NamaID   *string `json:"nama_id" validate:"omitempty,max=100"`
 	NamaEN   *string `json:"nama_en" validate:"omitempty,max=100"`
-	Slug     *string `json:"slug" validate:"omitempty,max=100"`
+	SlugID   *string `json:"slug_id" validate:"omitempty,max=100"`
+	SlugEN   *string `json:"slug_en" validate:"omitempty,max=100"`
 	IsActive *bool   `json:"is_active"`
 	Urutan   *int    `json:"urutan"`
 }
@@ -165,14 +173,16 @@ type KategoriVideoDetailResponse struct {
 	ID        string    `json:"id"`
 	NamaID    string    `json:"nama_id"`
 	NamaEN    *string   `json:"nama_en"`
-	Slug      string    `json:"slug"`
+	SlugID    *string   `json:"slug_id"`
+	SlugEN    *string   `json:"slug_en"`
 	Urutan    int       `json:"urutan"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type KategoriVideoDropdownResponse struct {
-	ID   uuid.UUID              `json:"id"`
-	Nama map[string]interface{} `json:"nama"` // {"id": "...", "en": "..."}
-	Slug string                 `json:"slug"`
+	ID     uuid.UUID              `json:"id"`
+	Nama   map[string]interface{} `json:"nama"` // {"id": "...", "en": "..."}
+	SlugID *string                `json:"slug_id"`
+	SlugEN *string                `json:"slug_en"`
 }

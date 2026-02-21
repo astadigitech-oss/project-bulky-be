@@ -12,6 +12,8 @@ type Produk struct {
 	NamaID             string         `gorm:"type:varchar(255);not null" json:"nama_id"`
 	NamaEN             string         `gorm:"type:varchar(255);not null" json:"nama_en"`
 	Slug               string         `gorm:"type:varchar(280);unique;not null" json:"slug"`
+	SlugID             *string        `gorm:"type:varchar(280);uniqueIndex" json:"slug_id"`
+	SlugEN             *string        `gorm:"type:varchar(280);uniqueIndex" json:"slug_en"`
 	IDCargo            *string        `gorm:"type:varchar(50);unique;column:id_cargo" json:"id_cargo"`
 	ReferenceID        *string        `gorm:"type:varchar(100);column:reference_id" json:"reference_id"`
 	KategoriID         uuid.UUID      `gorm:"type:uuid;not null" json:"kategori_id"`
@@ -55,7 +57,8 @@ type ProdukResponse struct {
 	ID                 string    `json:"id"`
 	NamaID             string    `json:"nama_id"`
 	NamaEN             string    `json:"nama_en"`
-	Slug               string    `json:"slug"`
+	SlugID             *string   `json:"slug_id"`
+	SlugEN             *string   `json:"slug_en"`
 	IDCargo            *string   `json:"id_cargo"`
 	ReferenceID        *string   `json:"reference_id"`
 	KategoriID         string    `json:"kategori_id"`

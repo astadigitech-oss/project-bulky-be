@@ -180,6 +180,16 @@ func (c *KategoriBlogController) Reorder(ctx *gin.Context) {
 	})
 }
 
+func (c *KategoriBlogController) GetDropdownOptions(ctx *gin.Context) {
+	kategoris, err := c.service.GetAllActive(ctx.Request.Context())
+	if err != nil {
+		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil kategori", err.Error())
+		return
+	}
+
+	utils.SuccessResponse(ctx, "Kategori berhasil diambil", kategoris)
+}
+
 func (c *KategoriBlogController) GetAllPublic(ctx *gin.Context) {
 	kategoris, err := c.service.GetAllPublicWithCount(ctx.Request.Context())
 	if err != nil {

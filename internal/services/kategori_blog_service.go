@@ -7,6 +7,7 @@ import (
 	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
+	"project-bulky-be/pkg/utils"
 
 	"github.com/google/uuid"
 )
@@ -33,12 +34,42 @@ func NewKategoriBlogService(repo repositories.KategoriBlogRepository) KategoriBl
 }
 
 func (s *kategoriBlogService) Create(ctx context.Context, req *dto.CreateKategoriBlogRequest) (*models.KategoriBlog, error) {
+	// Generate/use slug_id
+	var slugIDVal string
+	if req.SlugID != nil && *req.SlugID != "" {
+		slugIDVal = *req.SlugID
+	} else {
+		slugIDVal = utils.GenerateSlug(req.NamaID)
+	}
+	slugIDPtr := &slugIDVal
+
+	// Generate/use slug_en
+	var slugEN *string
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		slugEN = req.SlugEN
+	} else if req.NamaEN != nil && *req.NamaEN != "" {
+		s := utils.GenerateSlug(*req.NamaEN)
+		slugEN = &s
+	}
+
+	// Auto-assign urutan jika tidak disertakan
+	urutan := req.Urutan
+	if urutan == 0 {
+		maxUrutan, err := s.repo.GetMaxUrutan(ctx)
+		if err != nil {
+			return nil, err
+		}
+		urutan = maxUrutan + 1
+	}
+
 	kategori := &models.KategoriBlog{
 		NamaID:   req.NamaID,
 		NamaEN:   req.NamaEN,
-		Slug:     req.Slug,
+		Slug:     slugIDVal,
+		SlugID:   slugIDPtr,
+		SlugEN:   slugEN,
 		IsActive: req.IsActive,
-		Urutan:   req.Urutan,
+		Urutan:   urutan,
 	}
 
 	if err := s.repo.Create(ctx, kategori); err != nil {
@@ -60,9 +91,25 @@ func (s *kategoriBlogService) Update(ctx context.Context, id uuid.UUID, req *dto
 	if req.NamaEN != nil {
 		kategori.NamaEN = req.NamaEN
 	}
-	if req.Slug != nil {
-		kategori.Slug = *req.Slug
+
+	// SlugID: explicit > auto dari NamaID > keep existing
+	if req.SlugID != nil && *req.SlugID != "" {
+		kategori.SlugID = req.SlugID
+		kategori.Slug = *req.SlugID
+	} else if req.NamaID != nil {
+		generated := utils.GenerateSlug(*req.NamaID)
+		kategori.SlugID = &generated
+		kategori.Slug = generated
 	}
+
+	// SlugEN: explicit > auto dari NamaEN > keep existing
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		kategori.SlugEN = req.SlugEN
+	} else if req.NamaEN != nil && *req.NamaEN != "" {
+		generated := utils.GenerateSlug(*req.NamaEN)
+		kategori.SlugEN = &generated
+	}
+
 	if req.IsActive != nil {
 		kategori.IsActive = *req.IsActive
 	}
@@ -79,7 +126,7 @@ func (s *kategoriBlogService) Update(ctx context.Context, id uuid.UUID, req *dto
 
 func (s *kategoriBlogService) Delete(ctx context.Context, id uuid.UUID) error {
 	// Check if kategori exists
-	_, err := s.repo.FindByID(ctx, id)
+	kategori, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -92,7 +139,39 @@ func (s *kategoriBlogService) Delete(ctx context.Context, id uuid.UUID) error {
 	if count > 0 {
 		return errors.New("kategori tidak dapat dihapus karena masih memiliki artikel blog")
 	}
-	return s.repo.Delete(ctx, id)
+
+	// Rename slug sebelum soft-delete agar slug lama bisa dipakai ulang
+	suffix := "_deleted_" + id.String()[:8]
+	var newSlugID *string
+	if kategori.SlugID != nil {
+		v := *kategori.SlugID + suffix
+		newSlugID = &v
+	}
+	var newSlugEN *string
+	if kategori.SlugEN != nil {
+		v := *kategori.SlugEN + suffix
+		newSlugEN = &v
+	}
+	if err := s.repo.UpdateSlugs(ctx, id, kategori.Slug+suffix, newSlugID, newSlugEN); err != nil {
+		return err
+	}
+
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return err
+	}
+
+	// Reorder ulang setelah delete
+	allKategoris, err := s.repo.FindAllOrdered(ctx)
+	if err != nil {
+		return err
+	}
+	for i, k := range allKategoris {
+		if err := s.repo.UpdateUrutan(ctx, k.ID, i+1); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *kategoriBlogService) GetByID(ctx context.Context, id uuid.UUID) (*dto.KategoriBlogDetailResponse, error) {
@@ -104,7 +183,8 @@ func (s *kategoriBlogService) GetByID(ctx context.Context, id uuid.UUID) (*dto.K
 		ID:        k.ID.String(),
 		NamaID:    k.NamaID,
 		NamaEN:    k.NamaEN,
-		Slug:      k.Slug,
+		SlugID:    k.SlugID,
+		SlugEN:    k.SlugEN,
 		Urutan:    k.Urutan,
 		CreatedAt: k.CreatedAt,
 		UpdatedAt: k.UpdatedAt,
@@ -170,9 +250,10 @@ func (s *kategoriBlogService) GetAllActive(ctx context.Context) ([]dto.KategoriB
 		}
 
 		result = append(result, dto.KategoriBlogDropdownResponse{
-			ID:   k.ID,
-			Nama: nama,
-			Slug: k.Slug,
+			ID:     k.ID,
+			Nama:   nama,
+			SlugID: k.SlugID,
+			SlugEN: k.SlugEN,
 		})
 	}
 

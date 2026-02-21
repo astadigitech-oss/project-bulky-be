@@ -18,6 +18,7 @@ type KondisiProdukService interface {
 	Delete(ctx context.Context, id string) error
 	ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error)
 	Reorder(ctx context.Context, req *models.ReorderRequest) error
+	GetAllForDropdown(ctx context.Context) ([]map[string]interface{}, error)
 }
 
 type kondisiProdukService struct {
@@ -33,11 +34,24 @@ func NewKondisiProdukService(repo repositories.KondisiProdukRepository, reorderS
 }
 
 func (s *kondisiProdukService) Create(ctx context.Context, req *models.CreateKondisiProdukRequest) (*models.KondisiProdukResponse, error) {
-	slug := utils.GenerateSlug(req.NamaID)
+	// Generate slug_id
+	var slugID *string
+	if req.SlugID != nil && *req.SlugID != "" {
+		s := *req.SlugID
+		slugID = &s
+	} else {
+		s := utils.GenerateSlug(req.NamaID)
+		slugID = &s
+	}
 
-	exists, _ := s.repo.ExistsBySlug(ctx, slug, nil)
-	if exists {
-		return nil, errors.New("kondisi produk dengan nama tersebut sudah ada")
+	// Generate slug_en
+	var slugEN *string
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		s := *req.SlugEN
+		slugEN = &s
+	} else if req.NamaEN != nil && *req.NamaEN != "" {
+		s := utils.GenerateSlug(*req.NamaEN)
+		slugEN = &s
 	}
 
 	// Auto-increment urutan
@@ -49,7 +63,9 @@ func (s *kondisiProdukService) Create(ctx context.Context, req *models.CreateKon
 	kondisi := &models.KondisiProduk{
 		NamaID:    req.NamaID,
 		NamaEN:    req.NamaEN,
-		Slug:      slug,
+		Slug:      *slugID,
+		SlugID:    slugID,
+		SlugEN:    slugEN,
 		Deskripsi: req.Deskripsi,
 		Urutan:    maxUrutan + 1,
 		IsActive:  true,
@@ -103,16 +119,28 @@ func (s *kondisiProdukService) Update(ctx context.Context, id string, req *model
 	}
 
 	if req.NamaID != nil {
-		newSlug := utils.GenerateSlug(*req.NamaID)
-		exists, _ := s.repo.ExistsBySlug(ctx, newSlug, &id)
-		if exists {
-			return nil, errors.New("kondisi produk dengan nama tersebut sudah ada")
-		}
 		kondisi.NamaID = *req.NamaID
-		kondisi.Slug = newSlug
+		// Regenerate slug_id from new nama_id (unless manually provided)
+		if req.SlugID == nil {
+			s := utils.GenerateSlug(*req.NamaID)
+			kondisi.SlugID = &s
+			kondisi.Slug = s // backward compat
+		}
+	}
+	if req.SlugID != nil && *req.SlugID != "" {
+		kondisi.SlugID = req.SlugID
+		kondisi.Slug = *req.SlugID // backward compat
 	}
 	if req.NamaEN != nil {
 		kondisi.NamaEN = req.NamaEN
+		// Regenerate slug_en from new nama_en (unless manually provided)
+		if req.SlugEN == nil && *req.NamaEN != "" {
+			s := utils.GenerateSlug(*req.NamaEN)
+			kondisi.SlugEN = &s
+		}
+	}
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		kondisi.SlugEN = req.SlugEN
 	}
 	if req.Deskripsi != nil {
 		kondisi.Deskripsi = req.Deskripsi
@@ -165,8 +193,9 @@ func (s *kondisiProdukService) ToggleStatus(ctx context.Context, id string) (*mo
 	}
 
 	return &models.ToggleStatusResponse{
-		ID:       kondisi.ID.String(),
-		IsActive: kondisi.IsActive,
+		ID:        kondisi.ID.String(),
+		IsActive:  kondisi.IsActive,
+		UpdatedAt: kondisi.UpdatedAt,
 	}, nil
 }
 
@@ -182,11 +211,29 @@ func (s *kondisiProdukService) Reorder(ctx context.Context, req *models.ReorderR
 	return s.repo.UpdateOrder(ctx, req.Items)
 }
 
+func (s *kondisiProdukService) GetAllForDropdown(ctx context.Context) ([]map[string]interface{}, error) {
+	kondisis, err := s.repo.GetAllForDropdown(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]map[string]interface{}, len(kondisis))
+	for i, k := range kondisis {
+		result[i] = map[string]interface{}{
+			"id":      k.ID.String(),
+			"nama_id": k.NamaID,
+			"nama_en": k.NamaEN,
+		}
+	}
+	return result, nil
+}
+
 func (s *kondisiProdukService) toResponse(k *models.KondisiProduk) *models.KondisiProdukResponse {
 	return &models.KondisiProdukResponse{
 		ID:        k.ID.String(),
 		Nama:      k.GetNama(),
-		Slug:      k.Slug,
+		SlugID:    k.SlugID,
+		SlugEN:    k.SlugEN,
 		Deskripsi: k.Deskripsi,
 		Urutan:    k.Urutan,
 		IsActive:  k.IsActive,

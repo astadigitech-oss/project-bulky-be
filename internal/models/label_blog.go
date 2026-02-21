@@ -12,6 +12,8 @@ type LabelBlog struct {
 	NamaID    string         `gorm:"type:varchar(100);not null" json:"nama_id"`
 	NamaEN    string         `gorm:"type:varchar(100);not null" json:"nama_en"`
 	Slug      string         `gorm:"type:varchar(100);uniqueIndex;not null" json:"slug"`
+	SlugID    *string        `gorm:"type:varchar(100);uniqueIndex" json:"slug_id"`
+	SlugEN    *string        `gorm:"type:varchar(100);uniqueIndex" json:"slug_en"`
 	Urutan    int            `gorm:"default:0" json:"urutan"`
 	CreatedAt time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
 	UpdatedAt time.Time      `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`

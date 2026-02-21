@@ -81,10 +81,30 @@ func (s *blogService) Create(ctx context.Context, req *dto.CreateBlogRequest) (*
 		sanitizedKontenEN = &sanitized
 	}
 
+	// Generate/use slug_id
+	var slugIDVal string
+	if req.SlugID != nil && *req.SlugID != "" {
+		slugIDVal = *req.SlugID
+	} else {
+		slugIDVal = utils.GenerateSlug(req.JudulID)
+	}
+	slugIDPtr := &slugIDVal
+
+	// Generate/use slug_en
+	var slugEN *string
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		slugEN = req.SlugEN
+	} else if req.JudulEN != nil && *req.JudulEN != "" {
+		s := utils.GenerateSlug(*req.JudulEN)
+		slugEN = &s
+	}
+
 	blog := &models.Blog{
 		JudulID:           req.JudulID,
 		JudulEN:           req.JudulEN,
-		Slug:              req.Slug,
+		Slug:              slugIDVal,
+		SlugID:            slugIDPtr,
+		SlugEN:            slugEN,
 		KontenID:          sanitizedKontenID,
 		KontenEN:          sanitizedKontenEN,
 		FeaturedImageURL:  req.FeaturedImageURL,
@@ -123,8 +143,23 @@ func (s *blogService) Update(ctx context.Context, id uuid.UUID, req *dto.UpdateB
 	if req.JudulEN != nil {
 		blog.JudulEN = req.JudulEN
 	}
-	if req.Slug != nil {
-		blog.Slug = *req.Slug
+
+	// SlugID: explicit > auto dari JudulID > keep existing
+	if req.SlugID != nil && *req.SlugID != "" {
+		blog.SlugID = req.SlugID
+		blog.Slug = *req.SlugID
+	} else if req.JudulID != nil {
+		generated := utils.GenerateSlug(*req.JudulID)
+		blog.SlugID = &generated
+		blog.Slug = generated
+	}
+
+	// SlugEN: explicit > auto dari JudulEN > keep existing
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		blog.SlugEN = req.SlugEN
+	} else if req.JudulEN != nil && *req.JudulEN != "" {
+		generated := utils.GenerateSlug(*req.JudulEN)
+		blog.SlugEN = &generated
 	}
 	if req.KontenID != nil {
 		// Sanitize HTML content
@@ -181,6 +216,27 @@ func (s *blogService) Update(ctx context.Context, id uuid.UUID, req *dto.UpdateB
 }
 
 func (s *blogService) Delete(ctx context.Context, id uuid.UUID) error {
+	blog, err := s.blogRepo.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Rename slug sebelum soft-delete agar slug lama bisa dipakai ulang
+	suffix := "_deleted_" + id.String()[:8]
+	var newSlugID *string
+	if blog.SlugID != nil {
+		v := *blog.SlugID + suffix
+		newSlugID = &v
+	}
+	var newSlugEN *string
+	if blog.SlugEN != nil {
+		v := *blog.SlugEN + suffix
+		newSlugEN = &v
+	}
+	if err := s.blogRepo.UpdateSlugs(ctx, id, blog.Slug+suffix, newSlugID, newSlugEN); err != nil {
+		return err
+	}
+
 	return s.blogRepo.Delete(ctx, id)
 }
 
@@ -300,7 +356,8 @@ func (s *blogService) toBlogResponse(blog *models.Blog) *dto.BlogResponse {
 		ID:                blog.ID,
 		JudulID:           blog.JudulID,
 		JudulEN:           blog.JudulEN,
-		Slug:              blog.Slug,
+		SlugID:            blog.SlugID,
+		SlugEN:            blog.SlugEN,
 		KontenID:          blog.KontenID,
 		KontenEN:          blog.KontenEN,
 		FeaturedImageURL:  utils.GetFileURLPtr(blog.FeaturedImageURL, s.cfg),
@@ -322,7 +379,8 @@ func (s *blogService) toBlogResponse(blog *models.Blog) *dto.BlogResponse {
 			ID:     blog.Kategori.ID,
 			NamaID: blog.Kategori.NamaID,
 			NamaEN: blog.Kategori.NamaEN,
-			Slug:   blog.Kategori.Slug,
+			SlugID: blog.Kategori.SlugID,
+			SlugEN: blog.Kategori.SlugEN,
 		}
 	}
 
@@ -333,7 +391,8 @@ func (s *blogService) toBlogResponse(blog *models.Blog) *dto.BlogResponse {
 				ID:     label.ID,
 				NamaID: label.NamaID,
 				NamaEN: label.NamaEN,
-				Slug:   label.Slug,
+				SlugID: label.SlugID,
+				SlugEN: label.SlugEN,
 			}
 		}
 	}
@@ -346,7 +405,8 @@ func (s *blogService) toBlogListResponse(blog *models.Blog) dto.BlogListResponse
 		ID:               blog.ID,
 		JudulID:          blog.JudulID,
 		JudulEN:          blog.JudulEN,
-		Slug:             blog.Slug,
+		SlugID:           blog.SlugID,
+		SlugEN:           blog.SlugEN,
 		FeaturedImageURL: utils.GetFileURLPtr(blog.FeaturedImageURL, s.cfg),
 		IsActive:         blog.IsActive,
 		ViewCount:        blog.ViewCount,
@@ -359,7 +419,8 @@ func (s *blogService) toBlogListResponse(blog *models.Blog) dto.BlogListResponse
 			ID:     blog.Kategori.ID,
 			NamaID: blog.Kategori.NamaID,
 			NamaEN: blog.Kategori.NamaEN,
-			Slug:   blog.Kategori.Slug,
+			SlugID: blog.Kategori.SlugID,
+			SlugEN: blog.Kategori.SlugEN,
 		}
 	}
 
@@ -370,7 +431,8 @@ func (s *blogService) toBlogListResponse(blog *models.Blog) dto.BlogListResponse
 				ID:     label.ID,
 				NamaID: label.NamaID,
 				NamaEN: label.NamaEN,
-				Slug:   label.Slug,
+				SlugID: label.SlugID,
+				SlugEN: label.SlugEN,
 			}
 		}
 	}

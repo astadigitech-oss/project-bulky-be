@@ -2,11 +2,11 @@ package services
 
 import (
 	"context"
-	"errors"
 
 	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
+	"project-bulky-be/pkg/utils"
 
 	"github.com/google/uuid"
 )
@@ -33,18 +33,38 @@ func NewKategoriVideoService(repo repositories.KategoriVideoRepository) Kategori
 }
 
 func (s *kategoriVideoService) Create(ctx context.Context, req *dto.CreateKategoriVideoRequest) (*models.KategoriVideo, error) {
-	// Check slug duplicate
-	existing, err := s.repo.FindBySlug(ctx, req.Slug)
-	if err == nil && existing != nil {
-		return nil, errors.New("slug sudah digunakan")
+	// Generate/use slug_id
+	var slugIDVal string
+	if req.SlugID != nil && *req.SlugID != "" {
+		slugIDVal = *req.SlugID
+	} else {
+		slugIDVal = utils.GenerateSlug(req.NamaID)
+	}
+	slugIDPtr := &slugIDVal
+
+	// Generate/use slug_en
+	var slugEN *string
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		slugEN = req.SlugEN
+	} else if req.NamaEN != nil && *req.NamaEN != "" {
+		s := utils.GenerateSlug(*req.NamaEN)
+		slugEN = &s
+	}
+
+	// Auto-increment urutan: ambil nilai max dari DB
+	maxUrutan, err := s.repo.GetMaxUrutan(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	kategori := &models.KategoriVideo{
 		NamaID:   req.NamaID,
 		NamaEN:   req.NamaEN,
-		Slug:     req.Slug,
+		Slug:     slugIDVal,
+		SlugID:   slugIDPtr,
+		SlugEN:   slugEN,
 		IsActive: req.IsActive,
-		Urutan:   req.Urutan,
+		Urutan:   maxUrutan + 1,
 	}
 
 	if err := s.repo.Create(ctx, kategori); err != nil {
@@ -60,22 +80,28 @@ func (s *kategoriVideoService) Update(ctx context.Context, id uuid.UUID, req *dt
 		return nil, err
 	}
 
-	// Check slug duplicate if slug is being updated
-	if req.Slug != nil && *req.Slug != kategori.Slug {
-		existing, err := s.repo.FindBySlug(ctx, *req.Slug)
-		if err == nil && existing != nil && existing.ID != id {
-			return nil, errors.New("slug sudah digunakan")
-		}
-	}
-
 	if req.NamaID != nil {
 		kategori.NamaID = *req.NamaID
+		if req.SlugID == nil || *req.SlugID == "" {
+			s := utils.GenerateSlug(*req.NamaID)
+			kategori.SlugID = &s
+			kategori.Slug = s
+		}
 	}
 	if req.NamaEN != nil {
 		kategori.NamaEN = req.NamaEN
+		// Auto-generate slug_en dari nama_en jika slug_en tidak disertakan
+		if (req.SlugEN == nil || *req.SlugEN == "") && *req.NamaEN != "" {
+			s := utils.GenerateSlug(*req.NamaEN)
+			kategori.SlugEN = &s
+		}
 	}
-	if req.Slug != nil {
-		kategori.Slug = *req.Slug
+	if req.SlugID != nil && *req.SlugID != "" {
+		kategori.SlugID = req.SlugID
+		kategori.Slug = *req.SlugID
+	}
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		kategori.SlugEN = req.SlugEN
 	}
 	if req.IsActive != nil {
 		kategori.IsActive = *req.IsActive
@@ -92,12 +118,44 @@ func (s *kategoriVideoService) Update(ctx context.Context, id uuid.UUID, req *dt
 }
 
 func (s *kategoriVideoService) Delete(ctx context.Context, id uuid.UUID) error {
-	// Check if kategori exists
-	_, err := s.repo.FindByID(ctx, id)
+	// Ambil data yang akan dihapus
+	kategori, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return err
 	}
-	return s.repo.Delete(ctx, id)
+
+	// Rename slug dengan suffix _deleted_{8-char-id} agar tidak conflict unique constraint
+	suffix := "_deleted_" + id.String()[:8]
+	kategori.Slug = kategori.Slug + suffix
+	if kategori.SlugID != nil {
+		s := *kategori.SlugID + suffix
+		kategori.SlugID = &s
+	}
+	if kategori.SlugEN != nil {
+		s := *kategori.SlugEN + suffix
+		kategori.SlugEN = &s
+	}
+	if err := s.repo.Update(ctx, kategori); err != nil {
+		return err
+	}
+
+	// Soft delete
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return err
+	}
+
+	// Reorder sisa data: compact urutan menjadi 1, 2, 3, ...
+	remaining, err := s.repo.FindAll(ctx, nil)
+	if err != nil {
+		return err
+	}
+	for i, item := range remaining {
+		if err := s.repo.UpdateUrutan(ctx, item.ID, i+1); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *kategoriVideoService) GetByID(ctx context.Context, id uuid.UUID) (*dto.KategoriVideoDetailResponse, error) {
@@ -109,7 +167,8 @@ func (s *kategoriVideoService) GetByID(ctx context.Context, id uuid.UUID) (*dto.
 		ID:        k.ID.String(),
 		NamaID:    k.NamaID,
 		NamaEN:    k.NamaEN,
-		Slug:      k.Slug,
+		SlugID:    k.SlugID,
+		SlugEN:    k.SlugEN,
 		Urutan:    k.Urutan,
 		CreatedAt: k.CreatedAt,
 		UpdatedAt: k.UpdatedAt,
@@ -175,9 +234,10 @@ func (s *kategoriVideoService) GetAllActive(ctx context.Context) ([]dto.Kategori
 		}
 
 		result = append(result, dto.KategoriVideoDropdownResponse{
-			ID:   k.ID,
-			Nama: nama,
-			Slug: k.Slug,
+			ID:     k.ID,
+			Nama:   nama,
+			SlugID: k.SlugID,
+			SlugEN: k.SlugEN,
 		})
 	}
 

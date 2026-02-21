@@ -184,26 +184,10 @@ func (c *KondisiProdukController) ReorderByDirection(ctx *gin.Context) {
 }
 
 func (c *KondisiProdukController) Dropdown(ctx *gin.Context) {
-	// Get all active kondisi for dropdown
-	var params models.KondisiProdukFilterRequest
-	params.Page = 1
-	params.PerPage = 1000 // Get all
-	isActive := true
-	params.IsActive = &isActive
-
-	kondisiList, _, err := c.service.FindAll(ctx.Request.Context(), &params)
+	response, err := c.service.GetAllForDropdown(ctx.Request.Context())
 	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data kondisi", nil)
 		return
-	}
-
-	// Convert to simple dropdown response
-	response := make([]map[string]interface{}, len(kondisiList))
-	for i, k := range kondisiList {
-		response[i] = map[string]interface{}{
-			"id":   k.ID,
-			"nama": k.Nama.ID,
-		}
 	}
 
 	utils.SuccessResponse(ctx, "Data dropdown kondisi produk berhasil diambil", response)

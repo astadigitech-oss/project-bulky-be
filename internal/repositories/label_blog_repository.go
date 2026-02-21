@@ -21,6 +21,9 @@ type LabelBlogRepository interface {
 	CountBlogByLabel(ctx context.Context, LabelIDs uuid.UUID) (int64, error)
 	UpdateUrutan(ctx context.Context, id uuid.UUID, urutan int) error
 	FindAllPublicWithCount(ctx context.Context) ([]models.LabelBlog, error)
+	GetMaxUrutan(ctx context.Context) (int, error)
+	FindAllOrdered(ctx context.Context) ([]models.LabelBlog, error)
+	UpdateSlugs(ctx context.Context, id uuid.UUID, slug string, slugID *string, slugEN *string) error
 }
 
 type labelBlogRepository struct {
@@ -62,7 +65,7 @@ func (r *labelBlogRepository) FindByID(ctx context.Context, id uuid.UUID) (*mode
 
 func (r *labelBlogRepository) FindBySlug(ctx context.Context, slug string) (*models.LabelBlog, error) {
 	var label models.LabelBlog
-	err := r.db.WithContext(ctx).Where("slug = ?", slug).First(&label).Error
+	err := r.db.WithContext(ctx).Where("slug_id = ? OR slug_en = ?", slug, slug).First(&label).Error
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +81,7 @@ func (r *labelBlogRepository) FindAll(ctx context.Context, params *dto.LabelBlog
 	// Search filter
 	if params.Search != "" {
 		search := "%" + params.Search + "%"
-		query = query.Where("nama_id ILIKE ? OR nama_en ILIKE ? OR slug ILIKE ?", search, search, search)
+		query = query.Where("nama_id ILIKE ? OR nama_en ILIKE ? OR slug_id ILIKE ? OR slug_en ILIKE ?", search, search, search, search)
 	}
 
 	// Count total
@@ -118,6 +121,29 @@ func (r *labelBlogRepository) UpdateUrutan(ctx context.Context, id uuid.UUID, ur
 	return r.db.WithContext(ctx).Model(&models.LabelBlog{}).
 		Where("id = ?", id).
 		Update("urutan", urutan).Error
+}
+
+func (r *labelBlogRepository) UpdateSlugs(ctx context.Context, id uuid.UUID, slug string, slugID *string, slugEN *string) error {
+	updates := map[string]interface{}{"slug": slug}
+	if slugID != nil {
+		updates["slug_id"] = *slugID
+	}
+	if slugEN != nil {
+		updates["slug_en"] = *slugEN
+	}
+	return r.db.WithContext(ctx).Model(&models.LabelBlog{}).Where("id = ?", id).Updates(updates).Error
+}
+
+func (r *labelBlogRepository) GetMaxUrutan(ctx context.Context) (int, error) {
+	var maxUrutan int
+	err := r.db.WithContext(ctx).Model(&models.LabelBlog{}).Select("COALESCE(MAX(urutan), 0)").Scan(&maxUrutan).Error
+	return maxUrutan, err
+}
+
+func (r *labelBlogRepository) FindAllOrdered(ctx context.Context) ([]models.LabelBlog, error) {
+	var labels []models.LabelBlog
+	err := r.db.WithContext(ctx).Order("urutan ASC").Find(&labels).Error
+	return labels, err
 }
 
 func (r *labelBlogRepository) FindAllPublicWithCount(ctx context.Context) ([]models.LabelBlog, error) {

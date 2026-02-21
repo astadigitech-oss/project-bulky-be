@@ -49,6 +49,8 @@ func (p *PaginationRequest) GetOffset() int {
 type CreateKategoriProdukRequest struct {
 	NamaID              string  `json:"nama_id" binding:"required,min=2,max=100"`
 	NamaEN              *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
+	SlugID              *string `json:"slug_id" binding:"omitempty,max=120"`
+	SlugEN              *string `json:"slug_en" binding:"omitempty,max=120"`
 	Deskripsi           *string `json:"deskripsi" binding:"omitempty,max=1000"`
 	Icon                *string `json:"icon"`
 	TipeKondisiTambahan *string `json:"tipe_kondisi_tambahan" binding:"omitempty,oneof=TEKS GAMBAR"`
@@ -59,6 +61,8 @@ type CreateKategoriProdukRequest struct {
 type UpdateKategoriProdukRequest struct {
 	NamaID              *string `json:"nama_id" binding:"omitempty,min=2,max=100"`
 	NamaEN              *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
+	SlugID              *string `json:"slug_id" binding:"omitempty,max=120"`
+	SlugEN              *string `json:"slug_en" binding:"omitempty,max=120"`
 	Deskripsi           *string `json:"deskripsi" binding:"omitempty,max=1000"`
 	Icon                *string `json:"icon"`
 	TipeKondisiTambahan *string `json:"tipe_kondisi_tambahan" binding:"omitempty,oneof=TEKS GAMBAR"`
@@ -69,8 +73,20 @@ type UpdateKategoriProdukRequest struct {
 
 type KategoriProdukFilterRequest struct {
 	PaginationRequest
-	IsActive  *bool   `form:"is_active"`
-	UpdatedAt *string `form:"updated_at"`
+	IsActive *bool `form:"is_active"`
+}
+
+func (p *KategoriProdukFilterRequest) SetDefaults() {
+	p.PaginationRequest.SetDefaults()
+
+	// Validate sort_by: hanya is_active dan updated_at
+	if p.SortBy != "is_active" && p.SortBy != "updated_at" {
+		p.SortBy = "updated_at"
+	}
+	// Validate order
+	if p.Order != "asc" && p.Order != "desc" {
+		p.Order = "desc"
+	}
 }
 
 // ========================================
@@ -80,20 +96,36 @@ type KategoriProdukFilterRequest struct {
 type CreateMerekProdukRequest struct {
 	NamaID string  `json:"nama_id" binding:"required,min=2,max=100"`
 	NamaEN *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
+	SlugID *string `json:"slug_id" binding:"omitempty,max=120"`
+	SlugEN *string `json:"slug_en" binding:"omitempty,max=120"`
 	Logo   *string `json:"logo"`
 }
 
 type UpdateMerekProdukRequest struct {
 	NamaID   *string `json:"nama_id" binding:"omitempty,min=2,max=100"`
 	NamaEN   *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
+	SlugID   *string `json:"slug_id" binding:"omitempty,max=120"`
+	SlugEN   *string `json:"slug_en" binding:"omitempty,max=120"`
 	Logo     *string `json:"logo"`
 	IsActive *bool   `json:"is_active"`
 }
 
 type MerekProdukFilterRequest struct {
 	PaginationRequest
-	IsActive  *bool   `form:"is_active"`
-	UpdatedAt *string `form:"updated_at"`
+	IsActive *bool `form:"is_active"`
+}
+
+func (p *MerekProdukFilterRequest) SetDefaults() {
+	p.PaginationRequest.SetDefaults()
+
+	// Validate sort_by: hanya is_active dan updated_at
+	if p.SortBy != "is_active" && p.SortBy != "updated_at" {
+		p.SortBy = "updated_at"
+	}
+	// Validate order
+	if p.Order != "asc" && p.Order != "desc" {
+		p.Order = "desc"
+	}
 }
 
 // ========================================
@@ -103,12 +135,16 @@ type MerekProdukFilterRequest struct {
 type CreateKondisiProdukRequest struct {
 	NamaID    string  `json:"nama_id" binding:"required,min=2,max=100"`
 	NamaEN    *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
+	SlugID    *string `json:"slug_id" binding:"omitempty,max=120"`
+	SlugEN    *string `json:"slug_en" binding:"omitempty,max=120"`
 	Deskripsi *string `json:"deskripsi" binding:"omitempty,max=500"`
 }
 
 type UpdateKondisiProdukRequest struct {
 	NamaID    *string `json:"nama_id" binding:"omitempty,min=2,max=100"`
 	NamaEN    *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
+	SlugID    *string `json:"slug_id" binding:"omitempty,max=120"`
+	SlugEN    *string `json:"slug_en" binding:"omitempty,max=120"`
 	Deskripsi *string `json:"deskripsi" binding:"omitempty,max=500"`
 	IsActive  *bool   `json:"is_active"`
 }
@@ -126,12 +162,16 @@ type KondisiProdukFilterRequest struct {
 type CreateKondisiPaketRequest struct {
 	NamaID    string  `json:"nama_id" binding:"required,min=2,max=100"`
 	NamaEN    *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
+	SlugID    *string `json:"slug_id" binding:"omitempty,max=120"`
+	SlugEN    *string `json:"slug_en" binding:"omitempty,max=120"`
 	Deskripsi *string `json:"deskripsi" binding:"omitempty,max=500"`
 }
 
 type UpdateKondisiPaketRequest struct {
 	NamaID    *string `json:"nama_id" binding:"omitempty,min=2,max=100"`
 	NamaEN    *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
+	SlugID    *string `json:"slug_id" binding:"omitempty,max=120"`
+	SlugEN    *string `json:"slug_en" binding:"omitempty,max=120"`
 	Deskripsi *string `json:"deskripsi" binding:"omitempty,max=500"`
 	IsActive  *bool   `json:"is_active"`
 }
@@ -143,20 +183,36 @@ type UpdateKondisiPaketRequest struct {
 type CreateSumberProdukRequest struct {
 	NamaID    string  `json:"nama_id" binding:"required,min=2,max=100"`
 	NamaEN    *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
+	SlugID    *string `json:"slug_id" binding:"omitempty,max=120"`
+	SlugEN    *string `json:"slug_en" binding:"omitempty,max=120"`
 	Deskripsi *string `json:"deskripsi" binding:"omitempty,max=500"`
 }
 
 type UpdateSumberProdukRequest struct {
 	NamaID    *string `json:"nama_id" binding:"omitempty,min=2,max=100"`
 	NamaEN    *string `json:"nama_en,omitempty" binding:"omitempty,min=2,max=100"`
+	SlugID    *string `json:"slug_id" binding:"omitempty,max=120"`
+	SlugEN    *string `json:"slug_en" binding:"omitempty,max=120"`
 	Deskripsi *string `json:"deskripsi" binding:"omitempty,max=500"`
 	IsActive  *bool   `json:"is_active"`
 }
 
 type SumberProdukFilterRequest struct {
 	PaginationRequest
-	IsActive  *bool   `form:"is_active"`
-	UpdatedAt *string `form:"updated_at"`
+	IsActive *bool `form:"is_active"`
+}
+
+func (p *SumberProdukFilterRequest) SetDefaults() {
+	p.PaginationRequest.SetDefaults()
+
+	// Validate sort_by: hanya is_active dan updated_at
+	if p.SortBy != "is_active" && p.SortBy != "updated_at" {
+		p.SortBy = "updated_at"
+	}
+	// Validate order
+	if p.Order != "asc" && p.Order != "desc" {
+		p.Order = "desc"
+	}
 }
 
 // ========================================
@@ -278,6 +334,8 @@ type BannerTipeProdukFilterRequest struct {
 type CreateProdukRequest struct {
 	NamaID         string  `form:"nama_id" binding:"required,min=2,max=255"`
 	NamaEN         string  `form:"nama_en" binding:"required,min=2,max=255"`
+	SlugID         *string `form:"slug_id" binding:"omitempty,max=280"`
+	SlugEN         *string `form:"slug_en" binding:"omitempty,max=280"`
 	IDCargo        *string `form:"id_cargo" binding:"omitempty,max=50"`
 	ReferenceID    *string `form:"reference_id" binding:"omitempty,max=100"`
 	KategoriID     string  `form:"kategori_id" binding:"required,uuid"`
@@ -302,6 +360,8 @@ type CreateProdukRequest struct {
 type UpdateProdukRequest struct {
 	NamaID         *string `form:"nama_id" binding:"omitempty,min=2,max=255"`
 	NamaEN         *string `form:"nama_en" binding:"omitempty,min=2,max=255"`
+	SlugID         *string `form:"slug_id" binding:"omitempty,max=280"`
+	SlugEN         *string `form:"slug_en" binding:"omitempty,max=280"`
 	IDCargo        *string `form:"id_cargo" binding:"omitempty,max=50"`
 	ReferenceID    *string `form:"reference_id" binding:"omitempty,max=100"`
 	KategoriID     *string `form:"kategori_id" binding:"omitempty,uuid"`

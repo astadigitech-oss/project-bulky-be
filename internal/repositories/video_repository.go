@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"time"
 
 	"project-bulky-be/internal/models"
 
@@ -12,10 +13,10 @@ import (
 type VideoRepository interface {
 	Create(ctx context.Context, video *models.Video) error
 	Update(ctx context.Context, video *models.Video) error
-	Delete(ctx context.Context, id uuid.UUID) error
+	Delete(ctx context.Context, video *models.Video) error
 	FindByID(ctx context.Context, id uuid.UUID) (*models.Video, error)
 	FindBySlug(ctx context.Context, slug string) (*models.Video, error)
-	FindAll(ctx context.Context, isActive *bool, kategoriID *uuid.UUID, sortBy, order string, limit, offset int) ([]models.Video, int64, error)
+	FindAll(ctx context.Context, search string, isActive *bool, kategoriID *uuid.UUID, sortBy, order string, limit, offset int) ([]models.Video, int64, error)
 	Search(ctx context.Context, keyword string, isActive *bool, limit, offset int) ([]models.Video, int64, error)
 	IncrementViewCount(ctx context.Context, id uuid.UUID) error
 	FindPopular(ctx context.Context, limit int) ([]models.Video, error)
@@ -40,18 +41,27 @@ func (r *videoRepository) Update(ctx context.Context, video *models.Video) error
 	return r.db.WithContext(ctx).Save(video).Error
 }
 
-func (r *videoRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	result := r.db.WithContext(ctx).Delete(&models.Video{}, id)
+func (r *videoRepository) Delete(ctx context.Context, video *models.Video) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		now := time.Now()
+		shortID := video.ID.String()[:8]
+		suffix := "_deleted_" + shortID
 
-	if result.Error != nil {
-		return result.Error
-	}
+		updates := map[string]interface{}{
+			"slug":       video.Slug + suffix,
+			"deleted_at": now,
+		}
+		if video.SlugID != nil && *video.SlugID != "" {
+			v := *video.SlugID + suffix
+			updates["slug_id"] = v
+		}
+		if video.SlugEN != nil && *video.SlugEN != "" {
+			v := *video.SlugEN + suffix
+			updates["slug_en"] = v
+		}
 
-	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
-	}
-
-	return nil
+		return tx.Model(video).Updates(updates).Error
+	})
 }
 
 func (r *videoRepository) FindByID(ctx context.Context, id uuid.UUID) (*models.Video, error) {
@@ -69,7 +79,7 @@ func (r *videoRepository) FindBySlug(ctx context.Context, slug string) (*models.
 	var video models.Video
 	err := r.db.WithContext(ctx).
 		Preload("Kategori").
-		Where("slug = ?", slug).
+		Where("slug_id = ? OR slug_en = ?", slug, slug).
 		First(&video).Error
 	if err != nil {
 		return nil, err
@@ -77,11 +87,15 @@ func (r *videoRepository) FindBySlug(ctx context.Context, slug string) (*models.
 	return &video, nil
 }
 
-func (r *videoRepository) FindAll(ctx context.Context, isActive *bool, kategoriID *uuid.UUID, sortBy, order string, limit, offset int) ([]models.Video, int64, error) {
+func (r *videoRepository) FindAll(ctx context.Context, search string, isActive *bool, kategoriID *uuid.UUID, sortBy, order string, limit, offset int) ([]models.Video, int64, error) {
 	var videos []models.Video
 	var total int64
 
 	query := r.db.WithContext(ctx).Model(&models.Video{})
+
+	if search != "" {
+		query = query.Where("judul_id ILIKE ? OR judul_en ILIKE ?", "%"+search+"%", "%"+search+"%")
+	}
 
 	if isActive != nil {
 		query = query.Where("is_active = ?", *isActive)
@@ -186,10 +200,7 @@ func (r *videoRepository) GetStatistics(ctx context.Context) (map[string]interfa
 	r.db.WithContext(ctx).Model(&models.Video{}).Select("COALESCE(SUM(view_count), 0)").Scan(&totalViews)
 	stats["total_views"] = totalViews
 
-	// Total durasi
-	var totalDurasi int64
-	r.db.WithContext(ctx).Model(&models.Video{}).Select("COALESCE(SUM(durasi_detik), 0)").Scan(&totalDurasi)
-	stats["total_durasi_menit"] = totalDurasi / 60
+	// Total durasi removed (durasi_detik field deprecated)
 
 	return stats, nil
 }
