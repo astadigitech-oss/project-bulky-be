@@ -2,8 +2,6 @@ package repositories
 
 import (
 	"context"
-	"fmt"
-	"time"
 
 	"project-bulky-be/internal/models"
 
@@ -44,7 +42,7 @@ func (r *sumberProdukRepository) FindByID(ctx context.Context, id string) (*mode
 
 func (r *sumberProdukRepository) FindBySlug(ctx context.Context, slug string) (*models.SumberProduk, error) {
 	var sumber models.SumberProduk
-	err := r.db.WithContext(ctx).Where("slug = ?", slug).First(&sumber).Error
+	err := r.db.WithContext(ctx).Where("slug_id = ? OR slug_en = ?", slug, slug).First(&sumber).Error
 	if err != nil {
 		return nil, err
 	}
@@ -57,8 +55,10 @@ func (r *sumberProdukRepository) FindAll(ctx context.Context, params *models.Sum
 
 	query := r.db.WithContext(ctx).Model(&models.SumberProduk{})
 
+	// Search dengan ILIKE pada nama_id dan nama_en
 	if params.Search != "" {
-		query = query.Where("nama ILIKE ?", "%"+params.Search+"%")
+		search := "%" + params.Search + "%"
+		query = query.Where("nama_id ILIKE ? OR nama_en ILIKE ?", search, search)
 	}
 
 	if params.IsActive != nil {
@@ -69,8 +69,16 @@ func (r *sumberProdukRepository) FindAll(ctx context.Context, params *models.Sum
 		return nil, 0, err
 	}
 
-	orderClause := params.SortBy + " " + params.Order
-	query = query.Order(orderClause)
+	// sort_by: is_active atau updated_at
+	sortColumn := "updated_at"
+	if params.SortBy == "is_active" {
+		sortColumn = "is_active"
+	}
+	orderDir := "DESC"
+	if params.Order == "asc" {
+		orderDir = "ASC"
+	}
+	query = query.Order(sortColumn + " " + orderDir)
 	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
 
 	if err := query.Find(&sumbers).Error; err != nil {
@@ -85,29 +93,12 @@ func (r *sumberProdukRepository) Update(ctx context.Context, sumber *models.Sumb
 }
 
 func (r *sumberProdukRepository) Delete(ctx context.Context, sumber *models.SumberProduk) error {
-	// Manual update slug untuk soft delete
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		now := time.Now()
-		deletedSlug := fmt.Sprintf("%s-deleted-%d%06d",
-			sumber.Slug,
-			now.Unix(),
-			now.Nanosecond()/1000,
-		)
-
-		if err := tx.Model(sumber).Updates(map[string]interface{}{
-			"slug":       deletedSlug,
-			"deleted_at": now,
-		}).Error; err != nil {
-			return err
-		}
-
-		return nil
-	})
+	return r.db.WithContext(ctx).Delete(sumber).Error
 }
 
 func (r *sumberProdukRepository) ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error) {
 	var count int64
-	query := r.db.WithContext(ctx).Model(&models.SumberProduk{}).Where("slug = ?", slug)
+	query := r.db.WithContext(ctx).Model(&models.SumberProduk{}).Where("slug_id = ? OR slug_en = ?", slug, slug)
 	if excludeID != nil {
 		query = query.Where("id != ?", *excludeID)
 	}
@@ -118,9 +109,8 @@ func (r *sumberProdukRepository) ExistsBySlug(ctx context.Context, slug string, 
 func (r *sumberProdukRepository) GetAllForDropdown(ctx context.Context) ([]models.SumberProduk, error) {
 	var sumbers []models.SumberProduk
 	err := r.db.WithContext(ctx).
-		Select("id", "nama", "slug").
-		Where("is_active = ?", true).
-		Order("nama ASC").
+		Where("is_active = ? AND deleted_at IS NULL", true).
+		Order("nama_id ASC").
 		Find(&sumbers).Error
 	return sumbers, err
 }

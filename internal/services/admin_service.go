@@ -184,8 +184,9 @@ func (s *adminService) ToggleStatus(ctx context.Context, id, currentAdminID stri
 	}
 
 	return &models.ToggleStatusResponse{
-		ID:       admin.ID.String(),
-		IsActive: admin.IsActive,
+		ID:        admin.ID.String(),
+		IsActive:  admin.IsActive,
+		UpdatedAt: admin.UpdatedAt,
 	}, nil
 }
 

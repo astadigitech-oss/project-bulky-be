@@ -120,12 +120,13 @@ func (c *SumberProdukController) ToggleStatus(ctx *gin.Context) {
 }
 
 func (c *SumberProdukController) Dropdown(ctx *gin.Context) {
-	// Get all active sumber for dropdown
 	var params models.SumberProdukFilterRequest
 	params.Page = 1
-	params.PerPage = 1000 // Get all
+	params.PerPage = 1000
 	isActive := true
 	params.IsActive = &isActive
+	params.SortBy = "updated_at"
+	params.Order = "asc"
 
 	sumberList, _, err := c.service.FindAll(ctx.Request.Context(), &params)
 	if err != nil {
@@ -133,14 +134,5 @@ func (c *SumberProdukController) Dropdown(ctx *gin.Context) {
 		return
 	}
 
-	// Convert to simple dropdown response
-	response := make([]map[string]interface{}, len(sumberList))
-	for i, s := range sumberList {
-		response[i] = map[string]interface{}{
-			"id":   s.ID,
-			"nama": s.Nama.ID,
-		}
-	}
-
-	utils.SuccessResponse(ctx, "Data dropdown sumber produk berhasil diambil", response)
+	utils.SuccessResponse(ctx, "Data dropdown sumber produk berhasil diambil", sumberList)
 }

@@ -6,6 +6,7 @@ import (
 
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
+	"project-bulky-be/pkg/utils"
 
 	"github.com/google/uuid"
 )
@@ -29,9 +30,36 @@ func NewDisclaimerService(repo repositories.DisclaimerRepository) DisclaimerServ
 }
 
 func (s *disclaimerService) Create(ctx context.Context, req *models.CreateDisclaimerRequest) (*models.DisclaimerDetailResponse, error) {
-	// Check slug uniqueness if provided
-	if req.Slug != nil && *req.Slug != "" {
-		exists, err := s.repo.ExistsBySlug(ctx, *req.Slug, nil)
+	// Generate/use slug_id
+	var slugID *string
+	if req.SlugID != nil && *req.SlugID != "" {
+		slugID = req.SlugID
+	} else {
+		s := utils.GenerateSlug(req.Judul)
+		slugID = &s
+	}
+
+	// Generate/use slug_en
+	var slugEN *string
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		slugEN = req.SlugEN
+	} else if req.JudulEn != "" {
+		s := utils.GenerateSlug(req.JudulEn)
+		slugEN = &s
+	}
+
+	// Check slug uniqueness
+	if slugID != nil && *slugID != "" {
+		exists, err := s.repo.ExistsBySlug(ctx, *slugID, nil)
+		if err != nil {
+			return nil, err
+		}
+		if exists {
+			return nil, errors.New("slug sudah digunakan")
+		}
+	}
+	if slugEN != nil && *slugEN != "" {
+		exists, err := s.repo.ExistsBySlug(ctx, *slugEN, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -44,7 +72,9 @@ func (s *disclaimerService) Create(ctx context.Context, req *models.CreateDiscla
 		ID:       uuid.New(),
 		Judul:    req.Judul,
 		JudulEn:  req.JudulEn,
-		Slug:     req.Slug,
+		Slug:     slugID,
+		SlugID:   slugID,
+		SlugEN:   slugEN,
 		Konten:   req.Konten,
 		KontenEn: req.KontenEn,
 		IsActive: req.IsActive,
@@ -89,9 +119,46 @@ func (s *disclaimerService) Update(ctx context.Context, id string, req *models.U
 		return nil, errors.New("disclaimer tidak ditemukan")
 	}
 
-	// Check slug uniqueness if provided
-	if req.Slug != nil && *req.Slug != "" {
-		exists, err := s.repo.ExistsBySlug(ctx, *req.Slug, &id)
+	// Update judul fields
+	if req.Judul != nil {
+		disclaimer.Judul = *req.Judul
+	}
+	if req.JudulEn != nil {
+		disclaimer.JudulEn = *req.JudulEn
+	}
+
+	// Handle slug_id
+	if req.SlugID != nil && *req.SlugID != "" {
+		disclaimer.SlugID = req.SlugID
+		disclaimer.Slug = req.SlugID // backward compat
+	} else if req.Judul != nil {
+		// Judul changed and no explicit SlugID provided, regenerate
+		s := utils.GenerateSlug(*req.Judul)
+		disclaimer.SlugID = &s
+		disclaimer.Slug = &s // backward compat
+	}
+
+	// Handle slug_en
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		disclaimer.SlugEN = req.SlugEN
+	} else if req.JudulEn != nil {
+		// JudulEn changed and no explicit SlugEN provided, regenerate
+		s := utils.GenerateSlug(*req.JudulEn)
+		disclaimer.SlugEN = &s
+	}
+
+	// Check slug uniqueness
+	if disclaimer.SlugID != nil && *disclaimer.SlugID != "" {
+		exists, err := s.repo.ExistsBySlug(ctx, *disclaimer.SlugID, &id)
+		if err != nil {
+			return nil, err
+		}
+		if exists {
+			return nil, errors.New("slug sudah digunakan")
+		}
+	}
+	if disclaimer.SlugEN != nil && *disclaimer.SlugEN != "" {
+		exists, err := s.repo.ExistsBySlug(ctx, *disclaimer.SlugEN, &id)
 		if err != nil {
 			return nil, err
 		}
@@ -100,15 +167,6 @@ func (s *disclaimerService) Update(ctx context.Context, id string, req *models.U
 		}
 	}
 
-	if req.Judul != nil {
-		disclaimer.Judul = *req.Judul
-	}
-	if req.JudulEn != nil {
-		disclaimer.JudulEn = *req.JudulEn
-	}
-	if req.Slug != nil {
-		disclaimer.Slug = req.Slug
-	}
 	if req.Konten != nil {
 		disclaimer.Konten = *req.Konten
 	}
@@ -147,8 +205,9 @@ func (s *disclaimerService) SetActive(ctx context.Context, id string) (*models.T
 	}
 
 	return &models.ToggleStatusResponse{
-		ID:       disclaimer.ID.String(),
-		IsActive: disclaimer.IsActive,
+		ID:        disclaimer.ID.String(),
+		IsActive:  disclaimer.IsActive,
+		UpdatedAt: disclaimer.UpdatedAt,
 	}, nil
 }
 
@@ -173,7 +232,8 @@ func (s *disclaimerService) GetActive(ctx context.Context, lang string) (*models
 
 	return &models.DisclaimerPublicResponse{
 		Judul:  judul,
-		Slug:   *disclaimer.Slug,
+		SlugID: disclaimer.SlugID,
+		SlugEN: disclaimer.SlugEN,
 		Konten: konten,
 	}, nil
 }
@@ -198,18 +258,14 @@ func (s *disclaimerService) toListResponse(d *models.Disclaimer) *models.Disclai
 }
 
 func (s *disclaimerService) toDetailResponse(d *models.Disclaimer) *models.DisclaimerDetailResponse {
-	slug := ""
-	if d.Slug != nil {
-		slug = *d.Slug
-	}
-
 	return &models.DisclaimerDetailResponse{
 		ID: d.ID.String(),
 		Judul: models.TranslatableString{
 			ID: d.Judul,
 			EN: &d.JudulEn,
 		},
-		Slug: slug,
+		SlugID: d.SlugID,
+		SlugEN: d.SlugEN,
 		Konten: models.TranslatableString{
 			ID: d.Konten,
 			EN: &d.KontenEn,

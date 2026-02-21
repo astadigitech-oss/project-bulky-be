@@ -11,7 +11,8 @@ import (
 type CreateBlogRequest struct {
 	JudulID           string      `json:"judul_id" validate:"required,max=200"`
 	JudulEN           *string     `json:"judul_en" validate:"omitempty,max=200"`
-	Slug              string      `json:"slug" validate:"required,max=250"`
+	SlugID            *string     `json:"slug_id" validate:"omitempty,max=250"`
+	SlugEN            *string     `json:"slug_en" validate:"omitempty,max=250"`
 	KontenID          string      `json:"konten_id" validate:"required"`
 	KontenEN          *string     `json:"konten_en"`
 	FeaturedImageURL  *string     `json:"featured_image_url" validate:"omitempty,max=500"`
@@ -28,7 +29,8 @@ type CreateBlogRequest struct {
 type UpdateBlogRequest struct {
 	JudulID           *string     `json:"judul_id" validate:"omitempty,max=200"`
 	JudulEN           *string     `json:"judul_en" validate:"omitempty,max=200"`
-	Slug              *string     `json:"slug" validate:"omitempty,max=250"`
+	SlugID            *string     `json:"slug_id" validate:"omitempty,max=250"`
+	SlugEN            *string     `json:"slug_en" validate:"omitempty,max=250"`
 	KontenID          *string     `json:"konten_id"`
 	KontenEN          *string     `json:"konten_en"`
 	FeaturedImageURL  *string     `json:"featured_image_url" validate:"omitempty,max=500"`
@@ -46,7 +48,8 @@ type BlogResponse struct {
 	ID                uuid.UUID          `json:"id"`
 	JudulID           string             `json:"judul_id"`
 	JudulEN           *string            `json:"judul_en"`
-	Slug              string             `json:"slug"`
+	SlugID            *string            `json:"slug_id"`
+	SlugEN            *string            `json:"slug_en"`
 	KontenID          string             `json:"konten_id"`
 	KontenEN          *string            `json:"konten_en"`
 	FeaturedImageURL  *string            `json:"featured_image_url"`
@@ -69,7 +72,8 @@ type BlogListResponse struct {
 	ID               uuid.UUID          `json:"id"`
 	JudulID          string             `json:"judul_id"`
 	JudulEN          *string            `json:"judul_en"`
-	Slug             string             `json:"slug"`
+	SlugID           *string            `json:"slug_id"`
+	SlugEN           *string            `json:"slug_en"`
 	FeaturedImageURL *string            `json:"featured_image_url"`
 	Kategori         *KategoriBlogBrief `json:"kategori,omitempty"`
 	IsActive         bool               `json:"is_active"`
@@ -83,14 +87,16 @@ type KategoriBlogBrief struct {
 	ID     uuid.UUID `json:"id"`
 	NamaID string    `json:"nama_id"`
 	NamaEN *string   `json:"nama_en"`
-	Slug   string    `json:"slug"`
+	SlugID *string   `json:"slug_id"`
+	SlugEN *string   `json:"slug_en"`
 }
 
 type LabelBlogBrief struct {
 	ID     uuid.UUID `json:"id"`
 	NamaID string    `json:"nama_id"`
 	NamaEN string    `json:"nama_en"`
-	Slug   string    `json:"slug"`
+	SlugID *string   `json:"slug_id"`
+	SlugEN *string   `json:"slug_en"`
 }
 
 // Blog Filter Request
@@ -111,8 +117,8 @@ func (p *BlogFilterRequest) SetDefaults() {
 		p.Order = "desc"
 	}
 
-	// Validate sort_by - only allow is_active and updated_at
-	if p.SortBy != "is_active" && p.SortBy != "updated_at" {
+	// Validate sort_by - hanya izinkan is_active, published_at, dan updated_at
+	if p.SortBy != "is_active" && p.SortBy != "published_at" && p.SortBy != "updated_at" {
 		p.SortBy = "updated_at"
 	}
 }
@@ -125,9 +131,18 @@ type KategoriBlogFilterRequest struct {
 func (p *KategoriBlogFilterRequest) SetDefaults() {
 	p.PaginationRequest.SetDefaults()
 
-	// Hanya sort by urutan
-	p.SortBy = "urutan"
-	p.Order = "asc"
+	// Default sort by urutan asc
+	if p.SortBy == "" {
+		p.SortBy = "urutan"
+	}
+	if p.Order == "" {
+		p.Order = "asc"
+	}
+
+	// Hanya izinkan sort by urutan atau updated_at
+	if p.SortBy != "urutan" && p.SortBy != "updated_at" {
+		p.SortBy = "urutan"
+	}
 }
 
 // Label Blog DTOs
@@ -138,15 +153,25 @@ type LabelBlogFilterRequest struct {
 func (p *LabelBlogFilterRequest) SetDefaults() {
 	p.PaginationRequest.SetDefaults()
 
-	// Hanya sort by urutan
-	p.SortBy = "urutan"
-	p.Order = "asc"
+	// Default sort by urutan asc
+	if p.SortBy == "" {
+		p.SortBy = "urutan"
+	}
+	if p.Order == "" {
+		p.Order = "asc"
+	}
+
+	// Hanya izinkan sort by urutan atau updated_at
+	if p.SortBy != "urutan" && p.SortBy != "updated_at" {
+		p.SortBy = "urutan"
+	}
 }
 
 type CreateKategoriBlogRequest struct {
 	NamaID   string  `json:"nama_id" validate:"required,max=100"`
 	NamaEN   *string `json:"nama_en" validate:"required,max=100"`
-	Slug     string  `json:"slug" validate:"required,max=100"`
+	SlugID   *string `json:"slug_id" validate:"omitempty,max=100"`
+	SlugEN   *string `json:"slug_en" validate:"omitempty,max=100"`
 	IsActive bool    `json:"is_active"`
 	Urutan   int     `json:"urutan"`
 }
@@ -154,7 +179,8 @@ type CreateKategoriBlogRequest struct {
 type UpdateKategoriBlogRequest struct {
 	NamaID   *string `json:"nama_id" validate:"omitempty,max=100"`
 	NamaEN   *string `json:"nama_en" validate:"omitempty,max=100"`
-	Slug     *string `json:"slug" validate:"omitempty,max=100"`
+	SlugID   *string `json:"slug_id" validate:"omitempty,max=100"`
+	SlugEN   *string `json:"slug_en" validate:"omitempty,max=100"`
 	IsActive *bool   `json:"is_active"`
 	Urutan   *int    `json:"urutan"`
 }
@@ -163,14 +189,16 @@ type UpdateKategoriBlogRequest struct {
 type CreateLabelBlogRequest struct {
 	NamaID string  `json:"nama_id" binding:"required,max=100" validate:"required,max=100"`
 	NamaEN string  `json:"nama_en" binding:"required,max=100" validate:"required,max=100"`
-	Slug   *string `json:"slug" binding:"omitempty,max=100" validate:"omitempty,max=100"`
+	SlugID *string `json:"slug_id" binding:"omitempty,max=100" validate:"omitempty,max=100"`
+	SlugEN *string `json:"slug_en" binding:"omitempty,max=100" validate:"omitempty,max=100"`
 	Urutan int     `json:"urutan"`
 }
 
 type UpdateLabelBlogRequest struct {
 	NamaID *string `json:"nama_id" validate:"omitempty,max=100"`
 	NamaEN *string `json:"nama_en" validate:"omitempty,max=100"`
-	Slug   *string `json:"slug" validate:"omitempty,max=100"`
+	SlugID *string `json:"slug_id" validate:"omitempty,max=100"`
+	SlugEN *string `json:"slug_en" validate:"omitempty,max=100"`
 	Urutan *int    `json:"urutan"`
 }
 
@@ -187,7 +215,8 @@ type KategoriBlogDetailResponse struct {
 	ID        string    `json:"id"`
 	NamaID    string    `json:"nama_id"`
 	NamaEN    *string   `json:"nama_en"`
-	Slug      string    `json:"slug"`
+	SlugID    *string   `json:"slug_id"`
+	SlugEN    *string   `json:"slug_en"`
 	Urutan    int       `json:"urutan"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -206,7 +235,8 @@ type LabelBlogDetailResponse struct {
 	ID        string    `json:"id"`
 	NamaID    string    `json:"nama_id"`
 	NamaEN    string    `json:"nama_en"`
-	Slug      string    `json:"slug"`
+	SlugID    *string   `json:"slug_id"`
+	SlugEN    *string   `json:"slug_en"`
 	Urutan    int       `json:"urutan"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -214,15 +244,17 @@ type LabelBlogDetailResponse struct {
 
 // Dropdown Response DTOs
 type KategoriBlogDropdownResponse struct {
-	ID   uuid.UUID              `json:"id"`
-	Nama map[string]interface{} `json:"nama"` // {"id": "...", "en": "..."}
-	Slug string                 `json:"slug"`
+	ID     uuid.UUID              `json:"id"`
+	Nama   map[string]interface{} `json:"nama"` // {"id": "...", "en": "..."}
+	SlugID *string                `json:"slug_id"`
+	SlugEN *string                `json:"slug_en"`
 }
 
 type LabelBlogDropdownResponse struct {
-	ID   uuid.UUID              `json:"id"`
-	Nama map[string]interface{} `json:"nama"` // {"id": "...", "en": "..."}
-	Slug string                 `json:"slug"`
+	ID     uuid.UUID              `json:"id"`
+	Nama   map[string]interface{} `json:"nama"` // {"id": "...", "en": "..."}
+	SlugID *string                `json:"slug_id"`
+	SlugEN *string                `json:"slug_en"`
 }
 
 // Reorder DTO

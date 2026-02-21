@@ -19,6 +19,11 @@ type PaginationMeta struct {
 
 // NewPaginationMeta creates a new pagination meta with calculated fields
 func NewPaginationMeta(currentPage, perPage int, total int64) PaginationMeta {
+	// Guard against divide by zero
+	if perPage <= 0 {
+		perPage = 10
+	}
+
 	// Calculate last_page
 	lastPage := int(float64(total) / float64(perPage))
 	if total%int64(perPage) != 0 {
@@ -86,7 +91,8 @@ type ToggleDefaultResponse struct {
 type KategoriProdukResponse struct {
 	ID                  string             `json:"id"`
 	Nama                TranslatableString `json:"nama"`
-	Slug                string             `json:"slug"`
+	SlugID              *string            `json:"slug_id"`
+	SlugEN              *string            `json:"slug_en"`
 	Deskripsi           string             `json:"deskripsi"`
 	IconURL             string             `json:"icon_url"`
 	TipeKondisiTambahan *string            `json:"tipe_kondisi_tambahan"`
@@ -117,8 +123,9 @@ type KategoriProdukSimpleResponse struct {
 type MerekProdukResponse struct {
 	ID       string             `json:"id"`
 	Nama     TranslatableString `json:"nama"`
-	Slug     string             `json:"slug"`
-	LogoURL  *string            `json:"logo_url,omitempty"`
+	SlugID   *string            `json:"slug_id"`
+	SlugEN   *string            `json:"slug_en"`
+	LogoURL  *string            `json:"logo_url"`
 	IsActive bool               `json:"is_active"`
 	// JumlahProduk int64     `json:"jumlah_produk"`
 	CreatedAt time.Time `json:"created_at"`
@@ -129,7 +136,7 @@ type MerekProdukSimpleResponse struct {
 	ID   string             `json:"id"`
 	Nama TranslatableString `json:"nama"`
 	// Slug     string  `json:"slug"`
-	LogoURL  *string `json:"logo_url,omitempty"`
+	LogoURL  *string `json:"logo_url"`
 	IsActive bool    `json:"is_active"`
 	// JumlahProduk int64     `json:"jumlah_produk"`
 	// CreatedAt time.Time `json:"created_at"`
@@ -143,7 +150,8 @@ type MerekProdukSimpleResponse struct {
 type KondisiProdukResponse struct {
 	ID        string             `json:"id"`
 	Nama      TranslatableString `json:"nama"`
-	Slug      string             `json:"slug"`
+	SlugID    *string            `json:"slug_id"`
+	SlugEN    *string            `json:"slug_en"`
 	Deskripsi *string            `json:"deskripsi,omitempty"`
 	Urutan    int                `json:"urutan"`
 	IsActive  bool               `json:"is_active"`
@@ -171,7 +179,8 @@ type KondisiProdukSimpleResponse struct {
 type KondisiPaketResponse struct {
 	ID        string             `json:"id"`
 	Nama      TranslatableString `json:"nama"`
-	Slug      string             `json:"slug"`
+	SlugID    *string            `json:"slug_id"`
+	SlugEN    *string            `json:"slug_en"`
 	Deskripsi *string            `json:"deskripsi,omitempty"`
 	Urutan    int                `json:"urutan"`
 	IsActive  bool               `json:"is_active"`
@@ -199,7 +208,8 @@ type KondisiPaketSimpleResponse struct {
 type SumberProdukResponse struct {
 	ID        string             `json:"id"`
 	Nama      TranslatableString `json:"nama"`
-	Slug      string             `json:"slug"`
+	SlugID    *string            `json:"slug_id"`
+	SlugEN    *string            `json:"slug_en"`
 	Deskripsi *string            `json:"deskripsi,omitempty"`
 	IsActive  bool               `json:"is_active"`
 	// JumlahProduk int64     `json:"jumlah_produk"`
@@ -208,14 +218,12 @@ type SumberProdukResponse struct {
 }
 
 type SumberProdukSimpleResponse struct {
-	ID   string             `json:"id"`
-	Nama TranslatableString `json:"nama"`
-	// Slug      string  `json:"slug"`
-	// Deskripsi *string `json:"deskripsi"`
-	IsActive bool `json:"is_active"`
-	// JumlahProduk int64     `json:"jumlah_produk"`
-	// CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        string             `json:"id"`
+	Nama      TranslatableString `json:"nama"`
+	SlugID    *string            `json:"slug_id"`
+	SlugEN    *string            `json:"slug_en"`
+	IsActive  bool               `json:"is_active"`
+	UpdatedAt time.Time          `json:"updated_at"`
 }
 
 // ========================================
@@ -438,6 +446,7 @@ type ProdukPanelListResponse struct {
 	ID          string  `json:"id"`
 	NamaID      string  `json:"nama_id"`
 	NamaEN      string  `json:"nama_en"`
+	IDCargo     *string `json:"id_cargo"`
 	Status      bool    `json:"status"`       // is_active
 	GambarUtama *string `json:"gambar_utama"` // Primary image URL
 	FilePDF     *string `json:"file_pdf"`     // First PDF document URL
@@ -447,7 +456,8 @@ type ProdukDetailResponse struct {
 	ID                 string                     `json:"id"`
 	NamaID             string                     `json:"nama_id"`
 	NamaEN             string                     `json:"nama_en"`
-	Slug               string                     `json:"slug"`
+	SlugID             *string                    `json:"slug_id"`
+	SlugEN             *string                    `json:"slug_en"`
 	IDCargo            *string                    `json:"id_cargo"`
 	ReferenceID        *string                    `json:"reference_id"`
 	Kategori           SimpleProdukRelationInfo   `json:"kategori"`

@@ -42,7 +42,7 @@ func (r *dokumenKebijakanRepository) FindByID(ctx context.Context, id string) (*
 
 func (r *dokumenKebijakanRepository) FindBySlug(ctx context.Context, slug string) (*models.DokumenKebijakan, error) {
 	var dokumen models.DokumenKebijakan
-	err := r.db.WithContext(ctx).Where("slug = ?", slug).First(&dokumen).Error
+	err := r.db.WithContext(ctx).Where("slug_id = ? OR slug_en = ?", slug, slug).First(&dokumen).Error
 	if err != nil {
 		return nil, err
 	}

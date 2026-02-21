@@ -24,6 +24,7 @@ type BlogRepository interface {
 	FindPopular(ctx context.Context, limit int) ([]models.Blog, error)
 	GetStatistics(ctx context.Context) (map[string]interface{}, error)
 	ToggleStatus(ctx context.Context, id uuid.UUID) error
+	UpdateSlugs(ctx context.Context, id uuid.UUID, slug string, slugID *string, slugEN *string) error
 }
 
 type blogRepository struct {
@@ -73,7 +74,7 @@ func (r *blogRepository) FindBySlug(ctx context.Context, slug string) (*models.B
 	err := r.db.WithContext(ctx).
 		Preload("Kategori").
 		Preload("Labels").
-		Where("slug = ?", slug).
+		Where("slug_id = ? OR slug_en = ?", slug, slug).
 		First(&blog).Error
 	if err != nil {
 		return nil, err
@@ -111,19 +112,17 @@ func (r *blogRepository) FindAll(ctx context.Context, isActive *bool, kategoriID
 	}
 
 	// Build order clause
+	if order != "asc" && order != "desc" {
+		order = "desc"
+	}
 	orderClause := "updated_at DESC"
-	if sortBy == "is_active" {
-		if order == "asc" {
-			orderClause = "is_active ASC, updated_at DESC"
-		} else {
-			orderClause = "is_active DESC, updated_at DESC"
-		}
-	} else if sortBy == "updated_at" {
-		if order == "asc" {
-			orderClause = "updated_at ASC"
-		} else {
-			orderClause = "updated_at DESC"
-		}
+	switch sortBy {
+	case "is_active":
+		orderClause = "is_active " + order + ", updated_at DESC"
+	case "published_at":
+		orderClause = "published_at " + order
+	default:
+		orderClause = "updated_at " + order
 	}
 
 	err = query.
@@ -240,6 +239,17 @@ func (r *blogRepository) GetStatistics(ctx context.Context) (map[string]interfac
 	stats["total_views"] = totalViews
 
 	return stats, nil
+}
+
+func (r *blogRepository) UpdateSlugs(ctx context.Context, id uuid.UUID, slug string, slugID *string, slugEN *string) error {
+	updates := map[string]interface{}{"slug": slug}
+	if slugID != nil {
+		updates["slug_id"] = *slugID
+	}
+	if slugEN != nil {
+		updates["slug_en"] = *slugEN
+	}
+	return r.db.WithContext(ctx).Model(&models.Blog{}).Where("id = ?", id).Updates(updates).Error
 }
 
 func (r *blogRepository) ToggleStatus(ctx context.Context, id uuid.UUID) error {

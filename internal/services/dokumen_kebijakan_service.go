@@ -7,6 +7,7 @@ import (
 
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
+	"project-bulky-be/pkg/utils"
 
 	"gorm.io/gorm"
 )
@@ -66,7 +67,8 @@ func (s *dokumenKebijakanService) FindAll(ctx context.Context) ([]models.Dokumen
 				ID:        d.ID.String(),
 				Judul:     d.Judul,
 				JudulEN:   d.JudulEN,
-				Slug:      d.Slug,
+				SlugID:    d.SlugID,
+				SlugEN:    d.SlugEN,
 				UpdatedAt: d.UpdatedAt,
 			})
 		}
@@ -88,7 +90,8 @@ func (s *dokumenKebijakanService) FindByID(ctx context.Context, id string) (*mod
 		ID:        dokumen.ID.String(),
 		Judul:     dokumen.Judul,
 		JudulEN:   dokumen.JudulEN,
-		Slug:      dokumen.Slug,
+		SlugID:    dokumen.SlugID,
+		SlugEN:    dokumen.SlugEN,
 		Konten:    dokumen.Konten,
 		KontenEN:  dokumen.KontenEN,
 		CreatedAt: dokumen.CreatedAt,
@@ -109,7 +112,8 @@ func (s *dokumenKebijakanService) FindBySlug(ctx context.Context, slug string) (
 		ID:        dokumen.ID.String(),
 		Judul:     dokumen.Judul,
 		JudulEN:   dokumen.JudulEN,
-		Slug:      dokumen.Slug,
+		SlugID:    dokumen.SlugID,
+		SlugEN:    dokumen.SlugEN,
 		Konten:    dokumen.Konten,
 		KontenEN:  dokumen.KontenEN,
 		CreatedAt: dokumen.CreatedAt,
@@ -136,6 +140,22 @@ func (s *dokumenKebijakanService) Update(ctx context.Context, id string, req *mo
 		dokumen.JudulEN = *req.JudulEN
 	}
 
+	// Handle slug_id
+	if req.SlugID != nil && *req.SlugID != "" {
+		dokumen.SlugID = req.SlugID
+	} else if req.Judul != nil {
+		s := utils.GenerateSlug(*req.Judul)
+		dokumen.SlugID = &s
+	}
+
+	// Handle slug_en
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		dokumen.SlugEN = req.SlugEN
+	} else if req.JudulEN != nil {
+		s := utils.GenerateSlug(*req.JudulEN)
+		dokumen.SlugEN = &s
+	}
+
 	// Update konten if provided (sanitize HTML for non-FAQ, keep JSON for FAQ)
 	if req.Konten != nil {
 		if dokumen.Slug == "faq" {
@@ -171,7 +191,8 @@ func (s *dokumenKebijakanService) Update(ctx context.Context, id string, req *mo
 		ID:        dokumen.ID.String(),
 		Judul:     dokumen.Judul,
 		JudulEN:   dokumen.JudulEN,
-		Slug:      dokumen.Slug,
+		SlugID:    dokumen.SlugID,
+		SlugEN:    dokumen.SlugEN,
 		Konten:    dokumen.Konten,
 		KontenEN:  dokumen.KontenEN,
 		CreatedAt: dokumen.CreatedAt,
@@ -198,6 +219,22 @@ func (s *dokumenKebijakanService) UpdateBySlug(ctx context.Context, slug string,
 		dokumen.JudulEN = *req.JudulEN
 	}
 
+	// Handle slug_id
+	if req.SlugID != nil && *req.SlugID != "" {
+		dokumen.SlugID = req.SlugID
+	} else if req.Judul != nil {
+		s := utils.GenerateSlug(*req.Judul)
+		dokumen.SlugID = &s
+	}
+
+	// Handle slug_en
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		dokumen.SlugEN = req.SlugEN
+	} else if req.JudulEN != nil {
+		s := utils.GenerateSlug(*req.JudulEN)
+		dokumen.SlugEN = &s
+	}
+
 	// Update konten if provided (sanitize HTML for non-FAQ, keep JSON for FAQ)
 	if req.Konten != nil {
 		if dokumen.Slug == "faq" {
@@ -233,7 +270,8 @@ func (s *dokumenKebijakanService) UpdateBySlug(ctx context.Context, slug string,
 		ID:        dokumen.ID.String(),
 		Judul:     dokumen.Judul,
 		JudulEN:   dokumen.JudulEN,
-		Slug:      dokumen.Slug,
+		SlugID:    dokumen.SlugID,
+		SlugEN:    dokumen.SlugEN,
 		Konten:    dokumen.Konten,
 		KontenEN:  dokumen.KontenEN,
 		CreatedAt: dokumen.CreatedAt,
@@ -265,7 +303,8 @@ func (s *dokumenKebijakanService) GetByIDPublic(ctx context.Context, id string, 
 	return &models.DokumenKebijakanPublicResponse{
 		ID:     dokumen.ID.String(),
 		Judul:  judul,
-		Slug:   dokumen.Slug,
+		SlugID: dokumen.SlugID,
+		SlugEN: dokumen.SlugEN,
 		Konten: konten,
 	}, nil
 }
@@ -294,7 +333,8 @@ func (s *dokumenKebijakanService) GetBySlugPublic(ctx context.Context, slug stri
 	return &models.DokumenKebijakanPublicResponse{
 		ID:     dokumen.ID.String(),
 		Judul:  judul,
-		Slug:   dokumen.Slug,
+		SlugID: dokumen.SlugID,
+		SlugEN: dokumen.SlugEN,
 		Konten: konten,
 	}, nil
 }
@@ -308,9 +348,10 @@ func (s *dokumenKebijakanService) GetActiveListPublic(ctx context.Context) ([]mo
 	items := make([]models.DokumenKebijakanPublicResponse, len(dokumens))
 	for i, d := range dokumens {
 		items[i] = models.DokumenKebijakanPublicResponse{
-			ID:    d.ID.String(),
-			Judul: d.Judul,
-			Slug:  d.Slug,
+			ID:     d.ID.String(),
+			Judul:  d.Judul,
+			SlugID: d.SlugID,
+			SlugEN: d.SlugEN,
 		}
 	}
 

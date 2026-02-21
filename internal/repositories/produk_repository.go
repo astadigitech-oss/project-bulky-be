@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"project-bulky-be/internal/models"
@@ -69,7 +68,7 @@ func (r *produkRepository) FindBySlug(ctx context.Context, slug string) (*models
 			return db.Order("urutan ASC")
 		}).
 		Preload("Dokumen").
-		Where("slug = ?", slug).
+		Where("slug_id = ? OR slug_en = ?", slug, slug).
 		First(&produk).Error
 	if err != nil {
 		return nil, err
@@ -135,7 +134,28 @@ func (r *produkRepository) FindAll(ctx context.Context, params *models.ProdukFil
 		return nil, 0, err
 	}
 
-	orderClause := params.SortBy + " " + params.Order
+	validSortFields := map[string]string{
+		"nama_id":    "nama_id",
+		"nama_en":    "nama_en",
+		"id_cargo":   "id_cargo",
+		"is_active":  "is_active",
+		"status":     "is_active",
+		"updated_at": "updated_at",
+		"created_at": "created_at",
+	}
+	sortBy := "nama_id"
+	if col, ok := validSortFields[params.SortBy]; ok {
+		sortBy = col
+	}
+	order := params.Order
+	if order != "asc" && order != "desc" {
+		order = "asc"
+	}
+	nullsLast := ""
+	if sortBy == "id_cargo" || sortBy == "nama_en" {
+		nullsLast = " NULLS LAST"
+	}
+	orderClause := sortBy + " " + order + nullsLast
 	query = query.Order(orderClause)
 	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
 
@@ -154,16 +174,23 @@ func (r *produkRepository) Delete(ctx context.Context, produk *models.Produk) er
 	// Manual update slug untuk soft delete
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		now := time.Now()
-		deletedSlug := fmt.Sprintf("%s-deleted-%d%06d",
-			produk.Slug,
-			now.Unix(),
-			now.Nanosecond()/1000,
-		)
+		shortID := produk.ID.String()[:8]
+		suffix := "_deleted_" + shortID
 
-		if err := tx.Model(produk).Updates(map[string]interface{}{
-			"slug":       deletedSlug,
+		updates := map[string]interface{}{
+			"slug":       produk.Slug + suffix,
 			"deleted_at": now,
-		}).Error; err != nil {
+		}
+		if produk.SlugID != nil && *produk.SlugID != "" {
+			v := *produk.SlugID + suffix
+			updates["slug_id"] = v
+		}
+		if produk.SlugEN != nil && *produk.SlugEN != "" {
+			v := *produk.SlugEN + suffix
+			updates["slug_en"] = v
+		}
+
+		if err := tx.Model(produk).Updates(updates).Error; err != nil {
 			return err
 		}
 
@@ -173,7 +200,7 @@ func (r *produkRepository) Delete(ctx context.Context, produk *models.Produk) er
 
 func (r *produkRepository) ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error) {
 	var count int64
-	query := r.db.WithContext(ctx).Model(&models.Produk{}).Where("slug = ?", slug)
+	query := r.db.WithContext(ctx).Model(&models.Produk{}).Where("slug_id = ? OR slug_en = ?", slug, slug)
 	if excludeID != nil {
 		query = query.Where("id != ?", *excludeID)
 	}

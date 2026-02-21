@@ -12,12 +12,14 @@ type Video struct {
 	JudulID           string         `gorm:"type:varchar(200);not null" json:"judul_id"`
 	JudulEN           *string        `gorm:"type:varchar(200)" json:"judul_en"`
 	Slug              string         `gorm:"type:varchar(250);uniqueIndex;not null" json:"slug"`
+	SlugID            *string        `gorm:"type:varchar(250);uniqueIndex" json:"slug_id"`
+	SlugEN            *string        `gorm:"type:varchar(250);uniqueIndex" json:"slug_en"`
 	DeskripsiID       string         `gorm:"type:text;not null" json:"deskripsi_id"`
 	DeskripsiEN       *string        `gorm:"type:text" json:"deskripsi_en"`
 	VideoURL          string         `gorm:"type:varchar(500);not null" json:"video_url"`
 	ThumbnailURL      *string        `gorm:"type:varchar(500)" json:"thumbnail_url"`
 	KategoriID        uuid.UUID      `gorm:"type:uuid;not null" json:"kategori_id"`
-	DurasiDetik       int            `gorm:"not null" json:"durasi_detik"`
+	DurasiDetik       int            `gorm:"not null;default:0" json:"-"`
 	MetaTitleID       *string        `gorm:"type:varchar(200)" json:"meta_title_id"`
 	MetaTitleEN       *string        `gorm:"type:varchar(200)" json:"meta_title_en"`
 	MetaDescriptionID *string        `gorm:"type:text" json:"meta_description_id"`

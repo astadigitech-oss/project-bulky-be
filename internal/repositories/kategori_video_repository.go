@@ -18,6 +18,7 @@ type KategoriVideoRepository interface {
 	FindBySlug(ctx context.Context, slug string) (*models.KategoriVideo, error)
 	FindAll(ctx context.Context, isActive *bool) ([]models.KategoriVideo, error)
 	FindAllPaginated(ctx context.Context, params *dto.KategoriVideoFilterRequest) ([]models.KategoriVideo, int64, error)
+	GetMaxUrutan(ctx context.Context) (int, error)
 	UpdateUrutan(ctx context.Context, id uuid.UUID, urutan int) error
 	FindAllPublicWithCount(ctx context.Context) ([]models.KategoriVideo, error)
 }
@@ -53,7 +54,7 @@ func (r *kategoriVideoRepository) FindByID(ctx context.Context, id uuid.UUID) (*
 
 func (r *kategoriVideoRepository) FindBySlug(ctx context.Context, slug string) (*models.KategoriVideo, error) {
 	var kategori models.KategoriVideo
-	err := r.db.WithContext(ctx).Where("slug = ?", slug).First(&kategori).Error
+	err := r.db.WithContext(ctx).Where("slug_id = ? OR slug_en = ?", slug, slug).First(&kategori).Error
 	if err != nil {
 		return nil, err
 	}
@@ -83,13 +84,27 @@ func (r *kategoriVideoRepository) FindAllPaginated(ctx context.Context, params *
 		query = query.Where("is_active = ?", *params.IsActive)
 	}
 
+	// Search with ILIKE pada nama_id dan nama_en
+	if params.Search != "" {
+		search := "%" + params.Search + "%"
+		query = query.Where("nama_id ILIKE ? OR nama_en ILIKE ?", search, search)
+	}
+
 	// Count total
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Apply sorting - always urutan ASC
-	query = query.Order("urutan ASC")
+	// Apply sorting: urutan atau updated_at
+	sortColumn := "urutan"
+	if params.SortBy == "updated_at" {
+		sortColumn = "updated_at"
+	}
+	orderDir := "ASC"
+	if params.Order == "desc" {
+		orderDir = "DESC"
+	}
+	query = query.Order(sortColumn + " " + orderDir)
 
 	// Apply pagination
 	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
@@ -105,6 +120,14 @@ func (r *kategoriVideoRepository) UpdateUrutan(ctx context.Context, id uuid.UUID
 	return r.db.WithContext(ctx).Model(&models.KategoriVideo{}).
 		Where("id = ?", id).
 		Update("urutan", urutan).Error
+}
+
+func (r *kategoriVideoRepository) GetMaxUrutan(ctx context.Context) (int, error) {
+	var maxUrutan int
+	result := r.db.WithContext(ctx).Model(&models.KategoriVideo{}).
+		Select("COALESCE(MAX(urutan), 0)").
+		Scan(&maxUrutan)
+	return maxUrutan, result.Error
 }
 
 func (r *kategoriVideoRepository) FindAllPublicWithCount(ctx context.Context) ([]models.KategoriVideo, error) {

@@ -151,8 +151,9 @@ func (s *warehouseService) ToggleStatus(ctx context.Context, id string) (*models
 	}
 
 	return &models.ToggleStatusResponse{
-		ID:       warehouse.ID.String(),
-		IsActive: warehouse.IsActive,
+		ID:        warehouse.ID.String(),
+		IsActive:  warehouse.IsActive,
+		UpdatedAt: warehouse.UpdatedAt,
 	}, nil
 }
 

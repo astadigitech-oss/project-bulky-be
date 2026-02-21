@@ -12,6 +12,8 @@ type Blog struct {
 	JudulID           string         `gorm:"type:varchar(200);not null" json:"judul_id"`
 	JudulEN           *string        `gorm:"type:varchar(200)" json:"judul_en"`
 	Slug              string         `gorm:"type:varchar(250);uniqueIndex;not null" json:"slug"`
+	SlugID            *string        `gorm:"type:varchar(250);uniqueIndex" json:"slug_id"`
+	SlugEN            *string        `gorm:"type:varchar(250);uniqueIndex" json:"slug_en"`
 	KontenID          string         `gorm:"type:text;not null" json:"konten_id"`
 	KontenEN          *string        `gorm:"type:text" json:"konten_en"`
 	FeaturedImageURL  *string        `gorm:"type:varchar(500)" json:"featured_image_url"`

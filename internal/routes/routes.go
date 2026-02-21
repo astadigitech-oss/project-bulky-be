@@ -655,7 +655,6 @@ func SetupRoutes(
 		{
 			blogAdmin.GET("", middleware.RequirePermission("marketing:read"), blogController.GetAll)
 			blogAdmin.GET("/statistik", middleware.RequirePermission("marketing:read"), blogController.GetStatistics)
-			blogAdmin.GET("/dropdown", middleware.RequirePermission("marketing:read"), blogController.GetDropdownOptions)
 			blogAdmin.GET("/:id", middleware.RequirePermission("marketing:read"), blogController.GetByID)
 			blogAdmin.POST("", middleware.RequirePermission("marketing:manage"), blogController.Create)
 			blogAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), blogController.Update)
@@ -679,6 +678,7 @@ func SetupRoutes(
 		kategoriBlogAdmin.Use(middleware.AdminOnly())
 		{
 			kategoriBlogAdmin.GET("", middleware.RequirePermission("marketing:read"), kategoriBlogController.GetAll)
+			kategoriBlogAdmin.GET("/dropdown", middleware.RequirePermission("marketing:read"), kategoriBlogController.GetDropdownOptions)
 			kategoriBlogAdmin.GET("/:id", middleware.RequirePermission("marketing:read"), kategoriBlogController.GetByID)
 			kategoriBlogAdmin.POST("", middleware.RequirePermission("marketing:manage"), kategoriBlogController.Create)
 			kategoriBlogAdmin.PUT("/:id", middleware.RequirePermission("marketing:manage"), kategoriBlogController.Update)

@@ -16,6 +16,7 @@ import (
 
 type ProdukGambarService interface {
 	CreateWithFile(ctx context.Context, produkID string, file *multipart.FileHeader, isPrimary bool) (*models.ProdukGambarResponse, error)
+	CreateMultipleWithFiles(ctx context.Context, produkID string, files []*multipart.FileHeader) ([]models.ProdukGambarResponse, error)
 	Delete(ctx context.Context, produkID, gambarID string) error
 	Reorder(ctx context.Context, produkID, gambarID, direction string) (map[string]interface{}, error)
 }
@@ -75,6 +76,73 @@ func (s *produkGambarService) CreateWithFile(ctx context.Context, produkID strin
 		Urutan:    gambar.Urutan,
 		IsPrimary: gambar.IsPrimary,
 	}, nil
+}
+
+func (s *produkGambarService) CreateMultipleWithFiles(ctx context.Context, produkID string, files []*multipart.FileHeader) ([]models.ProdukGambarResponse, error) {
+	produkUUID, err := uuid.Parse(produkID)
+	if err != nil {
+		return nil, errors.New("produk_id tidak valid")
+	}
+
+	// Get current max urutan once, increment per file
+	maxUrutan, err := s.repo.GetMaxUrutanByProdukID(ctx, produkID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check whether this product currently has any images (to auto-set primary)
+	existingCount, err := s.repo.CountByProdukID(ctx, produkID)
+	if err != nil {
+		return nil, err
+	}
+
+	produkDir := fmt.Sprintf("products/%s", produkID)
+	var uploadedPaths []string // for rollback
+
+	var results []models.ProdukGambarResponse
+
+	for i, file := range files {
+		relativePath, err := utils.SaveUploadedFile(file, produkDir, s.cfg)
+		if err != nil {
+			// Rollback: delete all already-uploaded files
+			for _, p := range uploadedPaths {
+				utils.DeleteFile(p, s.cfg)
+			}
+			return nil, fmt.Errorf("gagal upload gambar ke-%d (%s): %w", i+1, file.Filename, err)
+		}
+		uploadedPaths = append(uploadedPaths, relativePath)
+
+		urutan := maxUrutan + i + 1
+		gambar := &models.ProdukGambar{
+			ProdukID:  produkUUID,
+			GambarURL: relativePath,
+			Urutan:    urutan,
+			IsPrimary: false,
+		}
+
+		if err := s.repo.Create(ctx, gambar); err != nil {
+			// Rollback: delete all uploaded files including current
+			for _, p := range uploadedPaths {
+				utils.DeleteFile(p, s.cfg)
+			}
+			return nil, fmt.Errorf("gagal menyimpan gambar ke-%d ke database: %w", i+1, err)
+		}
+
+		results = append(results, models.ProdukGambarResponse{
+			ID:        gambar.ID.String(),
+			GambarURL: utils.GetFileURL(gambar.GambarURL, s.cfg),
+			Urutan:    gambar.Urutan,
+			IsPrimary: gambar.IsPrimary,
+		})
+	}
+
+	// Auto-set primary to the first uploaded gambar if product had no images before
+	if existingCount == 0 && len(results) > 0 {
+		_ = s.repo.SetPrimary(ctx, produkID, results[0].ID)
+		results[0].IsPrimary = true
+	}
+
+	return results, nil
 }
 
 func (s *produkGambarService) Delete(ctx context.Context, produkID, gambarID string) error {

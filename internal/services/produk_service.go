@@ -73,11 +73,24 @@ func (s *produkService) CreateWithFiles(
 	gambarFiles, dokumenFiles []*multipart.FileHeader,
 	dokumenNama []string,
 ) (*models.ProdukDetailResponse, error) {
-	slug := utils.GenerateSlug(req.NamaID)
+	// Generate slug_id
+	var slugID *string
+	if req.SlugID != nil && *req.SlugID != "" {
+		s := *req.SlugID
+		slugID = &s
+	} else {
+		s := utils.GenerateSlug(req.NamaID)
+		slugID = &s
+	}
 
-	exists, _ := s.repo.ExistsBySlug(ctx, slug, nil)
-	if exists {
-		return nil, errors.New("produk dengan nama tersebut sudah ada")
+	// Generate slug_en
+	var slugEN *string
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		s := *req.SlugEN
+		slugEN = &s
+	} else if req.NamaEN != "" {
+		s := utils.GenerateSlug(req.NamaEN)
+		slugEN = &s
 	}
 
 	if req.IDCargo != nil && *req.IDCargo != "" {
@@ -108,7 +121,9 @@ func (s *produkService) CreateWithFiles(
 	produk := &models.Produk{
 		NamaID:             req.NamaID,
 		NamaEN:             req.NamaEN,
-		Slug:               slug,
+		Slug:               *slugID,
+		SlugID:             slugID,
+		SlugEN:             slugEN,
 		IDCargo:            req.IDCargo,
 		ReferenceID:        req.ReferenceID,
 		KategoriID:         kategoriID,
@@ -272,17 +287,29 @@ func (s *produkService) Update(ctx context.Context, id string, req *models.Updat
 	}
 
 	if req.NamaID != nil {
-		newSlug := utils.GenerateSlug(*req.NamaID)
-		exists, _ := s.repo.ExistsBySlug(ctx, newSlug, &id)
-		if exists {
-			return nil, errors.New("produk dengan nama tersebut sudah ada")
-		}
 		produk.NamaID = *req.NamaID
-		produk.Slug = newSlug
+		// Regenerate slug_id from new nama_id (unless manually provided)
+		if req.SlugID == nil {
+			s := utils.GenerateSlug(*req.NamaID)
+			produk.SlugID = &s
+			produk.Slug = s // backward compat
+		}
+	}
+	if req.SlugID != nil && *req.SlugID != "" {
+		produk.SlugID = req.SlugID
+		produk.Slug = *req.SlugID // backward compat
 	}
 
 	if req.NamaEN != nil {
 		produk.NamaEN = *req.NamaEN
+		// Regenerate slug_en from new nama_en (unless manually provided)
+		if req.SlugEN == nil && *req.NamaEN != "" {
+			s := utils.GenerateSlug(*req.NamaEN)
+			produk.SlugEN = &s
+		}
+	}
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		produk.SlugEN = req.SlugEN
 	}
 
 	if req.IDCargo != nil {
@@ -498,8 +525,9 @@ func (s *produkService) ToggleStatus(ctx context.Context, id string) (*models.To
 	}
 
 	return &models.ToggleStatusResponse{
-		ID:       produk.ID.String(),
-		IsActive: produk.IsActive,
+		ID:        produk.ID.String(),
+		IsActive:  produk.IsActive,
+		UpdatedAt: produk.UpdatedAt,
 	}, nil
 }
 
@@ -590,10 +618,11 @@ func (s *produkService) toListResponse(p *models.Produk) *models.ProdukListRespo
 // toPanelListResponse converts Produk to simplified ProdukPanelListResponse for admin panel
 func (s *produkService) toPanelListResponse(p *models.Produk) *models.ProdukPanelListResponse {
 	resp := &models.ProdukPanelListResponse{
-		ID:     p.ID.String(),
-		NamaID: p.NamaID,
-		NamaEN: p.NamaEN,
-		Status: p.IsActive,
+		ID:      p.ID.String(),
+		NamaID:  p.NamaID,
+		NamaEN:  p.NamaEN,
+		IDCargo: p.IDCargo,
+		Status:  p.IsActive,
 	}
 
 	// Get primary/first image - prioritize is_primary, fallback to first by urutan
@@ -631,7 +660,8 @@ func (s *produkService) toDetailResponse(p *models.Produk) *models.ProdukDetailR
 		ID:          p.ID.String(),
 		NamaID:      p.NamaID,
 		NamaEN:      p.NamaEN,
-		Slug:        p.Slug,
+		SlugID:      p.SlugID,
+		SlugEN:      p.SlugEN,
 		IDCargo:     p.IDCargo,
 		ReferenceID: p.ReferenceID,
 		Kategori: models.SimpleProdukRelationInfo{

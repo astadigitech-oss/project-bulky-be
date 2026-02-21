@@ -28,17 +28,32 @@ func NewSumberProdukService(repo repositories.SumberProdukRepository) SumberProd
 }
 
 func (s *sumberProdukService) Create(ctx context.Context, req *models.CreateSumberProdukRequest) (*models.SumberProdukResponse, error) {
-	slug := utils.GenerateSlug(req.NamaID)
+	// Generate slug_id
+	var slugID *string
+	if req.SlugID != nil && *req.SlugID != "" {
+		s := *req.SlugID
+		slugID = &s
+	} else {
+		s := utils.GenerateSlug(req.NamaID)
+		slugID = &s
+	}
 
-	exists, _ := s.repo.ExistsBySlug(ctx, slug, nil)
-	if exists {
-		return nil, errors.New("sumber produk dengan nama tersebut sudah ada")
+	// Generate slug_en
+	var slugEN *string
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		s := *req.SlugEN
+		slugEN = &s
+	} else if req.NamaEN != nil && *req.NamaEN != "" {
+		s := utils.GenerateSlug(*req.NamaEN)
+		slugEN = &s
 	}
 
 	sumber := &models.SumberProduk{
 		NamaID:    req.NamaID,
 		NamaEN:    req.NamaEN,
-		Slug:      slug,
+		Slug:      *slugID,
+		SlugID:    slugID,
+		SlugEN:    slugEN,
 		Deskripsi: req.Deskripsi,
 		IsActive:  true,
 	}
@@ -91,16 +106,28 @@ func (s *sumberProdukService) Update(ctx context.Context, id string, req *models
 	}
 
 	if req.NamaID != nil {
-		newSlug := utils.GenerateSlug(*req.NamaID)
-		exists, _ := s.repo.ExistsBySlug(ctx, newSlug, &id)
-		if exists {
-			return nil, errors.New("sumber produk dengan nama tersebut sudah ada")
-		}
 		sumber.NamaID = *req.NamaID
-		sumber.Slug = newSlug
+		// Regenerate slug_id from new nama_id (unless manually provided)
+		if req.SlugID == nil || *req.SlugID == "" {
+			s := utils.GenerateSlug(*req.NamaID)
+			sumber.SlugID = &s
+			sumber.Slug = s // backward compat
+		}
+	}
+	if req.SlugID != nil && *req.SlugID != "" {
+		sumber.SlugID = req.SlugID
+		sumber.Slug = *req.SlugID // backward compat
 	}
 	if req.NamaEN != nil {
 		sumber.NamaEN = req.NamaEN
+		// Regenerate slug_en from new nama_en (unless manually provided)
+		if (req.SlugEN == nil || *req.SlugEN == "") && *req.NamaEN != "" {
+			s := utils.GenerateSlug(*req.NamaEN)
+			sumber.SlugEN = &s
+		}
+	}
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		sumber.SlugEN = req.SlugEN
 	}
 	if req.Deskripsi != nil {
 		sumber.Deskripsi = req.Deskripsi
@@ -122,7 +149,20 @@ func (s *sumberProdukService) Delete(ctx context.Context, id string) error {
 		return errors.New("sumber produk tidak ditemukan")
 	}
 
-	// TODO: Check if sumber has products
+	// Rename slug dengan suffix _deleted_{8-char-id} agar tidak conflict unique constraint
+	suffix := "_deleted_" + id[:8]
+	sumber.Slug = sumber.Slug + suffix
+	if sumber.SlugID != nil {
+		v := *sumber.SlugID + suffix
+		sumber.SlugID = &v
+	}
+	if sumber.SlugEN != nil {
+		v := *sumber.SlugEN + suffix
+		sumber.SlugEN = &v
+	}
+	if err := s.repo.Update(ctx, sumber); err != nil {
+		return err
+	}
 
 	return s.repo.Delete(ctx, sumber)
 }
@@ -139,8 +179,9 @@ func (s *sumberProdukService) ToggleStatus(ctx context.Context, id string) (*mod
 	}
 
 	return &models.ToggleStatusResponse{
-		ID:       sumber.ID.String(),
-		IsActive: sumber.IsActive,
+		ID:        sumber.ID.String(),
+		IsActive:  sumber.IsActive,
+		UpdatedAt: sumber.UpdatedAt,
 	}, nil
 }
 
@@ -148,7 +189,8 @@ func (s *sumberProdukService) toResponse(sb *models.SumberProduk) *models.Sumber
 	return &models.SumberProdukResponse{
 		ID:        sb.ID.String(),
 		Nama:      sb.GetNama(),
-		Slug:      sb.Slug,
+		SlugID:    sb.SlugID,
+		SlugEN:    sb.SlugEN,
 		Deskripsi: sb.Deskripsi,
 		IsActive:  sb.IsActive,
 		CreatedAt: sb.CreatedAt,
@@ -158,12 +200,11 @@ func (s *sumberProdukService) toResponse(sb *models.SumberProduk) *models.Sumber
 
 func (s *sumberProdukService) toSimpleResponse(sb *models.SumberProduk) *models.SumberProdukSimpleResponse {
 	return &models.SumberProdukSimpleResponse{
-		ID:   sb.ID.String(),
-		Nama: sb.GetNama(),
-		// Slug:      sb.Slug,
-		// Deskripsi: sb.Deskripsi,
-		IsActive: sb.IsActive,
-		// CreatedAt: sb.CreatedAt,
+		ID:        sb.ID.String(),
+		Nama:      sb.GetNama(),
+		SlugID:    sb.SlugID,
+		SlugEN:    sb.SlugEN,
+		IsActive:  sb.IsActive,
 		UpdatedAt: sb.UpdatedAt,
 	}
 }

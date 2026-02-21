@@ -3,7 +3,6 @@ package controllers
 import (
 	"errors"
 	"net/http"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -49,7 +48,12 @@ func (c *VideoController) Create(ctx *gin.Context) {
 		// Parse form data
 		req.JudulID = ctx.PostForm("judul_id")
 		req.JudulEN = ctx.PostForm("judul_en")
-		req.Slug = ctx.PostForm("slug")
+		if slugID := ctx.PostForm("slug_id"); slugID != "" {
+			req.SlugID = &slugID
+		}
+		if slugEN := ctx.PostForm("slug_en"); slugEN != "" {
+			req.SlugEN = &slugEN
+		}
 		req.DeskripsiID = ctx.PostForm("deskripsi_id")
 		req.DeskripsiEN = ctx.PostForm("deskripsi_en")
 
@@ -62,17 +66,6 @@ func (c *VideoController) Create(ctx *gin.Context) {
 				return
 			}
 			req.KategoriID = kategoriID
-		}
-
-		// Parse durasi_detik
-		durasiStr := ctx.PostForm("durasi_detik")
-		if durasiStr != "" {
-			durasi, err := strconv.Atoi(durasiStr)
-			if err != nil {
-				utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "durasi_detik harus berupa angka", err.Error())
-				return
-			}
-			req.DurasiDetik = durasi
 		}
 
 		// Parse meta fields
@@ -104,10 +97,6 @@ func (c *VideoController) Create(ctx *gin.Context) {
 			utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "judul_en wajib diisi", "")
 			return
 		}
-		if req.Slug == "" {
-			utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "slug wajib diisi", "")
-			return
-		}
 		if req.DeskripsiID == "" {
 			utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "deskripsi_id wajib diisi", "")
 			return
@@ -135,29 +124,12 @@ func (c *VideoController) Create(ctx *gin.Context) {
 				return
 			}
 			videoURL = savedPath
-			uploadedFilePath = filepath.Join(c.cfg.UploadPath, filepath.FromSlash(savedPath))
-
-			// Auto-detect video duration if not provided
-			if req.DurasiDetik == 0 {
-				duration, err := utils.GetVideoDurationInSeconds(uploadedFilePath)
-				if err != nil {
-					// Rollback: delete video file if duration detection fails
-					utils.DeleteFile(videoURL, c.cfg)
-					utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Gagal mendeteksi durasi video. Error: "+err.Error()+". Path: "+uploadedFilePath, "")
-					return
-				}
-				req.DurasiDetik = duration
-			}
+			uploadedFilePath = savedPath
 		} else {
 			// If no video file, check for video_url string
 			videoURL = ctx.PostForm("video_url")
 			if videoURL == "" {
 				utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "video_file atau video_url wajib diisi", "")
-				return
-			}
-			// For external URL, duration must be provided manually
-			if req.DurasiDetik == 0 {
-				utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "durasi_detik wajib diisi untuk video URL eksternal", "")
 				return
 			}
 		}
@@ -186,18 +158,13 @@ func (c *VideoController) Create(ctx *gin.Context) {
 			if thumbnailURLStr := ctx.PostForm("thumbnail_url"); thumbnailURLStr != "" {
 				req.ThumbnailURL = &thumbnailURLStr
 			} else if uploadedFilePath != "" {
-				// Auto-generate thumbnail from uploaded video file
+				// Auto-generate thumbnail from uploaded video file (requires ffmpeg)
 				generatedThumbnail, err := utils.GenerateThumbnailFromVideo(videoURL, "video/thumbnail", c.cfg)
-				if err != nil {
-					// Rollback: delete video file if thumbnail generation fails
-					if videoURL != "" && strings.HasPrefix(videoURL, "/uploads/") {
-						utils.DeleteFile(videoURL, c.cfg)
-					}
-					utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal auto-generate thumbnail: "+err.Error(), "")
-					return
+				if err == nil {
+					thumbnailURL = &generatedThumbnail
+					req.ThumbnailURL = thumbnailURL
 				}
-				thumbnailURL = &generatedThumbnail
-				req.ThumbnailURL = thumbnailURL
+				// If ffmpeg not installed or extraction fails, thumbnail_url stays nil
 			}
 			// If external video URL and no thumbnail provided, thumbnailURL remains nil
 		}
@@ -253,8 +220,11 @@ func (c *VideoController) Update(ctx *gin.Context) {
 		if judulEN := ctx.PostForm("judul_en"); judulEN != "" {
 			req.JudulEN = &judulEN
 		}
-		if slug := ctx.PostForm("slug"); slug != "" {
-			req.Slug = &slug
+		if slugID := ctx.PostForm("slug_id"); slugID != "" {
+			req.SlugID = &slugID
+		}
+		if slugEN := ctx.PostForm("slug_en"); slugEN != "" {
+			req.SlugEN = &slugEN
 		}
 		if deskripsiID := ctx.PostForm("deskripsi_id"); deskripsiID != "" {
 			req.DeskripsiID = &deskripsiID
@@ -271,16 +241,6 @@ func (c *VideoController) Update(ctx *gin.Context) {
 				return
 			}
 			req.KategoriID = &kategoriID
-		}
-
-		// Parse durasi_detik
-		if durasiStr := ctx.PostForm("durasi_detik"); durasiStr != "" {
-			durasi, err := strconv.Atoi(durasiStr)
-			if err != nil {
-				utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "durasi_detik harus berupa angka", err.Error())
-				return
-			}
-			req.DurasiDetik = &durasi
 		}
 
 		// Parse meta fields
@@ -324,16 +284,6 @@ func (c *VideoController) Update(ctx *gin.Context) {
 				return
 			}
 			req.VideoURL = &savedPath
-
-			// Auto-detect video duration if not provided
-			if req.DurasiDetik == nil || *req.DurasiDetik == 0 {
-				uploadedFilePath := filepath.Join(c.cfg.UploadPath, filepath.FromSlash(savedPath))
-				duration, err := utils.GetVideoDurationInSeconds(uploadedFilePath)
-				if err == nil {
-					req.DurasiDetik = &duration
-				}
-				// If auto-detect fails, keep existing duration or use provided value
-			}
 
 			// Delete old video file if exists
 			if existingVideo.VideoURL != "" && strings.HasPrefix(existingVideo.VideoURL, "/uploads/") {
@@ -381,22 +331,19 @@ func (c *VideoController) Update(ctx *gin.Context) {
 			req.ThumbnailURL = &thumbnailURL
 			thumbnailUpdated = true
 		} else if req.VideoURL != nil && strings.HasPrefix(*req.VideoURL, "/uploads/") {
-			// New video uploaded but no thumbnail provided → auto-generate
+			// New video uploaded but no thumbnail provided → try auto-generate (requires ffmpeg)
 			generatedThumbnail, err := utils.GenerateThumbnailFromVideo(*req.VideoURL, "video/thumbnail", c.cfg)
-			if err != nil {
-				// Log error but don't fail - keep old thumbnail
-				// Could also choose to fail here if thumbnail is critical
-				utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal auto-generate thumbnail: "+err.Error(), "")
-				return
-			}
-			req.ThumbnailURL = &generatedThumbnail
-			thumbnailUpdated = true
+			if err == nil {
+				req.ThumbnailURL = &generatedThumbnail
+				thumbnailUpdated = true
 
-			// Get existing video to delete old thumbnail
-			existingVideo, err := c.videoService.GetByID(ctx.Request.Context(), id)
-			if err == nil && existingVideo.ThumbnailURL != nil {
-				oldThumbnail = existingVideo.ThumbnailURL
+				// Get existing video to delete old thumbnail
+				existingVideo, err := c.videoService.GetByID(ctx.Request.Context(), id)
+				if err == nil && existingVideo.ThumbnailURL != nil {
+					oldThumbnail = existingVideo.ThumbnailURL
+				}
 			}
+			// If ffmpeg not installed or extraction fails, keep existing thumbnail
 		}
 		// If no thumbnail update and no video update → keep old thumbnail (do nothing)
 

@@ -133,8 +133,9 @@ func (s *buyerService) ToggleStatus(ctx context.Context, id string) (*models.Tog
 	}
 
 	return &models.ToggleStatusResponse{
-		ID:       buyer.ID.String(),
-		IsActive: buyer.IsActive,
+		ID:        buyer.ID.String(),
+		IsActive:  buyer.IsActive,
+		UpdatedAt: buyer.UpdatedAt,
 	}, nil
 }
 

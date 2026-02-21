@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 
+	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
+	"project-bulky-be/pkg/utils"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -30,15 +32,18 @@ type VideoService interface {
 type videoService struct {
 	videoRepo    repositories.VideoRepository
 	kategoriRepo repositories.KategoriVideoRepository
+	cfg          *config.Config
 }
 
 func NewVideoService(
 	videoRepo repositories.VideoRepository,
 	kategoriRepo repositories.KategoriVideoRepository,
+	cfg *config.Config,
 ) VideoService {
 	return &videoService{
 		videoRepo:    videoRepo,
 		kategoriRepo: kategoriRepo,
+		cfg:          cfg,
 	}
 }
 
@@ -52,24 +57,38 @@ func (s *videoService) Create(ctx context.Context, req *dto.CreateVideoRequest) 
 		return nil, err
 	}
 
-	// Validate duration is provided (should be auto-detected or manually provided)
-	if req.DurasiDetik <= 0 {
-		return nil, errors.New("durasi_detik is required and must be greater than 0")
-	}
-
 	// Convert is_active string to boolean
 	isActive := req.IsActive == "true"
+
+	// Generate/use slug_id
+	var slugIDVal string
+	if req.SlugID != nil && *req.SlugID != "" {
+		slugIDVal = *req.SlugID
+	} else {
+		slugIDVal = utils.GenerateSlug(req.JudulID)
+	}
+	slugIDPtr := &slugIDVal
+
+	// Generate/use slug_en
+	var slugEN *string
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		slugEN = req.SlugEN
+	} else if req.JudulEN != "" {
+		s := utils.GenerateSlug(req.JudulEN)
+		slugEN = &s
+	}
 
 	video := &models.Video{
 		JudulID:           req.JudulID,
 		JudulEN:           &req.JudulEN,
-		Slug:              req.Slug,
+		Slug:              slugIDVal,
+		SlugID:            slugIDPtr,
+		SlugEN:            slugEN,
 		DeskripsiID:       req.DeskripsiID,
 		DeskripsiEN:       &req.DeskripsiEN,
 		VideoURL:          req.VideoURL,
 		ThumbnailURL:      req.ThumbnailURL,
 		KategoriID:        req.KategoriID,
-		DurasiDetik:       req.DurasiDetik,
 		MetaTitleID:       req.MetaTitleID,
 		MetaTitleEN:       req.MetaTitleEN,
 		MetaDescriptionID: req.MetaDescriptionID,
@@ -93,12 +112,25 @@ func (s *videoService) Update(ctx context.Context, id uuid.UUID, req *dto.Update
 
 	if req.JudulID != nil {
 		video.JudulID = *req.JudulID
+		if req.SlugID == nil {
+			s := utils.GenerateSlug(*req.JudulID)
+			video.SlugID = &s
+			video.Slug = s
+		}
 	}
 	if req.JudulEN != nil {
 		video.JudulEN = req.JudulEN
+		if req.SlugEN == nil && req.JudulEN != nil && *req.JudulEN != "" {
+			s := utils.GenerateSlug(*req.JudulEN)
+			video.SlugEN = &s
+		}
 	}
-	if req.Slug != nil {
-		video.Slug = *req.Slug
+	if req.SlugID != nil && *req.SlugID != "" {
+		video.SlugID = req.SlugID
+		video.Slug = *req.SlugID
+	}
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		video.SlugEN = req.SlugEN
 	}
 	if req.DeskripsiID != nil {
 		video.DeskripsiID = *req.DeskripsiID
@@ -114,9 +146,6 @@ func (s *videoService) Update(ctx context.Context, id uuid.UUID, req *dto.Update
 	}
 	if req.KategoriID != nil {
 		video.KategoriID = *req.KategoriID
-	}
-	if req.DurasiDetik != nil {
-		video.DurasiDetik = *req.DurasiDetik
 	}
 	if req.MetaTitleID != nil {
 		video.MetaTitleID = req.MetaTitleID
@@ -147,7 +176,11 @@ func (s *videoService) Update(ctx context.Context, id uuid.UUID, req *dto.Update
 }
 
 func (s *videoService) Delete(ctx context.Context, id uuid.UUID) error {
-	return s.videoRepo.Delete(ctx, id)
+	video, err := s.videoRepo.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	return s.videoRepo.Delete(ctx, video)
 }
 
 func (s *videoService) GetByID(ctx context.Context, id uuid.UUID) (*dto.VideoResponse, error) {
@@ -168,7 +201,7 @@ func (s *videoService) GetBySlug(ctx context.Context, slug string) (*dto.VideoRe
 
 func (s *videoService) GetAll(ctx context.Context, params *dto.VideoFilterRequest) ([]dto.VideoListResponse, *models.PaginationMeta, error) {
 	offset := params.GetOffset()
-	videos, total, err := s.videoRepo.FindAll(ctx, params.IsActive, params.KategoriID, params.SortBy, params.Order, params.PerPage, offset)
+	videos, total, err := s.videoRepo.FindAll(ctx, params.Search, params.IsActive, params.KategoriID, params.SortBy, params.Order, params.PerPage, offset)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -256,13 +289,13 @@ func (s *videoService) toVideoResponse(video *models.Video) *dto.VideoResponse {
 		ID:                video.ID,
 		JudulID:           video.JudulID,
 		JudulEN:           video.JudulEN,
-		Slug:              video.Slug,
+		SlugID:            video.SlugID,
+		SlugEN:            video.SlugEN,
 		DeskripsiID:       video.DeskripsiID,
 		DeskripsiEN:       video.DeskripsiEN,
-		VideoURL:          video.VideoURL,
-		ThumbnailURL:      video.ThumbnailURL,
+		VideoURL:          utils.GetFileURL(video.VideoURL, s.cfg),
+		ThumbnailURL:      utils.GetFileURLPtr(video.ThumbnailURL, s.cfg),
 		KategoriID:        video.KategoriID,
-		DurasiDetik:       video.DurasiDetik,
 		MetaTitleID:       video.MetaTitleID,
 		MetaTitleEN:       video.MetaTitleEN,
 		MetaDescriptionID: video.MetaDescriptionID,
@@ -280,7 +313,8 @@ func (s *videoService) toVideoResponse(video *models.Video) *dto.VideoResponse {
 			ID:     video.Kategori.ID,
 			NamaID: video.Kategori.NamaID,
 			NamaEN: video.Kategori.NamaEN,
-			Slug:   video.Kategori.Slug,
+			SlugID: video.Kategori.SlugID,
+			SlugEN: video.Kategori.SlugEN,
 		}
 	}
 
@@ -292,11 +326,12 @@ func (s *videoService) toVideoListResponse(video *models.Video) dto.VideoListRes
 		ID:           video.ID,
 		JudulID:      video.JudulID,
 		JudulEN:      video.JudulEN,
-		Slug:         video.Slug,
+		SlugID:       video.SlugID,
+		SlugEN:       video.SlugEN,
 		DeskripsiID:  video.DeskripsiID,
 		DeskripsiEN:  video.DeskripsiEN,
-		ThumbnailURL: video.ThumbnailURL,
-		DurasiDetik:  video.DurasiDetik,
+		ThumbnailURL: utils.GetFileURLPtr(video.ThumbnailURL, s.cfg),
+		Kategori:     nil,
 		IsActive:     video.IsActive,
 		ViewCount:    video.ViewCount,
 		PublishedAt:  video.PublishedAt,
@@ -308,7 +343,8 @@ func (s *videoService) toVideoListResponse(video *models.Video) dto.VideoListRes
 			ID:     video.Kategori.ID,
 			NamaID: video.Kategori.NamaID,
 			NamaEN: video.Kategori.NamaEN,
-			Slug:   video.Kategori.Slug,
+			SlugID: video.Kategori.SlugID,
+			SlugEN: video.Kategori.SlugEN,
 		}
 	}
 

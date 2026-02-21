@@ -87,7 +87,7 @@ func (c *MerekProdukController) Create(ctx *gin.Context) {
 }
 
 func (c *MerekProdukController) FindAll(ctx *gin.Context) {
-	var params models.PaginationRequest
+	var params models.MerekProdukFilterRequest
 	if err := ctx.ShouldBindQuery(&params); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
 		return
@@ -218,27 +218,11 @@ func (c *MerekProdukController) ToggleStatus(ctx *gin.Context) {
 }
 
 func (c *MerekProdukController) Dropdown(ctx *gin.Context) {
-	// Get all active merek for dropdown
-	var params models.PaginationRequest
-	params.Page = 1
-	params.PerPage = 1000 // Get all
-	isActive := true
-	params.IsActive = &isActive
-
-	merekList, _, err := c.service.FindAll(ctx.Request.Context(), &params)
+	merekList, err := c.service.GetAllForDropdown(ctx.Request.Context())
 	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data merek", nil)
 		return
 	}
 
-	// Convert to simple dropdown response
-	response := make([]map[string]interface{}, len(merekList))
-	for i, m := range merekList {
-		response[i] = map[string]interface{}{
-			"id":   m.ID,
-			"nama": m.Nama.ID,
-		}
-	}
-
-	utils.SuccessResponse(ctx, "Data dropdown merek produk berhasil diambil", response)
+	utils.SuccessResponse(ctx, "Data dropdown merek produk berhasil diambil", merekList)
 }

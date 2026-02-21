@@ -2,8 +2,6 @@ package repositories
 
 import (
 	"context"
-	"fmt"
-	"time"
 
 	"project-bulky-be/internal/models"
 
@@ -46,7 +44,7 @@ func (r *kategoriProdukRepository) FindByID(ctx context.Context, id string) (*mo
 
 func (r *kategoriProdukRepository) FindBySlug(ctx context.Context, slug string) (*models.KategoriProduk, error) {
 	var kategori models.KategoriProduk
-	err := r.db.WithContext(ctx).Where("slug = ?", slug).First(&kategori).Error
+	err := r.db.WithContext(ctx).Where("slug_id = ? OR slug_en = ?", slug, slug).First(&kategori).Error
 	if err != nil {
 		return nil, err
 	}
@@ -59,9 +57,10 @@ func (r *kategoriProdukRepository) FindAll(ctx context.Context, params *models.K
 
 	query := r.db.WithContext(ctx).Model(&models.KategoriProduk{})
 
-	// Search filter
+	// Search dengan ILIKE pada nama_id dan nama_en
 	if params.Search != "" {
-		query = query.Where("nama_id ILIKE ? OR nama_en ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")
+		search := "%" + params.Search + "%"
+		query = query.Where("nama_id ILIKE ? OR nama_en ILIKE ?", search, search)
 	}
 
 	// Active filter
@@ -69,19 +68,21 @@ func (r *kategoriProdukRepository) FindAll(ctx context.Context, params *models.K
 		query = query.Where("is_active = ?", *params.IsActive)
 	}
 
-	// MemilikiKondisiTambahan filter
-	// if params.MemilikiKondisiTambahan != nil {
-	// 	query = query.Where("memiliki_kondisi_tambahan = ?", *params.MemilikiKondisiTambahan)
-	// }
-
 	// Count total
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Sorting
-	orderClause := params.SortBy + " " + params.Order
-	query = query.Order(orderClause)
+	// sort_by: is_active atau updated_at
+	sortColumn := "updated_at"
+	if params.SortBy == "is_active" {
+		sortColumn = "is_active"
+	}
+	orderDir := "DESC"
+	if params.Order == "asc" {
+		orderDir = "ASC"
+	}
+	query = query.Order(sortColumn + " " + orderDir)
 
 	// Pagination
 	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
@@ -98,29 +99,12 @@ func (r *kategoriProdukRepository) Update(ctx context.Context, kategori *models.
 }
 
 func (r *kategoriProdukRepository) Delete(ctx context.Context, kategori *models.KategoriProduk) error {
-	// Manual update slug untuk soft delete
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		now := time.Now()
-		deletedSlug := fmt.Sprintf("%s-deleted-%d%06d",
-			kategori.Slug,
-			now.Unix(),
-			now.Nanosecond()/1000,
-		)
-
-		if err := tx.Model(kategori).Updates(map[string]interface{}{
-			"slug":       deletedSlug,
-			"deleted_at": now,
-		}).Error; err != nil {
-			return err
-		}
-
-		return nil
-	})
+	return r.db.WithContext(ctx).Delete(kategori).Error
 }
 
 func (r *kategoriProdukRepository) ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error) {
 	var count int64
-	query := r.db.WithContext(ctx).Model(&models.KategoriProduk{}).Where("slug = ?", slug)
+	query := r.db.WithContext(ctx).Model(&models.KategoriProduk{}).Where("slug_id = ? OR slug_en = ?", slug, slug)
 	if excludeID != nil {
 		query = query.Where("id != ?", *excludeID)
 	}

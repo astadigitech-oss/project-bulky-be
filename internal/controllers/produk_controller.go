@@ -245,32 +245,45 @@ func (c *ProdukController) UpdateStock(ctx *gin.Context) {
 func (c *ProdukController) AddGambar(ctx *gin.Context) {
 	produkID := ctx.Param("id")
 
-	// Get file from form
-	file, err := ctx.FormFile("gambar")
+	form, err := ctx.MultipartForm()
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "File gambar wajib diupload", nil)
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Gagal memparse form", nil)
 		return
 	}
 
-	// Validate file
-	if err := validateImageFile(file); err != nil {
+	// Collect files: prioritize gambar[] (multiple), fallback to gambar (single)
+	files := form.File["gambar[]"]
+	if len(files) == 0 {
+		if f, ok := form.File["gambar"]; ok {
+			files = f
+		}
+	}
+
+	if len(files) == 0 {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "File gambar wajib diupload (field: gambar atau gambar[])", nil)
+		return
+	}
+
+	if len(files) > 10 {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Maksimal 10 gambar per upload", nil)
+		return
+	}
+
+	// Validate ALL files first before uploading any
+	for i, file := range files {
+		if err := validateImageFile(file); err != nil {
+			utils.ErrorResponse(ctx, http.StatusBadRequest, fmt.Sprintf("gambar[%d] (%s): %s", i+1, file.Filename, err.Error()), nil)
+			return
+		}
+	}
+
+	results, err := c.gambarService.CreateMultipleWithFiles(ctx.Request.Context(), produkID, files)
+	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
-	var req models.CreateProdukGambarRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
-	}
-
-	result, err := c.gambarService.CreateWithFile(ctx.Request.Context(), produkID, file, req.IsPrimary)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	utils.CreatedResponse(ctx, "Gambar berhasil ditambahkan", result)
+	utils.CreatedResponse(ctx, fmt.Sprintf("%d gambar berhasil ditambahkan", len(results)), results)
 }
 
 func (c *ProdukController) DeleteGambar(ctx *gin.Context) {

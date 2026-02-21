@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"project-bulky-be/internal/models"
@@ -44,7 +43,7 @@ func (r *disclaimerRepository) FindByID(ctx context.Context, id string) (*models
 
 func (r *disclaimerRepository) FindBySlug(ctx context.Context, slug string) (*models.Disclaimer, error) {
 	var disclaimer models.Disclaimer
-	err := r.db.WithContext(ctx).Where("slug = ? AND is_active = ?", slug, true).First(&disclaimer).Error
+	err := r.db.WithContext(ctx).Where("(slug_id = ? OR slug_en = ?) AND is_active = ?", slug, slug, true).First(&disclaimer).Error
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +57,7 @@ func (r *disclaimerRepository) FindAll(ctx context.Context, params *models.Pagin
 	query := r.db.WithContext(ctx).Model(&models.Disclaimer{})
 
 	if params.Search != "" {
-		query = query.Where("judul ILIKE ?", "%"+params.Search+"%")
+		query = query.Where("judul ILIKE ? OR judul_en ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")
 	}
 
 	if params.IsActive != nil {
@@ -105,23 +104,27 @@ func (r *disclaimerRepository) Delete(ctx context.Context, disclaimer *models.Di
 	// Manual update slug untuk soft delete
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		now := time.Now()
+		shortID := disclaimer.ID.String()[:8]
+		suffix := "_deleted_" + shortID
 
-		// Handle nullable slug
-		slugValue := ""
-		if disclaimer.Slug != nil {
-			slugValue = *disclaimer.Slug
+		updates := map[string]interface{}{
+			"deleted_at": now,
 		}
 
-		deletedSlug := fmt.Sprintf("%s-deleted-%d%06d",
-			slugValue,
-			now.Unix(),
-			now.Nanosecond()/1000,
-		)
+		if disclaimer.Slug != nil && *disclaimer.Slug != "" {
+			v := *disclaimer.Slug + suffix
+			updates["slug"] = v
+		}
+		if disclaimer.SlugID != nil && *disclaimer.SlugID != "" {
+			v := *disclaimer.SlugID + suffix
+			updates["slug_id"] = v
+		}
+		if disclaimer.SlugEN != nil && *disclaimer.SlugEN != "" {
+			v := *disclaimer.SlugEN + suffix
+			updates["slug_en"] = v
+		}
 
-		if err := tx.Model(disclaimer).Updates(map[string]interface{}{
-			"slug":       deletedSlug,
-			"deleted_at": now,
-		}).Error; err != nil {
+		if err := tx.Model(disclaimer).Updates(updates).Error; err != nil {
 			return err
 		}
 
@@ -131,7 +134,7 @@ func (r *disclaimerRepository) Delete(ctx context.Context, disclaimer *models.Di
 
 func (r *disclaimerRepository) ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error) {
 	var count int64
-	query := r.db.WithContext(ctx).Model(&models.Disclaimer{}).Where("slug = ?", slug)
+	query := r.db.WithContext(ctx).Model(&models.Disclaimer{}).Where("slug_id = ? OR slug_en = ?", slug, slug)
 	if excludeID != nil {
 		query = query.Where("id != ?", *excludeID)
 	}

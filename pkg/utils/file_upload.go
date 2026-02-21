@@ -227,17 +227,26 @@ func SaveUploadedFileWithCustomName(file *multipart.FileHeader, directory, custo
 
 // GetFileURL returns the full URL for a file path
 func GetFileURL(filePath interface{}, cfg *config.Config) string {
+	base := strings.TrimRight(cfg.BaseURL, "/")
+	base = strings.TrimSuffix(base, "/uploads")
+	normalize := func(p string) string {
+		if p == "" {
+			return ""
+		}
+		if strings.HasPrefix(p, "http://") || strings.HasPrefix(p, "https://") {
+			return p
+		}
+		p = strings.TrimPrefix(p, "uploads/")
+		return fmt.Sprintf("%s/uploads/%s", base, p)
+	}
 	switch v := filePath.(type) {
 	case string:
-		if v == "" {
-			return ""
-		}
-		return fmt.Sprintf("%s/uploads/%s", strings.TrimRight(cfg.BaseURL, "/"), v)
+		return normalize(v)
 	case *string:
-		if v == nil || *v == "" {
+		if v == nil {
 			return ""
 		}
-		return fmt.Sprintf("%s/uploads/%s", strings.TrimRight(cfg.BaseURL, "/"), *v)
+		return normalize(*v)
 	default:
 		return ""
 	}
@@ -248,6 +257,13 @@ func GetFileURLPtr(filePath *string, cfg *config.Config) *string {
 	if filePath == nil || *filePath == "" {
 		return nil
 	}
-	url := fmt.Sprintf("%s/uploads/%s", strings.TrimRight(cfg.BaseURL, "/"), *filePath)
+	p := *filePath
+	if strings.HasPrefix(p, "http://") || strings.HasPrefix(p, "https://") {
+		return &p
+	}
+	p = strings.TrimPrefix(p, "uploads/")
+	base := strings.TrimRight(cfg.BaseURL, "/")
+	base = strings.TrimSuffix(base, "/uploads")
+	url := fmt.Sprintf("%s/uploads/%s", base, p)
 	return &url
 }

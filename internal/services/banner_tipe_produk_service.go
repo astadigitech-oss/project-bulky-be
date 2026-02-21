@@ -371,8 +371,9 @@ func (s *bannerTipeProdukService) ToggleStatus(ctx context.Context, id string) (
 	}
 
 	return &models.ToggleStatusResponse{
-		ID:       banner.ID.String(),
-		IsActive: banner.IsActive,
+		ID:        banner.ID.String(),
+		IsActive:  banner.IsActive,
+		UpdatedAt: banner.UpdatedAt,
 	}, nil
 }
 

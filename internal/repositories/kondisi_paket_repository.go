@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"project-bulky-be/internal/models"
@@ -47,7 +46,7 @@ func (r *kondisiPaketRepository) FindByID(ctx context.Context, id string) (*mode
 
 func (r *kondisiPaketRepository) FindBySlug(ctx context.Context, slug string) (*models.KondisiPaket, error) {
 	var kondisi models.KondisiPaket
-	err := r.db.WithContext(ctx).Where("slug = ?", slug).First(&kondisi).Error
+	err := r.db.WithContext(ctx).Where("slug_id = ? OR slug_en = ?", slug, slug).First(&kondisi).Error
 	if err != nil {
 		return nil, err
 	}
@@ -120,19 +119,25 @@ func (r *kondisiPaketRepository) Update(ctx context.Context, kondisi *models.Kon
 func (r *kondisiPaketRepository) Delete(ctx context.Context, kondisi *models.KondisiPaket) error {
 	// Manual update slug untuk soft delete (karena GORM tidak pass slug ke trigger)
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// Generate deleted slug
 		now := time.Now()
-		deletedSlug := fmt.Sprintf("%s-deleted-%d%06d",
-			kondisi.Slug,
-			now.Unix(),
-			now.Nanosecond()/1000,
-		)
+		shortID := kondisi.ID.String()[:8]
+		suffix := "_deleted_" + shortID
 
-		// Update slug dan deleted_at
-		if err := tx.Model(kondisi).Updates(map[string]interface{}{
-			"slug":       deletedSlug,
+		updates := map[string]interface{}{
+			"slug":       kondisi.Slug + suffix,
 			"deleted_at": now,
-		}).Error; err != nil {
+		}
+
+		if kondisi.SlugID != nil && *kondisi.SlugID != "" {
+			v := *kondisi.SlugID + suffix
+			updates["slug_id"] = v
+		}
+		if kondisi.SlugEN != nil && *kondisi.SlugEN != "" {
+			v := *kondisi.SlugEN + suffix
+			updates["slug_en"] = v
+		}
+
+		if err := tx.Model(kondisi).Updates(updates).Error; err != nil {
 			return err
 		}
 
@@ -142,7 +147,7 @@ func (r *kondisiPaketRepository) Delete(ctx context.Context, kondisi *models.Kon
 
 func (r *kondisiPaketRepository) ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error) {
 	var count int64
-	query := r.db.WithContext(ctx).Model(&models.KondisiPaket{}).Where("slug = ?", slug)
+	query := r.db.WithContext(ctx).Model(&models.KondisiPaket{}).Where("slug_id = ? OR slug_en = ?", slug, slug)
 	if excludeID != nil {
 		query = query.Where("id != ?", *excludeID)
 	}

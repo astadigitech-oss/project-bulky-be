@@ -12,6 +12,8 @@ type KategoriProduk struct {
 	NamaID              string         `gorm:"column:nama_id;type:varchar(100);not null" json:"-"`
 	NamaEN              *string        `gorm:"column:nama_en;type:varchar(100)" json:"-"`
 	Slug                string         `gorm:"type:varchar(120);uniqueIndex;not null" json:"slug"`
+	SlugID              *string        `gorm:"type:varchar(120);uniqueIndex" json:"slug_id"`
+	SlugEN              *string        `gorm:"type:varchar(120);uniqueIndex" json:"slug_en"`
 	Deskripsi           *string        `gorm:"type:text" json:"deskripsi,omitempty"`
 	IconURL             *string        `gorm:"type:varchar(500);column:icon_url" json:"icon_url,omitempty"`
 	TipeKondisiTambahan *string        `gorm:"type:varchar(10)" json:"tipe_kondisi_tambahan,omitempty"`

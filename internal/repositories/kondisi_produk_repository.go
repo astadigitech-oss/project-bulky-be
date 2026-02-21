@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"project-bulky-be/internal/models"
@@ -46,7 +45,7 @@ func (r *kondisiProdukRepository) FindByID(ctx context.Context, id string) (*mod
 
 func (r *kondisiProdukRepository) FindBySlug(ctx context.Context, slug string) (*models.KondisiProduk, error) {
 	var kondisi models.KondisiProduk
-	err := r.db.WithContext(ctx).Where("slug = ?", slug).First(&kondisi).Error
+	err := r.db.WithContext(ctx).Where("slug_id = ? OR slug_en = ?", slug, slug).First(&kondisi).Error
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +59,7 @@ func (r *kondisiProdukRepository) FindAll(ctx context.Context, params *models.Ko
 	query := r.db.WithContext(ctx).Model(&models.KondisiProduk{})
 
 	if params.Search != "" {
-		query = query.Where("nama ILIKE ?", "%"+params.Search+"%")
+		query = query.Where("nama_id ILIKE ? OR nama_en ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%")
 	}
 
 	if params.IsActive != nil {
@@ -71,7 +70,20 @@ func (r *kondisiProdukRepository) FindAll(ctx context.Context, params *models.Ko
 		return nil, 0, err
 	}
 
-	orderClause := params.SortBy + " " + params.Order
+	validSortFields := map[string]bool{
+		"urutan":     true,
+		"updated_at": true,
+		"nama_id":    true,
+	}
+	sortBy := params.SortBy
+	if !validSortFields[sortBy] {
+		sortBy = "urutan"
+	}
+	order := params.Order
+	if order != "asc" && order != "desc" {
+		order = "asc"
+	}
+	orderClause := sortBy + " " + order
 	query = query.Order(orderClause)
 	query = query.Offset(params.GetOffset()).Limit(params.PerPage)
 
@@ -90,16 +102,23 @@ func (r *kondisiProdukRepository) Delete(ctx context.Context, kondisi *models.Ko
 	// Manual update slug untuk soft delete
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		now := time.Now()
-		deletedSlug := fmt.Sprintf("%s-deleted-%d%06d",
-			kondisi.Slug,
-			now.Unix(),
-			now.Nanosecond()/1000,
-		)
+		shortID := kondisi.ID.String()[:8]
+		suffix := "_deleted_" + shortID
 
-		if err := tx.Model(kondisi).Updates(map[string]interface{}{
-			"slug":       deletedSlug,
+		updates := map[string]interface{}{
+			"slug":       kondisi.Slug + suffix,
 			"deleted_at": now,
-		}).Error; err != nil {
+		}
+		if kondisi.SlugID != nil && *kondisi.SlugID != "" {
+			v := *kondisi.SlugID + suffix
+			updates["slug_id"] = v
+		}
+		if kondisi.SlugEN != nil && *kondisi.SlugEN != "" {
+			v := *kondisi.SlugEN + suffix
+			updates["slug_en"] = v
+		}
+
+		if err := tx.Model(kondisi).Updates(updates).Error; err != nil {
 			return err
 		}
 
@@ -109,7 +128,7 @@ func (r *kondisiProdukRepository) Delete(ctx context.Context, kondisi *models.Ko
 
 func (r *kondisiProdukRepository) ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error) {
 	var count int64
-	query := r.db.WithContext(ctx).Model(&models.KondisiProduk{}).Where("slug = ?", slug)
+	query := r.db.WithContext(ctx).Model(&models.KondisiProduk{}).Where("slug_id = ? OR slug_en = ?", slug, slug)
 	if excludeID != nil {
 		query = query.Where("id != ?", *excludeID)
 	}
@@ -120,7 +139,7 @@ func (r *kondisiProdukRepository) ExistsBySlug(ctx context.Context, slug string,
 func (r *kondisiProdukRepository) GetAllForDropdown(ctx context.Context) ([]models.KondisiProduk, error) {
 	var kondisis []models.KondisiProduk
 	err := r.db.WithContext(ctx).
-		Select("id", "nama", "slug").
+		Select("id", "nama_id", "nama_en").
 		Where("is_active = ?", true).
 		Order("urutan ASC").
 		Find(&kondisis).Error
