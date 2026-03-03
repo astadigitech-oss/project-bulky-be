@@ -186,6 +186,7 @@ func (s *kategoriBlogService) GetByID(ctx context.Context, id uuid.UUID) (*dto.K
 		SlugID:    k.SlugID,
 		SlugEN:    k.SlugEN,
 		Urutan:    k.Urutan,
+		IsActive:  k.IsActive,
 		CreatedAt: k.CreatedAt,
 		UpdatedAt: k.UpdatedAt,
 	}, nil
@@ -214,6 +215,7 @@ func (s *kategoriBlogService) GetAllPaginated(ctx context.Context, params *dto.K
 			NamaID:    k.NamaID,
 			NamaEN:    k.NamaEN,
 			Urutan:    k.Urutan,
+			IsActive:  k.IsActive,
 			UpdatedAt: k.UpdatedAt,
 		}
 	}

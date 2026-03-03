@@ -209,6 +209,7 @@ type KategoriBlogListResponse struct {
 	NamaEN    *string   `json:"nama_en"`
 	Urutan    int       `json:"urutan"`
 	UpdatedAt time.Time `json:"updated_at"`
+	IsActive  bool      `json:"is_active"`
 }
 
 type KategoriBlogDetailResponse struct {
@@ -218,6 +219,7 @@ type KategoriBlogDetailResponse struct {
 	SlugID    *string   `json:"slug_id"`
 	SlugEN    *string   `json:"slug_en"`
 	Urutan    int       `json:"urutan"`
+	IsActive  bool      `json:"is_active"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
