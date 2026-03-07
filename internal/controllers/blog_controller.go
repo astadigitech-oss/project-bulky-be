@@ -83,20 +83,26 @@ func (c *BlogController) Create(ctx *gin.Context) {
 		}
 
 		// Parse meta fields
-		if metaTitleID := ctx.PostForm("meta_title_id"); metaTitleID != "" {
-			req.MetaTitleID = &metaTitleID
+		// if metaTitleID := ctx.PostForm("meta_title_id"); metaTitleID != "" {
+		// 	req.MetaTitleID = &metaTitleID
+		// }
+		// if metaTitleEN := ctx.PostForm("meta_title_en"); metaTitleEN != "" {
+		// 	req.MetaTitleEN = &metaTitleEN
+		// }
+		// if metaDescID := ctx.PostForm("meta_description_id"); metaDescID != "" {
+		// 	req.MetaDescriptionID = &metaDescID
+		// }
+		// if metaDescEN := ctx.PostForm("meta_description_en"); metaDescEN != "" {
+		// 	req.MetaDescriptionEN = &metaDescEN
+		// }
+		// if metaKeywords := ctx.PostForm("meta_keywords"); metaKeywords != "" {
+		// 	req.MetaKeywords = &metaKeywords
+		// }
+		if highlightID := ctx.PostForm("highlight_id"); highlightID != "" {
+			req.HighlightID = &highlightID
 		}
-		if metaTitleEN := ctx.PostForm("meta_title_en"); metaTitleEN != "" {
-			req.MetaTitleEN = &metaTitleEN
-		}
-		if metaDescID := ctx.PostForm("meta_description_id"); metaDescID != "" {
-			req.MetaDescriptionID = &metaDescID
-		}
-		if metaDescEN := ctx.PostForm("meta_description_en"); metaDescEN != "" {
-			req.MetaDescriptionEN = &metaDescEN
-		}
-		if metaKeywords := ctx.PostForm("meta_keywords"); metaKeywords != "" {
-			req.MetaKeywords = &metaKeywords
+		if highlightEN := ctx.PostForm("highlight_en"); highlightEN != "" {
+			req.HighlightEN = &highlightEN
 		}
 
 		// Parse is_active
@@ -215,20 +221,26 @@ func (c *BlogController) Update(ctx *gin.Context) {
 		}
 
 		// Parse meta fields
-		if metaTitleID := ctx.PostForm("meta_title_id"); metaTitleID != "" {
-			req.MetaTitleID = &metaTitleID
+		// if metaTitleID := ctx.PostForm("meta_title_id"); metaTitleID != "" {
+		// 	req.MetaTitleID = &metaTitleID
+		// }
+		// if metaTitleEN := ctx.PostForm("meta_title_en"); metaTitleEN != "" {
+		// 	req.MetaTitleEN = &metaTitleEN
+		// }
+		// if metaDescID := ctx.PostForm("meta_description_id"); metaDescID != "" {
+		// 	req.MetaDescriptionID = &metaDescID
+		// }
+		// if metaDescEN := ctx.PostForm("meta_description_en"); metaDescEN != "" {
+		// 	req.MetaDescriptionEN = &metaDescEN
+		// }
+		// if metaKeywords := ctx.PostForm("meta_keywords"); metaKeywords != "" {
+		// 	req.MetaKeywords = &metaKeywords
+		// }
+		if highlightID := ctx.PostForm("highlight_id"); highlightID != "" {
+			req.HighlightID = &highlightID
 		}
-		if metaTitleEN := ctx.PostForm("meta_title_en"); metaTitleEN != "" {
-			req.MetaTitleEN = &metaTitleEN
-		}
-		if metaDescID := ctx.PostForm("meta_description_id"); metaDescID != "" {
-			req.MetaDescriptionID = &metaDescID
-		}
-		if metaDescEN := ctx.PostForm("meta_description_en"); metaDescEN != "" {
-			req.MetaDescriptionEN = &metaDescEN
-		}
-		if metaKeywords := ctx.PostForm("meta_keywords"); metaKeywords != "" {
-			req.MetaKeywords = &metaKeywords
+		if highlightEN := ctx.PostForm("highlight_en"); highlightEN != "" {
+			req.HighlightEN = &highlightEN
 		}
 
 		// Parse is_active

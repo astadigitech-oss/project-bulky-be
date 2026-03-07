@@ -9,63 +9,69 @@ import (
 
 // Blog DTOs
 type CreateBlogRequest struct {
-	JudulID           string      `json:"judul_id" validate:"required,max=200"`
-	JudulEN           *string     `json:"judul_en" validate:"omitempty,max=200"`
-	SlugID            *string     `json:"slug_id" validate:"omitempty,max=250"`
-	SlugEN            *string     `json:"slug_en" validate:"omitempty,max=250"`
-	KontenID          string      `json:"konten_id" validate:"required"`
-	KontenEN          *string     `json:"konten_en"`
-	FeaturedImageURL  *string     `json:"featured_image_url" validate:"omitempty,max=500"`
-	KategoriID        uuid.UUID   `json:"kategori_id" validate:"required"`
-	MetaTitleID       *string     `json:"meta_title_id" validate:"omitempty,max=200"`
-	MetaTitleEN       *string     `json:"meta_title_en" validate:"omitempty,max=200"`
-	MetaDescriptionID *string     `json:"meta_description_id"`
-	MetaDescriptionEN *string     `json:"meta_description_en"`
-	MetaKeywords      *string     `json:"meta_keywords"`
-	IsActive          bool        `json:"is_active"`
-	LabelIDs          []uuid.UUID `json:"label_ids"`
+	JudulID          string    `json:"judul_id" validate:"required,max=200"`
+	JudulEN          *string   `json:"judul_en" validate:"omitempty,max=200"`
+	SlugID           *string   `json:"slug_id" validate:"omitempty,max=250"`
+	SlugEN           *string   `json:"slug_en" validate:"omitempty,max=250"`
+	KontenID         string    `json:"konten_id" validate:"required"`
+	KontenEN         *string   `json:"konten_en"`
+	FeaturedImageURL *string   `json:"featured_image_url" validate:"omitempty,max=500"`
+	KategoriID       uuid.UUID `json:"kategori_id" validate:"required"`
+	// MetaTitleID       *string     `json:"meta_title_id" validate:"omitempty,max=200"`
+	// MetaTitleEN       *string     `json:"meta_title_en" validate:"omitempty,max=200"`
+	// MetaDescriptionID *string     `json:"meta_description_id"`
+	// MetaDescriptionEN *string     `json:"meta_description_en"`
+	// MetaKeywords      *string     `json:"meta_keywords"`
+	HighlightID *string     `json:"highlight_id" validate:"omitempty"`
+	HighlightEN *string     `json:"highlight_en" validate:"omitempty"`
+	IsActive    bool        `json:"is_active"`
+	LabelIDs    []uuid.UUID `json:"label_ids"`
 }
 
 type UpdateBlogRequest struct {
-	JudulID           *string     `json:"judul_id" validate:"omitempty,max=200"`
-	JudulEN           *string     `json:"judul_en" validate:"omitempty,max=200"`
-	SlugID            *string     `json:"slug_id" validate:"omitempty,max=250"`
-	SlugEN            *string     `json:"slug_en" validate:"omitempty,max=250"`
-	KontenID          *string     `json:"konten_id"`
-	KontenEN          *string     `json:"konten_en"`
-	FeaturedImageURL  *string     `json:"featured_image_url" validate:"omitempty,max=500"`
-	KategoriID        *uuid.UUID  `json:"kategori_id"`
-	MetaTitleID       *string     `json:"meta_title_id" validate:"omitempty,max=200"`
-	MetaTitleEN       *string     `json:"meta_title_en" validate:"omitempty,max=200"`
-	MetaDescriptionID *string     `json:"meta_description_id"`
-	MetaDescriptionEN *string     `json:"meta_description_en"`
-	MetaKeywords      *string     `json:"meta_keywords"`
-	IsActive          *bool       `json:"is_active"`
-	LabelIDs          []uuid.UUID `json:"label_ids"`
+	JudulID          *string    `json:"judul_id" validate:"omitempty,max=200"`
+	JudulEN          *string    `json:"judul_en" validate:"omitempty,max=200"`
+	SlugID           *string    `json:"slug_id" validate:"omitempty,max=250"`
+	SlugEN           *string    `json:"slug_en" validate:"omitempty,max=250"`
+	KontenID         *string    `json:"konten_id"`
+	KontenEN         *string    `json:"konten_en"`
+	FeaturedImageURL *string    `json:"featured_image_url" validate:"omitempty,max=500"`
+	KategoriID       *uuid.UUID `json:"kategori_id"`
+	// MetaTitleID       *string     `json:"meta_title_id" validate:"omitempty,max=200"`
+	// MetaTitleEN       *string     `json:"meta_title_en" validate:"omitempty,max=200"`
+	// MetaDescriptionID *string     `json:"meta_description_id"`
+	// MetaDescriptionEN *string     `json:"meta_description_en"`
+	// MetaKeywords      *string     `json:"meta_keywords"`
+	HighlightID *string     `json:"highlight_id" validate:"omitempty"`
+	HighlightEN *string     `json:"highlight_en" validate:"omitempty"`
+	IsActive    *bool       `json:"is_active"`
+	LabelIDs    []uuid.UUID `json:"label_ids"`
 }
 
 type BlogResponse struct {
-	ID                uuid.UUID          `json:"id"`
-	JudulID           string             `json:"judul_id"`
-	JudulEN           *string            `json:"judul_en"`
-	SlugID            *string            `json:"slug_id"`
-	SlugEN            *string            `json:"slug_en"`
-	KontenID          string             `json:"konten_id"`
-	KontenEN          *string            `json:"konten_en"`
-	FeaturedImageURL  *string            `json:"featured_image_url"`
-	KategoriID        uuid.UUID          `json:"kategori_id"`
-	Kategori          *KategoriBlogBrief `json:"kategori,omitempty"`
-	MetaTitleID       *string            `json:"meta_title_id"`
-	MetaTitleEN       *string            `json:"meta_title_en"`
-	MetaDescriptionID *string            `json:"meta_description_id"`
-	MetaDescriptionEN *string            `json:"meta_description_en"`
-	MetaKeywords      *string            `json:"meta_keywords"`
-	IsActive          bool               `json:"is_active"`
-	ViewCount         int                `json:"view_count"`
-	PublishedAt       *time.Time         `json:"published_at"`
-	Labels            []LabelBlogBrief   `json:"labels,omitempty"`
-	CreatedAt         time.Time          `json:"created_at"`
-	UpdatedAt         time.Time          `json:"updated_at"`
+	ID               uuid.UUID          `json:"id"`
+	JudulID          string             `json:"judul_id"`
+	JudulEN          *string            `json:"judul_en"`
+	SlugID           *string            `json:"slug_id"`
+	SlugEN           *string            `json:"slug_en"`
+	KontenID         string             `json:"konten_id"`
+	KontenEN         *string            `json:"konten_en"`
+	FeaturedImageURL *string            `json:"featured_image_url"`
+	KategoriID       uuid.UUID          `json:"kategori_id"`
+	Kategori         *KategoriBlogBrief `json:"kategori,omitempty"`
+	// MetaTitleID       *string            `json:"meta_title_id"`
+	// MetaTitleEN       *string            `json:"meta_title_en"`
+	// MetaDescriptionID *string            `json:"meta_description_id"`
+	// MetaDescriptionEN *string            `json:"meta_description_en"`
+	// MetaKeywords      *string            `json:"meta_keywords"`
+	HighlightID *string          `json:"highlight_id"`
+	HighlightEN *string          `json:"highlight_en"`
+	IsActive    bool             `json:"is_active"`
+	ViewCount   int              `json:"view_count"`
+	PublishedAt *time.Time       `json:"published_at"`
+	Labels      []LabelBlogBrief `json:"labels,omitempty"`
+	CreatedAt   time.Time        `json:"created_at"`
+	UpdatedAt   time.Time        `json:"updated_at"`
 }
 
 type BlogListResponse struct {
