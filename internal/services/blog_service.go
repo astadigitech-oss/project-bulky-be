@@ -100,21 +100,23 @@ func (s *blogService) Create(ctx context.Context, req *dto.CreateBlogRequest) (*
 	}
 
 	blog := &models.Blog{
-		JudulID:           req.JudulID,
-		JudulEN:           req.JudulEN,
-		Slug:              slugIDVal,
-		SlugID:            slugIDPtr,
-		SlugEN:            slugEN,
-		KontenID:          sanitizedKontenID,
-		KontenEN:          sanitizedKontenEN,
-		FeaturedImageURL:  req.FeaturedImageURL,
-		KategoriID:        req.KategoriID,
-		MetaTitleID:       req.MetaTitleID,
-		MetaTitleEN:       req.MetaTitleEN,
-		MetaDescriptionID: req.MetaDescriptionID,
-		MetaDescriptionEN: req.MetaDescriptionEN,
-		MetaKeywords:      req.MetaKeywords,
-		IsActive:          req.IsActive,
+		JudulID:          req.JudulID,
+		JudulEN:          req.JudulEN,
+		Slug:             slugIDVal,
+		SlugID:           slugIDPtr,
+		SlugEN:           slugEN,
+		KontenID:         sanitizedKontenID,
+		KontenEN:         sanitizedKontenEN,
+		FeaturedImageURL: req.FeaturedImageURL,
+		KategoriID:       req.KategoriID,
+		// MetaTitleID:       req.MetaTitleID,
+		// MetaTitleEN:       req.MetaTitleEN,
+		// MetaDescriptionID: req.MetaDescriptionID,
+		// MetaDescriptionEN: req.MetaDescriptionEN,
+		// MetaKeywords:      req.MetaKeywords,
+		HighlightID: req.HighlightID,
+		HighlightEN: req.HighlightEN,
+		IsActive:    req.IsActive,
 	}
 
 	if err := s.blogRepo.Create(ctx, blog); err != nil {
@@ -177,21 +179,27 @@ func (s *blogService) Update(ctx context.Context, id uuid.UUID, req *dto.UpdateB
 	if req.KategoriID != nil {
 		blog.KategoriID = *req.KategoriID
 	}
-	if req.MetaTitleID != nil {
-		blog.MetaTitleID = req.MetaTitleID
+	if req.HighlightID != nil {
+		blog.HighlightID = req.HighlightID
 	}
-	if req.MetaTitleEN != nil {
-		blog.MetaTitleEN = req.MetaTitleEN
+	if req.HighlightEN != nil {
+		blog.HighlightEN = req.HighlightEN
 	}
-	if req.MetaDescriptionID != nil {
-		blog.MetaDescriptionID = req.MetaDescriptionID
-	}
-	if req.MetaDescriptionEN != nil {
-		blog.MetaDescriptionEN = req.MetaDescriptionEN
-	}
-	if req.MetaKeywords != nil {
-		blog.MetaKeywords = req.MetaKeywords
-	}
+	// if req.MetaTitleID != nil {
+	// 	blog.MetaTitleID = req.MetaTitleID
+	// }
+	// if req.MetaTitleEN != nil {
+	// 	blog.MetaTitleEN = req.MetaTitleEN
+	// }
+	// if req.MetaDescriptionID != nil {
+	// 	blog.MetaDescriptionID = req.MetaDescriptionID
+	// }
+	// if req.MetaDescriptionEN != nil {
+	// 	blog.MetaDescriptionEN = req.MetaDescriptionEN
+	// }
+	// if req.MetaKeywords != nil {
+	// 	blog.MetaKeywords = req.MetaKeywords
+	// }
 	if req.IsActive != nil {
 		blog.IsActive = *req.IsActive
 	}
@@ -353,25 +361,27 @@ func (s *blogService) ToggleStatus(ctx context.Context, id uuid.UUID) error {
 
 func (s *blogService) toBlogResponse(blog *models.Blog) *dto.BlogResponse {
 	resp := &dto.BlogResponse{
-		ID:                blog.ID,
-		JudulID:           blog.JudulID,
-		JudulEN:           blog.JudulEN,
-		SlugID:            blog.SlugID,
-		SlugEN:            blog.SlugEN,
-		KontenID:          blog.KontenID,
-		KontenEN:          blog.KontenEN,
-		FeaturedImageURL:  utils.GetFileURLPtr(blog.FeaturedImageURL, s.cfg),
-		KategoriID:        blog.KategoriID,
-		MetaTitleID:       blog.MetaTitleID,
-		MetaTitleEN:       blog.MetaTitleEN,
-		MetaDescriptionID: blog.MetaDescriptionID,
-		MetaDescriptionEN: blog.MetaDescriptionEN,
-		MetaKeywords:      blog.MetaKeywords,
-		IsActive:          blog.IsActive,
-		ViewCount:         blog.ViewCount,
-		PublishedAt:       blog.PublishedAt,
-		CreatedAt:         blog.CreatedAt,
-		UpdatedAt:         blog.UpdatedAt,
+		ID:               blog.ID,
+		JudulID:          blog.JudulID,
+		JudulEN:          blog.JudulEN,
+		SlugID:           blog.SlugID,
+		SlugEN:           blog.SlugEN,
+		KontenID:         blog.KontenID,
+		KontenEN:         blog.KontenEN,
+		FeaturedImageURL: utils.GetFileURLPtr(blog.FeaturedImageURL, s.cfg),
+		KategoriID:       blog.KategoriID,
+		// MetaTitleID:       blog.MetaTitleID,
+		// MetaTitleEN:       blog.MetaTitleEN,
+		// MetaDescriptionID: blog.MetaDescriptionID,
+		// MetaDescriptionEN: blog.MetaDescriptionEN,
+		// MetaKeywords:      blog.MetaKeywords,
+		HighlightID: blog.HighlightID,
+		HighlightEN: blog.HighlightEN,
+		IsActive:    blog.IsActive,
+		ViewCount:   blog.ViewCount,
+		PublishedAt: blog.PublishedAt,
+		CreatedAt:   blog.CreatedAt,
+		UpdatedAt:   blog.UpdatedAt,
 	}
 
 	if blog.Kategori != nil {

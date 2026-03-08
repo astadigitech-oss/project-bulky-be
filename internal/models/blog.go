@@ -23,6 +23,8 @@ type Blog struct {
 	MetaDescriptionID *string        `gorm:"type:text" json:"meta_description_id"`
 	MetaDescriptionEN *string        `gorm:"type:text" json:"meta_description_en"`
 	MetaKeywords      *string        `gorm:"type:text" json:"meta_keywords"`
+	HighlightID       *string        `gorm:"type:text;uniqueIndex" json:"highlight_id"`
+	HighlightEN       *string        `gorm:"type:text;uniqueIndex" json:"highlight_en"`
 	IsActive          bool           `gorm:"default:false" json:"is_active"`
 	ViewCount         int            `gorm:"default:0" json:"view_count"`
 	PublishedAt       *time.Time     `gorm:"type:timestamptz" json:"published_at"`
