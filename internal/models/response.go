@@ -452,6 +452,11 @@ type ProdukPanelListResponse struct {
 	FilePDF     *string `json:"file_pdf"`     // First PDF document URL
 }
 
+type DiscrepancyInfo struct {
+	Percentage  float64  `json:"percentage"`
+	Description *string  `json:"description"`
+}
+
 type ProdukDetailResponse struct {
 	ID                 string                     `json:"id"`
 	NamaID             string                     `json:"nama_id"`
@@ -471,7 +476,7 @@ type ProdukDetailResponse struct {
 	HargaSesudahDiskon float64                    `json:"harga_sesudah_diskon"`
 	Quantity           int                        `json:"quantity"`
 	QuantityTerjual    int                        `json:"quantity_terjual"`
-	Discrepancy        *string                    `json:"discrepancy"`
+	Discrepancy        *DiscrepancyInfo           `json:"discrepancy"`
 	Panjang            float64                    `json:"panjang"`          // cm
 	Lebar              float64                    `json:"lebar"`            // cm
 	Tinggi             float64                    `json:"tinggi"`           // cm

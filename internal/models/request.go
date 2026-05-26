@@ -349,8 +349,9 @@ type CreateProdukRequest struct {
 	// PersentaseDiskon: Auto-set from diskon kategori or 0
 	HargaSesudahDiskon float64 `form:"harga_sesudah_diskon" binding:"required,min=0"`
 	Quantity           int     `form:"quantity" binding:"min=0"`
-	Discrepancy        *string `form:"discrepancy" binding:"omitempty,max=1000"`
-	Panjang            float64 `form:"panjang" binding:"required,gt=0"` // cm
+	Discrepancy           *string  `form:"discrepancy" binding:"omitempty,max=1000"`
+	DiscrepancyPercentage *float64 `form:"discrepancy_percentage" binding:"omitempty,min=0,max=100"`
+	Panjang               float64  `form:"panjang" binding:"required,gt=0"`  // cm
 	Lebar              float64 `form:"lebar" binding:"required,gt=0"`   // cm
 	Tinggi             float64 `form:"tinggi" binding:"required,gt=0"`  // cm
 	Berat              float64 `form:"berat" binding:"required,gt=0"`   // kg
@@ -375,8 +376,9 @@ type UpdateProdukRequest struct {
 	// PersentaseDiskon: Auto-set from diskon kategori, use dedicated endpoint to change
 	HargaSesudahDiskon *float64 `form:"harga_sesudah_diskon" binding:"omitempty,min=0"`
 	Quantity           *int     `form:"quantity" binding:"omitempty,min=0"`
-	Discrepancy        *string  `form:"discrepancy" binding:"omitempty,max=1000"`
-	Panjang            *float64 `form:"panjang" binding:"omitempty,gt=0"` // cm
+	Discrepancy           *string  `form:"discrepancy" binding:"omitempty,max=1000"`
+	DiscrepancyPercentage *float64 `form:"discrepancy_percentage" binding:"omitempty,min=0,max=100"`
+	Panjang               *float64 `form:"panjang" binding:"omitempty,gt=0"` // cm
 	Lebar              *float64 `form:"lebar" binding:"omitempty,gt=0"`   // cm
 	Tinggi             *float64 `form:"tinggi" binding:"omitempty,gt=0"`  // cm
 	Berat              *float64 `form:"berat" binding:"omitempty,gt=0"`   // kg
