@@ -26,7 +26,8 @@ type Produk struct {
 	HargaSesudahDiskon float64        `gorm:"type:decimal(15,2);not null" json:"harga_sesudah_diskon"`
 	Quantity           int            `gorm:"not null;default:0" json:"quantity"`
 	QuantityTerjual    int            `gorm:"default:0" json:"quantity_terjual"`
-	Discrepancy        *string        `gorm:"type:text" json:"discrepancy"`
+	Discrepancy           *string  `gorm:"type:text;column:discrepancy" json:"discrepancy"`
+	DiscrepancyPercentage float64  `gorm:"type:decimal(5,2);not null;default:0;column:discrepancy_percentage" json:"discrepancy_percentage"`
 	Panjang            float64        `gorm:"type:decimal(10,2);not null;default:0" json:"panjang"` // cm
 	Lebar              float64        `gorm:"type:decimal(10,2);not null;default:0" json:"lebar"`   // cm
 	Tinggi             float64        `gorm:"type:decimal(10,2);not null;default:0" json:"tinggi"`  // cm

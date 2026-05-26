@@ -134,8 +134,14 @@ func (s *produkService) CreateWithFiles(
 		HargaSebelumDiskon: req.HargaSebelumDiskon,
 		HargaSesudahDiskon: req.HargaSesudahDiskon,
 		Quantity:           req.Quantity,
-		Discrepancy:        req.Discrepancy,
-		Panjang:            req.Panjang,
+		Discrepancy: req.Discrepancy,
+		DiscrepancyPercentage: func() float64 {
+			if req.DiscrepancyPercentage != nil {
+				return *req.DiscrepancyPercentage
+			}
+			return 0
+		}(),
+		Panjang:               req.Panjang,
 		Lebar:              req.Lebar,
 		Tinggi:             req.Tinggi,
 		Berat:              req.Berat,
@@ -355,6 +361,9 @@ func (s *produkService) Update(ctx context.Context, id string, req *models.Updat
 	}
 	if req.Discrepancy != nil {
 		produk.Discrepancy = req.Discrepancy
+	}
+	if req.DiscrepancyPercentage != nil {
+		produk.DiscrepancyPercentage = *req.DiscrepancyPercentage
 	}
 	if req.Panjang != nil {
 		produk.Panjang = *req.Panjang
@@ -694,7 +703,10 @@ func (s *produkService) toDetailResponse(p *models.Produk) *models.ProdukDetailR
 		HargaSesudahDiskon: p.HargaSesudahDiskon,
 		Quantity:           p.Quantity,
 		QuantityTerjual:    p.QuantityTerjual,
-		Discrepancy:        p.Discrepancy,
+		Discrepancy: &models.DiscrepancyInfo{
+			Percentage:  p.DiscrepancyPercentage,
+			Description: p.Discrepancy,
+		},
 		Panjang:            p.Panjang,
 		Lebar:              p.Lebar,
 		Tinggi:             p.Tinggi,
