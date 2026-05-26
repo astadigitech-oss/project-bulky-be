@@ -300,9 +300,14 @@ func (s *kuponService) GetUsages(ctx context.Context, kuponID uuid.UUID, page, l
 		usageResponses[i] = dto.KuponUsageItemResponse{
 			ID: usage.ID,
 			Buyer: dto.KuponUsageBuyerInfo{
-				ID:    usage.Buyer.ID,
-				Nama:  usage.Buyer.Nama,
-				Email: usage.Buyer.Email,
+				ID:   usage.Buyer.ID,
+				Nama: usage.Buyer.Nama,
+				Email: func() string {
+					if usage.Buyer.Email != nil {
+						return *usage.Buyer.Email
+					}
+					return ""
+				}(),
 			},
 			Pesanan: dto.KuponUsagePesananInfo{
 				ID:   usage.Pesanan.ID,

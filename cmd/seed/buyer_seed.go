@@ -87,10 +87,10 @@ func main() {
 		buyer := &models.Buyer{
 			ID:         uuid.New(),
 			Nama:       buyerData.Nama,
-			Username:   buyerData.Username,
-			Email:      buyerData.Email,
-			Password:   hashedPassword,
-			Telepon:    &buyerData.Telepon,
+			Username:   &buyerData.Username,
+			Email:      &buyerData.Email,
+			Password:   &hashedPassword,
+			Telepon:    buyerData.Telepon,
 			IsActive:   true,
 			IsVerified: false, // Set false by default, bisa diverifikasi manual
 		}
@@ -100,7 +100,7 @@ func main() {
 			continue
 		}
 
-		fmt.Printf("✓ Buyer berhasil dibuat: %s (%s)\n", buyer.Nama, buyer.Email)
+		fmt.Printf("✓ Buyer berhasil dibuat: %s (%v)\n", buyer.Nama, buyer.Email)
 		successCount++
 	}
 

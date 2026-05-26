@@ -75,9 +75,14 @@ func (s *ulasanService) AdminFindAll(filters map[string]interface{}, page, perPa
 	response := make([]models.UlasanAdminListResponse, len(ulasan))
 	for i, u := range ulasan {
 		response[i] = models.UlasanAdminListResponse{
-			ID:          u.ID.String(),
-			NamaBuyer:   u.Buyer.Nama,
-			EmailBuyer:  u.Buyer.Email,
+			ID:        u.ID.String(),
+			NamaBuyer: u.Buyer.Nama,
+			EmailBuyer: func() string {
+				if u.Buyer.Email != nil {
+					return *u.Buyer.Email
+				}
+				return ""
+			}(),
 			KodePesanan: u.Pesanan.Kode,
 			NamaProduk:  u.Produk.NamaID,
 			Rating:      u.Rating,
