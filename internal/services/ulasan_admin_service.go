@@ -196,15 +196,15 @@ func (s *ulasanAdminService) mapToDetailResponse(u *models.Ulasan) *dto.UlasanAd
 	response := &dto.UlasanAdminDetailResponse{
 		ID: u.ID,
 		Buyer: dto.UlasanAdminBuyerDetailResponse{
-			ID:    u.BuyerID,
-			Nama:  u.Buyer.Nama,
-			Email: u.Buyer.Email,
-			Telepon: func() string {
-				if u.Buyer.Telepon != nil {
-					return *u.Buyer.Telepon
+			ID:   u.BuyerID,
+			Nama: u.Buyer.Nama,
+			Email: func() string {
+				if u.Buyer.Email != nil {
+					return *u.Buyer.Email
 				}
 				return ""
 			}(),
+			Telepon: u.Buyer.Telepon,
 		},
 		Pesanan: dto.UlasanAdminPesananDetailResponse{
 			ID:          u.PesananID,

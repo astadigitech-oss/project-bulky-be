@@ -8,20 +8,20 @@ import (
 )
 
 type Buyer struct {
-	ID              uuid.UUID      `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
-	Nama            string         `gorm:"type:varchar(100);not null" json:"nama"`
-	Username        string         `gorm:"type:varchar(50);uniqueIndex;not null" json:"username"`
-	Email           string         `gorm:"type:varchar(255);uniqueIndex;not null" json:"email"`
-	Password        string         `gorm:"type:varchar(255);not null" json:"-"`
-	Telepon         *string        `gorm:"type:varchar(20)" json:"telepon"`
-	FotoURL         *string        `gorm:"type:text" json:"foto_url"`
-	IsActive        bool           `gorm:"default:true" json:"is_active"`
-	IsVerified      bool           `gorm:"default:false" json:"is_verified"`
-	EmailVerifiedAt *time.Time     `gorm:"type:timestamptz" json:"email_verified_at"`
-	LastLoginAt     *time.Time     `gorm:"type:timestamptz" json:"last_login_at"`
-	CreatedAt       time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
-	UpdatedAt       time.Time      `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
-	DeletedAt       gorm.DeletedAt `gorm:"type:timestamptz;index" json:"-"`
+	ID                uuid.UUID      `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
+	Nama              string         `gorm:"type:varchar(100);not null" json:"nama"`
+	Username          *string        `gorm:"type:varchar(50);uniqueIndex" json:"username"`
+	Email             *string        `gorm:"type:varchar(255);uniqueIndex" json:"email"`
+	Password          *string        `gorm:"type:varchar(255)" json:"-"`
+	Telepon           string         `gorm:"type:varchar(20);not null;uniqueIndex" json:"telepon"`
+	FotoURL           *string        `gorm:"type:text" json:"foto_url"`
+	IsActive          bool           `gorm:"default:true" json:"is_active"`
+	IsVerified        bool           `gorm:"default:false" json:"is_verified"`
+	TeleponVerifiedAt *time.Time     `gorm:"type:timestamptz" json:"telepon_verified_at"`
+	LastLoginAt       *time.Time     `gorm:"type:timestamptz" json:"last_login_at"`
+	CreatedAt         time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt         time.Time      `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
+	DeletedAt         gorm.DeletedAt `gorm:"type:timestamptz;index" json:"-"`
 
 	// Relations
 	Alamat []AlamatBuyer `gorm:"foreignKey:BuyerID" json:"alamat,omitempty"`
@@ -33,23 +33,23 @@ func (Buyer) TableName() string {
 
 // Response DTO
 type BuyerResponse struct {
-	ID              string     `json:"id"`
-	Nama            string     `json:"nama"`
-	Username        string     `json:"username"`
-	Email           string     `json:"email"`
-	Telepon         *string    `json:"telepon"`
-	IsActive        bool       `json:"is_active"`
-	IsVerified      bool       `json:"is_verified"`
-	EmailVerifiedAt *time.Time `json:"email_verified_at"`
-	LastLoginAt     *time.Time `json:"last_login_at"`
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
+	ID                string     `json:"id"`
+	Nama              string     `json:"nama"`
+	Username          *string    `json:"username"`
+	Email             *string    `json:"email"`
+	Telepon           string     `json:"telepon"`
+	IsActive          bool       `json:"is_active"`
+	IsVerified        bool       `json:"is_verified"`
+	TeleponVerifiedAt *time.Time `json:"telepon_verified_at"`
+	LastLoginAt       *time.Time `json:"last_login_at"`
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
 }
 
 // Simple response for nested objects
 type BuyerSimpleResponse struct {
 	ID      string  `json:"id"`
 	Nama    string  `json:"nama"`
-	Email   string  `json:"email"`
-	Telepon *string `json:"telepon"`
+	Email   *string `json:"email"`
+	Telepon string  `json:"telepon"`
 }

@@ -286,15 +286,15 @@ func (s *pesananAdminService) mapToDetailResponse(p *models.Pesanan, statusHisto
 		ID:   p.ID,
 		Kode: p.Kode,
 		Buyer: dto.PesananAdminBuyerDetailResponse{
-			ID:    p.BuyerID,
-			Nama:  p.Buyer.Nama,
-			Email: p.Buyer.Email,
-			Telepon: func() string {
-				if p.Buyer.Telepon != nil {
-					return *p.Buyer.Telepon
+			ID:   p.BuyerID,
+			Nama: p.Buyer.Nama,
+			Email: func() string {
+				if p.Buyer.Email != nil {
+					return *p.Buyer.Email
 				}
 				return ""
 			}(),
+			Telepon: p.Buyer.Telepon,
 		},
 		DeliveryType:    string(p.DeliveryType),
 		PaymentType:     string(p.PaymentType),

@@ -79,27 +79,27 @@ func (s *buyerService) Update(ctx context.Context, id string, req *models.Update
 		return nil, errors.New("buyer tidak ditemukan")
 	}
 
-	if req.Username != nil && *req.Username != buyer.Username {
+	if req.Username != nil && (buyer.Username == nil || *req.Username != *buyer.Username) {
 		exists, _ := s.repo.ExistsByUsername(ctx, *req.Username, &id)
 		if exists {
 			return nil, errors.New("username sudah digunakan oleh buyer lain")
 		}
-		buyer.Username = *req.Username
+		buyer.Username = req.Username
 	}
 
-	if req.Email != nil && *req.Email != buyer.Email {
+	if req.Email != nil && (buyer.Email == nil || *req.Email != *buyer.Email) {
 		exists, _ := s.repo.ExistsByEmail(ctx, *req.Email, &id)
 		if exists {
 			return nil, errors.New("email sudah digunakan oleh buyer lain")
 		}
-		buyer.Email = *req.Email
+		buyer.Email = req.Email
 	}
 
 	if req.Nama != nil {
 		buyer.Nama = *req.Nama
 	}
 	if req.Telepon != nil {
-		buyer.Telepon = req.Telepon
+		buyer.Telepon = *req.Telepon
 	}
 	if req.IsActive != nil {
 		buyer.IsActive = *req.IsActive
@@ -151,7 +151,7 @@ func (s *buyerService) ResetPassword(ctx context.Context, id string, req *models
 		return err
 	}
 
-	buyer.Password = hashedPassword
+	buyer.Password = &hashedPassword
 	return s.repo.Update(ctx, buyer)
 }
 
@@ -319,9 +319,9 @@ func (s *buyerService) UpdateProfile(ctx context.Context, id, nama, username, em
 	}
 
 	buyer.Nama = nama
-	buyer.Username = username
-	buyer.Email = email
-	buyer.Telepon = &telepon
+	buyer.Username = &username
+	buyer.Email = &email
+	buyer.Telepon = telepon
 
 	if err := s.repo.Update(ctx, buyer); err != nil {
 		return nil, err

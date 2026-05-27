@@ -143,7 +143,7 @@ func (s *authV2Service) BuyerLogin(ctx context.Context, email, password string) 
 	}
 
 	// Check password
-	if !utils.CheckPassword(password, buyer.Password) {
+	if buyer.Password == nil || !utils.CheckPassword(password, *buyer.Password) {
 		// Log failed login
 		s.logActivity(ctx, &buyer.ID, "BUYER", models.ActionLoginFailed, "auth", "Login gagal: password salah", ipAddress)
 		return nil, errors.New("email atau password salah")
@@ -155,10 +155,14 @@ func (s *authV2Service) BuyerLogin(ctx context.Context, email, password string) 
 	}
 
 	// Generate token (24 hours)
+	buyerEmail := ""
+	if buyer.Email != nil {
+		buyerEmail = *buyer.Email
+	}
 	accessToken, err := utils.GenerateAccessToken(
 		buyer.ID,
 		"BUYER",
-		buyer.Email,
+		buyerEmail,
 		"",
 		"",
 		nil,
@@ -176,9 +180,10 @@ func (s *authV2Service) BuyerLogin(ctx context.Context, email, password string) 
 	// Simplified response
 	result := &LoginResultSimplified{
 		User: map[string]interface{}{
-			"id":    buyer.ID.String(),
-			"nama":  buyer.Nama,
-			"email": buyer.Email,
+			"id":      buyer.ID.String(),
+			"nama":    buyer.Nama,
+			"email":   buyer.Email,
+			"telepon": buyer.Telepon,
 		},
 		AccessToken: accessToken,
 	}
@@ -296,12 +301,12 @@ func (s *authV2Service) ChangePassword(ctx context.Context, userID uuid.UUID, us
 		}
 
 		// Verify current password
-		if !utils.CheckPassword(currentPassword, buyer.Password) {
+		if buyer.Password == nil || !utils.CheckPassword(currentPassword, *buyer.Password) {
 			return errors.New("password saat ini salah")
 		}
 
 		// Check if new password is same as old
-		if utils.CheckPassword(newPassword, buyer.Password) {
+		if utils.CheckPassword(newPassword, *buyer.Password) {
 			return errors.New("password baru tidak boleh sama dengan password lama")
 		}
 
@@ -311,7 +316,7 @@ func (s *authV2Service) ChangePassword(ctx context.Context, userID uuid.UUID, us
 			return errors.New("gagal meng-hash password")
 		}
 
-		buyer.Password = hashedPassword
+		buyer.Password = &hashedPassword
 
 		// Save to database
 		if err := s.authRepo.UpdateBuyer(buyer); err != nil {
