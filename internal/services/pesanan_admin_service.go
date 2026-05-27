@@ -190,11 +190,7 @@ func (s *pesananAdminService) GetStatistics(ctx context.Context, tanggalDari, ta
 func (s *pesananAdminService) mapToListResponse(p *models.Pesanan) dto.PesananAdminListResponse {
 	totalItem := len(p.Items)
 
-	var orderAt *time.Time
-	if p.PaidAt != nil {
-		t := p.PaidAt.UTC()
-		orderAt = &t
-	}
+	createdAt := p.CreatedAt.UTC()
 
 	return dto.PesananAdminListResponse{
 		ID: p.ID,
@@ -207,7 +203,7 @@ func (s *pesananAdminService) mapToListResponse(p *models.Pesanan) dto.PesananAd
 		TotalItem:   totalItem,
 		PaymentType: string(p.PaymentType),
 		Status:      string(p.OrderStatus),
-		OrderAt:     orderAt,
+		OrderAt:     createdAt,
 	}
 }
 

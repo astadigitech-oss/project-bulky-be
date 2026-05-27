@@ -49,7 +49,7 @@ type PesananAdminListResponse struct {
 	TotalItem   int                       `json:"total_item"`
 	PaymentType string                    `json:"payment_type"`
 	Status      string                    `json:"status"`
-	OrderAt     *time.Time                `json:"order_at"`
+	OrderAt     time.Time                 `json:"order_at"`
 }
 
 // PesananAdminDetailResponse detailed response for pesanan (admin)
