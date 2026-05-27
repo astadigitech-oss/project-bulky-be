@@ -12,12 +12,12 @@ import (
 // ========================================
 
 type PaginationRequest struct {
-	Page     int    `form:"page" binding:"min=1"`
-	PerPage  int    `form:"per_page" binding:"min=1,max=100"`
-	Search   string `form:"search"`
-	SortBy   string `form:"sort_by"`
-	Order    string `form:"order" binding:"omitempty,oneof=asc desc"`
-	IsActive *bool  `form:"is_active"`
+	Page     int    `query:"page"`
+	PerPage  int    `query:"per_page"`
+	Search   string `query:"search"`
+	SortBy   string `query:"sort_by"`
+	Order    string `query:"order"`
+	IsActive *bool  `query:"is_active"`
 }
 
 func (p *PaginationRequest) SetDefaults() {
@@ -347,14 +347,14 @@ type CreateProdukRequest struct {
 	// TipeProdukID: Auto-set to "Palet load" by backend
 	HargaSebelumDiskon float64 `form:"harga_sebelum_diskon" binding:"required,gt=0"`
 	// PersentaseDiskon: Auto-set from diskon kategori or 0
-	HargaSesudahDiskon float64 `form:"harga_sesudah_diskon" binding:"required,min=0"`
-	Quantity           int     `form:"quantity" binding:"min=0"`
+	HargaSesudahDiskon    float64  `form:"harga_sesudah_diskon" binding:"required,min=0"`
+	Quantity              int      `form:"quantity" binding:"min=0"`
 	Discrepancy           *string  `form:"discrepancy" binding:"omitempty,max=1000"`
 	DiscrepancyPercentage *float64 `form:"discrepancy_percentage" binding:"omitempty,min=0,max=100"`
-	Panjang               float64  `form:"panjang" binding:"required,gt=0"`  // cm
-	Lebar              float64 `form:"lebar" binding:"required,gt=0"`   // cm
-	Tinggi             float64 `form:"tinggi" binding:"required,gt=0"`  // cm
-	Berat              float64 `form:"berat" binding:"required,gt=0"`   // kg
+	Panjang               float64  `form:"panjang" binding:"required,gt=0"` // cm
+	Lebar                 float64  `form:"lebar" binding:"required,gt=0"`   // cm
+	Tinggi                float64  `form:"tinggi" binding:"required,gt=0"`  // cm
+	Berat                 float64  `form:"berat" binding:"required,gt=0"`   // kg
 	// IsActive: handled manually in controller, accepts "true"/"false" or "1"/"0"
 }
 
@@ -374,15 +374,15 @@ type UpdateProdukRequest struct {
 	// TipeProdukID: Auto-managed, use dedicated endpoint if needed
 	HargaSebelumDiskon *float64 `form:"harga_sebelum_diskon" binding:"omitempty,gt=0"`
 	// PersentaseDiskon: Auto-set from diskon kategori, use dedicated endpoint to change
-	HargaSesudahDiskon *float64 `form:"harga_sesudah_diskon" binding:"omitempty,min=0"`
-	Quantity           *int     `form:"quantity" binding:"omitempty,min=0"`
+	HargaSesudahDiskon    *float64 `form:"harga_sesudah_diskon" binding:"omitempty,min=0"`
+	Quantity              *int     `form:"quantity" binding:"omitempty,min=0"`
 	Discrepancy           *string  `form:"discrepancy" binding:"omitempty,max=1000"`
 	DiscrepancyPercentage *float64 `form:"discrepancy_percentage" binding:"omitempty,min=0,max=100"`
 	Panjang               *float64 `form:"panjang" binding:"omitempty,gt=0"` // cm
-	Lebar              *float64 `form:"lebar" binding:"omitempty,gt=0"`   // cm
-	Tinggi             *float64 `form:"tinggi" binding:"omitempty,gt=0"`  // cm
-	Berat              *float64 `form:"berat" binding:"omitempty,gt=0"`   // kg
-	IsActive           *string  `form:"is_active" binding:"omitempty,oneof=true false 0 1"`
+	Lebar                 *float64 `form:"lebar" binding:"omitempty,gt=0"`   // cm
+	Tinggi                *float64 `form:"tinggi" binding:"omitempty,gt=0"`  // cm
+	Berat                 *float64 `form:"berat" binding:"omitempty,gt=0"`   // kg
+	IsActive              *string  `form:"is_active" binding:"omitempty,oneof=true false 0 1"`
 }
 
 // GetMerekIDs parses comma-separated merek_ids string into UUID slice for CreateProdukRequest

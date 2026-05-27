@@ -30,17 +30,6 @@ func (c *PesananAdminController) GetAll(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", parseValidationErrors(err))
 	}
 
-	// Manual validation for required fields
-	if params.Page < 1 {
-		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", "Parameter 'page' wajib diisi dan minimal 1")
-	}
-	if params.PerPage < 1 {
-		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", "Parameter 'per_page' wajib diisi dan minimal 1")
-	}
-	if params.PerPage > 100 {
-		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", "Parameter 'per_page' maksimal 100")
-	}
-
 	params.SetDefaults()
 
 	pesanan, meta, err := c.pesananService.GetAll(ctx.UserContext(), &params)

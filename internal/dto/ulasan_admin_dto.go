@@ -8,13 +8,13 @@ import (
 
 // UlasanAdminQueryParams query parameters for admin ulasan list
 type UlasanAdminQueryParams struct {
-	Page       int    `form:"page" binding:"required,min=1"`
-	PerPage    int    `form:"per_page" binding:"required,min=1,max=100"`
-	Cari       string `form:"cari"`
-	Rating     *int   `form:"rating" binding:"omitempty,min=1,max=5"`
-	IsApproved *bool  `form:"is_approved"`
-	SortBy     string `form:"sort_by"`
-	SortOrder  string `form:"sort_order" binding:"omitempty,oneof=asc desc"`
+	Page       int    `query:"page"`
+	PerPage    int    `query:"per_page"`
+	Cari       string `query:"cari"`
+	Rating     *int   `query:"rating"`
+	IsApproved *bool  `query:"is_approved"`
+	SortBy     string `query:"sort_by"`
+	SortOrder  string `query:"sort_order"`
 }
 
 // SetDefaults sets default values for query params

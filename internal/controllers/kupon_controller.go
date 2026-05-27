@@ -31,17 +31,6 @@ func (c *KuponController) GetAll(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", parseValidationErrors(err))
 	}
 
-	// Manual validation for required fields (to catch empty string cases)
-	if params.Page < 1 {
-		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", "Parameter 'page' wajib diisi dan minimal 1")
-	}
-	if params.PerPage < 1 {
-		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", "Parameter 'per_page' wajib diisi dan minimal 1")
-	}
-	if params.PerPage > 100 {
-		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", "Parameter 'per_page' maksimal 100")
-	}
-
 	params.SetDefaults()
 
 	kupons, meta, err := c.kuponService.GetAll(ctx.UserContext(), &params)
@@ -208,15 +197,14 @@ func (c *KuponController) GetUsages(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", parseValidationErrors(err))
 	}
 
-	// Manual validation for required fields (to catch empty string cases)
 	if params.Page < 1 {
-		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", "Parameter 'page' wajib diisi dan minimal 1")
+		params.Page = 1
 	}
 	if params.PerPage < 1 {
-		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", "Parameter 'per_page' wajib diisi dan minimal 1")
+		params.PerPage = 10
 	}
 	if params.PerPage > 100 {
-		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", "Parameter 'per_page' maksimal 100")
+		params.PerPage = 100
 	}
 
 	result, meta, err := c.kuponService.GetUsages(ctx.UserContext(), id, params.Page, params.PerPage)
