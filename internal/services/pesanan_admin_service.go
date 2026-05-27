@@ -19,7 +19,7 @@ type PesananAdminService interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*dto.PesananAdminDetailResponse, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, req *dto.UpdatePesananStatusRequest, adminID uuid.UUID) (*dto.UpdatePesananStatusResponse, error)
 	Delete(ctx context.Context, id uuid.UUID) error
-	GetStatistics(ctx context.Context, tanggalDari, tanggalSampai *string) (*dto.PesananStatisticsResponse, error)
+	GetStatistics(ctx context.Context, params *dto.StatisticsQueryParams) (*dto.PesananStatisticsResponse, error)
 }
 
 type pesananAdminService struct {
@@ -139,50 +139,164 @@ func (s *pesananAdminService) Delete(ctx context.Context, id uuid.UUID) error {
 	return s.pesananRepo.Delete(id)
 }
 
-func (s *pesananAdminService) GetStatistics(ctx context.Context, tanggalDari, tanggalSampai *string) (*dto.PesananStatisticsResponse, error) {
-	var dari, sampai *time.Time
+func (s *pesananAdminService) GetStatistics(ctx context.Context, params *dto.StatisticsQueryParams) (*dto.PesananStatisticsResponse, error) {
+	now := time.Now().UTC()
+	var chartDari, chartSampai time.Time
+	var summaryDari, summarySampai *time.Time
+	var groupBy string
+	isWeekFilter := false
 
-	// Parse dates
-	if tanggalDari != nil && *tanggalDari != "" {
-		t, err := time.Parse("2006-01-02", *tanggalDari)
-		if err != nil {
-			return nil, errors.New("format tanggal_dari tidak valid")
+	switch {
+	case params.Tahun != nil && params.Bulan != nil:
+		// Bulan tertentu → group by hari
+		year, month := *params.Tahun, time.Month(*params.Bulan)
+		chartDari = time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
+		chartSampai = chartDari.AddDate(0, 1, 0).Add(-time.Nanosecond)
+		groupBy = "day"
+
+	case params.Tahun != nil && params.Minggu != nil:
+		// Minggu tertentu → group by hari (7 data point)
+		chartDari = isoWeekToDate(*params.Tahun, *params.Minggu)
+		chartSampai = chartDari.AddDate(0, 0, 7).Add(-time.Nanosecond)
+		groupBy = "day"
+		isWeekFilter = true
+
+	case params.Tahun != nil:
+		// Tahun tertentu → group by bulan
+		year := *params.Tahun
+		chartDari = time.Date(year, time.January, 1, 0, 0, 0, 0, time.UTC)
+		chartSampai = time.Date(year, time.December, 31, 23, 59, 59, 999999999, time.UTC)
+		groupBy = "month"
+
+	case params.TanggalDari != "" || params.TanggalSampai != "":
+		// Custom range
+		if params.TanggalDari != "" {
+			t, err := time.Parse("2006-01-02", params.TanggalDari)
+			if err != nil {
+				return nil, errors.New("format tanggal_dari tidak valid")
+			}
+			chartDari = t
+		} else {
+			chartDari = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 		}
-		dari = &t
-	} else {
-		// Default: 30 days ago
-		t := time.Now().AddDate(0, 0, -30)
-		dari = &t
+		if params.TanggalSampai != "" {
+			t, err := time.Parse("2006-01-02", params.TanggalSampai)
+			if err != nil {
+				return nil, errors.New("format tanggal_sampai tidak valid")
+			}
+			chartSampai = t.Add(24*time.Hour - time.Nanosecond)
+		} else {
+			chartSampai = time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 999999999, time.UTC)
+		}
+		// Auto group: <=90 hari → per hari, >90 hari → per bulan
+		if int(chartSampai.Sub(chartDari).Hours()/24) > 90 {
+			groupBy = "month"
+		} else {
+			groupBy = "day"
+		}
+
+	default:
+		// Default: tahun berjalan, group by bulan
+		chartDari = time.Date(now.Year(), time.January, 1, 0, 0, 0, 0, time.UTC)
+		chartSampai = time.Date(now.Year(), time.December, 31, 23, 59, 59, 999999999, time.UTC)
+		groupBy = "month"
 	}
 
-	if tanggalSampai != nil && *tanggalSampai != "" {
-		t, err := time.Parse("2006-01-02", *tanggalSampai)
-		if err != nil {
-			return nil, errors.New("format tanggal_sampai tidak valid")
-		}
-		sampai = &t
-	} else {
-		// Default: today
-		t := time.Now()
-		sampai = &t
+	// Summary stats ikut filter chart jika filter aktif, otherwise all-time
+	if params.Tahun != nil || params.TanggalDari != "" || params.TanggalSampai != "" {
+		summaryDari = &chartDari
+		summarySampai = &chartSampai
 	}
 
-	// Get statistics
-	stats, err := s.pesananRepo.GetStatistics(dari, sampai)
+	stats, err := s.pesananRepo.GetStatistics(summaryDari, summarySampai)
 	if err != nil {
 		return nil, err
 	}
 
-	// Map to response DTO
-	response := &dto.PesananStatisticsResponse{
+	rawPoints, err := s.pesananRepo.GetChartData(&chartDari, &chartSampai, groupBy)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.PesananStatisticsResponse{
 		TotalPesanan:     stats["total_pesanan"].(int64),
 		TotalRevenue:     stats["total_revenue"].(decimal.Decimal),
 		PerStatus:        stats["per_status"].(map[string]int64),
 		PerDeliveryType:  stats["per_delivery_type"].(map[string]int64),
 		PerPaymentStatus: stats["per_payment_status"].(map[string]int64),
+		ChartData:        buildChartData(rawPoints, chartDari, chartSampai, groupBy, isWeekFilter),
+	}, nil
+}
+
+// buildChartData fills all periods in range with data (zero for missing periods)
+func buildChartData(rawPoints []models.ChartRawPoint, dari, sampai time.Time, groupBy string, isWeekFilter bool) []dto.ChartDataPoint {
+	dataMap := make(map[string]int64)
+	for _, p := range rawPoints {
+		dataMap[p.Period] = p.TotalPesanan
 	}
 
-	return response, nil
+	var result []dto.ChartDataPoint
+
+	if groupBy == "month" {
+		current := time.Date(dari.Year(), dari.Month(), 1, 0, 0, 0, 0, time.UTC)
+		end := time.Date(sampai.Year(), sampai.Month(), 1, 0, 0, 0, 0, time.UTC)
+		for !current.After(end) {
+			period := current.Format("2006-01")
+			result = append(result, dto.ChartDataPoint{
+				Label:        indonesianMonthShort(current.Month()),
+				Period:       period,
+				TotalPesanan: dataMap[period],
+			})
+			current = current.AddDate(0, 1, 0)
+		}
+	} else {
+		current := time.Date(dari.Year(), dari.Month(), dari.Day(), 0, 0, 0, 0, time.UTC)
+		end := time.Date(sampai.Year(), sampai.Month(), sampai.Day(), 0, 0, 0, 0, time.UTC)
+		for !current.After(end) {
+			period := current.Format("2006-01-02")
+			var label string
+			if isWeekFilter {
+				label = indonesianDayShort(current.Weekday())
+			} else {
+				label = current.Format("02")
+			}
+			result = append(result, dto.ChartDataPoint{
+				Label:        label,
+				Period:       period,
+				TotalPesanan: dataMap[period],
+			})
+			current = current.AddDate(0, 0, 1)
+		}
+	}
+
+	if result == nil {
+		return []dto.ChartDataPoint{}
+	}
+	return result
+}
+
+func indonesianMonthShort(m time.Month) string {
+	names := [13]string{"", "Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"}
+	return names[int(m)]
+}
+
+func indonesianDayShort(d time.Weekday) string {
+	names := map[time.Weekday]string{
+		time.Sunday: "Min", time.Monday: "Sen", time.Tuesday: "Sel",
+		time.Wednesday: "Rab", time.Thursday: "Kam", time.Friday: "Jum", time.Saturday: "Sab",
+	}
+	return names[d]
+}
+
+// isoWeekToDate returns Monday of the given ISO week in the given year
+func isoWeekToDate(year, week int) time.Time {
+	jan4 := time.Date(year, time.January, 4, 0, 0, 0, 0, time.UTC)
+	weekday := int(jan4.Weekday())
+	if weekday == 0 {
+		weekday = 7
+	}
+	monday := jan4.AddDate(0, 0, 1-weekday)
+	return monday.AddDate(0, 0, (week-1)*7)
 }
 
 // Helper functions to map models to DTOs

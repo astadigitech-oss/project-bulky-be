@@ -172,4 +172,21 @@ type PesananStatisticsResponse struct {
 	PerStatus        map[string]int64 `json:"per_status"`
 	PerDeliveryType  map[string]int64 `json:"per_delivery_type"`
 	PerPaymentStatus map[string]int64 `json:"per_payment_status"`
+	ChartData        []ChartDataPoint `json:"chart_data"`
+}
+
+// StatisticsQueryParams query parameters for statistics endpoint
+type StatisticsQueryParams struct {
+	TanggalDari   string `query:"tanggal_dari"`
+	TanggalSampai string `query:"tanggal_sampai"`
+	Tahun         *int   `query:"tahun"`
+	Bulan         *int   `query:"bulan"`
+	Minggu        *int   `query:"minggu"`
+}
+
+// ChartDataPoint single data point for chart visualization
+type ChartDataPoint struct {
+	Label        string `json:"label"`
+	Period       string `json:"period"`
+	TotalPesanan int64  `json:"total_pesanan"`
 }

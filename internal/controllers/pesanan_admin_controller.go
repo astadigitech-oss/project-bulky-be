@@ -119,18 +119,12 @@ func (c *PesananAdminController) Delete(ctx *fiber.Ctx) error {
 
 // GetStatistics retrieves pesanan statistics
 func (c *PesananAdminController) GetStatistics(ctx *fiber.Ctx) error {
-	tanggalDari := ctx.Query("tanggal_dari")
-	tanggalSampai := ctx.Query("tanggal_sampai")
-
-	var dari, sampai *string
-	if tanggalDari != "" {
-		dari = &tanggalDari
-	}
-	if tanggalSampai != "" {
-		sampai = &tanggalSampai
+	var params dto.StatisticsQueryParams
+	if err := ctx.QueryParser(&params); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", parseValidationErrors(err))
 	}
 
-	stats, err := c.pesananService.GetStatistics(ctx.UserContext(), dari, sampai)
+	stats, err := c.pesananService.GetStatistics(ctx.UserContext(), &params)
 	if err != nil {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil statistik pesanan", err.Error())
 	}

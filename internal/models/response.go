@@ -85,6 +85,16 @@ type ToggleDefaultResponse struct {
 }
 
 // ========================================
+// Chart
+// ========================================
+
+// ChartRawPoint is raw data returned from repository for chart queries
+type ChartRawPoint struct {
+	Period       string `gorm:"column:period"`
+	TotalPesanan int64  `gorm:"column:total_pesanan"`
+}
+
+// ========================================
 // Kategori Produk Response
 // ========================================
 
