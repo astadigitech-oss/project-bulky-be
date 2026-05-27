@@ -5,19 +5,16 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
 )
 
-// InitCustomValidators registers custom validators
-func InitCustomValidators() {
-	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
-		// Register alphanumund validator (alphanumeric + underscore)
-		v.RegisterValidation("alphanumund", validateAlphaNumUnderscore)
+// Validator is the shared validator instance used across the app
+var Validator = validator.New()
 
-		// Register uppercase_snake validator untuk kode role (UPPER_CASE_SNAKE)
-		v.RegisterValidation("uppercase_snake", validateUppercaseSnake)
-	}
+// InitCustomValidators registers custom validators on the shared Validator instance
+func InitCustomValidators() {
+	Validator.RegisterValidation("alphanumund", validateAlphaNumUnderscore)
+	Validator.RegisterValidation("uppercase_snake", validateUppercaseSnake)
 }
 
 // validateAlphaNumUnderscore validates that a string contains only alphanumeric characters and underscores

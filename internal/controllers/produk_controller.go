@@ -11,7 +11,7 @@ import (
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 )
 
 type ProdukController struct {
@@ -32,60 +32,53 @@ func NewProdukController(
 	}
 }
 
-func (c *ProdukController) Create(ctx *gin.Context) {
+func (c *ProdukController) Create(ctx *fiber.Ctx) error {
 	var req models.CreateProdukRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := ctx.BodyParser(&req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
 	// Get multipart form
 	form, err := ctx.MultipartForm()
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Format multipart tidak valid", nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Format multipart tidak valid", nil)
 	}
 
 	// Get gambar files (required, min 1, max 10)
 	gambarFiles := form.File["gambar[]"]
 	if len(gambarFiles) == 0 {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Minimal 1 gambar produk wajib diupload", nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Minimal 1 gambar produk wajib diupload", nil)
 	}
 	if len(gambarFiles) > 10 {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Maksimal 10 gambar produk", nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Maksimal 10 gambar produk", nil)
 	}
 
 	// Validate gambar files
 	for i, file := range gambarFiles {
 		if err := validateImageFile(file); err != nil {
-			utils.ErrorResponse(ctx, http.StatusBadRequest, fmt.Sprintf("gambar[%d]: %s", i, err.Error()), nil)
-			return
+			return utils.ErrorResponse(ctx, http.StatusBadRequest, fmt.Sprintf("gambar[%d]: %s", i, err.Error()), nil)
 		}
 	}
 
 	// Get dokumen files (optional, max 5)
 	dokumenFiles := form.File["dokumen[]"]
 	if len(dokumenFiles) > 5 {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Maksimal 5 dokumen", nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Maksimal 5 dokumen", nil)
 	}
 
 	// Validate dokumen files
 	for i, file := range dokumenFiles {
 		if err := validateDocumentFile(file); err != nil {
-			utils.ErrorResponse(ctx, http.StatusBadRequest, fmt.Sprintf("dokumen[%d]: %s", i, err.Error()), nil)
-			return
+			return utils.ErrorResponse(ctx, http.StatusBadRequest, fmt.Sprintf("dokumen[%d]: %s", i, err.Error()), nil)
 		}
 	}
 
 	// Get dokumen names (parallel array)
-	dokumenNama := ctx.PostFormArray("dokumen_nama[]")
+	dokumenNama := formValueArray(ctx, "dokumen_nama[]")
 
 	// Handle merek_id array field
 	if req.MerekIDs == nil || *req.MerekIDs == "" {
-		merekIDArray := ctx.PostFormArray("merek_id")
+		merekIDArray := formValueArray(ctx, "merek_id")
 		if len(merekIDArray) > 0 {
 			merekIDStr := strings.Join(merekIDArray, ",")
 			req.MerekIDs = &merekIDStr
@@ -94,72 +87,66 @@ func (c *ProdukController) Create(ctx *gin.Context) {
 
 	// Handle is_active from form - default false (draft)
 	isActive := false
-	isActiveStr := strings.ToLower(strings.TrimSpace(ctx.PostForm("is_active")))
+	isActiveStr := strings.ToLower(strings.TrimSpace(ctx.FormValue("is_active")))
 	if isActiveStr == "true" || isActiveStr == "1" {
 		isActive = true
 	}
 
-	result, err := c.service.CreateWithFiles(ctx.Request.Context(), &req, isActive, gambarFiles, dokumenFiles, dokumenNama)
+	result, err := c.service.CreateWithFiles(ctx.UserContext(), &req, isActive, gambarFiles, dokumenFiles, dokumenNama)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
-	utils.CreatedResponse(ctx, "Produk berhasil dibuat", result)
+	return utils.CreatedResponse(ctx, "Produk berhasil dibuat", result)
 }
 
-func (c *ProdukController) FindAll(ctx *gin.Context) {
+func (c *ProdukController) FindAll(ctx *fiber.Ctx) error {
 	var params models.ProdukFilterRequest
-	if err := ctx.ShouldBindQuery(&params); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
-		return
+	if err := ctx.QueryParser(&params); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
 	}
 
-	items, meta, err := c.service.FindAll(ctx.Request.Context(), &params)
+	items, meta, err := c.service.FindAll(ctx.UserContext(), &params)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	utils.PaginatedSuccessResponse(ctx, "Data produk berhasil diambil", items, *meta)
+	return utils.PaginatedSuccessResponse(ctx, "Data produk berhasil diambil", items, *meta)
 }
 
-func (c *ProdukController) FindByID(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *ProdukController) FindByID(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	result, err := c.service.FindByID(ctx.Request.Context(), id)
+	result, err := c.service.FindByID(ctx.UserContext(), id)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Detail produk berhasil diambil", result)
+	return utils.SuccessResponse(ctx, "Detail produk berhasil diambil", result)
 }
 
-func (c *ProdukController) FindBySlug(ctx *gin.Context) {
-	slug := ctx.Param("slug")
+func (c *ProdukController) FindBySlug(ctx *fiber.Ctx) error {
+	slug := ctx.Params("slug")
 
-	result, err := c.service.FindBySlug(ctx.Request.Context(), slug)
+	result, err := c.service.FindBySlug(ctx.UserContext(), slug)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Detail produk berhasil diambil", result)
+	return utils.SuccessResponse(ctx, "Detail produk berhasil diambil", result)
 }
 
-func (c *ProdukController) Update(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *ProdukController) Update(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	var req models.UpdateProdukRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := ctx.BodyParser(&req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
 	// Handle merek_id array field
 	if req.MerekIDs == nil || *req.MerekIDs == "" {
-		merekIDArray := ctx.PostFormArray("merek_id")
+		merekIDArray := formValueArray(ctx, "merek_id")
 		if len(merekIDArray) > 0 {
 			merekIDStr := strings.Join(merekIDArray, ",")
 			req.MerekIDs = &merekIDStr
@@ -172,83 +159,75 @@ func (c *ProdukController) Update(ctx *gin.Context) {
 	if form, err := ctx.MultipartForm(); err == nil {
 		dokumenFiles = form.File["dokumen[]"]
 		if len(dokumenFiles) > 5 {
-			utils.ErrorResponse(ctx, http.StatusBadRequest, "Maksimal 5 dokumen", nil)
-			return
+			return utils.ErrorResponse(ctx, http.StatusBadRequest, "Maksimal 5 dokumen", nil)
 		}
 		for i, file := range dokumenFiles {
 			if err := validateDocumentFile(file); err != nil {
-				utils.ErrorResponse(ctx, http.StatusBadRequest, fmt.Sprintf("dokumen[%d]: %s", i, err.Error()), nil)
-				return
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, fmt.Sprintf("dokumen[%d]: %s", i, err.Error()), nil)
 			}
 		}
-		dokumenNama = ctx.PostFormArray("dokumen_nama[]")
+		dokumenNama = formValueArray(ctx, "dokumen_nama[]")
 	}
 
-	result, err := c.service.UpdateWithFiles(ctx.Request.Context(), id, &req, dokumenFiles, dokumenNama)
+	result, err := c.service.UpdateWithFiles(ctx.UserContext(), id, &req, dokumenFiles, dokumenNama)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Produk berhasil diupdate", result)
+	return utils.SuccessResponse(ctx, "Produk berhasil diupdate", result)
 }
 
-func (c *ProdukController) Delete(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *ProdukController) Delete(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	if err := c.service.Delete(ctx.Request.Context(), id); err != nil {
+	if err := c.service.Delete(ctx.UserContext(), id); err != nil {
 		status := http.StatusBadRequest
 		if err.Error() == "produk tidak ditemukan" {
 			status = http.StatusNotFound
 		}
-		utils.ErrorResponse(ctx, status, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Produk berhasil dihapus", nil)
+	return utils.SuccessResponse(ctx, "Produk berhasil dihapus", nil)
 }
 
-func (c *ProdukController) ToggleStatus(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *ProdukController) ToggleStatus(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	result, err := c.service.ToggleStatus(ctx.Request.Context(), id)
+	result, err := c.service.ToggleStatus(ctx.UserContext(), id)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Status produk berhasil diubah", result)
+	return utils.SuccessResponse(ctx, "Status produk berhasil diubah", result)
 }
 
-func (c *ProdukController) UpdateStock(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *ProdukController) UpdateStock(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	var req models.UpdateStockRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.UpdateStock(ctx.Request.Context(), id, &req)
+	result, err := c.service.UpdateStock(ctx.UserContext(), id, &req)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Stok produk berhasil diupdate", result)
+	return utils.SuccessResponse(ctx, "Stok produk berhasil diupdate", result)
 }
 
 // ========================================
 // Produk Gambar Handlers
 // ========================================
 
-func (c *ProdukController) AddGambar(ctx *gin.Context) {
-	produkID := ctx.Param("id")
+func (c *ProdukController) AddGambar(ctx *fiber.Ctx) error {
+	produkID := ctx.Params("id")
 
 	form, err := ctx.MultipartForm()
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Gagal memparse form", nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Gagal memparse form", nil)
 	}
 
 	// Collect files: prioritize gambar[] (multiple), fallback to gambar (single)
@@ -260,108 +239,96 @@ func (c *ProdukController) AddGambar(ctx *gin.Context) {
 	}
 
 	if len(files) == 0 {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "File gambar wajib diupload (field: gambar atau gambar[])", nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "File gambar wajib diupload (field: gambar atau gambar[])", nil)
 	}
 
 	if len(files) > 10 {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Maksimal 10 gambar per upload", nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Maksimal 10 gambar per upload", nil)
 	}
 
 	// Validate ALL files first before uploading any
 	for i, file := range files {
 		if err := validateImageFile(file); err != nil {
-			utils.ErrorResponse(ctx, http.StatusBadRequest, fmt.Sprintf("gambar[%d] (%s): %s", i+1, file.Filename, err.Error()), nil)
-			return
+			return utils.ErrorResponse(ctx, http.StatusBadRequest, fmt.Sprintf("gambar[%d] (%s): %s", i+1, file.Filename, err.Error()), nil)
 		}
 	}
 
-	results, err := c.gambarService.CreateMultipleWithFiles(ctx.Request.Context(), produkID, files)
+	results, err := c.gambarService.CreateMultipleWithFiles(ctx.UserContext(), produkID, files)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
-	utils.CreatedResponse(ctx, fmt.Sprintf("%d gambar berhasil ditambahkan", len(results)), results)
+	return utils.CreatedResponse(ctx, fmt.Sprintf("%d gambar berhasil ditambahkan", len(results)), results)
 }
 
-func (c *ProdukController) DeleteGambar(ctx *gin.Context) {
-	produkID := ctx.Param("id")
-	gambarID := ctx.Param("gambar_id")
+func (c *ProdukController) DeleteGambar(ctx *fiber.Ctx) error {
+	produkID := ctx.Params("id")
+	gambarID := ctx.Params("gambar_id")
 
-	if err := c.gambarService.Delete(ctx.Request.Context(), produkID, gambarID); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+	if err := c.gambarService.Delete(ctx.UserContext(), produkID, gambarID); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Gambar berhasil dihapus", nil)
+	return utils.SuccessResponse(ctx, "Gambar berhasil dihapus", nil)
 }
 
-func (c *ProdukController) ReorderGambar(ctx *gin.Context) {
-	produkID := ctx.Param("id")
-	gambarID := ctx.Param("gambar_id")
+func (c *ProdukController) ReorderGambar(ctx *fiber.Ctx) error {
+	produkID := ctx.Params("id")
+	gambarID := ctx.Params("gambar_id")
 
 	var req models.ReorderGambarRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.gambarService.Reorder(ctx.Request.Context(), produkID, gambarID, req.Direction)
+	result, err := c.gambarService.Reorder(ctx.UserContext(), produkID, gambarID, req.Direction)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Urutan gambar berhasil diubah", result)
+	return utils.SuccessResponse(ctx, "Urutan gambar berhasil diubah", result)
 }
 
 // ========================================
 // Produk Dokumen Handlers
 // ========================================
 
-func (c *ProdukController) AddDokumen(ctx *gin.Context) {
-	produkID := ctx.Param("id")
+func (c *ProdukController) AddDokumen(ctx *fiber.Ctx) error {
+	produkID := ctx.Params("id")
 
 	// Get file from form
 	file, err := ctx.FormFile("dokumen")
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "File dokumen wajib diupload", nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "File dokumen wajib diupload", nil)
 	}
 
 	// Validate file
 	if err := validateDocumentFile(file); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
 	var req models.CreateProdukDokumenRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := ctx.BodyParser(&req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.dokumenService.CreateWithFile(ctx.Request.Context(), produkID, file, req.NamaDokumen)
+	result, err := c.dokumenService.CreateWithFile(ctx.UserContext(), produkID, file, req.NamaDokumen)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
-	utils.CreatedResponse(ctx, "Dokumen berhasil ditambahkan", result)
+	return utils.CreatedResponse(ctx, "Dokumen berhasil ditambahkan", result)
 }
 
-func (c *ProdukController) DeleteDokumen(ctx *gin.Context) {
-	produkID := ctx.Param("id")
-	dokumenID := ctx.Param("dokumen_id")
+func (c *ProdukController) DeleteDokumen(ctx *fiber.Ctx) error {
+	produkID := ctx.Params("id")
+	dokumenID := ctx.Params("dokumen_id")
 
-	if err := c.dokumenService.Delete(ctx.Request.Context(), produkID, dokumenID); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+	if err := c.dokumenService.Delete(ctx.UserContext(), produkID, dokumenID); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Dokumen berhasil dihapus", nil)
+	return utils.SuccessResponse(ctx, "Dokumen berhasil dihapus", nil)
 }
 
 // ========================================

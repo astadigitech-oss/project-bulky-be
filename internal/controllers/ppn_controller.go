@@ -7,7 +7,7 @@ import (
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 )
 
 type PPNController struct {
@@ -18,102 +18,90 @@ func NewPPNController(service services.PPNService) *PPNController {
 	return &PPNController{service: service}
 }
 
-func (c *PPNController) GetAll(ctx *gin.Context) {
+func (c *PPNController) GetAll(ctx *fiber.Ctx) error {
 	var params models.PaginationRequest
-	if err := ctx.ShouldBindQuery(&params); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
-		return
+	if err := ctx.QueryParser(&params); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
 	}
 
 	// Set default values
 	params.SetDefaults()
 
-	items, meta, err := c.service.GetAll(ctx.Request.Context(), &params)
+	items, meta, err := c.service.GetAll(ctx.UserContext(), &params)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	utils.PaginatedSuccessResponse(ctx, "Data PPN berhasil diambil", items, *meta)
+	return utils.PaginatedSuccessResponse(ctx, "Data PPN berhasil diambil", items, *meta)
 }
 
-func (c *PPNController) GetByID(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *PPNController) GetByID(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	result, err := c.service.GetByID(ctx.Request.Context(), id)
+	result, err := c.service.GetByID(ctx.UserContext(), id)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Detail PPN berhasil diambil", result)
+	return utils.SuccessResponse(ctx, "Detail PPN berhasil diambil", result)
 }
 
-func (c *PPNController) Create(ctx *gin.Context) {
+func (c *PPNController) Create(ctx *fiber.Ctx) error {
 	var req models.CreatePPNRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.Create(ctx.Request.Context(), &req)
+	result, err := c.service.Create(ctx.UserContext(), &req)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	utils.CreatedResponse(ctx, "PPN berhasil dibuat", result)
+	return utils.CreatedResponse(ctx, "PPN berhasil dibuat", result)
 }
 
-func (c *PPNController) Update(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *PPNController) Update(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	var req models.UpdatePPNRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.Update(ctx.Request.Context(), id, &req)
+	result, err := c.service.Update(ctx.UserContext(), id, &req)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "PPN berhasil diupdate", result)
+	return utils.SuccessResponse(ctx, "PPN berhasil diupdate", result)
 }
 
-func (c *PPNController) Delete(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *PPNController) Delete(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	if err := c.service.Delete(ctx.Request.Context(), id); err != nil {
+	if err := c.service.Delete(ctx.UserContext(), id); err != nil {
 		if err.Error() == "Tidak dapat menghapus PPN yang sedang aktif" {
-			utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-			return
+			return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 		}
 		if err.Error() == "PPN tidak ditemukan" {
-			utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-			return
+			return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 		}
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "PPN berhasil dihapus", nil)
+	return utils.SuccessResponse(ctx, "PPN berhasil dihapus", nil)
 }
 
-func (c *PPNController) SetActive(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *PPNController) SetActive(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	result, err := c.service.SetActive(ctx.Request.Context(), id)
+	result, err := c.service.SetActive(ctx.UserContext(), id)
 	if err != nil {
 		if err.Error() == "PPN tidak ditemukan" {
-			utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-			return
+			return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 		}
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "PPN berhasil diaktifkan", result)
+	return utils.SuccessResponse(ctx, "PPN berhasil diaktifkan", result)
 }

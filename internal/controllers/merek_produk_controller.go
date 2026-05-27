@@ -9,7 +9,7 @@ import (
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 )
 
 type MerekProdukController struct {
@@ -24,127 +24,116 @@ func NewMerekProdukController(service services.MerekProdukService, cfg *config.C
 	}
 }
 
-func (c *MerekProdukController) Create(ctx *gin.Context) {
+func (c *MerekProdukController) Create(ctx *fiber.Ctx) error {
 	var req models.CreateMerekProdukRequest
 	var logoURL *string
 
 	// Check content type
-	contentType := ctx.GetHeader("Content-Type")
+	contentType := ctx.Get("Content-Type")
 
 	// Handle multipart/form-data (with file upload)
 	if strings.Contains(contentType, "multipart/form-data") {
 		// Parse form data
-		req.NamaID = ctx.PostForm("nama_id")
-		if namaEN := ctx.PostForm("nama_en"); namaEN != "" {
+		req.NamaID = ctx.FormValue("nama_id")
+		if namaEN := ctx.FormValue("nama_en"); namaEN != "" {
 			req.NamaEN = &namaEN
 		}
 
 		// Validate required field
 		if req.NamaID == "" {
-			utils.ErrorResponse(ctx, http.StatusBadRequest, "Nama merek (Indonesia) wajib diisi", nil)
-			return
+			return utils.ErrorResponse(ctx, http.StatusBadRequest, "Nama merek (Indonesia) wajib diisi", nil)
 		}
 
 		// Handle logo upload or URL
 		if file, err := ctx.FormFile("logo"); err == nil {
 			if !utils.IsValidImageType(file) {
-				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file logo tidak didukung", nil)
-				return
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file logo tidak didukung", nil)
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "product-brands", c.cfg)
 			if err != nil {
-				utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan logo: "+err.Error(), nil)
-				return
+				return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan logo: "+err.Error(), nil)
 			}
 			logoURL = &savedPath
-		} else if logoStr := ctx.PostForm("logo"); logoStr != "" {
+		} else if logoStr := ctx.FormValue("logo"); logoStr != "" {
 			logoURL = &logoStr
 		}
 
 		// Create with logo
-		result, err := c.service.CreateWithLogo(ctx.Request.Context(), &req, logoURL)
+		result, err := c.service.CreateWithLogo(ctx.UserContext(), &req, logoURL)
 		if err != nil {
-			utils.ErrorResponse(ctx, http.StatusConflict, err.Error(), nil)
-			return
+			return utils.ErrorResponse(ctx, http.StatusConflict, err.Error(), nil)
 		}
-		utils.CreatedResponse(ctx, "Merek produk berhasil dibuat", result)
-		return
+		return utils.CreatedResponse(ctx, "Merek produk berhasil dibuat", result)
 	}
 
 	// Handle application/json (no file upload)
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.Create(ctx.Request.Context(), &req)
+	result, err := c.service.Create(ctx.UserContext(), &req)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusConflict, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusConflict, err.Error(), nil)
 	}
 
-	utils.CreatedResponse(ctx, "Merek produk berhasil dibuat", result)
+	return utils.CreatedResponse(ctx, "Merek produk berhasil dibuat", result)
 }
 
-func (c *MerekProdukController) FindAll(ctx *gin.Context) {
+func (c *MerekProdukController) FindAll(ctx *fiber.Ctx) error {
 	var params models.MerekProdukFilterRequest
-	if err := ctx.ShouldBindQuery(&params); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
-		return
+	if err := ctx.QueryParser(&params); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
 	}
 
-	items, meta, err := c.service.FindAll(ctx.Request.Context(), &params)
+	items, meta, err := c.service.FindAll(ctx.UserContext(), &params)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	utils.PaginatedSuccessResponse(ctx, "Data merek produk berhasil diambil", items, *meta)
+	return utils.PaginatedSuccessResponse(ctx, "Data merek produk berhasil diambil", items, *meta)
 }
 
-func (c *MerekProdukController) FindByID(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *MerekProdukController) FindByID(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	result, err := c.service.FindByID(ctx.Request.Context(), id)
+	result, err := c.service.FindByID(ctx.UserContext(), id)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Detail merek produk berhasil diambil", result)
+	return utils.SuccessResponse(ctx, "Detail merek produk berhasil diambil", result)
 }
 
-func (c *MerekProdukController) FindBySlug(ctx *gin.Context) {
-	slug := ctx.Param("slug")
+func (c *MerekProdukController) FindBySlug(ctx *fiber.Ctx) error {
+	slug := ctx.Params("slug")
 
-	result, err := c.service.FindBySlug(ctx.Request.Context(), slug)
+	result, err := c.service.FindBySlug(ctx.UserContext(), slug)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Detail merek produk berhasil diambil", result)
+	return utils.SuccessResponse(ctx, "Detail merek produk berhasil diambil", result)
 }
 
-func (c *MerekProdukController) Update(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *MerekProdukController) Update(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	var req models.UpdateMerekProdukRequest
 	var logoURL *string
 
 	// Check content type
-	contentType := ctx.GetHeader("Content-Type")
+	contentType := ctx.Get("Content-Type")
 
 	// Handle multipart/form-data (with file upload)
 	if strings.Contains(contentType, "multipart/form-data") {
 		// Parse form data
-		if namaID := ctx.PostForm("nama_id"); namaID != "" {
+		if namaID := ctx.FormValue("nama_id"); namaID != "" {
 			req.NamaID = &namaID
 		}
-		if namaEN := ctx.PostForm("nama_en"); namaEN != "" {
+		if namaEN := ctx.FormValue("nama_en"); namaEN != "" {
 			req.NamaEN = &namaEN
 		}
-		if isActiveStr := ctx.PostForm("is_active"); isActiveStr != "" {
+		if isActiveStr := ctx.FormValue("is_active"); isActiveStr != "" {
 			isActive := isActiveStr == "true"
 			req.IsActive = &isActive
 		}
@@ -152,77 +141,68 @@ func (c *MerekProdukController) Update(ctx *gin.Context) {
 		// Handle logo upload or URL
 		if file, err := ctx.FormFile("logo"); err == nil {
 			if !utils.IsValidImageType(file) {
-				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file logo tidak didukung", nil)
-				return
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file logo tidak didukung", nil)
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "product-brands", c.cfg)
 			if err != nil {
-				utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan logo: "+err.Error(), nil)
-				return
+				return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan logo: "+err.Error(), nil)
 			}
 			logoURL = &savedPath
-		} else if logoStr := ctx.PostForm("logo"); logoStr != "" {
+		} else if logoStr := ctx.FormValue("logo"); logoStr != "" {
 			logoURL = &logoStr
 		}
 
 		// Use UpdateWithLogo for multipart
-		result, err := c.service.UpdateWithLogo(ctx.Request.Context(), id, &req, logoURL)
+		result, err := c.service.UpdateWithLogo(ctx.UserContext(), id, &req, logoURL)
 		if err != nil {
-			utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-			return
+			return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 		}
-		utils.SuccessResponse(ctx, "Merek produk berhasil diupdate", result)
-		return
+		return utils.SuccessResponse(ctx, "Merek produk berhasil diupdate", result)
 	}
 
 	// Handle application/json (no file upload)
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.Update(ctx.Request.Context(), id, &req)
+	result, err := c.service.Update(ctx.UserContext(), id, &req)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Merek produk berhasil diupdate", result)
+	return utils.SuccessResponse(ctx, "Merek produk berhasil diupdate", result)
 }
 
-func (c *MerekProdukController) Delete(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *MerekProdukController) Delete(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	if err := c.service.Delete(ctx.Request.Context(), id); err != nil {
+	if err := c.service.Delete(ctx.UserContext(), id); err != nil {
 		status := http.StatusBadRequest
 		if err.Error() == "merek produk tidak ditemukan" {
 			status = http.StatusNotFound
 		}
-		utils.ErrorResponse(ctx, status, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Merek produk berhasil dihapus", nil)
+	return utils.SuccessResponse(ctx, "Merek produk berhasil dihapus", nil)
 }
 
-func (c *MerekProdukController) ToggleStatus(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *MerekProdukController) ToggleStatus(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	result, err := c.service.ToggleStatus(ctx.Request.Context(), id)
+	result, err := c.service.ToggleStatus(ctx.UserContext(), id)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Status merek berhasil diubah", result)
+	return utils.SuccessResponse(ctx, "Status merek berhasil diubah", result)
 }
 
-func (c *MerekProdukController) Dropdown(ctx *gin.Context) {
-	merekList, err := c.service.GetAllForDropdown(ctx.Request.Context())
+func (c *MerekProdukController) Dropdown(ctx *fiber.Ctx) error {
+	merekList, err := c.service.GetAllForDropdown(ctx.UserContext())
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data merek", nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data merek", nil)
 	}
 
-	utils.SuccessResponse(ctx, "Data dropdown merek produk berhasil diambil", merekList)
+	return utils.SuccessResponse(ctx, "Data dropdown merek produk berhasil diambil", merekList)
 }

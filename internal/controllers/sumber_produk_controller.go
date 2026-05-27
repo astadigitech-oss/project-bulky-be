@@ -7,7 +7,7 @@ import (
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 )
 
 type SumberProdukController struct {
@@ -18,108 +18,98 @@ func NewSumberProdukController(service services.SumberProdukService) *SumberProd
 	return &SumberProdukController{service: service}
 }
 
-func (c *SumberProdukController) Create(ctx *gin.Context) {
+func (c *SumberProdukController) Create(ctx *fiber.Ctx) error {
 	var req models.CreateSumberProdukRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.Create(ctx.Request.Context(), &req)
+	result, err := c.service.Create(ctx.UserContext(), &req)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusConflict, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusConflict, err.Error(), nil)
 	}
 
-	utils.CreatedResponse(ctx, "Sumber produk berhasil dibuat", result)
+	return utils.CreatedResponse(ctx, "Sumber produk berhasil dibuat", result)
 }
 
-func (c *SumberProdukController) FindAll(ctx *gin.Context) {
+func (c *SumberProdukController) FindAll(ctx *fiber.Ctx) error {
 	var params models.SumberProdukFilterRequest
-	if err := ctx.ShouldBindQuery(&params); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
-		return
+	if err := ctx.QueryParser(&params); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
 	}
 
-	items, meta, err := c.service.FindAll(ctx.Request.Context(), &params)
+	items, meta, err := c.service.FindAll(ctx.UserContext(), &params)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	utils.PaginatedSuccessResponse(ctx, "Data sumber produk berhasil diambil", items, *meta)
+	return utils.PaginatedSuccessResponse(ctx, "Data sumber produk berhasil diambil", items, *meta)
 }
 
-func (c *SumberProdukController) FindByID(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *SumberProdukController) FindByID(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	result, err := c.service.FindByID(ctx.Request.Context(), id)
+	result, err := c.service.FindByID(ctx.UserContext(), id)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Detail sumber produk berhasil diambil", result)
+	return utils.SuccessResponse(ctx, "Detail sumber produk berhasil diambil", result)
 }
 
-func (c *SumberProdukController) FindBySlug(ctx *gin.Context) {
-	slug := ctx.Param("slug")
+func (c *SumberProdukController) FindBySlug(ctx *fiber.Ctx) error {
+	slug := ctx.Params("slug")
 
-	result, err := c.service.FindBySlug(ctx.Request.Context(), slug)
+	result, err := c.service.FindBySlug(ctx.UserContext(), slug)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Detail sumber produk berhasil diambil", result)
+	return utils.SuccessResponse(ctx, "Detail sumber produk berhasil diambil", result)
 }
 
-func (c *SumberProdukController) Update(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *SumberProdukController) Update(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	var req models.UpdateSumberProdukRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.Update(ctx.Request.Context(), id, &req)
+	result, err := c.service.Update(ctx.UserContext(), id, &req)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Sumber produk berhasil diupdate", result)
+	return utils.SuccessResponse(ctx, "Sumber produk berhasil diupdate", result)
 }
 
-func (c *SumberProdukController) Delete(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *SumberProdukController) Delete(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	if err := c.service.Delete(ctx.Request.Context(), id); err != nil {
+	if err := c.service.Delete(ctx.UserContext(), id); err != nil {
 		status := http.StatusBadRequest
 		if err.Error() == "sumber produk tidak ditemukan" {
 			status = http.StatusNotFound
 		}
-		utils.ErrorResponse(ctx, status, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Sumber produk berhasil dihapus", nil)
+	return utils.SuccessResponse(ctx, "Sumber produk berhasil dihapus", nil)
 }
 
-func (c *SumberProdukController) ToggleStatus(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *SumberProdukController) ToggleStatus(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	result, err := c.service.ToggleStatus(ctx.Request.Context(), id)
+	result, err := c.service.ToggleStatus(ctx.UserContext(), id)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Status sumber produk berhasil diubah", result)
+	return utils.SuccessResponse(ctx, "Status sumber produk berhasil diubah", result)
 }
 
-func (c *SumberProdukController) Dropdown(ctx *gin.Context) {
+func (c *SumberProdukController) Dropdown(ctx *fiber.Ctx) error {
 	var params models.SumberProdukFilterRequest
 	params.Page = 1
 	params.PerPage = 1000
@@ -128,11 +118,10 @@ func (c *SumberProdukController) Dropdown(ctx *gin.Context) {
 	params.SortBy = "updated_at"
 	params.Order = "asc"
 
-	sumberList, _, err := c.service.FindAll(ctx.Request.Context(), &params)
+	sumberList, _, err := c.service.FindAll(ctx.UserContext(), &params)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data sumber", nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data sumber", nil)
 	}
 
-	utils.SuccessResponse(ctx, "Data dropdown sumber produk berhasil diambil", sumberList)
+	return utils.SuccessResponse(ctx, "Data dropdown sumber produk berhasil diambil", sumberList)
 }

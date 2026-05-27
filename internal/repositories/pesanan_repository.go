@@ -20,6 +20,7 @@ type PesananRepository interface {
 	UpdateStatus(id uuid.UUID, orderStatus models.OrderStatus, note *string, adminID uuid.UUID) error
 	Delete(id uuid.UUID) error
 	GetStatistics(tanggalDari, tanggalSampai *time.Time) (map[string]interface{}, error)
+	GetChartData(dari, sampai *time.Time, groupBy string) ([]models.ChartRawPoint, error)
 }
 
 type pesananRepository struct {
@@ -199,26 +200,28 @@ func (r *pesananRepository) Delete(id uuid.UUID) error {
 func (r *pesananRepository) GetStatistics(tanggalDari, tanggalSampai *time.Time) (map[string]interface{}, error) {
 	stats := make(map[string]interface{})
 
-	query := r.db.Model(&models.Pesanan{})
-
-	// Apply date filters
-	if tanggalDari != nil {
-		query = query.Where("created_at >= ?", tanggalDari)
-	}
-	if tanggalSampai != nil {
-		query = query.Where("created_at <= ?", tanggalSampai)
+	// baseQuery builds a fresh query with date filters applied each time
+	baseQuery := func() *gorm.DB {
+		q := r.db.Model(&models.Pesanan{})
+		if tanggalDari != nil {
+			q = q.Where("created_at >= ?", tanggalDari)
+		}
+		if tanggalSampai != nil {
+			q = q.Where("created_at <= ?", tanggalSampai)
+		}
+		return q
 	}
 
 	// Total pesanan
 	var totalPesanan int64
-	if err := query.Count(&totalPesanan).Error; err != nil {
+	if err := baseQuery().Count(&totalPesanan).Error; err != nil {
 		return nil, err
 	}
 	stats["total_pesanan"] = totalPesanan
 
 	// Total revenue (only PAID orders)
 	var totalRevenue decimal.Decimal
-	if err := query.Where("payment_status = ?", "PAID").
+	if err := baseQuery().Where("payment_status = ?", "PAID").
 		Select("COALESCE(SUM(total), 0)").
 		Scan(&totalRevenue).Error; err != nil {
 		return nil, err
@@ -231,7 +234,7 @@ func (r *pesananRepository) GetStatistics(tanggalDari, tanggalSampai *time.Time)
 		OrderStatus string
 		Count       int64
 	}
-	if err := query.Select("order_status, COUNT(*) as count").
+	if err := baseQuery().Select("order_status, COUNT(*) as count").
 		Group("order_status").
 		Scan(&statusCounts).Error; err != nil {
 		return nil, err
@@ -247,7 +250,7 @@ func (r *pesananRepository) GetStatistics(tanggalDari, tanggalSampai *time.Time)
 		DeliveryType string
 		Count        int64
 	}
-	if err := query.Select("delivery_type, COUNT(*) as count").
+	if err := baseQuery().Select("delivery_type, COUNT(*) as count").
 		Group("delivery_type").
 		Scan(&deliveryCounts).Error; err != nil {
 		return nil, err
@@ -263,7 +266,7 @@ func (r *pesananRepository) GetStatistics(tanggalDari, tanggalSampai *time.Time)
 		PaymentStatus string
 		Count         int64
 	}
-	if err := query.Select("payment_status, COUNT(*) as count").
+	if err := baseQuery().Select("payment_status, COUNT(*) as count").
 		Group("payment_status").
 		Scan(&paymentCounts).Error; err != nil {
 		return nil, err
@@ -274,6 +277,33 @@ func (r *pesananRepository) GetStatistics(tanggalDari, tanggalSampai *time.Time)
 	stats["per_payment_status"] = perPaymentStatus
 
 	return stats, nil
+}
+
+func (r *pesananRepository) GetChartData(dari, sampai *time.Time, groupBy string) ([]models.ChartRawPoint, error) {
+	var format string
+	if groupBy == "month" {
+		format = "YYYY-MM"
+	} else {
+		format = "YYYY-MM-DD"
+	}
+
+	var results []models.ChartRawPoint
+	q := r.db.Model(&models.Pesanan{}).
+		Select("TO_CHAR(created_at, '" + format + "') as period, COUNT(*) as total_pesanan").
+		Group("period").
+		Order("period ASC")
+
+	if dari != nil {
+		q = q.Where("created_at >= ?", dari)
+	}
+	if sampai != nil {
+		q = q.Where("created_at <= ?", sampai)
+	}
+
+	if err := q.Scan(&results).Error; err != nil {
+		return nil, err
+	}
+	return results, nil
 }
 
 // Helper function to validate status transitions

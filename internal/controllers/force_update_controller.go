@@ -8,7 +8,7 @@ import (
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 )
 
 type ForceUpdateController struct {
@@ -20,17 +20,15 @@ func NewForceUpdateController(service services.ForceUpdateService) *ForceUpdateC
 }
 
 // CreateForceUpdate creates force update configuration
-func (c *ForceUpdateController) CreateForceUpdate(ctx *gin.Context) {
+func (c *ForceUpdateController) CreateForceUpdate(ctx *fiber.Ctx) error {
 	var req models.CreateForceUpdateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Data request tidak valid", utils.GetValidationErrorMessage(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Data request tidak valid", utils.GetValidationErrorMessage(err))
 	}
 
 	forceUpdate, err := c.service.CreateForceUpdate(&req)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat konfigurasi force update", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat konfigurasi force update", err.Error())
 	}
 
 	response := models.ForceUpdateDetailResponse{
@@ -43,17 +41,16 @@ func (c *ForceUpdateController) CreateForceUpdate(ctx *gin.Context) {
 		UpdatedAt:       forceUpdate.UpdatedAt,
 	}
 
-	utils.CreatedResponse(ctx, "Konfigurasi force update berhasil dibuat", response)
+	return utils.CreatedResponse(ctx, "Konfigurasi force update berhasil dibuat", response)
 }
 
 // UpdateForceUpdate updates force update configuration
-func (c *ForceUpdateController) UpdateForceUpdate(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *ForceUpdateController) UpdateForceUpdate(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	var req models.UpdateForceUpdateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Data request tidak valid", utils.GetValidationErrorMessage(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Data request tidak valid", utils.GetValidationErrorMessage(err))
 	}
 
 	forceUpdate, err := c.service.UpdateForceUpdate(id, &req)
@@ -62,8 +59,7 @@ func (c *ForceUpdateController) UpdateForceUpdate(ctx *gin.Context) {
 		if err.Error() == "force update not found" {
 			status = http.StatusNotFound
 		}
-		utils.SimpleErrorResponse(ctx, status, "Gagal memperbarui konfigurasi force update", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, status, "Gagal memperbarui konfigurasi force update", err.Error())
 	}
 
 	response := models.ForceUpdateDetailResponse{
@@ -76,12 +72,12 @@ func (c *ForceUpdateController) UpdateForceUpdate(ctx *gin.Context) {
 		UpdatedAt:       forceUpdate.UpdatedAt,
 	}
 
-	utils.SuccessResponse(ctx, "Konfigurasi force update berhasil diperbarui", response)
+	return utils.SuccessResponse(ctx, "Konfigurasi force update berhasil diperbarui", response)
 }
 
 // DeleteForceUpdate deletes force update configuration
-func (c *ForceUpdateController) DeleteForceUpdate(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *ForceUpdateController) DeleteForceUpdate(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	err := c.service.DeleteForceUpdate(id)
 	if err != nil {
@@ -89,16 +85,15 @@ func (c *ForceUpdateController) DeleteForceUpdate(ctx *gin.Context) {
 		if err.Error() == "force update not found" {
 			status = http.StatusNotFound
 		}
-		utils.SimpleErrorResponse(ctx, status, "Gagal menghapus konfigurasi force update", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, status, "Gagal menghapus konfigurasi force update", err.Error())
 	}
 
-	utils.SuccessResponse(ctx, "Konfigurasi force update berhasil dihapus", nil)
+	return utils.SuccessResponse(ctx, "Konfigurasi force update berhasil dihapus", nil)
 }
 
 // GetForceUpdateByID gets force update by ID
-func (c *ForceUpdateController) GetForceUpdateByID(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *ForceUpdateController) GetForceUpdateByID(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	forceUpdate, err := c.service.GetForceUpdateByID(id)
 	if err != nil {
@@ -106,8 +101,7 @@ func (c *ForceUpdateController) GetForceUpdateByID(ctx *gin.Context) {
 		if err.Error() == "force update not found" {
 			status = http.StatusNotFound
 		}
-		utils.SimpleErrorResponse(ctx, status, "Gagal mengambil data force update", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, status, "Gagal mengambil data force update", err.Error())
 	}
 
 	response := models.ForceUpdateDetailResponse{
@@ -120,13 +114,13 @@ func (c *ForceUpdateController) GetForceUpdateByID(ctx *gin.Context) {
 		UpdatedAt:       forceUpdate.UpdatedAt,
 	}
 
-	utils.SuccessResponse(ctx, "Data force update berhasil diambil", response)
+	return utils.SuccessResponse(ctx, "Data force update berhasil diambil", response)
 }
 
 // GetAllForceUpdates gets all force update configurations
-func (c *ForceUpdateController) GetAllForceUpdates(ctx *gin.Context) {
-	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
+func (c *ForceUpdateController) GetAllForceUpdates(ctx *fiber.Ctx) error {
+	page, _ := strconv.Atoi(ctx.Query("page", "1"))
+	limit, _ := strconv.Atoi(ctx.Query("limit", "10"))
 
 	if page < 1 {
 		page = 1
@@ -137,8 +131,7 @@ func (c *ForceUpdateController) GetAllForceUpdates(ctx *gin.Context) {
 
 	forceUpdates, total, err := c.service.GetAllForceUpdates(page, limit)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data force update", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data force update", err.Error())
 	}
 
 	var response []models.ForceUpdateListResponse
@@ -154,12 +147,12 @@ func (c *ForceUpdateController) GetAllForceUpdates(ctx *gin.Context) {
 
 	meta := models.NewPaginationMeta(page, limit, total)
 
-	utils.PaginatedSuccessResponse(ctx, "Data force update berhasil diambil", response, meta)
+	return utils.PaginatedSuccessResponse(ctx, "Data force update berhasil diambil", response, meta)
 }
 
 // SetActiveForceUpdate sets active force update configuration
-func (c *ForceUpdateController) SetActiveForceUpdate(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *ForceUpdateController) SetActiveForceUpdate(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	err := c.service.SetActiveForceUpdate(id)
 	if err != nil {
@@ -167,9 +160,8 @@ func (c *ForceUpdateController) SetActiveForceUpdate(ctx *gin.Context) {
 		if err.Error() == "force update not found" {
 			status = http.StatusNotFound
 		}
-		utils.SimpleErrorResponse(ctx, status, "Gagal mengaktifkan force update", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, status, "Gagal mengaktifkan force update", err.Error())
 	}
 
-	utils.SuccessResponse(ctx, "Force update berhasil diaktifkan", nil)
+	return utils.SuccessResponse(ctx, "Force update berhasil diaktifkan", nil)
 }

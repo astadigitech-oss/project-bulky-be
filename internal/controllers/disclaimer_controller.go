@@ -7,7 +7,7 @@ import (
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 )
 
 type DisclaimerController struct {
@@ -18,103 +18,93 @@ func NewDisclaimerController(service services.DisclaimerService) *DisclaimerCont
 	return &DisclaimerController{service: service}
 }
 
-func (c *DisclaimerController) Create(ctx *gin.Context) {
+func (c *DisclaimerController) Create(ctx *fiber.Ctx) error {
 	var req models.CreateDisclaimerRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.Create(ctx.Request.Context(), &req)
+	result, err := c.service.Create(ctx.UserContext(), &req)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
-	utils.CreatedResponse(ctx, "Disclaimer berhasil dibuat", result)
+	return utils.CreatedResponse(ctx, "Disclaimer berhasil dibuat", result)
 }
 
-func (c *DisclaimerController) FindAll(ctx *gin.Context) {
+func (c *DisclaimerController) FindAll(ctx *fiber.Ctx) error {
 	var params models.PaginationRequest
-	if err := ctx.ShouldBindQuery(&params); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
-		return
+	if err := ctx.QueryParser(&params); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
 	}
 
-	items, meta, err := c.service.FindAll(ctx.Request.Context(), &params)
+	items, meta, err := c.service.FindAll(ctx.UserContext(), &params)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	utils.PaginatedSuccessResponse(ctx, "Data disclaimer berhasil diambil", items, *meta)
+	return utils.PaginatedSuccessResponse(ctx, "Data disclaimer berhasil diambil", items, *meta)
 }
 
-func (c *DisclaimerController) FindByID(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *DisclaimerController) FindByID(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	result, err := c.service.FindByID(ctx.Request.Context(), id)
+	result, err := c.service.FindByID(ctx.UserContext(), id)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Detail disclaimer berhasil diambil", result)
+	return utils.SuccessResponse(ctx, "Detail disclaimer berhasil diambil", result)
 }
 
-func (c *DisclaimerController) Update(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *DisclaimerController) Update(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	var req models.UpdateDisclaimerRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.Update(ctx.Request.Context(), id, &req)
+	result, err := c.service.Update(ctx.UserContext(), id, &req)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Disclaimer berhasil diupdate", result)
+	return utils.SuccessResponse(ctx, "Disclaimer berhasil diupdate", result)
 }
 
-func (c *DisclaimerController) Delete(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *DisclaimerController) Delete(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	if err := c.service.Delete(ctx.Request.Context(), id); err != nil {
+	if err := c.service.Delete(ctx.UserContext(), id); err != nil {
 		status := http.StatusBadRequest
 		if err.Error() == "disclaimer tidak ditemukan" {
 			status = http.StatusNotFound
 		}
-		utils.ErrorResponse(ctx, status, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Disclaimer berhasil dihapus", nil)
+	return utils.SuccessResponse(ctx, "Disclaimer berhasil dihapus", nil)
 }
 
-func (c *DisclaimerController) SetActive(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *DisclaimerController) SetActive(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	result, err := c.service.SetActive(ctx.Request.Context(), id)
+	result, err := c.service.SetActive(ctx.UserContext(), id)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Disclaimer berhasil diaktifkan", result)
+	return utils.SuccessResponse(ctx, "Disclaimer berhasil diaktifkan", result)
 }
 
 // Public endpoint
-func (c *DisclaimerController) GetActive(ctx *gin.Context) {
-	lang := ctx.DefaultQuery("lang", "id")
+func (c *DisclaimerController) GetActive(ctx *fiber.Ctx) error {
+	lang := ctx.Query("lang", "id")
 
-	result, err := c.service.GetActive(ctx.Request.Context(), lang)
+	result, err := c.service.GetActive(ctx.UserContext(), lang)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	if result == nil {
@@ -122,13 +112,12 @@ func (c *DisclaimerController) GetActive(ctx *gin.Context) {
 		if lang == "en" {
 			msg = "No active disclaimer"
 		}
-		utils.SuccessResponse(ctx, msg, nil)
-		return
+		return utils.SuccessResponse(ctx, msg, nil)
 	}
 
 	msg := "Disclaimer aktif berhasil diambil"
 	if lang == "en" {
 		msg = "Active disclaimer retrieved successfully"
 	}
-	utils.SuccessResponse(ctx, msg, result)
+	return utils.SuccessResponse(ctx, msg, result)
 }

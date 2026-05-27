@@ -10,7 +10,7 @@ import (
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
 
@@ -34,34 +34,31 @@ type LoginRequest struct {
 }
 
 // POST /api/auth/admin/login
-func (c *AuthV2Controller) AdminLogin(ctx *gin.Context) {
+func (c *AuthV2Controller) AdminLogin(ctx *fiber.Ctx) error {
 	var req LoginRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+	if err := BindJSON(ctx, &req); err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Data tidak valid: " + err.Error(),
 		})
-		return
 	}
 
-	result, err := c.authService.AdminLogin(ctx, req.Email, req.Password)
+	result, err := c.authService.AdminLogin(ctx.UserContext(), req.Email, req.Password)
 	if err != nil {
 		// Check error type for proper status code
 		if err.Error() == "akun Anda tidak aktif. Silakan hubungi admin" {
-			ctx.JSON(http.StatusForbidden, gin.H{
+			return ctx.Status(http.StatusForbidden).JSON(fiber.Map{
 				"success": false,
 				"message": err.Error(),
 			})
-			return
 		}
-		ctx.JSON(http.StatusUnauthorized, gin.H{
+		return ctx.Status(http.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
 			"message": err.Error(),
 		})
-		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
+	return ctx.Status(http.StatusOK).JSON(fiber.Map{
 		"success": true,
 		"message": "Login berhasil",
 		"data":    result,
@@ -69,34 +66,31 @@ func (c *AuthV2Controller) AdminLogin(ctx *gin.Context) {
 }
 
 // POST /api/auth/buyer/login
-func (c *AuthV2Controller) BuyerLogin(ctx *gin.Context) {
+func (c *AuthV2Controller) BuyerLogin(ctx *fiber.Ctx) error {
 	var req LoginRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+	if err := BindJSON(ctx, &req); err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Data tidak valid: " + err.Error(),
 		})
-		return
 	}
 
-	result, err := c.authService.BuyerLogin(ctx, req.Email, req.Password)
+	result, err := c.authService.BuyerLogin(ctx.UserContext(), req.Email, req.Password)
 	if err != nil {
 		// Check error type for proper status code
 		if err.Error() == "akun Anda tidak aktif. Silakan hubungi admin" {
-			ctx.JSON(http.StatusForbidden, gin.H{
+			return ctx.Status(http.StatusForbidden).JSON(fiber.Map{
 				"success": false,
 				"message": err.Error(),
 			})
-			return
 		}
-		ctx.JSON(http.StatusUnauthorized, gin.H{
+		return ctx.Status(http.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
 			"message": err.Error(),
 		})
-		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
+	return ctx.Status(http.StatusOK).JSON(fiber.Map{
 		"success": true,
 		"message": "Login berhasil",
 		"data":    result,
@@ -104,83 +98,78 @@ func (c *AuthV2Controller) BuyerLogin(ctx *gin.Context) {
 }
 
 // POST /api/auth/logout
-func (c *AuthV2Controller) Logout(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, gin.H{
+func (c *AuthV2Controller) Logout(ctx *fiber.Ctx) error {
+	return ctx.Status(http.StatusOK).JSON(fiber.Map{
 		"success": true,
 		"message": "Logout berhasil",
 	})
 }
 
 // GET /api/auth/check
-func (c *AuthV2Controller) Check(ctx *gin.Context) {
+func (c *AuthV2Controller) Check(ctx *fiber.Ctx) error {
 	// Jika sampai sini, berarti token sudah valid (lolos AuthMiddleware)
-	ctx.JSON(http.StatusOK, gin.H{
+	return ctx.Status(http.StatusOK).JSON(fiber.Map{
 		"success": true,
 		"message": "Token valid",
 	})
 }
 
 // GET /api/auth/me
-func (c *AuthV2Controller) GetMe(ctx *gin.Context) {
-	userID, exists := ctx.Get("user_id")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
+func (c *AuthV2Controller) GetMe(ctx *fiber.Ctx) error {
+	userID := ctx.Locals("user_id")
+	if userID == nil {
+		return ctx.Status(http.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
 			"message": "Token tidak valid atau sudah expired",
 		})
-		return
 	}
 
-	userType, exists := ctx.Get("user_type")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
+	userType := ctx.Locals("user_type")
+	if userType == nil {
+		return ctx.Status(http.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
 			"message": "Token tidak valid atau sudah expired",
 		})
-		return
 	}
 
 	uid, err := uuid.Parse(userID.(string))
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "User ID tidak valid",
 		})
-		return
 	}
 
 	// Handle based on user type
 	switch userType.(string) {
 	case "ADMIN":
-		admin, err := c.authService.GetAdminWithPermissions(ctx, uid)
+		admin, err := c.authService.GetAdminWithPermissions(ctx.UserContext(), uid)
 		if err != nil {
-			ctx.JSON(http.StatusNotFound, gin.H{
+			return ctx.Status(http.StatusNotFound).JSON(fiber.Map{
 				"success": false,
 				"message": "Admin tidak ditemukan",
 			})
-			return
 		}
-		ctx.JSON(http.StatusOK, gin.H{
+		return ctx.Status(http.StatusOK).JSON(fiber.Map{
 			"success": true,
 			"data":    admin,
 		})
 
 	case "BUYER":
-		buyer, err := c.authService.GetBuyer(ctx, uid)
+		buyer, err := c.authService.GetBuyer(ctx.UserContext(), uid)
 		if err != nil {
-			ctx.JSON(http.StatusNotFound, gin.H{
+			return ctx.Status(http.StatusNotFound).JSON(fiber.Map{
 				"success": false,
 				"message": "Buyer tidak ditemukan",
 			})
-			return
 		}
-		ctx.JSON(http.StatusOK, gin.H{
+		return ctx.Status(http.StatusOK).JSON(fiber.Map{
 			"success": true,
 			"data":    buyer,
 		})
 
 	default:
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "User type tidak valid",
 		})
@@ -188,83 +177,77 @@ func (c *AuthV2Controller) GetMe(ctx *gin.Context) {
 }
 
 // PUT /api/v1/auth/profile
-func (c *AuthV2Controller) UpdateProfile(ctx *gin.Context) {
+func (c *AuthV2Controller) UpdateProfile(ctx *fiber.Ctx) error {
 	// Get user info from JWT context
-	userID, exists := ctx.Get("user_id")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
+	userID := ctx.Locals("user_id")
+	if userID == nil {
+		return ctx.Status(http.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
 			"message": "User ID tidak ditemukan",
 		})
-		return
 	}
 
-	userType, exists := ctx.Get("user_type")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
+	userType := ctx.Locals("user_type")
+	if userType == nil {
+		return ctx.Status(http.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
 			"message": "User type tidak ditemukan",
 		})
-		return
 	}
 
 	// Route to appropriate handler based on user type
 	switch userType.(string) {
 	case "ADMIN":
-		c.updateAdminProfile(ctx, userID.(string))
+		return c.updateAdminProfile(ctx, userID.(string))
 	case "BUYER":
-		c.updateBuyerProfile(ctx, userID.(string))
+		return c.updateBuyerProfile(ctx, userID.(string))
 	default:
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "User type tidak valid",
 		})
 	}
 }
 
-func (c *AuthV2Controller) updateAdminProfile(ctx *gin.Context, userID string) {
+func (c *AuthV2Controller) updateAdminProfile(ctx *fiber.Ctx, userID string) error {
 	var req dto.AdminUpdateProfileRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+	if err := BindJSON(ctx, &req); err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Validasi gagal",
 			"errors":  err.Error(),
 		})
-		return
 	}
 
 	// Check email unique (exclude current user)
-	exists, err := c.adminService.IsEmailExistExcludeID(ctx, req.Email, userID)
+	exists, err := c.adminService.IsEmailExistExcludeID(ctx.UserContext(), req.Email, userID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
 			"message": "Gagal memeriksa email",
 		})
-		return
 	}
 	if exists {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Email sudah digunakan oleh user lain",
 		})
-		return
 	}
 
 	// Update profile
-	admin, err := c.adminService.UpdateProfile(ctx, userID, req.Nama, req.Email)
+	admin, err := c.adminService.UpdateProfile(ctx.UserContext(), userID, req.Nama, req.Email)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
 			"message": "Gagal mengupdate profile",
 		})
-		return
 	}
 
 	// Simplified response (tanpa permissions & role)
-	ctx.JSON(http.StatusOK, gin.H{
+	return ctx.Status(http.StatusOK).JSON(fiber.Map{
 		"success": true,
 		"message": "Profile berhasil diupdate",
-		"data": gin.H{
+		"data": fiber.Map{
 			"id":    admin.ID.String(),
 			"nama":  admin.Nama,
 			"email": admin.Email,
@@ -272,75 +255,68 @@ func (c *AuthV2Controller) updateAdminProfile(ctx *gin.Context, userID string) {
 	})
 }
 
-func (c *AuthV2Controller) updateBuyerProfile(ctx *gin.Context, userID string) {
+func (c *AuthV2Controller) updateBuyerProfile(ctx *fiber.Ctx, userID string) error {
 	var req dto.BuyerUpdateProfileRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+	if err := BindJSON(ctx, &req); err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Validasi gagal",
 			"errors":  err.Error(),
 		})
-		return
 	}
 
 	// Check email unique (exclude current user)
-	emailExists, err := c.buyerService.IsEmailExistExcludeID(ctx, req.Email, userID)
+	emailExists, err := c.buyerService.IsEmailExistExcludeID(ctx.UserContext(), req.Email, userID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
 			"message": "Gagal memeriksa email",
 		})
-		return
 	}
 	if emailExists {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Email sudah digunakan oleh user lain",
 		})
-		return
 	}
 
 	// Check username unique (exclude current user)
-	usernameExists, err := c.buyerService.IsUsernameExistExcludeID(ctx, req.Username, userID)
+	usernameExists, err := c.buyerService.IsUsernameExistExcludeID(ctx.UserContext(), req.Username, userID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
 			"message": "Gagal memeriksa username",
 		})
-		return
 	}
 	if usernameExists {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Username sudah digunakan oleh user lain",
 		})
-		return
 	}
 
 	// Validate phone format
 	if !utils.IsValidIndonesianPhone(req.Telepon) {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Format telepon tidak valid",
 		})
-		return
 	}
 
 	// Update profile
-	buyer, err := c.buyerService.UpdateProfile(ctx, userID, req.Nama, req.Username, req.Email, req.Telepon)
+	buyer, err := c.buyerService.UpdateProfile(ctx.UserContext(), userID, req.Nama, req.Username, req.Email, req.Telepon)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
 			"message": "Gagal mengupdate profile",
 		})
-		return
 	}
 
 	// Simplified response
-	ctx.JSON(http.StatusOK, gin.H{
+	return ctx.Status(http.StatusOK).JSON(fiber.Map{
 		"success": true,
 		"message": "Profile berhasil diupdate",
-		"data": gin.H{
+		"data": fiber.Map{
 			"id":       buyer.ID.String(),
 			"nama":     buyer.Nama,
 			"username": buyer.Username,
@@ -357,69 +333,62 @@ type ChangePasswordRequest struct {
 }
 
 // PUT /api/auth/change-password
-func (c *AuthV2Controller) ChangePassword(ctx *gin.Context) {
-	userID, exists := ctx.Get("user_id")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
+func (c *AuthV2Controller) ChangePassword(ctx *fiber.Ctx) error {
+	userID := ctx.Locals("user_id")
+	if userID == nil {
+		return ctx.Status(http.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
 			"message": "User ID tidak ditemukan",
 		})
-		return
 	}
 
-	userType, exists := ctx.Get("user_type")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{
+	userType := ctx.Locals("user_type")
+	if userType == nil {
+		return ctx.Status(http.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
 			"message": "User type tidak ditemukan",
 		})
-		return
 	}
 
 	var req ChangePasswordRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+	if err := BindJSON(ctx, &req); err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Data tidak valid: " + err.Error(),
 		})
-		return
 	}
 
 	if req.NewPassword != req.ConfirmPassword {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Konfirmasi password tidak cocok",
 		})
-		return
 	}
 
 	uid, err := uuid.Parse(userID.(string))
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "User ID tidak valid",
 		})
-		return
 	}
 
-	err = c.authService.ChangePassword(ctx, uid, userType.(string), req.CurrentPassword, req.NewPassword)
+	err = c.authService.ChangePassword(ctx.UserContext(), uid, userType.(string), req.CurrentPassword, req.NewPassword)
 	if err != nil {
 		// Check for specific error messages
 		if err.Error() == "password saat ini salah" {
-			ctx.JSON(http.StatusBadRequest, gin.H{
+			return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
 				"success": false,
 				"message": "Password saat ini salah",
 			})
-			return
 		}
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": err.Error(),
 		})
-		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
+	return ctx.Status(http.StatusOK).JSON(fiber.Map{
 		"success": true,
 		"message": "Password berhasil diubah",
 	})
@@ -434,9 +403,9 @@ func NewActivityLogController(service services.ActivityLogService) *ActivityLogC
 }
 
 // GET /api/v1/admin/activity-log
-func (c *ActivityLogController) GetLogs(ctx *gin.Context) {
-	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
-	perPage, _ := strconv.Atoi(ctx.DefaultQuery("per_page", "20"))
+func (c *ActivityLogController) GetLogs(ctx *fiber.Ctx) error {
+	page, _ := strconv.Atoi(ctx.Query("page", "1"))
+	perPage, _ := strconv.Atoi(ctx.Query("per_page", "20"))
 	search := ctx.Query("search")  // ADMIN, BUYER, SYSTEM
 	sortBy := ctx.Query("sort_by") // field untuk sorting
 	order := ctx.Query("order")    // asc atau desc
@@ -467,16 +436,15 @@ func (c *ActivityLogController) GetLogs(ctx *gin.Context) {
 
 	logs, total, err := c.service.GetLogs(filter)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
 			"message": err.Error(),
 		})
-		return
 	}
 
 	meta := models.NewPaginationMeta(page, perPage, total)
 
-	ctx.JSON(http.StatusOK, gin.H{
+	return ctx.Status(http.StatusOK).JSON(fiber.Map{
 		"success": true,
 		"data":    logs,
 		"meta":    meta,
@@ -484,53 +452,49 @@ func (c *ActivityLogController) GetLogs(ctx *gin.Context) {
 }
 
 // GET /api/v1/admin/activity-log/:id
-func (c *ActivityLogController) GetLogByID(ctx *gin.Context) {
-	id, err := uuid.Parse(ctx.Param("id"))
+func (c *ActivityLogController) GetLogByID(ctx *fiber.Ctx) error {
+	id, err := uuid.Parse(ctx.Params("id"))
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "ID tidak valid",
 		})
-		return
 	}
 
 	log, err := c.service.GetLogByID(id)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, gin.H{
+		return ctx.Status(http.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "Log tidak ditemukan",
 		})
-		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
+	return ctx.Status(http.StatusOK).JSON(fiber.Map{
 		"success": true,
 		"data":    log,
 	})
 }
 
 // GET /api/v1/admin/activity-log/entity/:entity_type/:entity_id
-func (c *ActivityLogController) GetLogsByEntity(ctx *gin.Context) {
-	entityType := ctx.Param("entity_type")
-	entityID, err := uuid.Parse(ctx.Param("entity_id"))
+func (c *ActivityLogController) GetLogsByEntity(ctx *fiber.Ctx) error {
+	entityType := ctx.Params("entity_type")
+	entityID, err := uuid.Parse(ctx.Params("entity_id"))
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "Entity ID tidak valid",
 		})
-		return
 	}
 
 	logs, err := c.service.GetLogsByEntity(entityType, entityID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
 			"message": err.Error(),
 		})
-		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
+	return ctx.Status(http.StatusOK).JSON(fiber.Map{
 		"success": true,
 		"data":    logs,
 	})
@@ -545,43 +509,40 @@ func NewRoleController(service services.RoleService) *RoleController {
 }
 
 // GET /api/v1/admin/role
-func (c *RoleController) GetAll(ctx *gin.Context) {
+func (c *RoleController) GetAll(ctx *fiber.Ctx) error {
 	roles, err := c.service.GetAll()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
 			"message": err.Error(),
 		})
-		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
+	return ctx.Status(http.StatusOK).JSON(fiber.Map{
 		"success": true,
 		"data":    roles,
 	})
 }
 
 // GET /api/v1/admin/role/:id
-func (c *RoleController) GetByID(ctx *gin.Context) {
-	id, err := uuid.Parse(ctx.Param("id"))
+func (c *RoleController) GetByID(ctx *fiber.Ctx) error {
+	id, err := uuid.Parse(ctx.Params("id"))
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"message": "ID tidak valid",
 		})
-		return
 	}
 
 	role, err := c.service.GetByIDWithPermissions(id)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, gin.H{
+		return ctx.Status(http.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "Role tidak ditemukan",
 		})
-		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
+	return ctx.Status(http.StatusOK).JSON(fiber.Map{
 		"success": true,
 		"data":    role,
 	})
@@ -596,17 +557,16 @@ func NewPermissionController(service services.PermissionService) *PermissionCont
 }
 
 // GET /api/v1/admin/permission
-func (c *PermissionController) GetAll(ctx *gin.Context) {
+func (c *PermissionController) GetAll(ctx *fiber.Ctx) error {
 	permissions, err := c.service.GetByModul()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
+		return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
 			"message": err.Error(),
 		})
-		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
+	return ctx.Status(http.StatusOK).JSON(fiber.Map{
 		"success": true,
 		"data":    permissions,
 	})

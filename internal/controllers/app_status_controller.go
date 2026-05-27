@@ -5,7 +5,7 @@ import (
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 )
 
 type AppStatusController struct {
@@ -24,53 +24,47 @@ func NewAppStatusController(
 }
 
 // CheckVersion checks app version for updates
-func (c *AppStatusController) CheckVersion(ctx *gin.Context) {
+func (c *AppStatusController) CheckVersion(ctx *fiber.Ctx) error {
 	currentVersion := ctx.Query("version")
 	if currentVersion == "" {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Version parameter is required", "version query parameter is missing")
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Version parameter is required", "version query parameter is missing")
 	}
 
 	response, err := c.forceUpdateService.CheckVersion(currentVersion)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Failed to check version", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Failed to check version", err.Error())
 	}
 
-	utils.SuccessResponse(ctx, "Version check completed", response)
+	return utils.SuccessResponse(ctx, "Version check completed", response)
 }
 
 // CheckMaintenance checks maintenance mode status
-func (c *AppStatusController) CheckMaintenance(ctx *gin.Context) {
+func (c *AppStatusController) CheckMaintenance(ctx *fiber.Ctx) error {
 	response, err := c.maintenanceService.CheckMaintenance()
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Failed to check maintenance", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Failed to check maintenance", err.Error())
 	}
 
-	utils.SuccessResponse(ctx, "Maintenance check completed", response)
+	return utils.SuccessResponse(ctx, "Maintenance check completed", response)
 }
 
 // AppStatus checks app version and maintenance status
-func (c *AppStatusController) AppStatus(ctx *gin.Context) {
+func (c *AppStatusController) AppStatus(ctx *fiber.Ctx) error {
 	currentVersion := ctx.Query("version")
 	if currentVersion == "" {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Version parameter is required", "version query parameter is missing")
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Version parameter is required", "version query parameter is missing")
 	}
 
 	// Check version
 	versionResponse, err := c.forceUpdateService.CheckVersion(currentVersion)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Failed to check version", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Failed to check version", err.Error())
 	}
 
 	// Check maintenance
 	maintenanceResponse, err := c.maintenanceService.CheckMaintenance()
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Failed to check maintenance", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Failed to check maintenance", err.Error())
 	}
 
 	// Combine responses
@@ -79,5 +73,5 @@ func (c *AppStatusController) AppStatus(ctx *gin.Context) {
 		"maintenance": maintenanceResponse,
 	}
 
-	utils.SuccessResponse(ctx, "App status check completed", response)
+	return utils.SuccessResponse(ctx, "App status check completed", response)
 }

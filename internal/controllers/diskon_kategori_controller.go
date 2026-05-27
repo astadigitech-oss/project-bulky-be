@@ -7,7 +7,7 @@ import (
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 )
 
 type DiskonKategoriController struct {
@@ -18,112 +18,101 @@ func NewDiskonKategoriController(service services.DiskonKategoriService) *Diskon
 	return &DiskonKategoriController{service: service}
 }
 
-func (c *DiskonKategoriController) Create(ctx *gin.Context) {
+func (c *DiskonKategoriController) Create(ctx *fiber.Ctx) error {
 	var req models.CreateDiskonKategoriRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.Create(ctx.Request.Context(), &req)
+	result, err := c.service.Create(ctx.UserContext(), &req)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
-	utils.CreatedResponse(ctx, "Diskon kategori berhasil dibuat", result)
+	return utils.CreatedResponse(ctx, "Diskon kategori berhasil dibuat", result)
 }
 
-func (c *DiskonKategoriController) FindAll(ctx *gin.Context) {
+func (c *DiskonKategoriController) FindAll(ctx *fiber.Ctx) error {
 	var params models.PaginationRequest
-	if err := ctx.ShouldBindQuery(&params); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
-		return
+	if err := ctx.QueryParser(&params); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
 	}
 
 	kategoriID := ctx.Query("kategori_id")
 	berlakuHariIni := ctx.Query("berlaku_hari_ini") == "true"
 
-	items, meta, err := c.service.FindAll(ctx.Request.Context(), &params, kategoriID, berlakuHariIni)
+	items, meta, err := c.service.FindAll(ctx.UserContext(), &params, kategoriID, berlakuHariIni)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	utils.PaginatedSuccessResponse(ctx, "Data diskon kategori berhasil diambil", items, *meta)
+	return utils.PaginatedSuccessResponse(ctx, "Data diskon kategori berhasil diambil", items, *meta)
 }
 
 
-func (c *DiskonKategoriController) FindByID(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *DiskonKategoriController) FindByID(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	result, err := c.service.FindByID(ctx.Request.Context(), id)
+	result, err := c.service.FindByID(ctx.UserContext(), id)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Detail diskon kategori berhasil diambil", result)
+	return utils.SuccessResponse(ctx, "Detail diskon kategori berhasil diambil", result)
 }
 
-func (c *DiskonKategoriController) FindActiveByKategoriID(ctx *gin.Context) {
-	kategoriID := ctx.Param("kategori_id")
+func (c *DiskonKategoriController) FindActiveByKategoriID(ctx *fiber.Ctx) error {
+	kategoriID := ctx.Params("kategori_id")
 
-	result, err := c.service.FindActiveByKategoriID(ctx.Request.Context(), kategoriID)
+	result, err := c.service.FindActiveByKategoriID(ctx.UserContext(), kategoriID)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if result == nil {
-		utils.SuccessResponse(ctx, "Tidak ada diskon aktif untuk kategori ini", nil)
-		return
+		return utils.SuccessResponse(ctx, "Tidak ada diskon aktif untuk kategori ini", nil)
 	}
 
-	utils.SuccessResponse(ctx, "Diskon kategori ditemukan", result)
+	return utils.SuccessResponse(ctx, "Diskon kategori ditemukan", result)
 }
 
-func (c *DiskonKategoriController) Update(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *DiskonKategoriController) Update(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	var req models.UpdateDiskonKategoriRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.Update(ctx.Request.Context(), id, &req)
+	result, err := c.service.Update(ctx.UserContext(), id, &req)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Diskon kategori berhasil diupdate", result)
+	return utils.SuccessResponse(ctx, "Diskon kategori berhasil diupdate", result)
 }
 
-func (c *DiskonKategoriController) Delete(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *DiskonKategoriController) Delete(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	if err := c.service.Delete(ctx.Request.Context(), id); err != nil {
+	if err := c.service.Delete(ctx.UserContext(), id); err != nil {
 		status := http.StatusBadRequest
 		if err.Error() == "diskon kategori tidak ditemukan" {
 			status = http.StatusNotFound
 		}
-		utils.ErrorResponse(ctx, status, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Diskon kategori berhasil dihapus", nil)
+	return utils.SuccessResponse(ctx, "Diskon kategori berhasil dihapus", nil)
 }
 
-func (c *DiskonKategoriController) ToggleStatus(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *DiskonKategoriController) ToggleStatus(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	result, err := c.service.ToggleStatus(ctx.Request.Context(), id)
+	result, err := c.service.ToggleStatus(ctx.UserContext(), id)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Status diskon kategori berhasil diubah", result)
+	return utils.SuccessResponse(ctx, "Status diskon kategori berhasil diubah", result)
 }

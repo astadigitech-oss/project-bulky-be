@@ -9,16 +9,16 @@ import (
 
 // PesananAdminQueryParams query parameters for admin pesanan list
 type PesananAdminQueryParams struct {
-	Page          int    `form:"page" binding:"required,min=1"`
-	PerPage       int    `form:"per_page" binding:"required,min=1,max=100"`
-	Cari          string `form:"cari"`
-	OrderStatus   string `form:"order_status" binding:"omitempty,oneof=PENDING PROCESSING READY SHIPPED COMPLETED CANCELLED"`
-	PaymentStatus string `form:"payment_status" binding:"omitempty,oneof=PENDING PAID EXPIRED FAILED"`
-	DeliveryType  string `form:"delivery_type" binding:"omitempty,oneof=PICKUP DELIVEREE FORWARDER"`
-	TanggalDari   string `form:"tanggal_dari"`
-	TanggalSampai string `form:"tanggal_sampai"`
-	SortBy        string `form:"sort_by"`
-	SortOrder     string `form:"sort_order" binding:"omitempty,oneof=asc desc"`
+	Page          int    `query:"page"`
+	PerPage       int    `query:"per_page"`
+	Cari          string `query:"cari"`
+	OrderStatus   string `query:"order_status"`
+	PaymentStatus string `query:"payment_status"`
+	DeliveryType  string `query:"delivery_type"`
+	TanggalDari   string `query:"tanggal_dari"`
+	TanggalSampai string `query:"tanggal_sampai"`
+	SortBy        string `query:"sort_by"`
+	SortOrder     string `query:"sort_order"`
 }
 
 // SetDefaults sets default values for query params
@@ -49,7 +49,7 @@ type PesananAdminListResponse struct {
 	TotalItem   int                       `json:"total_item"`
 	PaymentType string                    `json:"payment_type"`
 	Status      string                    `json:"status"`
-	OrderAt     *time.Time                `json:"order_at"`
+	OrderAt     time.Time                 `json:"order_at"`
 }
 
 // PesananAdminDetailResponse detailed response for pesanan (admin)
@@ -172,4 +172,21 @@ type PesananStatisticsResponse struct {
 	PerStatus        map[string]int64 `json:"per_status"`
 	PerDeliveryType  map[string]int64 `json:"per_delivery_type"`
 	PerPaymentStatus map[string]int64 `json:"per_payment_status"`
+	ChartData        []ChartDataPoint `json:"chart_data"`
+}
+
+// StatisticsQueryParams query parameters for statistics endpoint
+type StatisticsQueryParams struct {
+	TanggalDari   string `query:"tanggal_dari"`
+	TanggalSampai string `query:"tanggal_sampai"`
+	Tahun         *int   `query:"tahun"`
+	Bulan         *int   `query:"bulan"`
+	Minggu        *int   `query:"minggu"`
+}
+
+// ChartDataPoint single data point for chart visualization
+type ChartDataPoint struct {
+	Label        string `json:"label"`
+	Period       string `json:"period"`
+	TotalPesanan int64  `json:"total_pesanan"`
 }

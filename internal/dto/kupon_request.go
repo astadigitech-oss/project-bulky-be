@@ -118,20 +118,27 @@ func (r *GenerateKodeRequest) SetDefaults() {
 
 // KuponQueryParams DTO for query parameters in list kupon
 type KuponQueryParams struct {
-	Page        int     `form:"page" validate:"required,min=1"`
-	PerPage     int     `form:"per_page" validate:"required,min=1,max=100"`
-	Search      string  `form:"search"`
-	JenisDiskon *string `form:"jenis_diskon" validate:"omitempty,oneof=persentase jumlah_tetap"`
-	IsActive    *bool   `form:"is_active"`
-	IsExpired   *bool   `form:"is_expired"`
-	SortBy      string  `form:"sort_by" validate:"omitempty,oneof=tanggal_kedaluarsa updated_at"`
-	Order       string  `form:"order" validate:"omitempty,oneof=asc desc"`
+	Page        int     `query:"page"`
+	PerPage     int     `query:"per_page"`
+	Search      string  `query:"search"`
+	JenisDiskon *string `query:"jenis_diskon"`
+	IsActive    *bool   `query:"is_active"`
+	IsExpired   *bool   `query:"is_expired"`
+	SortBy      string  `query:"sort_by"`
+	Order       string  `query:"order"`
 }
 
 // SetDefaults sets default values for optional query params
 func (q *KuponQueryParams) SetDefaults() {
-	// Page and PerPage are required, no defaults
-	// Set defaults for optional params
+	if q.Page < 1 {
+		q.Page = 1
+	}
+	if q.PerPage < 1 {
+		q.PerPage = 10
+	}
+	if q.PerPage > 100 {
+		q.PerPage = 100
+	}
 	if q.SortBy == "" {
 		q.SortBy = "updated_at"
 	}
@@ -142,6 +149,6 @@ func (q *KuponQueryParams) SetDefaults() {
 
 // KuponUsagesQueryParams DTO for query parameters in get kupon usages
 type KuponUsagesQueryParams struct {
-	Page    int `form:"page" validate:"required,min=1"`
-	PerPage int `form:"per_page" validate:"required,min=1,max=100"`
+	Page    int `query:"page"`
+	PerPage int `query:"per_page"`
 }

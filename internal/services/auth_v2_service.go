@@ -10,7 +10,6 @@ import (
 	"project-bulky-be/internal/repositories"
 	"project-bulky-be/pkg/utils"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -50,9 +49,6 @@ func NewAuthV2Service(
 
 func (s *authV2Service) AdminLogin(ctx context.Context, email, password string) (*LoginResultSimplified, error) {
 	ipAddress := ""
-	if ginCtx, ok := ctx.(*gin.Context); ok {
-		ipAddress = ginCtx.ClientIP()
-	}
 
 	// Find admin by email
 	admin, err := s.authRepo.FindAdminByEmail(email)
@@ -126,9 +122,6 @@ func (s *authV2Service) AdminLogin(ctx context.Context, email, password string) 
 
 func (s *authV2Service) BuyerLogin(ctx context.Context, email, password string) (*LoginResultSimplified, error) {
 	ipAddress := ""
-	if ginCtx, ok := ctx.(*gin.Context); ok {
-		ipAddress = ginCtx.ClientIP()
-	}
 
 	// Find buyer by email
 	buyer, err := s.authRepo.FindBuyerByEmail(email)
@@ -242,12 +235,6 @@ func (s *authV2Service) logActivity(ctx context.Context, userID *uuid.UUID, user
 		CreatedAt: time.Now(),
 	}
 
-	// Extract user agent from context if it's gin.Context
-	if ginCtx, ok := ctx.(*gin.Context); ok {
-		userAgent := ginCtx.GetHeader("User-Agent")
-		log.UserAgent = &userAgent
-	}
-
 	// Log asynchronously
 	go s.activityRepo.Create(log)
 }
@@ -255,9 +242,6 @@ func (s *authV2Service) logActivity(ctx context.Context, userID *uuid.UUID, user
 // ChangePassword changes user password
 func (s *authV2Service) ChangePassword(ctx context.Context, userID uuid.UUID, userType, currentPassword, newPassword string) error {
 	ipAddress := ""
-	if ginCtx, ok := ctx.(*gin.Context); ok {
-		ipAddress = ginCtx.ClientIP()
-	}
 
 	if userType == "ADMIN" {
 		admin, err := s.authRepo.FindAdminByID(userID)
