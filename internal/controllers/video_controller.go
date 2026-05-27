@@ -12,7 +12,7 @@ import (
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -36,78 +36,72 @@ func NewVideoController(
 }
 
 // Admin endpoints
-func (c *VideoController) Create(ctx *gin.Context) {
+func (c *VideoController) Create(ctx *fiber.Ctx) error {
 	var req dto.CreateVideoRequest
 	var videoURL string
 	var thumbnailURL *string
 
-	contentType := ctx.GetHeader("Content-Type")
+	contentType := ctx.Get("Content-Type")
 
 	// Handle multipart/form-data (with file upload)
 	if strings.Contains(contentType, "multipart/form-data") {
 		// Parse form data
-		req.JudulID = ctx.PostForm("judul_id")
-		req.JudulEN = ctx.PostForm("judul_en")
-		if slugID := ctx.PostForm("slug_id"); slugID != "" {
+		req.JudulID = ctx.FormValue("judul_id")
+		req.JudulEN = ctx.FormValue("judul_en")
+		if slugID := ctx.FormValue("slug_id"); slugID != "" {
 			req.SlugID = &slugID
 		}
-		if slugEN := ctx.PostForm("slug_en"); slugEN != "" {
+		if slugEN := ctx.FormValue("slug_en"); slugEN != "" {
 			req.SlugEN = &slugEN
 		}
-		req.DeskripsiID = ctx.PostForm("deskripsi_id")
-		req.DeskripsiEN = ctx.PostForm("deskripsi_en")
+		req.DeskripsiID = ctx.FormValue("deskripsi_id")
+		req.DeskripsiEN = ctx.FormValue("deskripsi_en")
 
 		// Parse kategori_id
-		kategoriIDStr := ctx.PostForm("kategori_id")
+		kategoriIDStr := ctx.FormValue("kategori_id")
 		if kategoriIDStr != "" {
 			kategoriID, err := uuid.Parse(kategoriIDStr)
 			if err != nil {
-				utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "kategori_id tidak valid", err.Error())
-				return
+				return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "kategori_id tidak valid", err.Error())
 			}
 			req.KategoriID = kategoriID
 		}
 
 		// Parse meta fields
-		if metaTitleID := ctx.PostForm("meta_title_id"); metaTitleID != "" {
+		if metaTitleID := ctx.FormValue("meta_title_id"); metaTitleID != "" {
 			req.MetaTitleID = &metaTitleID
 		}
-		if metaTitleEN := ctx.PostForm("meta_title_en"); metaTitleEN != "" {
+		if metaTitleEN := ctx.FormValue("meta_title_en"); metaTitleEN != "" {
 			req.MetaTitleEN = &metaTitleEN
 		}
-		if metaDescID := ctx.PostForm("meta_description_id"); metaDescID != "" {
+		if metaDescID := ctx.FormValue("meta_description_id"); metaDescID != "" {
 			req.MetaDescriptionID = &metaDescID
 		}
-		if metaDescEN := ctx.PostForm("meta_description_en"); metaDescEN != "" {
+		if metaDescEN := ctx.FormValue("meta_description_en"); metaDescEN != "" {
 			req.MetaDescriptionEN = &metaDescEN
 		}
-		if metaKeywords := ctx.PostForm("meta_keywords"); metaKeywords != "" {
+		if metaKeywords := ctx.FormValue("meta_keywords"); metaKeywords != "" {
 			req.MetaKeywords = &metaKeywords
 		}
 
 		// Parse is_active
-		req.IsActive = ctx.PostForm("is_active")
+		req.IsActive = ctx.FormValue("is_active")
 
 		// Validate required fields
 		if req.JudulID == "" {
-			utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "judul_id wajib diisi", "")
-			return
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "judul_id wajib diisi", "")
 		}
 		if req.JudulEN == "" {
-			utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "judul_en wajib diisi", "")
-			return
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "judul_en wajib diisi", "")
 		}
 		if req.DeskripsiID == "" {
-			utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "deskripsi_id wajib diisi", "")
-			return
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "deskripsi_id wajib diisi", "")
 		}
 		if req.DeskripsiEN == "" {
-			utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "deskripsi_en wajib diisi", "")
-			return
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "deskripsi_en wajib diisi", "")
 		}
 		if req.IsActive == "" {
-			utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "is_active wajib diisi", "")
-			return
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "is_active wajib diisi", "")
 		}
 
 		// Handle video file upload
@@ -115,22 +109,19 @@ func (c *VideoController) Create(ctx *gin.Context) {
 		if file, err := ctx.FormFile("video_file"); err == nil {
 			// If video file is uploaded
 			if !utils.IsValidVideoType(file) {
-				utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file video tidak didukung. Hanya MP4, MOV, M4V yang didukung", "")
-				return
+				return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file video tidak didukung. Hanya MP4, MOV, M4V yang didukung", "")
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "video", c.cfg)
 			if err != nil {
-				utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file video: "+err.Error(), "")
-				return
+				return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file video: "+err.Error(), "")
 			}
 			videoURL = savedPath
 			uploadedFilePath = savedPath
 		} else {
 			// If no video file, check for video_url string
-			videoURL = ctx.PostForm("video_url")
+			videoURL = ctx.FormValue("video_url")
 			if videoURL == "" {
-				utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "video_file atau video_url wajib diisi", "")
-				return
+				return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "video_file atau video_url wajib diisi", "")
 			}
 		}
 		req.VideoURL = videoURL
@@ -139,8 +130,7 @@ func (c *VideoController) Create(ctx *gin.Context) {
 		if file, err := ctx.FormFile("thumbnail_file"); err == nil {
 			// Manual upload thumbnail
 			if !utils.IsValidImageType(file) {
-				utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file thumbnail tidak didukung", "")
-				return
+				return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file thumbnail tidak didukung", "")
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "video/thumbnail", c.cfg)
 			if err != nil {
@@ -148,14 +138,13 @@ func (c *VideoController) Create(ctx *gin.Context) {
 				if videoURL != "" && strings.HasPrefix(videoURL, "/uploads/") {
 					utils.DeleteFile(videoURL, c.cfg)
 				}
-				utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file thumbnail: "+err.Error(), "")
-				return
+				return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file thumbnail: "+err.Error(), "")
 			}
 			thumbnailURL = &savedPath
 			req.ThumbnailURL = thumbnailURL
 		} else {
 			// Check for thumbnail_url string
-			if thumbnailURLStr := ctx.PostForm("thumbnail_url"); thumbnailURLStr != "" {
+			if thumbnailURLStr := ctx.FormValue("thumbnail_url"); thumbnailURLStr != "" {
 				req.ThumbnailURL = &thumbnailURLStr
 			} else if uploadedFilePath != "" {
 				// Auto-generate thumbnail from uploaded video file (requires ffmpeg)
@@ -169,7 +158,7 @@ func (c *VideoController) Create(ctx *gin.Context) {
 			// If external video URL and no thumbnail provided, thumbnailURL remains nil
 		}
 
-		video, err := c.videoService.Create(ctx.Request.Context(), &req)
+		video, err := c.videoService.Create(ctx.UserContext(), &req)
 		if err != nil {
 			// Rollback: delete uploaded files if creation fails
 			if videoURL != "" && strings.HasPrefix(videoURL, "/uploads/") {
@@ -178,110 +167,101 @@ func (c *VideoController) Create(ctx *gin.Context) {
 			if thumbnailURL != nil && strings.HasPrefix(*thumbnailURL, "/uploads/") {
 				utils.DeleteFile(*thumbnailURL, c.cfg)
 			}
-			utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat video", err.Error())
-			return
+			return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat video", err.Error())
 		}
 
-		utils.SimpleSuccessResponse(ctx, http.StatusCreated, "Video berhasil dibuat", video)
-		return
+		return utils.SimpleSuccessResponse(ctx, http.StatusCreated, "Video berhasil dibuat", video)
 	}
 
 	// Handle JSON request (for backward compatibility)
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", utils.GetValidationErrorMessage(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", utils.GetValidationErrorMessage(err))
 	}
 
-	video, err := c.videoService.Create(ctx.Request.Context(), &req)
+	video, err := c.videoService.Create(ctx.UserContext(), &req)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat video", utils.GetValidationErrorMessage(err))
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat video", utils.GetValidationErrorMessage(err))
 	}
 
-	utils.SimpleSuccessResponse(ctx, http.StatusCreated, "Video berhasil dibuat", video)
+	return utils.SimpleSuccessResponse(ctx, http.StatusCreated, "Video berhasil dibuat", video)
 }
 
-func (c *VideoController) Update(ctx *gin.Context) {
-	id, err := uuid.Parse(ctx.Param("id"))
+func (c *VideoController) Update(ctx *fiber.Ctx) error {
+	id, err := uuid.Parse(ctx.Params("id"))
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Invalid ID", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Invalid ID", err.Error())
 	}
 
 	var req dto.UpdateVideoRequest
-	contentType := ctx.GetHeader("Content-Type")
+	contentType := ctx.Get("Content-Type")
 
 	// Handle multipart/form-data (with file upload)
 	if strings.Contains(contentType, "multipart/form-data") {
 		// Parse form data
-		if judulID := ctx.PostForm("judul_id"); judulID != "" {
+		if judulID := ctx.FormValue("judul_id"); judulID != "" {
 			req.JudulID = &judulID
 		}
-		if judulEN := ctx.PostForm("judul_en"); judulEN != "" {
+		if judulEN := ctx.FormValue("judul_en"); judulEN != "" {
 			req.JudulEN = &judulEN
 		}
-		if slugID := ctx.PostForm("slug_id"); slugID != "" {
+		if slugID := ctx.FormValue("slug_id"); slugID != "" {
 			req.SlugID = &slugID
 		}
-		if slugEN := ctx.PostForm("slug_en"); slugEN != "" {
+		if slugEN := ctx.FormValue("slug_en"); slugEN != "" {
 			req.SlugEN = &slugEN
 		}
-		if deskripsiID := ctx.PostForm("deskripsi_id"); deskripsiID != "" {
+		if deskripsiID := ctx.FormValue("deskripsi_id"); deskripsiID != "" {
 			req.DeskripsiID = &deskripsiID
 		}
-		if deskripsiEN := ctx.PostForm("deskripsi_en"); deskripsiEN != "" {
+		if deskripsiEN := ctx.FormValue("deskripsi_en"); deskripsiEN != "" {
 			req.DeskripsiEN = &deskripsiEN
 		}
 
 		// Parse kategori_id
-		if kategoriIDStr := ctx.PostForm("kategori_id"); kategoriIDStr != "" {
+		if kategoriIDStr := ctx.FormValue("kategori_id"); kategoriIDStr != "" {
 			kategoriID, err := uuid.Parse(kategoriIDStr)
 			if err != nil {
-				utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "kategori_id tidak valid", err.Error())
-				return
+				return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "kategori_id tidak valid", err.Error())
 			}
 			req.KategoriID = &kategoriID
 		}
 
 		// Parse meta fields
-		if metaTitleID := ctx.PostForm("meta_title_id"); metaTitleID != "" {
+		if metaTitleID := ctx.FormValue("meta_title_id"); metaTitleID != "" {
 			req.MetaTitleID = &metaTitleID
 		}
-		if metaTitleEN := ctx.PostForm("meta_title_en"); metaTitleEN != "" {
+		if metaTitleEN := ctx.FormValue("meta_title_en"); metaTitleEN != "" {
 			req.MetaTitleEN = &metaTitleEN
 		}
-		if metaDescID := ctx.PostForm("meta_description_id"); metaDescID != "" {
+		if metaDescID := ctx.FormValue("meta_description_id"); metaDescID != "" {
 			req.MetaDescriptionID = &metaDescID
 		}
-		if metaDescEN := ctx.PostForm("meta_description_en"); metaDescEN != "" {
+		if metaDescEN := ctx.FormValue("meta_description_en"); metaDescEN != "" {
 			req.MetaDescriptionEN = &metaDescEN
 		}
-		if metaKeywords := ctx.PostForm("meta_keywords"); metaKeywords != "" {
+		if metaKeywords := ctx.FormValue("meta_keywords"); metaKeywords != "" {
 			req.MetaKeywords = &metaKeywords
 		}
 
 		// Parse is_active
-		if isActive := ctx.PostForm("is_active"); isActive != "" {
+		if isActive := ctx.FormValue("is_active"); isActive != "" {
 			req.IsActive = &isActive
 		}
 
 		// Handle video file upload
 		if file, err := ctx.FormFile("video_file"); err == nil {
 			// Get existing video to delete old file later
-			existingVideo, err := c.videoService.GetByID(ctx.Request.Context(), id)
+			existingVideo, err := c.videoService.GetByID(ctx.UserContext(), id)
 			if err != nil {
-				utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Video tidak ditemukan", err.Error())
-				return
+				return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Video tidak ditemukan", err.Error())
 			}
 
 			if !utils.IsValidVideoType(file) {
-				utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file video tidak didukung. Hanya MP4, MOV, M4V yang didukung", "")
-				return
+				return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file video tidak didukung. Hanya MP4, MOV, M4V yang didukung", "")
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "video", c.cfg)
 			if err != nil {
-				utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file video: "+err.Error(), "")
-				return
+				return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file video: "+err.Error(), "")
 			}
 			req.VideoURL = &savedPath
 
@@ -291,7 +271,7 @@ func (c *VideoController) Update(ctx *gin.Context) {
 			}
 		} else {
 			// Check for video_url string
-			if videoURL := ctx.PostForm("video_url"); videoURL != "" {
+			if videoURL := ctx.FormValue("video_url"); videoURL != "" {
 				req.VideoURL = &videoURL
 			}
 		}
@@ -303,21 +283,18 @@ func (c *VideoController) Update(ctx *gin.Context) {
 		if file, err := ctx.FormFile("thumbnail_file"); err == nil {
 			// Manual upload thumbnail
 			// Get existing video to delete old thumbnail later
-			existingVideo, err := c.videoService.GetByID(ctx.Request.Context(), id)
+			existingVideo, err := c.videoService.GetByID(ctx.UserContext(), id)
 			if err != nil && req.VideoURL == nil {
 				// Only fail if we haven't already fetched it above
-				utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Video tidak ditemukan", err.Error())
-				return
+				return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Video tidak ditemukan", err.Error())
 			}
 
 			if !utils.IsValidImageType(file) {
-				utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file thumbnail tidak didukung", "")
-				return
+				return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file thumbnail tidak didukung", "")
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "video/thumbnail", c.cfg)
 			if err != nil {
-				utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file thumbnail: "+err.Error(), "")
-				return
+				return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file thumbnail: "+err.Error(), "")
 			}
 			req.ThumbnailURL = &savedPath
 			thumbnailUpdated = true
@@ -326,7 +303,7 @@ func (c *VideoController) Update(ctx *gin.Context) {
 			if existingVideo.ThumbnailURL != nil {
 				oldThumbnail = existingVideo.ThumbnailURL
 			}
-		} else if thumbnailURL := ctx.PostForm("thumbnail_url"); thumbnailURL != "" {
+		} else if thumbnailURL := ctx.FormValue("thumbnail_url"); thumbnailURL != "" {
 			// Thumbnail URL string provided
 			req.ThumbnailURL = &thumbnailURL
 			thumbnailUpdated = true
@@ -338,7 +315,7 @@ func (c *VideoController) Update(ctx *gin.Context) {
 				thumbnailUpdated = true
 
 				// Get existing video to delete old thumbnail
-				existingVideo, err := c.videoService.GetByID(ctx.Request.Context(), id)
+				existingVideo, err := c.videoService.GetByID(ctx.UserContext(), id)
 				if err == nil && existingVideo.ThumbnailURL != nil {
 					oldThumbnail = existingVideo.ThumbnailURL
 				}
@@ -347,14 +324,12 @@ func (c *VideoController) Update(ctx *gin.Context) {
 		}
 		// If no thumbnail update and no video update → keep old thumbnail (do nothing)
 
-		video, err := c.videoService.Update(ctx.Request.Context(), id, &req)
+		video, err := c.videoService.Update(ctx.UserContext(), id, &req)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Video not found", err.Error())
-				return
+				return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Video not found", err.Error())
 			}
-			utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengupdate video", err.Error())
-			return
+			return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengupdate video", err.Error())
 		}
 
 		// Delete old thumbnail file if it was updated and was an uploaded file
@@ -362,95 +337,82 @@ func (c *VideoController) Update(ctx *gin.Context) {
 			utils.DeleteFile(*oldThumbnail, c.cfg)
 		}
 
-		utils.SimpleSuccessResponse(ctx, http.StatusOK, "Video berhasil diupdate", video)
-		return
+		return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Video berhasil diupdate", video)
 	}
 
 	// Handle JSON request (for backward compatibility)
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", utils.GetValidationErrorMessage(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", utils.GetValidationErrorMessage(err))
 	}
 
-	video, err := c.videoService.Update(ctx.Request.Context(), id, &req)
+	video, err := c.videoService.Update(ctx.UserContext(), id, &req)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Video tidak ditemukan", err.Error())
-			return
+			return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Video tidak ditemukan", err.Error())
 		}
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengupdate video", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengupdate video", err.Error())
 	}
 
-	utils.SimpleSuccessResponse(ctx, http.StatusOK, "Video berhasil diupdate", video)
+	return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Video berhasil diupdate", video)
 }
 
-func (c *VideoController) Delete(ctx *gin.Context) {
-	id, err := uuid.Parse(ctx.Param("id"))
+func (c *VideoController) Delete(ctx *fiber.Ctx) error {
+	id, err := uuid.Parse(ctx.Params("id"))
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
 	}
 
-	if err := c.videoService.Delete(ctx.Request.Context(), id); err != nil {
+	if err := c.videoService.Delete(ctx.UserContext(), id); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Video tidak ditemukan", err.Error())
-			return
+			return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Video tidak ditemukan", err.Error())
 		}
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menghapus video", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menghapus video", err.Error())
 	}
 
-	utils.SimpleSuccessResponse(ctx, http.StatusOK, "Video berhasil dihapus", nil)
+	return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Video berhasil dihapus", nil)
 }
 
-func (c *VideoController) GetByID(ctx *gin.Context) {
-	id, err := uuid.Parse(ctx.Param("id"))
+func (c *VideoController) GetByID(ctx *fiber.Ctx) error {
+	id, err := uuid.Parse(ctx.Params("id"))
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
 	}
 
-	video, err := c.videoService.GetByID(ctx.Request.Context(), id)
+	video, err := c.videoService.GetByID(ctx.UserContext(), id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Video tidak ditemukan", err.Error())
-			return
+			return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Video tidak ditemukan", err.Error())
 		}
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mendapatkan video", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mendapatkan video", err.Error())
 	}
 
-	utils.SimpleSuccessResponse(ctx, http.StatusOK, "Video berhasil didapatkan", video)
+	return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Video berhasil didapatkan", video)
 }
 
-func (c *VideoController) GetAll(ctx *gin.Context) {
+func (c *VideoController) GetAll(ctx *fiber.Ctx) error {
 	var params dto.VideoFilterRequest
-	if err := ctx.ShouldBindQuery(&params); err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", err.Error())
-		return
+	if err := ctx.QueryParser(&params); err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", err.Error())
 	}
 
 	params.SetDefaults()
 
-	videos, meta, err := c.videoService.GetAll(ctx.Request.Context(), &params)
+	videos, meta, err := c.videoService.GetAll(ctx.UserContext(), &params)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mendapatkan video", utils.GetValidationErrorMessage(err))
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mendapatkan video", utils.GetValidationErrorMessage(err))
 	}
 
-	utils.PaginatedSuccessResponse(ctx, "Video berhasil didapatkan", videos, *meta)
+	return utils.PaginatedSuccessResponse(ctx, "Video berhasil didapatkan", videos, *meta)
 }
 
-func (c *VideoController) Search(ctx *gin.Context) {
+func (c *VideoController) Search(ctx *fiber.Ctx) error {
 	keyword := ctx.Query("keyword")
 	if keyword == "" {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Keyword wajib diisi", "")
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Keyword wajib diisi", "")
 	}
 
-	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
+	page, _ := strconv.Atoi(ctx.Query("page", "1"))
+	limit, _ := strconv.Atoi(ctx.Query("limit", "10"))
 
 	var isActive *bool
 	if ctx.Query("is_active") != "" {
@@ -458,84 +420,75 @@ func (c *VideoController) Search(ctx *gin.Context) {
 		isActive = &val
 	}
 
-	videos, total, err := c.videoService.Search(ctx.Request.Context(), keyword, isActive, page, limit)
+	videos, total, err := c.videoService.Search(ctx.UserContext(), keyword, isActive, page, limit)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mencari video", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mencari video", err.Error())
 	}
 
 	meta := models.NewPaginationMeta(page, limit, total)
-	utils.PaginatedSuccessResponse(ctx, "Video berhasil ditemukan", videos, meta)
+	return utils.PaginatedSuccessResponse(ctx, "Video berhasil ditemukan", videos, meta)
 }
 
-func (c *VideoController) GetPopular(ctx *gin.Context) {
-	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
+func (c *VideoController) GetPopular(ctx *fiber.Ctx) error {
+	limit, _ := strconv.Atoi(ctx.Query("limit", "10"))
 
-	videos, err := c.videoService.GetPopular(ctx.Request.Context(), limit)
+	videos, err := c.videoService.GetPopular(ctx.UserContext(), limit)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mendapatkan video populer", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mendapatkan video populer", err.Error())
 	}
 
-	utils.SimpleSuccessResponse(ctx, http.StatusOK, "Video populer berhasil didapatkan", videos)
+	return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Video populer berhasil didapatkan", videos)
 }
 
 // Public endpoints
-func (c *VideoController) GetBySlug(ctx *gin.Context) {
-	slug := ctx.Param("slug")
+func (c *VideoController) GetBySlug(ctx *fiber.Ctx) error {
+	slug := ctx.Params("slug")
 
-	video, err := c.videoService.GetBySlug(ctx.Request.Context(), slug)
+	video, err := c.videoService.GetBySlug(ctx.UserContext(), slug)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Video tidak ditemukan", err.Error())
-			return
+			return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Video tidak ditemukan", err.Error())
 		}
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mendapatkan video", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mendapatkan video", err.Error())
 	}
 
 	// Increment view count
-	_ = c.videoService.IncrementView(ctx.Request.Context(), video.ID)
+	_ = c.videoService.IncrementView(ctx.UserContext(), video.ID)
 
-	utils.SimpleSuccessResponse(ctx, http.StatusOK, "Video berhasil didapatkan", video)
+	return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Video berhasil didapatkan", video)
 }
 
-func (c *VideoController) GetStatistics(ctx *gin.Context) {
-	stats, err := c.videoService.GetStatistics(ctx.Request.Context())
+func (c *VideoController) GetStatistics(ctx *fiber.Ctx) error {
+	stats, err := c.videoService.GetStatistics(ctx.UserContext())
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mendapatkan statistik", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mendapatkan statistik", err.Error())
 	}
 
-	utils.SimpleSuccessResponse(ctx, http.StatusOK, "Statistik berhasil didapatkan", stats)
+	return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Statistik berhasil didapatkan", stats)
 }
 
-func (c *VideoController) ToggleStatus(ctx *gin.Context) {
-	id, err := uuid.Parse(ctx.Param("id"))
+func (c *VideoController) ToggleStatus(ctx *fiber.Ctx) error {
+	id, err := uuid.Parse(ctx.Params("id"))
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
 	}
 
-	if err := c.videoService.ToggleStatus(ctx.Request.Context(), id); err != nil {
+	if err := c.videoService.ToggleStatus(ctx.UserContext(), id); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Video tidak ditemukan", err.Error())
-			return
+			return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Video tidak ditemukan", err.Error())
 		}
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengubah status", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengubah status", err.Error())
 	}
 
-	utils.SimpleSuccessResponse(ctx, http.StatusOK, "Status video berhasil diubah", nil)
+	return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Status video berhasil diubah", nil)
 }
 
 // GetDropdownOptions returns all active kategori for dropdown
-func (c *VideoController) GetDropdownOptions(ctx *gin.Context) {
+func (c *VideoController) GetDropdownOptions(ctx *fiber.Ctx) error {
 	// Get kategori
-	kategoriVideo, err := c.kategoriVideoService.GetAllActive(ctx.Request.Context())
+	kategoriVideo, err := c.kategoriVideoService.GetAllActive(ctx.UserContext())
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil kategori", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil kategori", err.Error())
 	}
 
 	// Build response
@@ -543,5 +496,5 @@ func (c *VideoController) GetDropdownOptions(ctx *gin.Context) {
 		"kategori": kategoriVideo,
 	}
 
-	utils.SimpleSuccessResponse(ctx, http.StatusOK, "Data dropdown berhasil diambil", data)
+	return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Data dropdown berhasil diambil", data)
 }

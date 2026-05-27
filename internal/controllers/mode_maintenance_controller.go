@@ -7,7 +7,7 @@ import (
 	"project-bulky-be/pkg/utils"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 )
 
 type ModeMaintenanceController struct {
@@ -19,17 +19,15 @@ func NewModeMaintenanceController(service services.ModeMaintenanceService) *Mode
 }
 
 // CreateMaintenance creates maintenance mode configuration
-func (c *ModeMaintenanceController) CreateMaintenance(ctx *gin.Context) {
+func (c *ModeMaintenanceController) CreateMaintenance(ctx *fiber.Ctx) error {
 	var req models.CreateMaintenanceRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Data request tidak valid", utils.GetValidationErrorMessage(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Data request tidak valid", utils.GetValidationErrorMessage(err))
 	}
 
 	maintenance, err := c.service.CreateMaintenance(&req)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat konfigurasi maintenance", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat konfigurasi maintenance", err.Error())
 	}
 
 	response := models.MaintenanceDetailResponse{
@@ -42,17 +40,16 @@ func (c *ModeMaintenanceController) CreateMaintenance(ctx *gin.Context) {
 		UpdatedAt:       maintenance.UpdatedAt,
 	}
 
-	utils.CreatedResponse(ctx, "Konfigurasi maintenance berhasil dibuat", response)
+	return utils.CreatedResponse(ctx, "Konfigurasi maintenance berhasil dibuat", response)
 }
 
 // UpdateMaintenance updates maintenance mode configuration
-func (c *ModeMaintenanceController) UpdateMaintenance(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *ModeMaintenanceController) UpdateMaintenance(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	var req models.UpdateMaintenanceRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Data request tidak valid", utils.GetValidationErrorMessage(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Data request tidak valid", utils.GetValidationErrorMessage(err))
 	}
 
 	maintenance, err := c.service.UpdateMaintenance(id, &req)
@@ -61,8 +58,7 @@ func (c *ModeMaintenanceController) UpdateMaintenance(ctx *gin.Context) {
 		if err.Error() == "maintenance not found" {
 			status = http.StatusNotFound
 		}
-		utils.SimpleErrorResponse(ctx, status, "Gagal memperbarui konfigurasi maintenance", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, status, "Gagal memperbarui konfigurasi maintenance", err.Error())
 	}
 
 	response := models.MaintenanceDetailResponse{
@@ -75,12 +71,12 @@ func (c *ModeMaintenanceController) UpdateMaintenance(ctx *gin.Context) {
 		UpdatedAt:       maintenance.UpdatedAt,
 	}
 
-	utils.SuccessResponse(ctx, "Konfigurasi maintenance berhasil diperbarui", response)
+	return utils.SuccessResponse(ctx, "Konfigurasi maintenance berhasil diperbarui", response)
 }
 
 // DeleteMaintenance deletes maintenance mode configuration
-func (c *ModeMaintenanceController) DeleteMaintenance(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *ModeMaintenanceController) DeleteMaintenance(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	err := c.service.DeleteMaintenance(id)
 	if err != nil {
@@ -88,16 +84,15 @@ func (c *ModeMaintenanceController) DeleteMaintenance(ctx *gin.Context) {
 		if err.Error() == "maintenance not found" {
 			status = http.StatusNotFound
 		}
-		utils.SimpleErrorResponse(ctx, status, "Gagal menghapus konfigurasi maintenance", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, status, "Gagal menghapus konfigurasi maintenance", err.Error())
 	}
 
-	utils.SuccessResponse(ctx, "Konfigurasi maintenance berhasil dihapus", nil)
+	return utils.SuccessResponse(ctx, "Konfigurasi maintenance berhasil dihapus", nil)
 }
 
 // GetMaintenanceByID gets maintenance by ID
-func (c *ModeMaintenanceController) GetMaintenanceByID(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *ModeMaintenanceController) GetMaintenanceByID(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	maintenance, err := c.service.GetMaintenanceByID(id)
 	if err != nil {
@@ -105,8 +100,7 @@ func (c *ModeMaintenanceController) GetMaintenanceByID(ctx *gin.Context) {
 		if err.Error() == "maintenance not found" {
 			status = http.StatusNotFound
 		}
-		utils.SimpleErrorResponse(ctx, status, "Gagal mengambil data maintenance", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, status, "Gagal mengambil data maintenance", err.Error())
 	}
 
 	response := models.MaintenanceDetailResponse{
@@ -119,13 +113,13 @@ func (c *ModeMaintenanceController) GetMaintenanceByID(ctx *gin.Context) {
 		UpdatedAt:       maintenance.UpdatedAt,
 	}
 
-	utils.SuccessResponse(ctx, "Data maintenance berhasil diambil", response)
+	return utils.SuccessResponse(ctx, "Data maintenance berhasil diambil", response)
 }
 
 // GetAllMaintenances gets all maintenance mode configurations
-func (c *ModeMaintenanceController) GetAllMaintenances(ctx *gin.Context) {
-	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
+func (c *ModeMaintenanceController) GetAllMaintenances(ctx *fiber.Ctx) error {
+	page, _ := strconv.Atoi(ctx.Query("page", "1"))
+	limit, _ := strconv.Atoi(ctx.Query("limit", "10"))
 
 	if page < 1 {
 		page = 1
@@ -136,8 +130,7 @@ func (c *ModeMaintenanceController) GetAllMaintenances(ctx *gin.Context) {
 
 	maintenances, total, err := c.service.GetAllMaintenances(page, limit)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data maintenance", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data maintenance", err.Error())
 	}
 
 	var response []models.MaintenanceListResponse
@@ -153,12 +146,12 @@ func (c *ModeMaintenanceController) GetAllMaintenances(ctx *gin.Context) {
 
 	meta := models.NewPaginationMeta(page, limit, total)
 
-	utils.PaginatedSuccessResponse(ctx, "Data maintenance berhasil diambil", response, meta)
+	return utils.PaginatedSuccessResponse(ctx, "Data maintenance berhasil diambil", response, meta)
 }
 
 // ActivateMaintenance activates maintenance mode
-func (c *ModeMaintenanceController) ActivateMaintenance(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *ModeMaintenanceController) ActivateMaintenance(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	err := c.service.ActivateMaintenance(id)
 	if err != nil {
@@ -166,16 +159,15 @@ func (c *ModeMaintenanceController) ActivateMaintenance(ctx *gin.Context) {
 		if err.Error() == "maintenance not found" {
 			status = http.StatusNotFound
 		}
-		utils.SimpleErrorResponse(ctx, status, "Gagal mengaktifkan maintenance", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, status, "Gagal mengaktifkan maintenance", err.Error())
 	}
 
-	utils.SuccessResponse(ctx, "Maintenance berhasil diaktifkan", nil)
+	return utils.SuccessResponse(ctx, "Maintenance berhasil diaktifkan", nil)
 }
 
 // DeactivateMaintenance deactivates maintenance mode
-func (c *ModeMaintenanceController) DeactivateMaintenance(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *ModeMaintenanceController) DeactivateMaintenance(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	err := c.service.DeactivateMaintenance(id)
 	if err != nil {
@@ -183,9 +175,8 @@ func (c *ModeMaintenanceController) DeactivateMaintenance(ctx *gin.Context) {
 		if err.Error() == "maintenance not found" {
 			status = http.StatusNotFound
 		}
-		utils.SimpleErrorResponse(ctx, status, "Gagal menonaktifkan maintenance", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, status, "Gagal menonaktifkan maintenance", err.Error())
 	}
 
-	utils.SuccessResponse(ctx, "Maintenance berhasil dinonaktifkan", nil)
+	return utils.SuccessResponse(ctx, "Maintenance berhasil dinonaktifkan", nil)
 }

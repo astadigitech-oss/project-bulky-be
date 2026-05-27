@@ -7,7 +7,7 @@ import (
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 )
 
 type KondisiPaketController struct {
@@ -22,139 +22,125 @@ func NewKondisiPaketController(service services.KondisiPaketService, reorderServ
 	}
 }
 
-func (c *KondisiPaketController) Create(ctx *gin.Context) {
+func (c *KondisiPaketController) Create(ctx *fiber.Ctx) error {
 	var req models.CreateKondisiPaketRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.Create(ctx.Request.Context(), &req)
+	result, err := c.service.Create(ctx.UserContext(), &req)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusConflict, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusConflict, err.Error(), nil)
 	}
 
-	utils.CreatedResponse(ctx, "Kondisi paket berhasil dibuat", result)
+	return utils.CreatedResponse(ctx, "Kondisi paket berhasil dibuat", result)
 }
 
-func (c *KondisiPaketController) FindAll(ctx *gin.Context) {
+func (c *KondisiPaketController) FindAll(ctx *fiber.Ctx) error {
 	var params models.PaginationRequest
-	if err := ctx.ShouldBindQuery(&params); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
-		return
+	if err := ctx.QueryParser(&params); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
 	}
 
-	items, meta, err := c.service.FindAll(ctx.Request.Context(), &params)
+	items, meta, err := c.service.FindAll(ctx.UserContext(), &params)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	utils.PaginatedSuccessResponse(ctx, "Data kondisi paket berhasil diambil", items, *meta)
+	return utils.PaginatedSuccessResponse(ctx, "Data kondisi paket berhasil diambil", items, *meta)
 }
 
-func (c *KondisiPaketController) FindByID(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *KondisiPaketController) FindByID(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	result, err := c.service.FindByID(ctx.Request.Context(), id)
+	result, err := c.service.FindByID(ctx.UserContext(), id)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Detail kondisi paket berhasil diambil", result)
+	return utils.SuccessResponse(ctx, "Detail kondisi paket berhasil diambil", result)
 }
 
-func (c *KondisiPaketController) FindBySlug(ctx *gin.Context) {
-	slug := ctx.Param("slug")
+func (c *KondisiPaketController) FindBySlug(ctx *fiber.Ctx) error {
+	slug := ctx.Params("slug")
 
-	result, err := c.service.FindBySlug(ctx.Request.Context(), slug)
+	result, err := c.service.FindBySlug(ctx.UserContext(), slug)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Detail kondisi paket berhasil diambil", result)
+	return utils.SuccessResponse(ctx, "Detail kondisi paket berhasil diambil", result)
 }
 
-func (c *KondisiPaketController) Update(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *KondisiPaketController) Update(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	var req models.UpdateKondisiPaketRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.Update(ctx.Request.Context(), id, &req)
+	result, err := c.service.Update(ctx.UserContext(), id, &req)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Kondisi paket berhasil diupdate", result)
+	return utils.SuccessResponse(ctx, "Kondisi paket berhasil diupdate", result)
 }
 
-func (c *KondisiPaketController) Delete(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *KondisiPaketController) Delete(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	if err := c.service.Delete(ctx.Request.Context(), id); err != nil {
+	if err := c.service.Delete(ctx.UserContext(), id); err != nil {
 		status := http.StatusBadRequest
 		if err.Error() == "kondisi paket tidak ditemukan" {
 			status = http.StatusNotFound
 		}
-		utils.ErrorResponse(ctx, status, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Kondisi paket berhasil dihapus", nil)
+	return utils.SuccessResponse(ctx, "Kondisi paket berhasil dihapus", nil)
 }
 
-func (c *KondisiPaketController) ToggleStatus(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *KondisiPaketController) ToggleStatus(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	result, err := c.service.ToggleStatus(ctx.Request.Context(), id)
+	result, err := c.service.ToggleStatus(ctx.UserContext(), id)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Status kondisi paket berhasil diubah", result)
+	return utils.SuccessResponse(ctx, "Status kondisi paket berhasil diubah", result)
 }
 
-func (c *KondisiPaketController) Reorder(ctx *gin.Context) {
+func (c *KondisiPaketController) Reorder(ctx *fiber.Ctx) error {
 	var req models.ReorderRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	if err := c.service.Reorder(ctx.Request.Context(), &req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
+	if err := c.service.Reorder(ctx.UserContext(), &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Urutan kondisi paket berhasil diubah", nil)
+	return utils.SuccessResponse(ctx, "Urutan kondisi paket berhasil diubah", nil)
 }
 
-func (c *KondisiPaketController) ReorderByDirection(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *KondisiPaketController) ReorderByDirection(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	var req models.ReorderByDirectionRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
 	idUUID, err := utils.ParseUUID(id)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", nil)
 	}
 
 	result, err := c.reorderService.Reorder(
-		ctx.Request.Context(),
+		ctx.UserContext(),
 		"kondisi_paket",
 		idUUID,
 		req.Direction,
@@ -163,28 +149,26 @@ func (c *KondisiPaketController) ReorderByDirection(ctx *gin.Context) {
 	)
 
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Urutan berhasil diubah", gin.H{
-		"item": gin.H{
+	return 	utils.SuccessResponse(ctx, "Urutan berhasil diubah", fiber.Map{
+		"item": fiber.Map{
 			"id":     result.ItemID,
 			"urutan": result.ItemUrutan,
 		},
-		"swapped_with": gin.H{
+		"swapped_with": fiber.Map{
 			"id":     result.SwappedID,
 			"urutan": result.SwappedUrutan,
 		},
 	})
 }
 
-func (c *KondisiPaketController) Dropdown(ctx *gin.Context) {
-	response, err := c.service.GetAllForDropdown(ctx.Request.Context())
+func (c *KondisiPaketController) Dropdown(ctx *fiber.Ctx) error {
+	response, err := c.service.GetAllForDropdown(ctx.UserContext())
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data kondisi paket", nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data kondisi paket", nil)
 	}
 
-	utils.SuccessResponse(ctx, "Data dropdown kondisi paket berhasil diambil", response)
+	return utils.SuccessResponse(ctx, "Data dropdown kondisi paket berhasil diambil", response)
 }

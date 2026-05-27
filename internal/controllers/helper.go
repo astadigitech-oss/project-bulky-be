@@ -2,9 +2,40 @@ package controllers
 
 import (
 	"project-bulky-be/internal/models"
+	"project-bulky-be/pkg/utils"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/gofiber/fiber/v2"
 )
+
+// BindJSON parses JSON body and validates the struct
+func BindJSON(c *fiber.Ctx, req interface{}) error {
+	if err := c.BodyParser(req); err != nil {
+		return err
+	}
+	return utils.Validator.Struct(req)
+}
+
+// localsString reads a string value from Fiber's Locals context
+func localsString(c *fiber.Ctx, key string) string {
+	val := c.Locals(key)
+	if val == nil {
+		return ""
+	}
+	if s, ok := val.(string); ok {
+		return s
+	}
+	return ""
+}
+
+// formValueArray returns all values for a multipart/form-data field key
+func formValueArray(c *fiber.Ctx, key string) []string {
+	form, err := c.MultipartForm()
+	if err != nil || form == nil {
+		return nil
+	}
+	return form.Value[key]
+}
 
 func parseValidationErrors(err error) []models.FieldError {
 	var errors []models.FieldError

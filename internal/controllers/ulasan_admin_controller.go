@@ -8,7 +8,7 @@ import (
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -24,96 +24,82 @@ func NewUlasanAdminController(ulasanService services.UlasanAdminService) *Ulasan
 }
 
 // GetAll retrieves all ulasan with pagination and filters (admin)
-func (c *UlasanAdminController) GetAll(ctx *gin.Context) {
+func (c *UlasanAdminController) GetAll(ctx *fiber.Ctx) error {
 	var params dto.UlasanAdminQueryParams
 
-	if err := ctx.ShouldBindQuery(&params); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", parseValidationErrors(err))
-		return
+	if err := ctx.QueryParser(&params); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", parseValidationErrors(err))
 	}
 
 	// Manual validation for required fields
 	if params.Page < 1 {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", "Parameter 'page' wajib diisi dan minimal 1")
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", "Parameter 'page' wajib diisi dan minimal 1")
 	}
 	if params.PerPage < 1 {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", "Parameter 'per_page' wajib diisi dan minimal 1")
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", "Parameter 'per_page' wajib diisi dan minimal 1")
 	}
 	if params.PerPage > 100 {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", "Parameter 'per_page' maksimal 100")
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", "Parameter 'per_page' maksimal 100")
 	}
 
 	params.SetDefaults()
 
-	ulasan, meta, err := c.ulasanService.GetAll(ctx.Request.Context(), &params)
+	ulasan, meta, err := c.ulasanService.GetAll(ctx.UserContext(), &params)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data ulasan", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data ulasan", err.Error())
 	}
 
-	utils.PaginatedSuccessResponse(ctx, "Data ulasan berhasil diambil", ulasan, *meta)
+	return utils.PaginatedSuccessResponse(ctx, "Data ulasan berhasil diambil", ulasan, *meta)
 }
 
 // GetByID retrieves an ulasan by ID (admin)
-func (c *UlasanAdminController) GetByID(ctx *gin.Context) {
-	idParam := ctx.Param("id")
+func (c *UlasanAdminController) GetByID(ctx *fiber.Ctx) error {
+	idParam := ctx.Params("id")
 	id, err := uuid.Parse(idParam)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
 	}
 
-	ulasan, err := c.ulasanService.GetByID(ctx.Request.Context(), id)
+	ulasan, err := c.ulasanService.GetByID(ctx.UserContext(), id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) || err.Error() == "ulasan tidak ditemukan" {
-			utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Ulasan tidak ditemukan", "")
-			return
+			return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Ulasan tidak ditemukan", "")
 		}
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil detail ulasan", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil detail ulasan", err.Error())
 	}
 
-	utils.SuccessResponse(ctx, "Detail ulasan berhasil diambil", ulasan)
+	return utils.SuccessResponse(ctx, "Detail ulasan berhasil diambil", ulasan)
 }
 
 // Approve approves an ulasan
-func (c *UlasanAdminController) Approve(ctx *gin.Context) {
-	idParam := ctx.Param("id")
+func (c *UlasanAdminController) Approve(ctx *fiber.Ctx) error {
+	idParam := ctx.Params("id")
 	id, err := uuid.Parse(idParam)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
 	}
 
 	// Get admin ID from context
-	adminIDStr := ctx.GetString("admin_id")
+	adminIDStr := localsString(ctx, "admin_id")
 	adminID, err := uuid.Parse(adminIDStr)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusUnauthorized, "Admin tidak valid", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusUnauthorized, "Admin tidak valid", err.Error())
 	}
 
-	if err := c.ulasanService.Approve(ctx.Request.Context(), id, adminID); err != nil {
+	if err := c.ulasanService.Approve(ctx.UserContext(), id, adminID); err != nil {
 		if err.Error() == "ulasan tidak ditemukan" {
-			utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Ulasan tidak ditemukan", "")
-			return
+			return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Ulasan tidak ditemukan", "")
 		}
 		if err.Error() == "ulasan sudah di-approve" {
-			utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Ulasan sudah di-approve", "")
-			return
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Ulasan sudah di-approve", "")
 		}
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal approve ulasan", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal approve ulasan", err.Error())
 	}
 
 	// Return simple response with updated data
-	ulasan, err := c.ulasanService.GetByID(ctx.Request.Context(), id)
+	ulasan, err := c.ulasanService.GetByID(ctx.UserContext(), id)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data ulasan", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data ulasan", err.Error())
 	}
 
 	response := dto.UlasanApproveResponse{
@@ -125,36 +111,31 @@ func (c *UlasanAdminController) Approve(ctx *gin.Context) {
 		response.ApprovedBy = &ulasan.ApprovedBy.ID
 	}
 
-	utils.SuccessResponse(ctx, "Ulasan berhasil di-approve", response)
+	return utils.SuccessResponse(ctx, "Ulasan berhasil di-approve", response)
 }
 
 // Reject rejects an ulasan
-func (c *UlasanAdminController) Reject(ctx *gin.Context) {
-	idParam := ctx.Param("id")
+func (c *UlasanAdminController) Reject(ctx *fiber.Ctx) error {
+	idParam := ctx.Params("id")
 	id, err := uuid.Parse(idParam)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
 	}
 
-	if err := c.ulasanService.Reject(ctx.Request.Context(), id); err != nil {
+	if err := c.ulasanService.Reject(ctx.UserContext(), id); err != nil {
 		if err.Error() == "ulasan tidak ditemukan" {
-			utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Ulasan tidak ditemukan", "")
-			return
+			return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Ulasan tidak ditemukan", "")
 		}
 		if err.Error() == "ulasan sudah di-reject" {
-			utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Ulasan sudah di-reject", "")
-			return
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Ulasan sudah di-reject", "")
 		}
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal reject ulasan", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal reject ulasan", err.Error())
 	}
 
 	// Return simple response with updated data
-	ulasan, err := c.ulasanService.GetByID(ctx.Request.Context(), id)
+	ulasan, err := c.ulasanService.GetByID(ctx.UserContext(), id)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data ulasan", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data ulasan", err.Error())
 	}
 
 	response := dto.UlasanApproveResponse{
@@ -164,53 +145,47 @@ func (c *UlasanAdminController) Reject(ctx *gin.Context) {
 		ApprovedBy: nil,
 	}
 
-	utils.SuccessResponse(ctx, "Ulasan berhasil di-reject", response)
+	return utils.SuccessResponse(ctx, "Ulasan berhasil di-reject", response)
 }
 
 // BulkApprove approves multiple ulasan
-func (c *UlasanAdminController) BulkApprove(ctx *gin.Context) {
+func (c *UlasanAdminController) BulkApprove(ctx *fiber.Ctx) error {
 	var req dto.BulkApproveUlasanRequest
 
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
 	// Get admin ID from context
-	adminIDStr := ctx.GetString("admin_id")
+	adminIDStr := localsString(ctx, "admin_id")
 	adminID, err := uuid.Parse(adminIDStr)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusUnauthorized, "Admin tidak valid", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusUnauthorized, "Admin tidak valid", err.Error())
 	}
 
-	result, err := c.ulasanService.BulkApprove(ctx.Request.Context(), req.IDs, adminID)
+	result, err := c.ulasanService.BulkApprove(ctx.UserContext(), req.IDs, adminID)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal bulk approve ulasan", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal bulk approve ulasan", err.Error())
 	}
 
 	message := fmt.Sprintf("%d ulasan berhasil di-approve", result.ApprovedCount)
-	utils.SuccessResponse(ctx, message, result)
+	return utils.SuccessResponse(ctx, message, result)
 }
 
 // Delete deletes an ulasan (soft delete)
-func (c *UlasanAdminController) Delete(ctx *gin.Context) {
-	idParam := ctx.Param("id")
+func (c *UlasanAdminController) Delete(ctx *fiber.Ctx) error {
+	idParam := ctx.Params("id")
 	id, err := uuid.Parse(idParam)
 	if err != nil {
-		utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
 	}
 
-	if err := c.ulasanService.Delete(ctx.Request.Context(), id); err != nil {
+	if err := c.ulasanService.Delete(ctx.UserContext(), id); err != nil {
 		if err.Error() == "ulasan tidak ditemukan" {
-			utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Ulasan tidak ditemukan", "")
-			return
+			return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Ulasan tidak ditemukan", "")
 		}
-		utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menghapus ulasan", err.Error())
-		return
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menghapus ulasan", err.Error())
 	}
 
-	utils.SuccessResponse(ctx, "Ulasan berhasil dihapus", nil)
+	return utils.SuccessResponse(ctx, "Ulasan berhasil dihapus", nil)
 }

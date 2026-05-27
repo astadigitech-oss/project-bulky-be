@@ -7,7 +7,7 @@ import (
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 )
 
 type AlamatBuyerController struct {
@@ -18,84 +18,75 @@ func NewAlamatBuyerController(service services.AlamatBuyerService) *AlamatBuyerC
 	return &AlamatBuyerController{service: service}
 }
 
-func (c *AlamatBuyerController) Create(ctx *gin.Context) {
+func (c *AlamatBuyerController) Create(ctx *fiber.Ctx) error {
 	var req models.CreateAlamatBuyerRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.Create(ctx.Request.Context(), &req)
+	result, err := c.service.Create(ctx.UserContext(), &req)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
-	utils.CreatedResponse(ctx, "Alamat berhasil ditambahkan", result)
+	return utils.CreatedResponse(ctx, "Alamat berhasil ditambahkan", result)
 }
 
-func (c *AlamatBuyerController) FindByID(ctx *gin.Context) {
-	id := ctx.Param("id")
-	result, err := c.service.FindByID(ctx.Request.Context(), id)
+func (c *AlamatBuyerController) FindByID(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
+	result, err := c.service.FindByID(ctx.UserContext(), id)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
-	utils.SuccessResponse(ctx, "Detail alamat berhasil diambil", result)
+	return utils.SuccessResponse(ctx, "Detail alamat berhasil diambil", result)
 }
 
-func (c *AlamatBuyerController) FindAll(ctx *gin.Context) {
+func (c *AlamatBuyerController) FindAll(ctx *fiber.Ctx) error {
 	var params models.AlamatBuyerFilterRequest
-	if err := ctx.ShouldBindQuery(&params); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
-		return
+	if err := ctx.QueryParser(&params); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
 	}
 
-	items, meta, err := c.service.FindAll(ctx.Request.Context(), &params)
+	items, meta, err := c.service.FindAll(ctx.UserContext(), &params)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	utils.PaginatedSuccessResponse(ctx, "Data alamat berhasil diambil", items, *meta)
+	return utils.PaginatedSuccessResponse(ctx, "Data alamat berhasil diambil", items, *meta)
 }
 
-func (c *AlamatBuyerController) Update(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *AlamatBuyerController) Update(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 	var req models.UpdateAlamatBuyerRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.Update(ctx.Request.Context(), id, &req)
+	result, err := c.service.Update(ctx.UserContext(), id, &req)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Alamat berhasil diupdate", result)
+	return utils.SuccessResponse(ctx, "Alamat berhasil diupdate", result)
 }
 
-func (c *AlamatBuyerController) Delete(ctx *gin.Context) {
-	id := ctx.Param("id")
-	if err := c.service.Delete(ctx.Request.Context(), id); err != nil {
+func (c *AlamatBuyerController) Delete(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
+	if err := c.service.Delete(ctx.UserContext(), id); err != nil {
 		status := http.StatusBadRequest
 		if err.Error() == "alamat tidak ditemukan" {
 			status = http.StatusNotFound
 		}
-		utils.ErrorResponse(ctx, status, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
-	utils.SuccessResponse(ctx, "Alamat berhasil dihapus", nil)
+	return utils.SuccessResponse(ctx, "Alamat berhasil dihapus", nil)
 }
 
-func (c *AlamatBuyerController) SetDefault(ctx *gin.Context) {
-	id := ctx.Param("id")
-	result, err := c.service.SetDefault(ctx.Request.Context(), id)
+func (c *AlamatBuyerController) SetDefault(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
+	result, err := c.service.SetDefault(ctx.UserContext(), id)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
-	utils.SuccessResponse(ctx, "Alamat berhasil dijadikan default", result)
+	return utils.SuccessResponse(ctx, "Alamat berhasil dijadikan default", result)
 }

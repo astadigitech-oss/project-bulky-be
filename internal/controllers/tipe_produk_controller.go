@@ -6,7 +6,7 @@ import (
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 )
 
 type TipeProdukController struct {
@@ -18,33 +18,30 @@ func NewTipeProdukController(service services.TipeProdukService) *TipeProdukCont
 }
 
 // FindAll retrieves all tipe produk without pagination
-func (c *TipeProdukController) FindAll(ctx *gin.Context) {
-	items, err := c.service.FindAll(ctx.Request.Context())
+func (c *TipeProdukController) FindAll(ctx *fiber.Ctx) error {
+	items, err := c.service.FindAll(ctx.UserContext())
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Data tipe produk berhasil diambil", items)
+	return utils.SuccessResponse(ctx, "Data tipe produk berhasil diambil", items)
 }
 
 // FindAllWithProduk retrieves all tipe produk with their products
-func (c *TipeProdukController) FindAllWithProduk(ctx *gin.Context) {
-	items, err := c.service.FindAllWithProduk(ctx.Request.Context())
+func (c *TipeProdukController) FindAllWithProduk(ctx *fiber.Ctx) error {
+	items, err := c.service.FindAllWithProduk(ctx.UserContext())
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Data tipe produk dengan produk berhasil diambil", items)
+	return utils.SuccessResponse(ctx, "Data tipe produk dengan produk berhasil diambil", items)
 }
 
-func (c *TipeProdukController) Dropdown(ctx *gin.Context) {
+func (c *TipeProdukController) Dropdown(ctx *fiber.Ctx) error {
 	// Get all tipe produk for dropdown
-	items, err := c.service.FindAll(ctx.Request.Context())
+	items, err := c.service.FindAll(ctx.UserContext())
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data tipe produk", nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data tipe produk", nil)
 	}
 
 	// Convert to simple dropdown response
@@ -56,5 +53,5 @@ func (c *TipeProdukController) Dropdown(ctx *gin.Context) {
 		}
 	}
 
-	utils.SuccessResponse(ctx, "Data dropdown tipe produk berhasil diambil", response)
+	return utils.SuccessResponse(ctx, "Data dropdown tipe produk berhasil diambil", response)
 }

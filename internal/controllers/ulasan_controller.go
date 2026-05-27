@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
 
@@ -40,10 +40,10 @@ func NewUlasanController(service services.UlasanService) *UlasanController {
 // @Success 200 {object} utils.SuccessResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /admin/ulasan [get]
-func (ctrl *UlasanController) AdminFindAll(c *gin.Context) {
+func (ctrl *UlasanController) AdminFindAll(c *fiber.Ctx) error {
 	// Parse pagination
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "10"))
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	perPage, _ := strconv.Atoi(c.Query("per_page", "10"))
 
 	// Parse filters
 	filters := make(map[string]interface{})
@@ -78,19 +78,18 @@ func (ctrl *UlasanController) AdminFindAll(c *gin.Context) {
 		}
 	}
 
-	sortBy := c.DefaultQuery("sort_by", "created_at")
-	sortOrder := c.DefaultQuery("sort_order", "desc")
+	sortBy := c.Query("sort_by", "created_at")
+	sortOrder := c.Query("sort_order", "desc")
 
 	// Get data
 	data, total, summary, err := ctrl.service.AdminFindAll(filters, page, perPage, sortBy, sortOrder)
 	if err != nil {
-		utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal mengambil data ulasan", err.Error())
-		return
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal mengambil data ulasan", err.Error())
 	}
 
 	// Response
 	meta := models.NewPaginationMeta(page, perPage, total)
-	utils.PaginatedSuccessResponseWithSummary(c, "Data ulasan berhasil diambil", data, meta, summary)
+	return utils.PaginatedSuccessResponseWithSummary(c, "Data ulasan berhasil diambil", data, meta, summary)
 }
 
 // AdminFindByID godoc
@@ -101,16 +100,15 @@ func (ctrl *UlasanController) AdminFindAll(c *gin.Context) {
 // @Success 200 {object} utils.SuccessResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Router /admin/ulasan/{id} [get]
-func (ctrl *UlasanController) AdminFindByID(c *gin.Context) {
-	id := c.Param("id")
+func (ctrl *UlasanController) AdminFindByID(c *fiber.Ctx) error {
+	id := c.Params("id")
 
 	data, err := ctrl.service.AdminFindByID(id)
 	if err != nil {
-		utils.SimpleErrorResponse(c, http.StatusNotFound, "Ulasan tidak ditemukan", err.Error())
-		return
+		return utils.SimpleErrorResponse(c, http.StatusNotFound, "Ulasan tidak ditemukan", err.Error())
 	}
 
-	utils.SuccessResponse(c, "Data ulasan berhasil diambil", data)
+	return utils.SuccessResponse(c, "Data ulasan berhasil diambil", data)
 }
 
 // Approve godoc
@@ -122,31 +120,27 @@ func (ctrl *UlasanController) AdminFindByID(c *gin.Context) {
 // @Success 200 {object} utils.SuccessResponse
 // @Failure 400 {object} utils.ErrorResponse
 // @Router /admin/ulasan/{id}/approve [patch]
-func (ctrl *UlasanController) Approve(c *gin.Context) {
-	id := c.Param("id")
+func (ctrl *UlasanController) Approve(c *fiber.Ctx) error {
+	id := c.Params("id")
 
 	var req models.ApproveUlasanRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.SimpleErrorResponse(c, http.StatusBadRequest, "Invalid request", err.Error())
-		return
+	if err := BindJSON(c, &req); err != nil {
+		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "Invalid request", err.Error())
 	}
 
 	// Get admin ID from context
-	adminID, exists := c.Get("admin_id")
-	if !exists {
-		utils.SimpleErrorResponse(c, http.StatusUnauthorized, "Admin ID not found", "")
-		return
+	adminID := c.Locals("admin_id")
+	if adminID == nil {
+		return utils.SimpleErrorResponse(c, http.StatusUnauthorized, "Admin ID not found", "")
 	}
 
 	adminUUID, err := uuid.Parse(adminID.(string))
 	if err != nil {
-		utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Invalid admin ID", err.Error())
-		return
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Invalid admin ID", err.Error())
 	}
 
 	if err := ctrl.service.Approve(id, req.IsApproved, adminUUID); err != nil {
-		utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal mengupdate status ulasan", err.Error())
-		return
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal mengupdate status ulasan", err.Error())
 	}
 
 	message := "Ulasan berhasil diapprove"
@@ -154,7 +148,7 @@ func (ctrl *UlasanController) Approve(c *gin.Context) {
 		message = "Ulasan berhasil direject"
 	}
 
-	utils.SimpleSuccessResponse(c, http.StatusOK, message, gin.H{
+	return utils.SimpleSuccessResponse(c, http.StatusOK, message, fiber.Map{
 		"id":          id,
 		"is_approved": req.IsApproved,
 		"approved_at": time.Now(),
@@ -170,30 +164,26 @@ func (ctrl *UlasanController) Approve(c *gin.Context) {
 // @Success 200 {object} utils.SuccessResponse
 // @Failure 400 {object} utils.ErrorResponse
 // @Router /admin/ulasan/bulk-approve [patch]
-func (ctrl *UlasanController) BulkApprove(c *gin.Context) {
+func (ctrl *UlasanController) BulkApprove(c *fiber.Ctx) error {
 	var req models.BulkApproveUlasanRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.SimpleErrorResponse(c, http.StatusBadRequest, "Invalid request", err.Error())
-		return
+	if err := BindJSON(c, &req); err != nil {
+		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "Invalid request", err.Error())
 	}
 
 	// Get admin ID from context
-	adminID, exists := c.Get("admin_id")
-	if !exists {
-		utils.SimpleErrorResponse(c, http.StatusUnauthorized, "Admin ID not found", "")
-		return
+	adminID := c.Locals("admin_id")
+	if adminID == nil {
+		return utils.SimpleErrorResponse(c, http.StatusUnauthorized, "Admin ID not found", "")
 	}
 
 	adminUUID, err := uuid.Parse(adminID.(string))
 	if err != nil {
-		utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Invalid admin ID", err.Error())
-		return
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Invalid admin ID", err.Error())
 	}
 
 	affected, err := ctrl.service.BulkApprove(req.IDs, req.IsApproved, adminUUID)
 	if err != nil {
-		utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal bulk update ulasan", err.Error())
-		return
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal bulk update ulasan", err.Error())
 	}
 
 	message := "Ulasan berhasil diapprove"
@@ -201,7 +191,7 @@ func (ctrl *UlasanController) BulkApprove(c *gin.Context) {
 		message = "Ulasan berhasil direject"
 	}
 
-	utils.SimpleSuccessResponse(c, http.StatusOK, message, gin.H{
+	return utils.SimpleSuccessResponse(c, http.StatusOK, message, fiber.Map{
 		"total_updated": affected,
 	})
 }
@@ -214,15 +204,14 @@ func (ctrl *UlasanController) BulkApprove(c *gin.Context) {
 // @Success 200 {object} utils.SuccessResponse
 // @Failure 404 {object} utils.ErrorResponse
 // @Router /admin/ulasan/{id} [delete]
-func (ctrl *UlasanController) Delete(c *gin.Context) {
-	id := c.Param("id")
+func (ctrl *UlasanController) Delete(c *fiber.Ctx) error {
+	id := c.Params("id")
 
 	if err := ctrl.service.Delete(id); err != nil {
-		utils.SimpleErrorResponse(c, http.StatusNotFound, "Gagal menghapus ulasan", err.Error())
-		return
+		return utils.SimpleErrorResponse(c, http.StatusNotFound, "Gagal menghapus ulasan", err.Error())
 	}
 
-	utils.SuccessResponse(c, "Ulasan berhasil dihapus", nil)
+	return utils.SuccessResponse(c, "Ulasan berhasil dihapus", nil)
 }
 
 // ========================================
@@ -236,27 +225,24 @@ func (ctrl *UlasanController) Delete(c *gin.Context) {
 // @Success 200 {object} utils.SuccessResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /buyer/ulasan/pending [get]
-func (ctrl *UlasanController) GetPendingReviews(c *gin.Context) {
+func (ctrl *UlasanController) GetPendingReviews(c *fiber.Ctx) error {
 	// Get buyer ID from context
-	buyerID, exists := c.Get("buyer_id")
-	if !exists {
-		utils.SimpleErrorResponse(c, http.StatusUnauthorized, "Buyer ID not found", "")
-		return
+	buyerID := c.Locals("buyer_id")
+	if buyerID == nil {
+		return utils.SimpleErrorResponse(c, http.StatusUnauthorized, "Buyer ID not found", "")
 	}
 
 	buyerUUID, err := uuid.Parse(buyerID.(string))
 	if err != nil {
-		utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Invalid buyer ID", err.Error())
-		return
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Invalid buyer ID", err.Error())
 	}
 
 	data, err := ctrl.service.GetPendingReviews(buyerUUID)
 	if err != nil {
-		utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal mengambil data", err.Error())
-		return
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal mengambil data", err.Error())
 	}
 
-	utils.SuccessResponse(c, "Data item belum di-review", data)
+	return utils.SuccessResponse(c, "Data item belum di-review", data)
 }
 
 // BuyerFindAll godoc
@@ -268,32 +254,29 @@ func (ctrl *UlasanController) GetPendingReviews(c *gin.Context) {
 // @Success 200 {object} utils.SuccessResponse
 // @Failure 500 {object} utils.ErrorResponse
 // @Router /buyer/ulasan [get]
-func (ctrl *UlasanController) BuyerFindAll(c *gin.Context) {
+func (ctrl *UlasanController) BuyerFindAll(c *fiber.Ctx) error {
 	// Get buyer ID from context
-	buyerID, exists := c.Get("buyer_id")
-	if !exists {
-		utils.SimpleErrorResponse(c, http.StatusUnauthorized, "Buyer ID not found", "")
-		return
+	buyerID := c.Locals("buyer_id")
+	if buyerID == nil {
+		return utils.SimpleErrorResponse(c, http.StatusUnauthorized, "Buyer ID not found", "")
 	}
 
 	buyerUUID, err := uuid.Parse(buyerID.(string))
 	if err != nil {
-		utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Invalid buyer ID", err.Error())
-		return
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Invalid buyer ID", err.Error())
 	}
 
 	// Parse pagination
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "10"))
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	perPage, _ := strconv.Atoi(c.Query("per_page", "10"))
 
 	data, total, err := ctrl.service.BuyerFindAll(buyerUUID, page, perPage)
 	if err != nil {
-		utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal mengambil data ulasan", err.Error())
-		return
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal mengambil data ulasan", err.Error())
 	}
 
 	meta := models.NewPaginationMeta(page, perPage, total)
-	utils.PaginatedSuccessResponse(c, "Data ulasan berhasil diambil", data, meta)
+	return utils.PaginatedSuccessResponse(c, "Data ulasan berhasil diambil", data, meta)
 }
 
 // Create godoc
@@ -308,40 +291,36 @@ func (ctrl *UlasanController) BuyerFindAll(c *gin.Context) {
 // @Success 201 {object} utils.SuccessResponse
 // @Failure 400 {object} utils.ErrorResponse
 // @Router /buyer/ulasan [post]
-func (ctrl *UlasanController) Create(c *gin.Context) {
+func (ctrl *UlasanController) Create(c *fiber.Ctx) error {
 	// Get buyer ID from context
-	buyerID, exists := c.Get("buyer_id")
-	if !exists {
-		utils.SimpleErrorResponse(c, http.StatusUnauthorized, "Buyer ID not found", "")
-		return
+	buyerID := c.Locals("buyer_id")
+	if buyerID == nil {
+		return utils.SimpleErrorResponse(c, http.StatusUnauthorized, "Buyer ID not found", "")
 	}
 
 	buyerUUID, err := uuid.Parse(buyerID.(string))
 	if err != nil {
-		utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Invalid buyer ID", err.Error())
-		return
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Invalid buyer ID", err.Error())
 	}
 
 	// Parse form data
 	var req models.CreateUlasanRequest
 
-	req.PesananItemID = c.PostForm("pesanan_item_id")
-	ratingStr := c.PostForm("rating")
+	req.PesananItemID = c.FormValue("pesanan_item_id")
+	ratingStr := c.FormValue("rating")
 	rating, err := strconv.Atoi(ratingStr)
 	if err != nil || rating < 1 || rating > 5 {
-		utils.SimpleErrorResponse(c, http.StatusBadRequest, "Rating harus antara 1-5", "")
-		return
+		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "Rating harus antara 1-5", "")
 	}
 	req.Rating = rating
 
-	if komentar := c.PostForm("komentar"); komentar != "" {
+	if komentar := c.FormValue("komentar"); komentar != "" {
 		req.Komentar = &komentar
 	}
 
 	// Validate
 	if req.PesananItemID == "" {
-		utils.SimpleErrorResponse(c, http.StatusBadRequest, "pesanan_item_id wajib diisi", "")
-		return
+		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "pesanan_item_id wajib diisi", "")
 	}
 
 	// Handle image upload
@@ -350,11 +329,10 @@ func (ctrl *UlasanController) Create(c *gin.Context) {
 	// Create ulasan
 	ulasan, err := ctrl.service.Create(req, buyerUUID, file)
 	if err != nil {
-		utils.SimpleErrorResponse(c, http.StatusBadRequest, "Gagal membuat ulasan", err.Error())
-		return
+		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "Gagal membuat ulasan", err.Error())
 	}
 
-	utils.SimpleSuccessResponse(c, http.StatusCreated, "Ulasan berhasil dikirim. Menunggu approval admin.", gin.H{
+	return utils.SimpleSuccessResponse(c, http.StatusCreated, "Ulasan berhasil dikirim. Menunggu approval admin.", fiber.Map{
 		"id":          ulasan.ID.String(),
 		"rating":      ulasan.Rating,
 		"komentar":    ulasan.Komentar,
@@ -380,12 +358,12 @@ func (ctrl *UlasanController) Create(c *gin.Context) {
 // @Success 200 {object} utils.SuccessResponse
 // @Failure 400 {object} utils.ErrorResponse
 // @Router /public/produk/{produk_id}/ulasan [get]
-func (ctrl *UlasanController) GetProdukUlasan(c *gin.Context) {
-	produkID := c.Param("produk_id")
+func (ctrl *UlasanController) GetProdukUlasan(c *fiber.Ctx) error {
+	produkID := c.Params("produk_id")
 
 	// Parse pagination
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "5"))
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	perPage, _ := strconv.Atoi(c.Query("per_page", "5"))
 
 	// Parse filters
 	filters := make(map[string]interface{})
@@ -400,18 +378,17 @@ func (ctrl *UlasanController) GetProdukUlasan(c *gin.Context) {
 		filters["with_photo"] = true
 	}
 
-	sortBy := c.DefaultQuery("sort_by", "created_at")
-	sortOrder := c.DefaultQuery("sort_order", "desc")
+	sortBy := c.Query("sort_by", "created_at")
+	sortOrder := c.Query("sort_order", "desc")
 
 	// Get data
 	data, total, err := ctrl.service.GetProdukUlasan(produkID, filters, page, perPage, sortBy, sortOrder)
 	if err != nil {
-		utils.SimpleErrorResponse(c, http.StatusBadRequest, "Gagal mengambil data ulasan", err.Error())
-		return
+		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "Gagal mengambil data ulasan", err.Error())
 	}
 
 	meta := models.NewPaginationMeta(page, perPage, total)
-	utils.PaginatedSuccessResponse(c, "Data ulasan berhasil diambil", data, meta)
+	return utils.PaginatedSuccessResponse(c, "Data ulasan berhasil diambil", data, meta)
 }
 
 // GetProdukRating godoc
@@ -421,14 +398,13 @@ func (ctrl *UlasanController) GetProdukUlasan(c *gin.Context) {
 // @Success 200 {object} utils.SuccessResponse
 // @Failure 400 {object} utils.ErrorResponse
 // @Router /public/produk/{produk_id}/rating [get]
-func (ctrl *UlasanController) GetProdukRating(c *gin.Context) {
-	produkID := c.Param("produk_id")
+func (ctrl *UlasanController) GetProdukRating(c *fiber.Ctx) error {
+	produkID := c.Params("produk_id")
 
 	data, err := ctrl.service.GetProdukRatingStats(produkID)
 	if err != nil {
-		utils.SimpleErrorResponse(c, http.StatusBadRequest, "Gagal mengambil rating produk", err.Error())
-		return
+		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "Gagal mengambil rating produk", err.Error())
 	}
 
-	utils.SuccessResponse(c, "Data rating berhasil diambil", data)
+	return utils.SuccessResponse(c, "Data rating berhasil diambil", data)
 }

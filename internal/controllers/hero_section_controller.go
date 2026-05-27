@@ -9,7 +9,7 @@ import (
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 )
 
 type HeroSectionController struct {
@@ -24,23 +24,23 @@ func NewHeroSectionController(service services.HeroSectionService, cfg *config.C
 	}
 }
 
-func (c *HeroSectionController) Create(ctx *gin.Context) {
+func (c *HeroSectionController) Create(ctx *fiber.Ctx) error {
 	var req models.CreateHeroSectionRequest
 	var gambarIDURL *string
 	var gambarENURL *string
 
-	contentType := ctx.GetHeader("Content-Type")
+	contentType := ctx.Get("Content-Type")
 
 	// Handle multipart/form-data (with file upload)
 	if strings.Contains(contentType, "multipart/form-data") {
 		// Parse form data
-		req.Nama = ctx.PostForm("nama")
+		req.Nama = ctx.FormValue("nama")
 		req.TanggalMulai = nil
-		if tm := ctx.PostForm("tanggal_mulai"); tm != "" {
+		if tm := ctx.FormValue("tanggal_mulai"); tm != "" {
 			req.TanggalMulai = &tm
 		}
 		req.TanggalSelesai = nil
-		if ts := ctx.PostForm("tanggal_selesai"); ts != "" {
+		if ts := ctx.FormValue("tanggal_selesai"); ts != "" {
 			req.TanggalSelesai = &ts
 		}
 
@@ -48,26 +48,22 @@ func (c *HeroSectionController) Create(ctx *gin.Context) {
 
 		// Validate required fields
 		if req.Nama == "" {
-			utils.ErrorResponse(ctx, http.StatusBadRequest, "nama wajib diisi", nil)
-			return
+			return utils.ErrorResponse(ctx, http.StatusBadRequest, "nama wajib diisi", nil)
 		}
 
 		// Handle gambar_id upload (required)
 		if file, err := ctx.FormFile("gambar_id"); err == nil {
 			if !utils.IsValidImageType(file) {
-				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_id tidak didukung", nil)
-				return
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_id tidak didukung", nil)
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "hero-section", c.cfg)
 			if err != nil {
-				utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file gambar_id: "+err.Error(), nil)
-				return
+				return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file gambar_id: "+err.Error(), nil)
 			}
 			gambarIDURL = &savedPath
 			req.GambarID = savedPath
 		} else {
-			utils.ErrorResponse(ctx, http.StatusBadRequest, "File gambar_id wajib diupload", nil)
-			return
+			return utils.ErrorResponse(ctx, http.StatusBadRequest, "File gambar_id wajib diupload", nil)
 		}
 
 		// Handle gambar_en upload (optional)
@@ -77,8 +73,7 @@ func (c *HeroSectionController) Create(ctx *gin.Context) {
 				if gambarIDURL != nil {
 					utils.DeleteFile(*gambarIDURL, c.cfg)
 				}
-				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_en tidak didukung", nil)
-				return
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_en tidak didukung", nil)
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "hero-section", c.cfg)
 			if err != nil {
@@ -86,14 +81,13 @@ func (c *HeroSectionController) Create(ctx *gin.Context) {
 				if gambarIDURL != nil {
 					utils.DeleteFile(*gambarIDURL, c.cfg)
 				}
-				utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file gambar_en: "+err.Error(), nil)
-				return
+				return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file gambar_en: "+err.Error(), nil)
 			}
 			gambarENURL = &savedPath
 			req.GambarEN = &savedPath
 		}
 
-		result, err := c.service.Create(ctx.Request.Context(), &req)
+		result, err := c.service.Create(ctx.UserContext(), &req)
 		if err != nil {
 			// Rollback: delete uploaded files if creation fails
 			if gambarIDURL != nil {
@@ -102,59 +96,52 @@ func (c *HeroSectionController) Create(ctx *gin.Context) {
 			if gambarENURL != nil {
 				utils.DeleteFile(*gambarENURL, c.cfg)
 			}
-			utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-			return
+			return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 		}
 
-		utils.CreatedResponse(ctx, "Hero section berhasil dibuat", result)
-		return
+		return utils.CreatedResponse(ctx, "Hero section berhasil dibuat", result)
 	}
 
 	// Handle JSON request (for backward compatibility)
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.Create(ctx.Request.Context(), &req)
+	result, err := c.service.Create(ctx.UserContext(), &req)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
-	utils.CreatedResponse(ctx, "Hero section berhasil dibuat", result)
+	return utils.CreatedResponse(ctx, "Hero section berhasil dibuat", result)
 }
 
-func (c *HeroSectionController) FindAll(ctx *gin.Context) {
+func (c *HeroSectionController) FindAll(ctx *fiber.Ctx) error {
 	var params models.HeroSectionFilterRequest
-	if err := ctx.ShouldBindQuery(&params); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
-		return
+	if err := ctx.QueryParser(&params); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
 	}
 
-	items, meta, err := c.service.FindAll(ctx.Request.Context(), &params)
+	items, meta, err := c.service.FindAll(ctx.UserContext(), &params)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	utils.PaginatedSuccessResponse(ctx, "Data hero section berhasil diambil", items, *meta)
+	return utils.PaginatedSuccessResponse(ctx, "Data hero section berhasil diambil", items, *meta)
 }
 
-func (c *HeroSectionController) FindByID(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *HeroSectionController) FindByID(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	result, err := c.service.FindByID(ctx.Request.Context(), id)
+	result, err := c.service.FindByID(ctx.UserContext(), id)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Detail hero section berhasil diambil", result)
+	return utils.SuccessResponse(ctx, "Detail hero section berhasil diambil", result)
 }
 
-func (c *HeroSectionController) Update(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *HeroSectionController) Update(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	var req models.UpdateHeroSectionRequest
 	var gambarIDURL *string
@@ -162,15 +149,14 @@ func (c *HeroSectionController) Update(ctx *gin.Context) {
 	var oldGambarID *string
 	var oldGambarEN *string
 
-	contentType := ctx.GetHeader("Content-Type")
+	contentType := ctx.Get("Content-Type")
 
 	// Handle multipart/form-data (with file upload)
 	if strings.Contains(contentType, "multipart/form-data") {
 		// Get old data for rollback
-		oldData, err := c.service.FindByID(ctx.Request.Context(), id)
+		oldData, err := c.service.FindByID(ctx.UserContext(), id)
 		if err != nil {
-			utils.ErrorResponse(ctx, http.StatusNotFound, "Hero section tidak ditemukan", nil)
-			return
+			return utils.ErrorResponse(ctx, http.StatusNotFound, "Hero section tidak ditemukan", nil)
 		}
 		oldGambarID = &oldData.GambarURL.ID
 		if oldData.GambarURL.EN != nil {
@@ -178,27 +164,25 @@ func (c *HeroSectionController) Update(ctx *gin.Context) {
 		}
 
 		// Parse form data
-		if nama := ctx.PostForm("nama"); nama != "" {
+		if nama := ctx.FormValue("nama"); nama != "" {
 			req.Nama = &nama
 		}
 		// Note: is_default cannot be updated here, use toggle endpoint instead
-		if tm := ctx.PostForm("tanggal_mulai"); tm != "" {
+		if tm := ctx.FormValue("tanggal_mulai"); tm != "" {
 			req.TanggalMulai = &tm
 		}
-		if ts := ctx.PostForm("tanggal_selesai"); ts != "" {
+		if ts := ctx.FormValue("tanggal_selesai"); ts != "" {
 			req.TanggalSelesai = &ts
 		}
 
 		// Handle gambar_id upload (optional for update)
 		if file, err := ctx.FormFile("gambar_id"); err == nil {
 			if !utils.IsValidImageType(file) {
-				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_id tidak didukung", nil)
-				return
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_id tidak didukung", nil)
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "hero-section", c.cfg)
 			if err != nil {
-				utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file gambar_id: "+err.Error(), nil)
-				return
+				return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file gambar_id: "+err.Error(), nil)
 			}
 			gambarIDURL = &savedPath
 			req.GambarID = &savedPath
@@ -211,8 +195,7 @@ func (c *HeroSectionController) Update(ctx *gin.Context) {
 				if gambarIDURL != nil {
 					utils.DeleteFile(*gambarIDURL, c.cfg)
 				}
-				utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_en tidak didukung", nil)
-				return
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_en tidak didukung", nil)
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "hero-section", c.cfg)
 			if err != nil {
@@ -220,14 +203,13 @@ func (c *HeroSectionController) Update(ctx *gin.Context) {
 				if gambarIDURL != nil {
 					utils.DeleteFile(*gambarIDURL, c.cfg)
 				}
-				utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file gambar_en: "+err.Error(), nil)
-				return
+				return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file gambar_en: "+err.Error(), nil)
 			}
 			gambarENURL = &savedPath
 			req.GambarEN = &savedPath
 		}
 
-		result, err := c.service.Update(ctx.Request.Context(), id, &req)
+		result, err := c.service.Update(ctx.UserContext(), id, &req)
 		if err != nil {
 			// Rollback: delete newly uploaded files if update fails
 			if gambarIDURL != nil {
@@ -236,8 +218,7 @@ func (c *HeroSectionController) Update(ctx *gin.Context) {
 			if gambarENURL != nil {
 				utils.DeleteFile(*gambarENURL, c.cfg)
 			}
-			utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-			return
+			return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 		}
 
 		// Delete old files after successful update (only if new files were uploaded)
@@ -248,73 +229,65 @@ func (c *HeroSectionController) Update(ctx *gin.Context) {
 			utils.DeleteFile(*oldGambarEN, c.cfg)
 		}
 
-		utils.SuccessResponse(ctx, "Hero section berhasil diupdate", result)
-		return
+		return utils.SuccessResponse(ctx, "Hero section berhasil diupdate", result)
 	}
 
 	// Handle JSON request (for backward compatibility)
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.Update(ctx.Request.Context(), id, &req)
+	result, err := c.service.Update(ctx.UserContext(), id, &req)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Hero section berhasil diupdate", result)
+	return utils.SuccessResponse(ctx, "Hero section berhasil diupdate", result)
 }
 
-func (c *HeroSectionController) Delete(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *HeroSectionController) Delete(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	if err := c.service.Delete(ctx.Request.Context(), id); err != nil {
+	if err := c.service.Delete(ctx.UserContext(), id); err != nil {
 		status := http.StatusBadRequest
 		if err.Error() == "hero section tidak ditemukan" {
 			status = http.StatusNotFound
 		}
-		utils.ErrorResponse(ctx, status, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Hero section berhasil dihapus", nil)
+	return utils.SuccessResponse(ctx, "Hero section berhasil dihapus", nil)
 }
 
-func (c *HeroSectionController) ToggleStatus(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *HeroSectionController) ToggleStatus(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	result, err := c.service.ToggleStatus(ctx.Request.Context(), id)
+	result, err := c.service.ToggleStatus(ctx.UserContext(), id)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Status default hero section berhasil diubah", result)
+	return utils.SuccessResponse(ctx, "Status default hero section berhasil diubah", result)
 }
 
-func (c *HeroSectionController) GetActive(ctx *gin.Context) {
-	result, err := c.service.GetVisibleHero(ctx.Request.Context())
+func (c *HeroSectionController) GetActive(ctx *fiber.Ctx) error {
+	result, err := c.service.GetVisibleHero(ctx.UserContext())
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	if result == nil {
-		utils.SuccessResponse(ctx, "Tidak ada hero section aktif", nil)
-		return
+		return utils.SuccessResponse(ctx, "Tidak ada hero section aktif", nil)
 	}
 
-	utils.SuccessResponse(ctx, "Hero section aktif berhasil diambil", result)
+	return utils.SuccessResponse(ctx, "Hero section aktif berhasil diambil", result)
 }
 
-func (c *HeroSectionController) GetSchedules(ctx *gin.Context) {
-	result, err := c.service.GetSchedules(ctx.Request.Context())
+func (c *HeroSectionController) GetSchedules(ctx *fiber.Ctx) error {
+	result, err := c.service.GetSchedules(ctx.UserContext())
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil jadwal hero section: "+err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil jadwal hero section: "+err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Jadwal hero section berhasil diambil", result)
+	return utils.SuccessResponse(ctx, "Jadwal hero section berhasil diambil", result)
 }

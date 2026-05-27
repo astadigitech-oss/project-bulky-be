@@ -13,7 +13,7 @@ import (
 	"project-bulky-be/pkg/database"
 	"project-bulky-be/pkg/utils"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 )
 
@@ -34,7 +34,7 @@ func main() {
 	db := database.GetDB()
 
 	if cfg.AppEnv == "production" {
-		gin.SetMode(gin.ReleaseMode)
+		log.Println("Running in production mode")
 	}
 
 	// Initialize repositories
@@ -174,7 +174,7 @@ func main() {
 	roleController := controllers.NewRoleController(roleService)
 	permissionController := controllers.NewPermissionController(permissionService)
 
-	router := gin.Default()
+	router := fiber.New()
 	router.Use(middleware.CORSMiddleware())
 
 	routes.SetupRoutes(
@@ -212,7 +212,7 @@ func main() {
 	}
 
 	log.Printf("Server is running on port %s", port)
-	if err := router.Run(":" + port); err != nil {
+	if err := router.Listen(":" + port); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
 }

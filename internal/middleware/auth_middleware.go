@@ -2,86 +2,77 @@ package middleware
 
 import (
 	"fmt"
-	"net/http"
 	"strings"
 
 	"project-bulky-be/pkg/utils"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 )
 
 // AuthMiddleware validates JWT token and sets user context
-func AuthMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
+func AuthMiddleware() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		authHeader := c.Get("Authorization")
 
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"success": false,
 				"message": "Token tidak ditemukan",
 			})
-			c.Abort()
-			return
 		}
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"success": false,
 				"message": "Format authorization tidak valid",
 			})
-			c.Abort()
-			return
 		}
 
 		token := parts[1]
 
 		claims, err := utils.ValidateJWT(token)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"success": false,
 				"message": "Token tidak valid atau sudah expired",
 			})
-			c.Abort()
-			return
 		}
 
-		// Set user context (new format)
-		c.Set("user_id", claims.UserID)
-		c.Set("user_type", claims.UserType)
-		c.Set("user_email", claims.Email)
+		// Set user context
+		c.Locals("user_id", claims.UserID)
+		c.Locals("user_type", claims.UserType)
+		c.Locals("user_email", claims.Email)
 
 		// Set permissions dan role untuk Admin
 		if claims.UserType == "ADMIN" {
-			c.Set("user_role_id", claims.RoleID)
-			c.Set("user_role_kode", claims.RoleKode)
-			c.Set("user_permissions", claims.Permissions)
+			c.Locals("user_role_id", claims.RoleID)
+			c.Locals("user_role_kode", claims.RoleKode)
+			c.Locals("user_permissions", claims.Permissions)
 		}
 
 		// Set legacy context for backward compatibility
 		if claims.AdminID != "" {
-			c.Set("admin_id", claims.AdminID)
-			c.Set("admin_email", claims.Email)
+			c.Locals("admin_id", claims.AdminID)
+			c.Locals("admin_email", claims.Email)
 		} else if claims.UserID != "" && claims.UserType == "ADMIN" {
-			c.Set("admin_id", claims.UserID)
-			c.Set("admin_email", claims.Email)
+			c.Locals("admin_id", claims.UserID)
+			c.Locals("admin_email", claims.Email)
 		}
 
-		c.Next()
+		return c.Next()
 	}
 }
 
 // RequireUserType checks if user is of specific type (ADMIN or BUYER)
-func RequireUserType(userType string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		currentUserType, exists := c.Get("user_type")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{
+func RequireUserType(userType string) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		currentUserType := c.Locals("user_type")
+		if currentUserType == nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"success": false,
 				"message": "User type tidak ditemukan",
 			})
-			c.Abort()
-			return
 		}
 
 		if currentUserType != userType {
@@ -93,174 +84,136 @@ func RequireUserType(userType string) gin.HandlerFunc {
 			} else {
 				message = "Akses ditolak"
 			}
-			c.JSON(http.StatusForbidden, gin.H{
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 				"success": false,
 				"message": message,
 			})
-			c.Abort()
-			return
 		}
 
-		c.Next()
+		return c.Next()
 	}
 }
 
 // RequirePermission checks if user has specific permission
-func RequirePermission(permission string) gin.HandlerFunc {
-	return func(c *gin.Context) {
+func RequirePermission(permission string) fiber.Handler {
+	return func(c *fiber.Ctx) error {
 		// 1. Cek user type - harus ADMIN
-		userType, exists := c.Get("user_type")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{
+		userType := c.Locals("user_type")
+		if userType == nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"success": false,
 				"message": "User tidak terautentikasi",
 			})
-			c.Abort()
-			return
 		}
 
 		if userType.(string) != "ADMIN" {
-			c.JSON(http.StatusForbidden, gin.H{
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 				"success": false,
 				"message": "Akses ditolak. Endpoint ini hanya dapat diakses oleh Admin.",
 			})
-			c.Abort()
-			return
 		}
 
 		// 2. Get permissions dari context
-		permissions, exists := c.Get("user_permissions")
-		if !exists {
-			c.JSON(http.StatusForbidden, gin.H{
+		permissions := c.Locals("user_permissions")
+		if permissions == nil {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 				"success": false,
 				"message": "Akses ditolak. Permission tidak ditemukan.",
 			})
-			c.Abort()
-			return
 		}
 
 		// 3. Cek apakah punya permission yang dibutuhkan
 		perms, ok := permissions.([]string)
 		if !ok {
-			c.JSON(http.StatusInternalServerError, gin.H{
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"success": false,
 				"message": "Error parsing permissions",
 			})
-			c.Abort()
-			return
 		}
 
 		// 4. Loop cek permission
-		hasPermission := false
 		for _, p := range perms {
 			if p == permission {
-				hasPermission = true
-				break
+				return c.Next()
 			}
 		}
 
 		// 5. Permission tidak ditemukan
-		if !hasPermission {
-			c.JSON(http.StatusForbidden, gin.H{
-				"success": false,
-				"message": fmt.Sprintf("Akses ditolak. Anda tidak memiliki permission: %s", permission),
-			})
-			c.Abort()
-			return
-		}
-
-		c.Next()
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"success": false,
+			"message": fmt.Sprintf("Akses ditolak. Anda tidak memiliki permission: %s", permission),
+		})
 	}
 }
 
 // RequireAnyPermission checks if user has at least one of the specified permissions
-func RequireAnyPermission(permissions ...string) gin.HandlerFunc {
-	return func(c *gin.Context) {
+func RequireAnyPermission(permissions ...string) fiber.Handler {
+	return func(c *fiber.Ctx) error {
 		// 1. Cek user type - harus ADMIN
-		userType, exists := c.Get("user_type")
-		if !exists || userType.(string) != "ADMIN" {
-			c.JSON(http.StatusForbidden, gin.H{
+		userType := c.Locals("user_type")
+		if userType == nil || userType.(string) != "ADMIN" {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 				"success": false,
 				"message": "Akses ditolak. Endpoint ini hanya dapat diakses oleh Admin.",
 			})
-			c.Abort()
-			return
 		}
 
 		// 2. Get permissions dari context
-		userPermissions, exists := c.Get("user_permissions")
-		if !exists {
-			c.JSON(http.StatusForbidden, gin.H{
+		userPermissions := c.Locals("user_permissions")
+		if userPermissions == nil {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 				"success": false,
 				"message": "Akses ditolak. Permission tidak ditemukan.",
 			})
-			c.Abort()
-			return
 		}
 
 		perms := userPermissions.([]string)
 
 		// 3. Cek apakah punya salah satu permission
-		hasPermission := false
 		for _, requiredPerm := range permissions {
 			for _, userPerm := range perms {
 				if userPerm == requiredPerm {
-					hasPermission = true
-					break
+					return c.Next()
 				}
 			}
-			if hasPermission {
-				break
-			}
 		}
 
-		// 4. Tidak punya permission apapun
-		if !hasPermission {
-			c.JSON(http.StatusForbidden, gin.H{
-				"success": false,
-				"message": fmt.Sprintf("Akses ditolak. Anda memerlukan salah satu permission: %v", permissions),
-			})
-			c.Abort()
-			return
-		}
-
-		c.Next()
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"success": false,
+			"message": fmt.Sprintf("Akses ditolak. Anda memerlukan salah satu permission: %v", permissions),
+		})
 	}
 }
 
 // AdminOnly is a convenience middleware that requires ADMIN user type
-func AdminOnly() gin.HandlerFunc {
+func AdminOnly() fiber.Handler {
 	return RequireUserType("ADMIN")
 }
 
 // BuyerOnly is a convenience middleware that requires BUYER user type
-func BuyerOnly() gin.HandlerFunc {
+func BuyerOnly() fiber.Handler {
 	return RequireUserType("BUYER")
 }
 
 // RequireAllPermissions memastikan user punya SEMUA permissions
-func RequireAllPermissions(requiredPermissions ...string) gin.HandlerFunc {
-	return func(c *gin.Context) {
+func RequireAllPermissions(requiredPermissions ...string) fiber.Handler {
+	return func(c *fiber.Ctx) error {
 		// 1. Cek user type - harus ADMIN
-		userType, exists := c.Get("user_type")
-		if !exists || userType.(string) != "ADMIN" {
-			c.JSON(http.StatusForbidden, gin.H{
+		userType := c.Locals("user_type")
+		if userType == nil || userType.(string) != "ADMIN" {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 				"success": false,
 				"message": "Akses ditolak. Endpoint ini hanya dapat diakses oleh Admin.",
 			})
-			c.Abort()
-			return
 		}
 
 		// 2. Get permissions dari context
-		permissions, exists := c.Get("user_permissions")
-		if !exists {
-			c.JSON(http.StatusForbidden, gin.H{
+		permissions := c.Locals("user_permissions")
+		if permissions == nil {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 				"success": false,
 				"message": "Akses ditolak. Permission tidak ditemukan.",
 			})
-			c.Abort()
-			return
 		}
 
 		perms := permissions.([]string)
@@ -270,7 +223,7 @@ func RequireAllPermissions(requiredPermissions ...string) gin.HandlerFunc {
 		}
 
 		// 3. Cek semua permission harus ada
-		missingPerms := []string{}
+		var missingPerms []string
 		for _, required := range requiredPermissions {
 			if !permMap[required] {
 				missingPerms = append(missingPerms, required)
@@ -278,41 +231,35 @@ func RequireAllPermissions(requiredPermissions ...string) gin.HandlerFunc {
 		}
 
 		if len(missingPerms) > 0 {
-			c.JSON(http.StatusForbidden, gin.H{
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 				"success": false,
 				"message": fmt.Sprintf("Akses ditolak. Permission yang kurang: %v", missingPerms),
 			})
-			c.Abort()
-			return
 		}
 
-		c.Next()
+		return c.Next()
 	}
 }
 
 // SuperAdminOnly memastikan hanya Super Admin yang bisa akses
-func SuperAdminOnly() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		userType, exists := c.Get("user_type")
-		if !exists || userType.(string) != "ADMIN" {
-			c.JSON(http.StatusForbidden, gin.H{
+func SuperAdminOnly() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		userType := c.Locals("user_type")
+		if userType == nil || userType.(string) != "ADMIN" {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 				"success": false,
 				"message": "Akses ditolak. Endpoint ini hanya dapat diakses oleh Admin.",
 			})
-			c.Abort()
-			return
 		}
 
-		roleKode, exists := c.Get("user_role_kode")
-		if !exists || roleKode.(string) != "SUPER_ADMIN" {
-			c.JSON(http.StatusForbidden, gin.H{
+		roleKode := c.Locals("user_role_kode")
+		if roleKode == nil || roleKode.(string) != "SUPER_ADMIN" {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 				"success": false,
 				"message": "Akses ditolak. Endpoint ini hanya dapat diakses oleh Super Admin.",
 			})
-			c.Abort()
-			return
 		}
 
-		c.Next()
+		return c.Next()
 	}
 }

@@ -7,7 +7,7 @@ import (
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 )
 
 type MetodePembayaranGroupController struct {
@@ -22,59 +22,52 @@ func NewMetodePembayaranGroupController(service services.MetodePembayaranGroupSe
 	}
 }
 
-func (c *MetodePembayaranGroupController) GetAll(ctx *gin.Context) {
-	items, err := c.service.GetAll(ctx.Request.Context())
+func (c *MetodePembayaranGroupController) GetAll(ctx *fiber.Ctx) error {
+	items, err := c.service.GetAll(ctx.UserContext())
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Data group metode pembayaran berhasil diambil", items)
+	return utils.SuccessResponse(ctx, "Data group metode pembayaran berhasil diambil", items)
 }
 
-func (c *MetodePembayaranGroupController) Update(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *MetodePembayaranGroupController) Update(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	var req models.UpdateMetodePembayaranGroupRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.Update(ctx.Request.Context(), id, &req)
+	result, err := c.service.Update(ctx.UserContext(), id, &req)
 	if err != nil {
 		if err.Error() == "Group metode pembayaran tidak ditemukan" {
-			utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-			return
+			return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 		}
 		if err.Error() == "Nama group sudah digunakan" {
-			utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-			return
+			return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 		}
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Group metode pembayaran berhasil diupdate", result)
+	return utils.SuccessResponse(ctx, "Group metode pembayaran berhasil diupdate", result)
 }
 
-func (c *MetodePembayaranGroupController) ReorderByDirection(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *MetodePembayaranGroupController) ReorderByDirection(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	var req models.ReorderByDirectionRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
 	idUUID, err := utils.ParseUUID(id)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", nil)
 	}
 
 	result, err := c.reorderService.Reorder(
-		ctx.Request.Context(),
+		ctx.UserContext(),
 		"metode_pembayaran_group",
 		idUUID,
 		req.Direction,
@@ -83,16 +76,15 @@ func (c *MetodePembayaranGroupController) ReorderByDirection(ctx *gin.Context) {
 	)
 
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Urutan berhasil diubah", gin.H{
-		"item": gin.H{
+	return 	utils.SuccessResponse(ctx, "Urutan berhasil diubah", fiber.Map{
+		"item": fiber.Map{
 			"id":     result.ItemID,
 			"urutan": result.ItemUrutan,
 		},
-		"swapped_with": gin.H{
+		"swapped_with": fiber.Map{
 			"id":     result.SwappedID,
 			"urutan": result.SwappedUrutan,
 		},

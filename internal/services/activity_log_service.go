@@ -6,16 +6,16 @@ import (
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
 
 type ActivityLogService interface {
 	// Logging
-	Log(ctx *gin.Context, action models.ActivityAction, modul, deskripsi string, options ...LogOption)
-	LogCreate(ctx *gin.Context, modul, entityType string, entityID uuid.UUID, deskripsi string, newData interface{})
-	LogUpdate(ctx *gin.Context, modul, entityType string, entityID uuid.UUID, deskripsi string, oldData, newData interface{})
-	LogDelete(ctx *gin.Context, modul, entityType string, entityID uuid.UUID, deskripsi string, oldData interface{})
+	Log(ctx *fiber.Ctx, action models.ActivityAction, modul, deskripsi string, options ...LogOption)
+	LogCreate(ctx *fiber.Ctx, modul, entityType string, entityID uuid.UUID, deskripsi string, newData interface{})
+	LogUpdate(ctx *fiber.Ctx, modul, entityType string, entityID uuid.UUID, deskripsi string, oldData, newData interface{})
+	LogDelete(ctx *fiber.Ctx, modul, entityType string, entityID uuid.UUID, deskripsi string, oldData interface{})
 
 	// Query
 	GetLogs(filter repositories.ActivityLogFilter) ([]models.ActivityLog, int64, error)
@@ -34,7 +34,7 @@ func NewActivityLogService(repo repositories.ActivityLogRepository) ActivityLogS
 }
 
 // Log creates a new activity log entry
-func (s *activityLogService) Log(ctx *gin.Context, action models.ActivityAction, modul, deskripsi string, options ...LogOption) {
+func (s *activityLogService) Log(ctx *fiber.Ctx, action models.ActivityAction, modul, deskripsi string, options ...LogOption) {
 	log := &models.ActivityLog{
 		Action:    action,
 		Modul:     modul,
@@ -42,23 +42,23 @@ func (s *activityLogService) Log(ctx *gin.Context, action models.ActivityAction,
 	}
 
 	// Extract user info from context
-	if userID, exists := ctx.Get("user_id"); exists {
+	if userID := ctx.Locals("user_id"); userID != nil {
 		if uid, err := uuid.Parse(userID.(string)); err == nil {
 			log.UserID = &uid
 		}
 	}
 
-	if userType, exists := ctx.Get("user_type"); exists {
+	if userType := ctx.Locals("user_type"); userType != nil {
 		log.UserType = userType.(string)
 	} else {
 		log.UserType = "SYSTEM"
 	}
 
 	// Extract IP and User-Agent
-	ipAddress := ctx.ClientIP()
+	ipAddress := ctx.IP()
 	log.IPAddress = &ipAddress
 
-	userAgent := ctx.GetHeader("User-Agent")
+	userAgent := ctx.Get("User-Agent")
 	log.UserAgent = &userAgent
 
 	// Apply options
@@ -71,7 +71,7 @@ func (s *activityLogService) Log(ctx *gin.Context, action models.ActivityAction,
 }
 
 // LogCreate logs a CREATE action
-func (s *activityLogService) LogCreate(ctx *gin.Context, modul, entityType string, entityID uuid.UUID, deskripsi string, newData interface{}) {
+func (s *activityLogService) LogCreate(ctx *fiber.Ctx, modul, entityType string, entityID uuid.UUID, deskripsi string, newData interface{}) {
 	newDataJSON, _ := json.Marshal(newData)
 
 	s.Log(ctx, models.ActionCreate, modul, deskripsi,
@@ -81,7 +81,7 @@ func (s *activityLogService) LogCreate(ctx *gin.Context, modul, entityType strin
 }
 
 // LogUpdate logs an UPDATE action
-func (s *activityLogService) LogUpdate(ctx *gin.Context, modul, entityType string, entityID uuid.UUID, deskripsi string, oldData, newData interface{}) {
+func (s *activityLogService) LogUpdate(ctx *fiber.Ctx, modul, entityType string, entityID uuid.UUID, deskripsi string, oldData, newData interface{}) {
 	oldDataJSON, _ := json.Marshal(oldData)
 	newDataJSON, _ := json.Marshal(newData)
 
@@ -93,7 +93,7 @@ func (s *activityLogService) LogUpdate(ctx *gin.Context, modul, entityType strin
 }
 
 // LogDelete logs a DELETE action
-func (s *activityLogService) LogDelete(ctx *gin.Context, modul, entityType string, entityID uuid.UUID, deskripsi string, oldData interface{}) {
+func (s *activityLogService) LogDelete(ctx *fiber.Ctx, modul, entityType string, entityID uuid.UUID, deskripsi string, oldData interface{}) {
 	oldDataJSON, _ := json.Marshal(oldData)
 
 	s.Log(ctx, models.ActionDelete, modul, deskripsi,

@@ -1,11 +1,9 @@
 package utils
 
 import (
-	"net/http"
-
 	"project-bulky-be/internal/models"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
 
@@ -24,32 +22,32 @@ type PaginatedResponse struct {
 	Summary interface{}           `json:"summary,omitempty"`
 }
 
-func SuccessResponse(c *gin.Context, message string, data interface{}) {
-	c.JSON(http.StatusOK, Response{
+func SuccessResponse(c *fiber.Ctx, message string, data interface{}) error {
+	return c.Status(fiber.StatusOK).JSON(Response{
 		Success: true,
 		Message: message,
 		Data:    data,
 	})
 }
 
-func ErrorResponse(c *gin.Context, statusCode int, message string, errors []models.FieldError) {
-	c.JSON(statusCode, Response{
+func ErrorResponse(c *fiber.Ctx, statusCode int, message string, errors []models.FieldError) error {
+	return c.Status(statusCode).JSON(Response{
 		Success: false,
 		Message: message,
 		Errors:  errors,
 	})
 }
 
-func CreatedResponse(c *gin.Context, message string, data interface{}) {
-	c.JSON(http.StatusCreated, Response{
+func CreatedResponse(c *fiber.Ctx, message string, data interface{}) error {
+	return c.Status(fiber.StatusCreated).JSON(Response{
 		Success: true,
 		Message: message,
 		Data:    data,
 	})
 }
 
-func PaginatedSuccessResponse(c *gin.Context, message string, data interface{}, meta models.PaginationMeta) {
-	c.JSON(http.StatusOK, PaginatedResponse{
+func PaginatedSuccessResponse(c *fiber.Ctx, message string, data interface{}, meta models.PaginationMeta) error {
+	return c.Status(fiber.StatusOK).JSON(PaginatedResponse{
 		Success: true,
 		Message: message,
 		Data:    data,
@@ -57,8 +55,8 @@ func PaginatedSuccessResponse(c *gin.Context, message string, data interface{}, 
 	})
 }
 
-func PaginatedSuccessResponseWithSummary(c *gin.Context, message string, data interface{}, meta models.PaginationMeta, summary interface{}) {
-	c.JSON(http.StatusOK, PaginatedResponse{
+func PaginatedSuccessResponseWithSummary(c *fiber.Ctx, message string, data interface{}, meta models.PaginationMeta, summary interface{}) error {
+	return c.Status(fiber.StatusOK).JSON(PaginatedResponse{
 		Success: true,
 		Message: message,
 		Data:    data,
@@ -68,8 +66,8 @@ func PaginatedSuccessResponseWithSummary(c *gin.Context, message string, data in
 }
 
 // SimpleErrorResponse for simple error messages (string)
-func SimpleErrorResponse(c *gin.Context, statusCode int, message string, errorDetail string) {
-	c.JSON(statusCode, gin.H{
+func SimpleErrorResponse(c *fiber.Ctx, statusCode int, message string, errorDetail string) error {
+	return c.Status(statusCode).JSON(fiber.Map{
 		"success": false,
 		"message": message,
 		"error":   errorDetail,
@@ -77,8 +75,8 @@ func SimpleErrorResponse(c *gin.Context, statusCode int, message string, errorDe
 }
 
 // SimpleSuccessResponse for simple success responses with custom status code
-func SimpleSuccessResponse(c *gin.Context, statusCode int, message string, data interface{}) {
-	c.JSON(statusCode, gin.H{
+func SimpleSuccessResponse(c *fiber.Ctx, statusCode int, message string, data interface{}) error {
+	return c.Status(statusCode).JSON(fiber.Map{
 		"success": true,
 		"message": message,
 		"data":    data,

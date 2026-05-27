@@ -7,7 +7,7 @@ import (
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 )
 
 type AuthController struct {
@@ -18,104 +18,93 @@ func NewAuthController(service services.AuthService) *AuthController {
 	return &AuthController{service: service}
 }
 
-func (c *AuthController) Login(ctx *gin.Context) {
+func (c *AuthController) Login(ctx *fiber.Ctx) error {
 	var req models.LoginRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	ipAddress := ctx.ClientIP()
-	userAgent := ctx.GetHeader("User-Agent")
+	ipAddress := ctx.IP()
+	userAgent := ctx.Get("User-Agent")
 
-	result, err := c.service.Login(ctx.Request.Context(), &req, ipAddress, userAgent)
+	result, err := c.service.Login(ctx.UserContext(), &req, ipAddress, userAgent)
 	if err != nil {
 		status := http.StatusUnauthorized
 		if err.Error() == "akun Anda telah dinonaktifkan. Hubungi administrator" {
 			status = http.StatusForbidden
 		}
-		utils.ErrorResponse(ctx, status, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Login berhasil", result)
+	return utils.SuccessResponse(ctx, "Login berhasil", result)
 }
 
-func (c *AuthController) RefreshToken(ctx *gin.Context) {
+func (c *AuthController) RefreshToken(ctx *fiber.Ctx) error {
 	var req models.RefreshTokenRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.RefreshToken(ctx.Request.Context(), req.RefreshToken)
+	result, err := c.service.RefreshToken(ctx.UserContext(), req.RefreshToken)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusUnauthorized, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusUnauthorized, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Token berhasil diperbarui", result)
+	return utils.SuccessResponse(ctx, "Token berhasil diperbarui", result)
 }
 
-func (c *AuthController) Logout(ctx *gin.Context) {
+func (c *AuthController) Logout(ctx *fiber.Ctx) error {
 	var req models.RefreshTokenRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	c.service.Logout(ctx.Request.Context(), req.RefreshToken)
-	utils.SuccessResponse(ctx, "Logout berhasil", nil)
+	c.service.Logout(ctx.UserContext(), req.RefreshToken)
+	return utils.SuccessResponse(ctx, "Logout berhasil", nil)
 }
 
+func (c *AuthController) Me(ctx *fiber.Ctx) error {
+	adminID := localsString(ctx, "admin_id")
 
-func (c *AuthController) Me(ctx *gin.Context) {
-	adminID := ctx.GetString("admin_id")
-
-	result, err := c.service.GetProfile(ctx.Request.Context(), adminID)
+	result, err := c.service.GetProfile(ctx.UserContext(), adminID)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Profil berhasil diambil", result)
+	return utils.SuccessResponse(ctx, "Profil berhasil diambil", result)
 }
 
-func (c *AuthController) UpdateProfile(ctx *gin.Context) {
-	adminID := ctx.GetString("admin_id")
+func (c *AuthController) UpdateProfile(ctx *fiber.Ctx) error {
+	adminID := localsString(ctx, "admin_id")
 
 	var req models.UpdateProfileRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.UpdateProfile(ctx.Request.Context(), adminID, &req)
+	result, err := c.service.UpdateProfile(ctx.UserContext(), adminID, &req)
 	if err != nil {
 		status := http.StatusBadRequest
 		if err.Error() == "email sudah digunakan oleh admin lain" {
 			status = http.StatusConflict
 		}
-		utils.ErrorResponse(ctx, status, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Profil berhasil diupdate", result)
+	return utils.SuccessResponse(ctx, "Profil berhasil diupdate", result)
 }
 
-func (c *AuthController) ChangePassword(ctx *gin.Context) {
-	adminID := ctx.GetString("admin_id")
+func (c *AuthController) ChangePassword(ctx *fiber.Ctx) error {
+	adminID := localsString(ctx, "admin_id")
 
 	var req models.ChangePasswordRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	if err := c.service.ChangePassword(ctx.Request.Context(), adminID, &req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
+	if err := c.service.ChangePassword(ctx.UserContext(), adminID, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Password berhasil diubah", nil)
+	return utils.SuccessResponse(ctx, "Password berhasil diubah", nil)
 }

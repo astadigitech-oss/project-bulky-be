@@ -7,7 +7,7 @@ import (
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
-	"github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
 )
 
 type AdminController struct {
@@ -18,64 +18,58 @@ func NewAdminController(service services.AdminService) *AdminController {
 	return &AdminController{service: service}
 }
 
-func (c *AdminController) Create(ctx *gin.Context) {
+func (c *AdminController) Create(ctx *fiber.Ctx) error {
 	var req models.CreateAdminRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.Create(ctx.Request.Context(), &req)
+	result, err := c.service.Create(ctx.UserContext(), &req)
 	if err != nil {
 		status := http.StatusBadRequest
 		if err.Error() == "email sudah terdaftar" {
 			status = http.StatusConflict
 		}
-		utils.ErrorResponse(ctx, status, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
-	utils.CreatedResponse(ctx, "Admin berhasil dibuat", result)
+	return utils.CreatedResponse(ctx, "Admin berhasil dibuat", result)
 }
 
-func (c *AdminController) FindAll(ctx *gin.Context) {
+func (c *AdminController) FindAll(ctx *fiber.Ctx) error {
 	var params models.AdminFilterRequest
-	if err := ctx.ShouldBindQuery(&params); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
-		return
+	if err := ctx.QueryParser(&params); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
 	}
 
-	items, meta, err := c.service.FindAll(ctx.Request.Context(), &params)
+	items, meta, err := c.service.FindAll(ctx.UserContext(), &params)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	utils.PaginatedSuccessResponse(ctx, "Data admin berhasil diambil", items, *meta)
+	return utils.PaginatedSuccessResponse(ctx, "Data admin berhasil diambil", items, *meta)
 }
 
-func (c *AdminController) FindByID(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *AdminController) FindByID(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
-	result, err := c.service.FindByID(ctx.Request.Context(), id)
+	result, err := c.service.FindByID(ctx.UserContext(), id)
 	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Detail admin berhasil diambil", result)
+	return utils.SuccessResponse(ctx, "Detail admin berhasil diambil", result)
 }
 
-func (c *AdminController) Update(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *AdminController) Update(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	var req models.UpdateAdminRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.Update(ctx.Request.Context(), id, &req)
+	result, err := c.service.Update(ctx.UserContext(), id, &req)
 	if err != nil {
 		status := http.StatusBadRequest
 		if err.Error() == "admin tidak ditemukan" {
@@ -83,63 +77,58 @@ func (c *AdminController) Update(ctx *gin.Context) {
 		} else if err.Error() == "email sudah digunakan oleh admin lain" {
 			status = http.StatusConflict
 		}
-		utils.ErrorResponse(ctx, status, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Admin berhasil diupdate", result)
+	return utils.SuccessResponse(ctx, "Admin berhasil diupdate", result)
 }
 
-func (c *AdminController) Delete(ctx *gin.Context) {
-	id := ctx.Param("id")
-	currentAdminID := ctx.GetString("admin_id")
+func (c *AdminController) Delete(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
+	currentAdminID := localsString(ctx, "admin_id")
 
-	if err := c.service.Delete(ctx.Request.Context(), id, currentAdminID); err != nil {
+	if err := c.service.Delete(ctx.UserContext(), id, currentAdminID); err != nil {
 		status := http.StatusBadRequest
 		if err.Error() == "admin tidak ditemukan" {
 			status = http.StatusNotFound
 		}
-		utils.ErrorResponse(ctx, status, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Admin berhasil dihapus", nil)
+	return utils.SuccessResponse(ctx, "Admin berhasil dihapus", nil)
 }
 
-func (c *AdminController) ToggleStatus(ctx *gin.Context) {
-	id := ctx.Param("id")
-	currentAdminID := ctx.GetString("admin_id")
+func (c *AdminController) ToggleStatus(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
+	currentAdminID := localsString(ctx, "admin_id")
 
-	result, err := c.service.ToggleStatus(ctx.Request.Context(), id, currentAdminID)
+	result, err := c.service.ToggleStatus(ctx.UserContext(), id, currentAdminID)
 	if err != nil {
 		status := http.StatusBadRequest
 		if err.Error() == "admin tidak ditemukan" {
 			status = http.StatusNotFound
 		}
-		utils.ErrorResponse(ctx, status, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Status admin berhasil diubah", result)
+	return utils.SuccessResponse(ctx, "Status admin berhasil diubah", result)
 }
 
-func (c *AdminController) ResetPassword(ctx *gin.Context) {
-	id := ctx.Param("id")
+func (c *AdminController) ResetPassword(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
 
 	var req models.ResetPasswordRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-		return
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	if err := c.service.ResetPassword(ctx.Request.Context(), id, &req); err != nil {
+	if err := c.service.ResetPassword(ctx.UserContext(), id, &req); err != nil {
 		status := http.StatusBadRequest
 		if err.Error() == "admin tidak ditemukan" {
 			status = http.StatusNotFound
 		}
-		utils.ErrorResponse(ctx, status, err.Error(), nil)
-		return
+		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
-	utils.SuccessResponse(ctx, "Password admin berhasil direset", nil)
+	return utils.SuccessResponse(ctx, "Password admin berhasil direset", nil)
 }
