@@ -219,9 +219,8 @@ func (s *kondisiPaketService) GetAllForDropdown(ctx context.Context) ([]map[stri
 	result := make([]map[string]interface{}, len(pakets))
 	for i, p := range pakets {
 		result[i] = map[string]interface{}{
-			"id":      p.ID.String(),
-			"nama_id": p.NamaID,
-			"nama_en": p.NamaEN,
+			"id":   p.ID.String(),
+			"nama": p.NamaID,
 		}
 	}
 	return result, nil

@@ -220,9 +220,8 @@ func (s *kondisiProdukService) GetAllForDropdown(ctx context.Context) ([]map[str
 	result := make([]map[string]interface{}, len(kondisis))
 	for i, k := range kondisis {
 		result[i] = map[string]interface{}{
-			"id":      k.ID.String(),
-			"nama_id": k.NamaID,
-			"nama_en": k.NamaEN,
+			"id":   k.ID.String(),
+			"nama": k.NamaID,
 		}
 	}
 	return result, nil

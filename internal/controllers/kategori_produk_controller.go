@@ -265,7 +265,7 @@ func (c *KategoriProdukController) Dropdown(ctx *fiber.Ctx) error {
 	for i, k := range kategoriList {
 		response[i] = map[string]interface{}{
 			"id":   k.ID.String(),
-			"nama": k.GetNama(),
+			"nama": k.NamaID,
 		}
 	}
 
