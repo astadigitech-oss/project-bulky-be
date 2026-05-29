@@ -13,12 +13,14 @@ import (
 type KondisiPaketController struct {
 	service        services.KondisiPaketService
 	reorderService *services.ReorderService
+	activityLog    services.ActivityLogService
 }
 
-func NewKondisiPaketController(service services.KondisiPaketService, reorderService *services.ReorderService) *KondisiPaketController {
+func NewKondisiPaketController(service services.KondisiPaketService, reorderService *services.ReorderService, activityLog services.ActivityLogService) *KondisiPaketController {
 	return &KondisiPaketController{
 		service:        service,
 		reorderService: reorderService,
+		activityLog:    activityLog,
 	}
 }
 
@@ -33,6 +35,7 @@ func (c *KondisiPaketController) Create(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusConflict, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "kondisi_paket", "Kondisi paket berhasil dibuat")
 	return utils.CreatedResponse(ctx, "Kondisi paket berhasil dibuat", result)
 }
 
@@ -85,6 +88,7 @@ func (c *KondisiPaketController) Update(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "kondisi_paket", "Kondisi paket berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Kondisi paket berhasil diupdate", result)
 }
 
@@ -99,6 +103,7 @@ func (c *KondisiPaketController) Delete(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "kondisi_paket", "Kondisi paket berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Kondisi paket berhasil dihapus", nil)
 }
 
@@ -110,6 +115,7 @@ func (c *KondisiPaketController) ToggleStatus(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "kondisi_paket", "Status kondisi paket berhasil diubah")
 	return utils.SuccessResponse(ctx, "Status kondisi paket berhasil diubah", result)
 }
 

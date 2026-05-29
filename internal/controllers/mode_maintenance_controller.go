@@ -11,11 +11,12 @@ import (
 )
 
 type ModeMaintenanceController struct {
-	service services.ModeMaintenanceService
+	service     services.ModeMaintenanceService
+	activityLog services.ActivityLogService
 }
 
-func NewModeMaintenanceController(service services.ModeMaintenanceService) *ModeMaintenanceController {
-	return &ModeMaintenanceController{service: service}
+func NewModeMaintenanceController(service services.ModeMaintenanceService, activityLog services.ActivityLogService) *ModeMaintenanceController {
+	return &ModeMaintenanceController{service: service, activityLog: activityLog}
 }
 
 // CreateMaintenance creates maintenance mode configuration
@@ -40,6 +41,7 @@ func (c *ModeMaintenanceController) CreateMaintenance(ctx *fiber.Ctx) error {
 		UpdatedAt:       maintenance.UpdatedAt,
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "mode_maintenance", "Konfigurasi maintenance berhasil dibuat")
 	return utils.CreatedResponse(ctx, "Konfigurasi maintenance berhasil dibuat", response)
 }
 
@@ -71,6 +73,7 @@ func (c *ModeMaintenanceController) UpdateMaintenance(ctx *fiber.Ctx) error {
 		UpdatedAt:       maintenance.UpdatedAt,
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "mode_maintenance", "Konfigurasi maintenance berhasil diperbarui")
 	return utils.SuccessResponse(ctx, "Konfigurasi maintenance berhasil diperbarui", response)
 }
 
@@ -87,6 +90,7 @@ func (c *ModeMaintenanceController) DeleteMaintenance(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, status, "Gagal menghapus konfigurasi maintenance", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "mode_maintenance", "Konfigurasi maintenance berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Konfigurasi maintenance berhasil dihapus", nil)
 }
 
@@ -162,6 +166,7 @@ func (c *ModeMaintenanceController) ActivateMaintenance(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, status, "Gagal mengaktifkan maintenance", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "mode_maintenance", "Maintenance berhasil diaktifkan")
 	return utils.SuccessResponse(ctx, "Maintenance berhasil diaktifkan", nil)
 }
 
@@ -178,5 +183,6 @@ func (c *ModeMaintenanceController) DeactivateMaintenance(ctx *fiber.Ctx) error 
 		return utils.SimpleErrorResponse(ctx, status, "Gagal menonaktifkan maintenance", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "mode_maintenance", "Maintenance berhasil dinonaktifkan")
 	return utils.SuccessResponse(ctx, "Maintenance berhasil dinonaktifkan", nil)
 }

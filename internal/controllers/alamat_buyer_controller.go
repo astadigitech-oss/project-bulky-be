@@ -11,11 +11,12 @@ import (
 )
 
 type AlamatBuyerController struct {
-	service services.AlamatBuyerService
+	service     services.AlamatBuyerService
+	activityLog services.ActivityLogService
 }
 
-func NewAlamatBuyerController(service services.AlamatBuyerService) *AlamatBuyerController {
-	return &AlamatBuyerController{service: service}
+func NewAlamatBuyerController(service services.AlamatBuyerService, activityLog services.ActivityLogService) *AlamatBuyerController {
+	return &AlamatBuyerController{service: service, activityLog: activityLog}
 }
 
 func (c *AlamatBuyerController) Create(ctx *fiber.Ctx) error {
@@ -29,6 +30,7 @@ func (c *AlamatBuyerController) Create(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "alamat_buyer", "Alamat berhasil ditambahkan")
 	return utils.CreatedResponse(ctx, "Alamat berhasil ditambahkan", result)
 }
 
@@ -67,6 +69,7 @@ func (c *AlamatBuyerController) Update(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "alamat_buyer", "Alamat berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Alamat berhasil diupdate", result)
 }
 
@@ -79,6 +82,7 @@ func (c *AlamatBuyerController) Delete(ctx *fiber.Ctx) error {
 		}
 		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
+	c.activityLog.Log(ctx, models.ActionDelete, "alamat_buyer", "Alamat berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Alamat berhasil dihapus", nil)
 }
 

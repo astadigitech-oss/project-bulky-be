@@ -11,11 +11,12 @@ import (
 )
 
 type DisclaimerController struct {
-	service services.DisclaimerService
+	service     services.DisclaimerService
+	activityLog services.ActivityLogService
 }
 
-func NewDisclaimerController(service services.DisclaimerService) *DisclaimerController {
-	return &DisclaimerController{service: service}
+func NewDisclaimerController(service services.DisclaimerService, activityLog services.ActivityLogService) *DisclaimerController {
+	return &DisclaimerController{service: service, activityLog: activityLog}
 }
 
 func (c *DisclaimerController) Create(ctx *fiber.Ctx) error {
@@ -29,6 +30,7 @@ func (c *DisclaimerController) Create(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "disclaimer", "Disclaimer berhasil dibuat")
 	return utils.CreatedResponse(ctx, "Disclaimer berhasil dibuat", result)
 }
 
@@ -70,6 +72,7 @@ func (c *DisclaimerController) Update(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "disclaimer", "Disclaimer berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Disclaimer berhasil diupdate", result)
 }
 
@@ -84,6 +87,7 @@ func (c *DisclaimerController) Delete(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "disclaimer", "Disclaimer berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Disclaimer berhasil dihapus", nil)
 }
 
@@ -95,6 +99,7 @@ func (c *DisclaimerController) SetActive(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "disclaimer", "Disclaimer berhasil diaktifkan")
 	return utils.SuccessResponse(ctx, "Disclaimer berhasil diaktifkan", result)
 }
 

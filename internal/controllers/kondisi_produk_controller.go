@@ -13,12 +13,14 @@ import (
 type KondisiProdukController struct {
 	service        services.KondisiProdukService
 	reorderService *services.ReorderService
+	activityLog    services.ActivityLogService
 }
 
-func NewKondisiProdukController(service services.KondisiProdukService, reorderService *services.ReorderService) *KondisiProdukController {
+func NewKondisiProdukController(service services.KondisiProdukService, reorderService *services.ReorderService, activityLog services.ActivityLogService) *KondisiProdukController {
 	return &KondisiProdukController{
 		service:        service,
 		reorderService: reorderService,
+		activityLog:    activityLog,
 	}
 }
 
@@ -33,6 +35,7 @@ func (c *KondisiProdukController) Create(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusConflict, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "kondisi_produk", "Kondisi produk berhasil dibuat")
 	return utils.CreatedResponse(ctx, "Kondisi produk berhasil dibuat", result)
 }
 
@@ -85,6 +88,7 @@ func (c *KondisiProdukController) Update(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "kondisi_produk", "Kondisi produk berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Kondisi produk berhasil diupdate", result)
 }
 
@@ -99,6 +103,7 @@ func (c *KondisiProdukController) Delete(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "kondisi_produk", "Kondisi produk berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Kondisi produk berhasil dihapus", nil)
 }
 
@@ -110,6 +115,7 @@ func (c *KondisiProdukController) ToggleStatus(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "kondisi_produk", "Status kondisi produk berhasil diubah")
 	return utils.SuccessResponse(ctx, "Status kondisi produk berhasil diubah", result)
 }
 

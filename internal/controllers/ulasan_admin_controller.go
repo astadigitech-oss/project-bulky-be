@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"project-bulky-be/internal/dto"
+	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
@@ -15,11 +16,13 @@ import (
 
 type UlasanAdminController struct {
 	ulasanService services.UlasanAdminService
+	activityLog   services.ActivityLogService
 }
 
-func NewUlasanAdminController(ulasanService services.UlasanAdminService) *UlasanAdminController {
+func NewUlasanAdminController(ulasanService services.UlasanAdminService, activityLog services.ActivityLogService) *UlasanAdminController {
 	return &UlasanAdminController{
 		ulasanService: ulasanService,
+		activityLog:   activityLog,
 	}
 }
 
@@ -100,6 +103,7 @@ func (c *UlasanAdminController) Approve(ctx *fiber.Ctx) error {
 		response.ApprovedBy = &ulasan.ApprovedBy.ID
 	}
 
+	c.activityLog.Log(ctx, models.ActionApprove, "ulasan", "Ulasan berhasil di-approve")
 	return utils.SuccessResponse(ctx, "Ulasan berhasil di-approve", response)
 }
 
@@ -134,6 +138,7 @@ func (c *UlasanAdminController) Reject(ctx *fiber.Ctx) error {
 		ApprovedBy: nil,
 	}
 
+	c.activityLog.Log(ctx, models.ActionReject, "ulasan", "Ulasan berhasil di-reject")
 	return utils.SuccessResponse(ctx, "Ulasan berhasil di-reject", response)
 }
 
@@ -158,6 +163,7 @@ func (c *UlasanAdminController) BulkApprove(ctx *fiber.Ctx) error {
 	}
 
 	message := fmt.Sprintf("%d ulasan berhasil di-approve", result.ApprovedCount)
+	c.activityLog.Log(ctx, models.ActionApprove, "ulasan", message)
 	return utils.SuccessResponse(ctx, message, result)
 }
 
@@ -176,5 +182,6 @@ func (c *UlasanAdminController) Delete(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menghapus ulasan", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "ulasan", "Ulasan berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Ulasan berhasil dihapus", nil)
 }

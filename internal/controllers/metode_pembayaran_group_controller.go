@@ -13,12 +13,14 @@ import (
 type MetodePembayaranGroupController struct {
 	service        services.MetodePembayaranGroupService
 	reorderService *services.ReorderService
+	activityLog    services.ActivityLogService
 }
 
-func NewMetodePembayaranGroupController(service services.MetodePembayaranGroupService, reorderService *services.ReorderService) *MetodePembayaranGroupController {
+func NewMetodePembayaranGroupController(service services.MetodePembayaranGroupService, reorderService *services.ReorderService, activityLog services.ActivityLogService) *MetodePembayaranGroupController {
 	return &MetodePembayaranGroupController{
 		service:        service,
 		reorderService: reorderService,
+		activityLog:    activityLog,
 	}
 }
 
@@ -50,6 +52,7 @@ func (c *MetodePembayaranGroupController) Update(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "metode_pembayaran_group", "Group metode pembayaran berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Group metode pembayaran berhasil diupdate", result)
 }
 

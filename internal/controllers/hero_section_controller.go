@@ -13,14 +13,16 @@ import (
 )
 
 type HeroSectionController struct {
-	service services.HeroSectionService
-	cfg     *config.Config
+	service     services.HeroSectionService
+	cfg         *config.Config
+	activityLog services.ActivityLogService
 }
 
-func NewHeroSectionController(service services.HeroSectionService, cfg *config.Config) *HeroSectionController {
+func NewHeroSectionController(service services.HeroSectionService, cfg *config.Config, activityLog services.ActivityLogService) *HeroSectionController {
 	return &HeroSectionController{
-		service: service,
-		cfg:     cfg,
+		service:     service,
+		cfg:         cfg,
+		activityLog: activityLog,
 	}
 }
 
@@ -99,6 +101,7 @@ func (c *HeroSectionController) Create(ctx *fiber.Ctx) error {
 			return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 		}
 
+		c.activityLog.Log(ctx, models.ActionCreate, "hero_section", "Hero section berhasil dibuat")
 		return utils.CreatedResponse(ctx, "Hero section berhasil dibuat", result)
 	}
 
@@ -112,6 +115,7 @@ func (c *HeroSectionController) Create(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "hero_section", "Hero section berhasil dibuat")
 	return utils.CreatedResponse(ctx, "Hero section berhasil dibuat", result)
 }
 
@@ -229,6 +233,7 @@ func (c *HeroSectionController) Update(ctx *fiber.Ctx) error {
 			utils.DeleteFile(*oldGambarEN, c.cfg)
 		}
 
+		c.activityLog.Log(ctx, models.ActionUpdate, "hero_section", "Hero section berhasil diupdate")
 		return utils.SuccessResponse(ctx, "Hero section berhasil diupdate", result)
 	}
 
@@ -242,6 +247,7 @@ func (c *HeroSectionController) Update(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "hero_section", "Hero section berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Hero section berhasil diupdate", result)
 }
 
@@ -256,6 +262,7 @@ func (c *HeroSectionController) Delete(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "hero_section", "Hero section berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Hero section berhasil dihapus", nil)
 }
 
@@ -267,6 +274,7 @@ func (c *HeroSectionController) ToggleStatus(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "hero_section", "Status hero section berhasil diubah")
 	return utils.SuccessResponse(ctx, "Status default hero section berhasil diubah", result)
 }
 

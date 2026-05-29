@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"project-bulky-be/internal/dto"
+	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
@@ -16,12 +17,14 @@ import (
 type KategoriVideoController struct {
 	service        services.KategoriVideoService
 	reorderService *services.ReorderService
+	activityLog    services.ActivityLogService
 }
 
-func NewKategoriVideoController(service services.KategoriVideoService, reorderService *services.ReorderService) *KategoriVideoController {
+func NewKategoriVideoController(service services.KategoriVideoService, reorderService *services.ReorderService, activityLog services.ActivityLogService) *KategoriVideoController {
 	return &KategoriVideoController{
 		service:        service,
 		reorderService: reorderService,
+		activityLog:    activityLog,
 	}
 }
 
@@ -36,6 +39,7 @@ func (c *KategoriVideoController) Create(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat kategori", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "kategori_video", "Kategori video berhasil dibuat")
 	return utils.SimpleSuccessResponse(ctx, http.StatusCreated, "Kategori berhasil dibuat", kategori)
 }
 
@@ -58,6 +62,7 @@ func (c *KategoriVideoController) Update(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengupdate kategori", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "kategori_video", "Kategori video berhasil diupdate")
 	return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Kategori berhasil diupdate", kategori)
 }
 
@@ -74,6 +79,7 @@ func (c *KategoriVideoController) Delete(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menghapus kategori", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "kategori_video", "Kategori video berhasil dihapus")
 	return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Kategori berhasil dihapus", nil)
 }
 
@@ -118,6 +124,7 @@ func (c *KategoriVideoController) ToggleStatus(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengubah status", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "kategori_video", "Status kategori video berhasil diubah")
 	return utils.SuccessResponse(ctx, "Status kategori berhasil diubah", nil)
 }
 

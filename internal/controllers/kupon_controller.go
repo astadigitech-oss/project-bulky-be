@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"project-bulky-be/internal/dto"
+	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
@@ -15,11 +16,13 @@ import (
 
 type KuponController struct {
 	kuponService services.KuponService
+	activityLog  services.ActivityLogService
 }
 
-func NewKuponController(kuponService services.KuponService) *KuponController {
+func NewKuponController(kuponService services.KuponService, activityLog services.ActivityLogService) *KuponController {
 	return &KuponController{
 		kuponService: kuponService,
+		activityLog:  activityLog,
 	}
 }
 
@@ -84,6 +87,7 @@ func (c *KuponController) Create(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Gagal membuat kupon", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "kupon", "Kupon berhasil dibuat")
 	return ctx.Status(http.StatusCreated).JSON(fiber.Map{
 		"success": true,
 		"message": "Kupon berhasil dibuat",
@@ -124,6 +128,7 @@ func (c *KuponController) Update(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Gagal mengupdate kupon", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "kupon", "Kupon berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Kupon berhasil diupdate", kupon)
 }
 
@@ -143,6 +148,7 @@ func (c *KuponController) Delete(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menghapus kupon", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "kupon", "Kupon berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Kupon berhasil dihapus", nil)
 }
 
@@ -162,6 +168,7 @@ func (c *KuponController) ToggleStatus(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengubah status kupon", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "kupon", "Status kupon berhasil diubah")
 	return utils.SuccessResponse(ctx, "Status kupon berhasil diubah", result)
 }
 

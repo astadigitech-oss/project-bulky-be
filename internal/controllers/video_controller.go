@@ -21,17 +21,20 @@ type VideoController struct {
 	videoService         services.VideoService
 	kategoriVideoService services.KategoriVideoService
 	cfg                  *config.Config
+	activityLog          services.ActivityLogService
 }
 
 func NewVideoController(
 	videoService services.VideoService,
 	kategoriVideoService services.KategoriVideoService,
 	cfg *config.Config,
+	activityLog services.ActivityLogService,
 ) *VideoController {
 	return &VideoController{
 		videoService:         videoService,
 		kategoriVideoService: kategoriVideoService,
 		cfg:                  cfg,
+		activityLog:          activityLog,
 	}
 }
 
@@ -170,6 +173,7 @@ func (c *VideoController) Create(ctx *fiber.Ctx) error {
 			return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat video", err.Error())
 		}
 
+		c.activityLog.Log(ctx, models.ActionCreate, "video", "Video berhasil dibuat")
 		return utils.SimpleSuccessResponse(ctx, http.StatusCreated, "Video berhasil dibuat", video)
 	}
 
@@ -183,6 +187,7 @@ func (c *VideoController) Create(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat video", utils.GetValidationErrorMessage(err))
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "video", "Video berhasil dibuat")
 	return utils.SimpleSuccessResponse(ctx, http.StatusCreated, "Video berhasil dibuat", video)
 }
 
@@ -337,6 +342,7 @@ func (c *VideoController) Update(ctx *fiber.Ctx) error {
 			utils.DeleteFile(*oldThumbnail, c.cfg)
 		}
 
+		c.activityLog.Log(ctx, models.ActionUpdate, "video", "Video berhasil diupdate")
 		return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Video berhasil diupdate", video)
 	}
 
@@ -353,6 +359,7 @@ func (c *VideoController) Update(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengupdate video", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "video", "Video berhasil diupdate")
 	return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Video berhasil diupdate", video)
 }
 
@@ -369,6 +376,7 @@ func (c *VideoController) Delete(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menghapus video", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "video", "Video berhasil dihapus")
 	return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Video berhasil dihapus", nil)
 }
 
@@ -480,6 +488,7 @@ func (c *VideoController) ToggleStatus(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengubah status", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "video", "Status video berhasil diubah")
 	return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Status video berhasil diubah", nil)
 }
 

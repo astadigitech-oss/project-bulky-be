@@ -13,14 +13,16 @@ import (
 )
 
 type KategoriProdukController struct {
-	service services.KategoriProdukService
-	cfg     *config.Config
+	service     services.KategoriProdukService
+	cfg         *config.Config
+	activityLog services.ActivityLogService
 }
 
-func NewKategoriProdukController(service services.KategoriProdukService, cfg *config.Config) *KategoriProdukController {
+func NewKategoriProdukController(service services.KategoriProdukService, cfg *config.Config, activityLog services.ActivityLogService) *KategoriProdukController {
 	return &KategoriProdukController{
-		service: service,
-		cfg:     cfg,
+		service:     service,
+		cfg:         cfg,
+		activityLog: activityLog,
 	}
 }
 
@@ -91,6 +93,7 @@ func (c *KategoriProdukController) Create(ctx *fiber.Ctx) error {
 		if err != nil {
 			return utils.ErrorResponse(ctx, http.StatusConflict, err.Error(), nil)
 		}
+		c.activityLog.Log(ctx, models.ActionCreate, "kategori_produk", "Kategori produk berhasil dibuat")
 		return utils.CreatedResponse(ctx, "Kategori produk berhasil dibuat", result)
 	}
 
@@ -104,6 +107,7 @@ func (c *KategoriProdukController) Create(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusConflict, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "kategori_produk", "Kategori produk berhasil dibuat")
 	return utils.CreatedResponse(ctx, "Kategori produk berhasil dibuat", result)
 }
 
@@ -213,6 +217,7 @@ func (c *KategoriProdukController) Update(ctx *fiber.Ctx) error {
 		if err != nil {
 			return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 		}
+		c.activityLog.Log(ctx, models.ActionUpdate, "kategori_produk", "Kategori produk berhasil diupdate")
 		return utils.SuccessResponse(ctx, "Kategori produk berhasil diupdate", result)
 	}
 
@@ -226,6 +231,7 @@ func (c *KategoriProdukController) Update(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "kategori_produk", "Kategori produk berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Kategori produk berhasil diupdate", result)
 }
 
@@ -240,6 +246,7 @@ func (c *KategoriProdukController) Delete(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "kategori_produk", "Kategori produk berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Kategori produk berhasil dihapus", nil)
 }
 
@@ -251,6 +258,7 @@ func (c *KategoriProdukController) ToggleStatus(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "kategori_produk", "Status kategori produk berhasil diubah")
 	return utils.SuccessResponse(ctx, "Status kategori berhasil diubah", result)
 }
 

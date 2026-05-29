@@ -11,11 +11,12 @@ import (
 )
 
 type PPNController struct {
-	service services.PPNService
+	service     services.PPNService
+	activityLog services.ActivityLogService
 }
 
-func NewPPNController(service services.PPNService) *PPNController {
-	return &PPNController{service: service}
+func NewPPNController(service services.PPNService, activityLog services.ActivityLogService) *PPNController {
+	return &PPNController{service: service, activityLog: activityLog}
 }
 
 func (c *PPNController) GetAll(ctx *fiber.Ctx) error {
@@ -57,6 +58,7 @@ func (c *PPNController) Create(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "ppn", "PPN berhasil dibuat")
 	return utils.CreatedResponse(ctx, "PPN berhasil dibuat", result)
 }
 
@@ -73,6 +75,7 @@ func (c *PPNController) Update(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "ppn", "PPN berhasil diupdate")
 	return utils.SuccessResponse(ctx, "PPN berhasil diupdate", result)
 }
 
@@ -89,6 +92,7 @@ func (c *PPNController) Delete(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "ppn", "PPN berhasil dihapus")
 	return utils.SuccessResponse(ctx, "PPN berhasil dihapus", nil)
 }
 
@@ -103,5 +107,6 @@ func (c *PPNController) SetActive(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "ppn", "PPN berhasil diaktifkan")
 	return utils.SuccessResponse(ctx, "PPN berhasil diaktifkan", result)
 }
