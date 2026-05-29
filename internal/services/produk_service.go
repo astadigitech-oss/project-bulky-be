@@ -703,10 +703,7 @@ func (s *produkService) toDetailResponse(p *models.Produk) *models.ProdukDetailR
 		HargaSesudahDiskon: p.HargaSesudahDiskon,
 		Quantity:           p.Quantity,
 		QuantityTerjual:    p.QuantityTerjual,
-		Discrepancy: &models.DiscrepancyInfo{
-			Percentage:  p.DiscrepancyPercentage,
-			Description: p.Discrepancy,
-		},
+		Discrepancy: p.Discrepancy,
 		Panjang:            p.Panjang,
 		Lebar:              p.Lebar,
 		Tinggi:             p.Tinggi,
