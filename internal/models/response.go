@@ -484,10 +484,10 @@ type ProdukDetailResponse struct {
 	TipeProduk         SimpleProdukRelationInfo   `json:"tipe_produk"`
 	HargaSebelumDiskon float64                    `json:"harga_sebelum_diskon"`
 	HargaSesudahDiskon float64                    `json:"harga_sesudah_diskon"`
-	Quantity           int                        `json:"quantity"`
-	QuantityTerjual    int                        `json:"quantity_terjual"`
-	Discrepancy        *DiscrepancyInfo           `json:"discrepancy"`
-	Panjang            float64                    `json:"panjang"`          // cm
+	Quantity        int                        `json:"quantity"`
+	QuantityTerjual int                        `json:"quantity_terjual"`
+	Discrepancy     *string                    `json:"discrepancy"`
+	Panjang         float64                    `json:"panjang"`          // cm
 	Lebar              float64                    `json:"lebar"`            // cm
 	Tinggi             float64                    `json:"tinggi"`           // cm
 	Berat              float64                    `json:"berat"`            // kg
