@@ -14,6 +14,7 @@ import (
 	"project-bulky-be/pkg/utils"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
 )
 
@@ -178,6 +179,7 @@ func main() {
 	permissionController := controllers.NewPermissionController(permissionService)
 
 	router := fiber.New()
+	router.Use(logger.New())
 	router.Use(middleware.CORSMiddleware())
 
 	routes.SetupRoutes(
