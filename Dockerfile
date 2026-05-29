@@ -1,4 +1,7 @@
-FROM golang:1.23-alpine
+# =========================
+# BUILD STAGE
+# =========================
+FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 
