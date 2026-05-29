@@ -59,12 +59,13 @@ func (s *buyerService) FindAll(ctx context.Context, params *models.BuyerFilterRe
 	items := []models.BuyerListResponse{}
 	for _, b := range buyers {
 		items = append(items, models.BuyerListResponse{
-			ID:        b.ID.String(),
-			Nama:      b.Nama,
-			Username:  b.Username,
-			Email:     b.Email,
-			Telepon:   b.Telepon,
-			CreatedAt: b.CreatedAt,
+			ID:          b.ID.String(),
+			Nama:        b.Nama,
+			Username:    b.Username,
+			Email:       b.Email,
+			Telepon:     b.Telepon,
+			LastLoginAt: b.LastLoginAt,
+			CreatedAt:   b.CreatedAt,
 		})
 	}
 
@@ -262,15 +263,16 @@ func (s *buyerService) toDetailResponse(b *models.Buyer) *models.BuyerDetailResp
 	}
 
 	return &models.BuyerDetailResponse{
-		ID:        b.ID.String(),
-		Nama:      b.Nama,
-		Username:  b.Username,
-		Email:     b.Email,
-		Telepon:   b.Telepon,
-		FotoURL:   utils.GetFileURLPtr(b.FotoURL, s.cfg),
-		Alamat:    alamatResponses,
-		CreatedAt: b.CreatedAt,
-		UpdatedAt: b.UpdatedAt,
+		ID:          b.ID.String(),
+		Nama:        b.Nama,
+		Username:    b.Username,
+		Email:       b.Email,
+		Telepon:     b.Telepon,
+		FotoURL:     utils.GetFileURLPtr(b.FotoURL, s.cfg),
+		LastLoginAt: b.LastLoginAt,
+		Alamat:      alamatResponses,
+		CreatedAt:   b.CreatedAt,
+		UpdatedAt:   b.UpdatedAt,
 	}
 }
 

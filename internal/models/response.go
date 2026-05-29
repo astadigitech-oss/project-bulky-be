@@ -555,24 +555,26 @@ type AdminSessionResponse struct {
 // ========================================
 
 type BuyerListResponse struct {
-	ID        string    `json:"id"`
-	Nama      string    `json:"nama"`
-	Username  *string   `json:"username"`
-	Email     *string   `json:"email"`
-	Telepon   string    `json:"telepon"`
-	CreatedAt time.Time `json:"created_at"`
+	ID          string     `json:"id"`
+	Nama        string     `json:"nama"`
+	Username    *string    `json:"username"`
+	Email       *string    `json:"email"`
+	Telepon     string     `json:"telepon"`
+	LastLoginAt *time.Time `json:"last_login_at"`
+	CreatedAt   time.Time  `json:"created_at"`
 }
 
 type BuyerDetailResponse struct {
-	ID        string                `json:"id"`
-	Nama      string                `json:"nama"`
-	Username  *string               `json:"username"`
-	Email     *string               `json:"email"`
-	Telepon   string                `json:"telepon"`
-	FotoURL   *string               `json:"foto_url"`
-	Alamat    []AlamatBuyerResponse `json:"alamat"`
-	CreatedAt time.Time             `json:"created_at"`
-	UpdatedAt time.Time             `json:"updated_at"`
+	ID          string                `json:"id"`
+	Nama        string                `json:"nama"`
+	Username    *string               `json:"username"`
+	Email       *string               `json:"email"`
+	Telepon     string                `json:"telepon"`
+	FotoURL     *string               `json:"foto_url"`
+	LastLoginAt *time.Time            `json:"last_login_at"`
+	Alamat      []AlamatBuyerResponse `json:"alamat"`
+	CreatedAt   time.Time             `json:"created_at"`
+	UpdatedAt   time.Time             `json:"updated_at"`
 }
 
 type BuyerStatistikResponse struct {
