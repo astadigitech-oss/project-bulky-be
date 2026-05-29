@@ -11,11 +11,12 @@ import (
 )
 
 type BuyerController struct {
-	service services.BuyerService
+	service     services.BuyerService
+	activityLog services.ActivityLogService
 }
 
-func NewBuyerController(service services.BuyerService) *BuyerController {
-	return &BuyerController{service: service}
+func NewBuyerController(service services.BuyerService, activityLog services.ActivityLogService) *BuyerController {
+	return &BuyerController{service: service, activityLog: activityLog}
 }
 
 func (c *BuyerController) FindAll(ctx *fiber.Ctx) error {
@@ -50,6 +51,7 @@ func (c *BuyerController) Delete(ctx *fiber.Ctx) error {
 		}
 		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
+	c.activityLog.Log(ctx, models.ActionDelete, "buyer", "Buyer berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Buyer berhasil dihapus", nil)
 }
 
@@ -64,6 +66,7 @@ func (c *BuyerController) ResetPassword(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "buyer", "Password buyer berhasil direset")
 	return utils.SuccessResponse(ctx, "Password buyer berhasil direset", nil)
 }
 

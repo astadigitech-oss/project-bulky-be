@@ -12,11 +12,12 @@ import (
 )
 
 type WarehouseController struct {
-	service services.WarehouseService
+	service     services.WarehouseService
+	activityLog services.ActivityLogService
 }
 
-func NewWarehouseController(service services.WarehouseService) *WarehouseController {
-	return &WarehouseController{service: service}
+func NewWarehouseController(service services.WarehouseService, activityLog services.ActivityLogService) *WarehouseController {
+	return &WarehouseController{service: service, activityLog: activityLog}
 }
 
 func (c *WarehouseController) Create(ctx *fiber.Ctx) error {
@@ -30,6 +31,7 @@ func (c *WarehouseController) Create(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusConflict, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "warehouse", "Warehouse berhasil dibuat")
 	return utils.CreatedResponse(ctx, "Warehouse berhasil dibuat", result)
 }
 
@@ -73,6 +75,7 @@ func (c *WarehouseController) Update(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "warehouse", "Warehouse berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Warehouse berhasil diupdate", result)
 }
 
@@ -87,6 +90,7 @@ func (c *WarehouseController) Delete(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "warehouse", "Warehouse berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Warehouse berhasil dihapus", nil)
 }
 
@@ -98,6 +102,7 @@ func (c *WarehouseController) ToggleStatus(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "warehouse", "Status warehouse berhasil diubah")
 	return utils.SuccessResponse(ctx, "Status warehouse berhasil diubah", result)
 }
 
@@ -123,6 +128,7 @@ func (c *WarehouseController) UpdateSingleton(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "warehouse", "Data warehouse berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Data warehouse berhasil diupdate", result)
 }
 
@@ -168,6 +174,7 @@ func (c *WarehouseController) UpdateJadwal(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "warehouse", "Jadwal gudang berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Jadwal gudang berhasil diupdate", result)
 }
 

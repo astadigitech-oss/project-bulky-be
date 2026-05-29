@@ -16,13 +16,13 @@ import (
 
 type AuthV2Service interface {
 	// Authentication - Separated by user type
-	AdminLogin(ctx context.Context, email, password string) (*LoginResultSimplified, error)
-	BuyerLogin(ctx context.Context, email, password string) (*LoginResultSimplified, error)
+	AdminLogin(ctx context.Context, email, password, ipAddress, userAgent string) (*LoginResultSimplified, error)
+	BuyerLogin(ctx context.Context, email, password, ipAddress, userAgent string) (*LoginResultSimplified, error)
 
 	// Profile
 	GetAdminWithPermissions(ctx context.Context, userID uuid.UUID) (interface{}, error)
 	GetBuyer(ctx context.Context, userID uuid.UUID) (interface{}, error)
-	ChangePassword(ctx context.Context, userID uuid.UUID, userType, currentPassword, newPassword string) error
+	ChangePassword(ctx context.Context, userID uuid.UUID, userType, currentPassword, newPassword, ipAddress, userAgent string) error
 }
 
 type LoginResultSimplified struct {
@@ -47,14 +47,13 @@ func NewAuthV2Service(
 	}
 }
 
-func (s *authV2Service) AdminLogin(ctx context.Context, email, password string) (*LoginResultSimplified, error) {
-	ipAddress := ""
+func (s *authV2Service) AdminLogin(ctx context.Context, email, password, ipAddress, userAgent string) (*LoginResultSimplified, error) {
 
 	// Find admin by email
 	admin, err := s.authRepo.FindAdminByEmail(email)
 	if err != nil {
 		// Log failed login
-		s.logActivity(ctx, nil, "ADMIN", models.ActionLoginFailed, "auth", "Login gagal: email tidak ditemukan", ipAddress)
+		s.logActivity(ctx, nil, "ADMIN", models.ActionLoginFailed, "auth", "Login gagal: email tidak ditemukan", ipAddress, userAgent)
 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("email atau password salah")
@@ -65,7 +64,7 @@ func (s *authV2Service) AdminLogin(ctx context.Context, email, password string) 
 	// Check password
 	if !utils.CheckPassword(password, admin.Password) {
 		// Log failed login
-		s.logActivity(ctx, &admin.ID, "ADMIN", models.ActionLoginFailed, "auth", "Login gagal: password salah", ipAddress)
+		s.logActivity(ctx, &admin.ID, "ADMIN", models.ActionLoginFailed, "auth", "Login gagal: password salah", ipAddress, userAgent)
 		return nil, errors.New("email atau password salah")
 	}
 
@@ -105,7 +104,7 @@ func (s *authV2Service) AdminLogin(ctx context.Context, email, password string) 
 	s.authRepo.UpdateAdminLastLogin(admin.ID)
 
 	// Log successful login
-	s.logActivity(ctx, &admin.ID, "ADMIN", models.ActionLogin, "auth", "Login berhasil", ipAddress)
+	s.logActivity(ctx, &admin.ID, "ADMIN", models.ActionLogin, "auth", "Login berhasil", ipAddress, userAgent)
 
 	// Simplified response
 	result := &LoginResultSimplified{
@@ -120,14 +119,13 @@ func (s *authV2Service) AdminLogin(ctx context.Context, email, password string) 
 	return result, nil
 }
 
-func (s *authV2Service) BuyerLogin(ctx context.Context, email, password string) (*LoginResultSimplified, error) {
-	ipAddress := ""
+func (s *authV2Service) BuyerLogin(ctx context.Context, email, password, ipAddress, userAgent string) (*LoginResultSimplified, error) {
 
 	// Find buyer by email
 	buyer, err := s.authRepo.FindBuyerByEmail(email)
 	if err != nil {
 		// Log failed login
-		s.logActivity(ctx, nil, "BUYER", models.ActionLoginFailed, "auth", "Login gagal: email tidak ditemukan", ipAddress)
+		s.logActivity(ctx, nil, "BUYER", models.ActionLoginFailed, "auth", "Login gagal: email tidak ditemukan", ipAddress, userAgent)
 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("email atau password salah")
@@ -138,7 +136,7 @@ func (s *authV2Service) BuyerLogin(ctx context.Context, email, password string) 
 	// Check password
 	if buyer.Password == nil || !utils.CheckPassword(password, *buyer.Password) {
 		// Log failed login
-		s.logActivity(ctx, &buyer.ID, "BUYER", models.ActionLoginFailed, "auth", "Login gagal: password salah", ipAddress)
+		s.logActivity(ctx, &buyer.ID, "BUYER", models.ActionLoginFailed, "auth", "Login gagal: password salah", ipAddress, userAgent)
 		return nil, errors.New("email atau password salah")
 	}
 
@@ -168,7 +166,7 @@ func (s *authV2Service) BuyerLogin(ctx context.Context, email, password string) 
 	s.authRepo.UpdateBuyerLastLogin(buyer.ID)
 
 	// Log successful login
-	s.logActivity(ctx, &buyer.ID, "BUYER", models.ActionLogin, "auth", "Login berhasil", ipAddress)
+	s.logActivity(ctx, &buyer.ID, "BUYER", models.ActionLogin, "auth", "Login berhasil", ipAddress, userAgent)
 
 	// Simplified response
 	result := &LoginResultSimplified{
@@ -224,7 +222,7 @@ func (s *authV2Service) GetBuyer(ctx context.Context, userID uuid.UUID) (interfa
 }
 
 // Helper to log activity
-func (s *authV2Service) logActivity(ctx context.Context, userID *uuid.UUID, userType string, action models.ActivityAction, modul, deskripsi, ipAddress string) {
+func (s *authV2Service) logActivity(ctx context.Context, userID *uuid.UUID, userType string, action models.ActivityAction, modul, deskripsi, ipAddress, userAgent string) {
 	log := &models.ActivityLog{
 		UserType:  userType,
 		UserID:    userID,
@@ -232,6 +230,7 @@ func (s *authV2Service) logActivity(ctx context.Context, userID *uuid.UUID, user
 		Modul:     modul,
 		Deskripsi: deskripsi,
 		IPAddress: &ipAddress,
+		UserAgent: &userAgent,
 		CreatedAt: time.Now(),
 	}
 
@@ -240,8 +239,7 @@ func (s *authV2Service) logActivity(ctx context.Context, userID *uuid.UUID, user
 }
 
 // ChangePassword changes user password
-func (s *authV2Service) ChangePassword(ctx context.Context, userID uuid.UUID, userType, currentPassword, newPassword string) error {
-	ipAddress := ""
+func (s *authV2Service) ChangePassword(ctx context.Context, userID uuid.UUID, userType, currentPassword, newPassword, ipAddress, userAgent string) error {
 
 	if userType == "ADMIN" {
 		admin, err := s.authRepo.FindAdminByID(userID)
@@ -274,7 +272,7 @@ func (s *authV2Service) ChangePassword(ctx context.Context, userID uuid.UUID, us
 
 		// Log activity
 		s.logActivity(ctx, &userID, "ADMIN", models.ActionUpdate, "security",
-			"Mengubah password", ipAddress)
+			"Mengubah password", ipAddress, userAgent)
 
 		return nil
 
@@ -309,7 +307,7 @@ func (s *authV2Service) ChangePassword(ctx context.Context, userID uuid.UUID, us
 
 		// Log activity
 		s.logActivity(ctx, &userID, "BUYER", models.ActionUpdate, "security",
-			"Mengubah password", ipAddress)
+			"Mengubah password", ipAddress, userAgent)
 
 		return nil
 	}

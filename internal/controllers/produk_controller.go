@@ -18,17 +18,20 @@ type ProdukController struct {
 	service        services.ProdukService
 	gambarService  services.ProdukGambarService
 	dokumenService services.ProdukDokumenService
+	activityLog    services.ActivityLogService
 }
 
 func NewProdukController(
 	service services.ProdukService,
 	gambarService services.ProdukGambarService,
 	dokumenService services.ProdukDokumenService,
+	activityLog services.ActivityLogService,
 ) *ProdukController {
 	return &ProdukController{
 		service:        service,
 		gambarService:  gambarService,
 		dokumenService: dokumenService,
+		activityLog:    activityLog,
 	}
 }
 
@@ -97,6 +100,7 @@ func (c *ProdukController) Create(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "produk", "Produk berhasil dibuat")
 	return utils.CreatedResponse(ctx, "Produk berhasil dibuat", result)
 }
 
@@ -174,6 +178,7 @@ func (c *ProdukController) Update(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "produk", "Produk berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Produk berhasil diupdate", result)
 }
 
@@ -188,6 +193,7 @@ func (c *ProdukController) Delete(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "produk", "Produk berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Produk berhasil dihapus", nil)
 }
 
@@ -199,6 +205,7 @@ func (c *ProdukController) ToggleStatus(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "produk", "Status produk berhasil diubah")
 	return utils.SuccessResponse(ctx, "Status produk berhasil diubah", result)
 }
 
@@ -215,6 +222,7 @@ func (c *ProdukController) UpdateStock(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "produk", "Stok produk berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Stok produk berhasil diupdate", result)
 }
 
@@ -258,6 +266,7 @@ func (c *ProdukController) AddGambar(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "produk", "Gambar produk berhasil ditambahkan")
 	return utils.CreatedResponse(ctx, fmt.Sprintf("%d gambar berhasil ditambahkan", len(results)), results)
 }
 
@@ -269,6 +278,7 @@ func (c *ProdukController) DeleteGambar(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "produk", "Gambar produk berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Gambar berhasil dihapus", nil)
 }
 
@@ -317,6 +327,7 @@ func (c *ProdukController) AddDokumen(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "produk", "Dokumen produk berhasil ditambahkan")
 	return utils.CreatedResponse(ctx, "Dokumen berhasil ditambahkan", result)
 }
 
@@ -328,6 +339,7 @@ func (c *ProdukController) DeleteDokumen(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "produk", "Dokumen produk berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Dokumen berhasil dihapus", nil)
 }
 

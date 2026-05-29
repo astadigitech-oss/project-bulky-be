@@ -11,11 +11,12 @@ import (
 )
 
 type DokumenKebijakanController struct {
-	service services.DokumenKebijakanService
+	service     services.DokumenKebijakanService
+	activityLog services.ActivityLogService
 }
 
-func NewDokumenKebijakanController(service services.DokumenKebijakanService) *DokumenKebijakanController {
-	return &DokumenKebijakanController{service: service}
+func NewDokumenKebijakanController(service services.DokumenKebijakanService, activityLog services.ActivityLogService) *DokumenKebijakanController {
+	return &DokumenKebijakanController{service: service, activityLog: activityLog}
 }
 
 // ========================================
@@ -86,6 +87,7 @@ func (c *DokumenKebijakanController) Update(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "dokumen_kebijakan", "Dokumen kebijakan berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Dokumen kebijakan berhasil diupdate", result)
 }
 

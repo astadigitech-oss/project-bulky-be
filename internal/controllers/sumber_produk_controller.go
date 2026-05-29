@@ -11,11 +11,12 @@ import (
 )
 
 type SumberProdukController struct {
-	service services.SumberProdukService
+	service     services.SumberProdukService
+	activityLog services.ActivityLogService
 }
 
-func NewSumberProdukController(service services.SumberProdukService) *SumberProdukController {
-	return &SumberProdukController{service: service}
+func NewSumberProdukController(service services.SumberProdukService, activityLog services.ActivityLogService) *SumberProdukController {
+	return &SumberProdukController{service: service, activityLog: activityLog}
 }
 
 func (c *SumberProdukController) Create(ctx *fiber.Ctx) error {
@@ -29,6 +30,7 @@ func (c *SumberProdukController) Create(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusConflict, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "sumber_produk", "Sumber produk berhasil dibuat")
 	return utils.CreatedResponse(ctx, "Sumber produk berhasil dibuat", result)
 }
 
@@ -81,6 +83,7 @@ func (c *SumberProdukController) Update(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "sumber_produk", "Sumber produk berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Sumber produk berhasil diupdate", result)
 }
 
@@ -95,6 +98,7 @@ func (c *SumberProdukController) Delete(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "sumber_produk", "Sumber produk berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Sumber produk berhasil dihapus", nil)
 }
 
@@ -106,6 +110,7 @@ func (c *SumberProdukController) ToggleStatus(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "sumber_produk", "Status sumber produk berhasil diubah")
 	return utils.SuccessResponse(ctx, "Status sumber produk berhasil diubah", result)
 }
 

@@ -43,7 +43,7 @@ func (c *AuthV2Controller) AdminLogin(ctx *fiber.Ctx) error {
 		})
 	}
 
-	result, err := c.authService.AdminLogin(ctx.UserContext(), req.Email, req.Password)
+	result, err := c.authService.AdminLogin(ctx.UserContext(), req.Email, req.Password, ctx.IP(), ctx.Get("User-Agent"))
 	if err != nil {
 		// Check error type for proper status code
 		if err.Error() == "akun Anda tidak aktif. Silakan hubungi admin" {
@@ -75,7 +75,7 @@ func (c *AuthV2Controller) BuyerLogin(ctx *fiber.Ctx) error {
 		})
 	}
 
-	result, err := c.authService.BuyerLogin(ctx.UserContext(), req.Email, req.Password)
+	result, err := c.authService.BuyerLogin(ctx.UserContext(), req.Email, req.Password, ctx.IP(), ctx.Get("User-Agent"))
 	if err != nil {
 		// Check error type for proper status code
 		if err.Error() == "akun Anda tidak aktif. Silakan hubungi admin" {
@@ -373,7 +373,7 @@ func (c *AuthV2Controller) ChangePassword(ctx *fiber.Ctx) error {
 		})
 	}
 
-	err = c.authService.ChangePassword(ctx.UserContext(), uid, userType.(string), req.CurrentPassword, req.NewPassword)
+	err = c.authService.ChangePassword(ctx.UserContext(), uid, userType.(string), req.CurrentPassword, req.NewPassword, ctx.IP(), ctx.Get("User-Agent"))
 	if err != nil {
 		// Check for specific error messages
 		if err.Error() == "password saat ini salah" {

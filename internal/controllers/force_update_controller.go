@@ -12,11 +12,12 @@ import (
 )
 
 type ForceUpdateController struct {
-	service services.ForceUpdateService
+	service     services.ForceUpdateService
+	activityLog services.ActivityLogService
 }
 
-func NewForceUpdateController(service services.ForceUpdateService) *ForceUpdateController {
-	return &ForceUpdateController{service: service}
+func NewForceUpdateController(service services.ForceUpdateService, activityLog services.ActivityLogService) *ForceUpdateController {
+	return &ForceUpdateController{service: service, activityLog: activityLog}
 }
 
 // CreateForceUpdate creates force update configuration
@@ -41,6 +42,7 @@ func (c *ForceUpdateController) CreateForceUpdate(ctx *fiber.Ctx) error {
 		UpdatedAt:       forceUpdate.UpdatedAt,
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "force_update", "Konfigurasi force update berhasil dibuat")
 	return utils.CreatedResponse(ctx, "Konfigurasi force update berhasil dibuat", response)
 }
 
@@ -72,6 +74,7 @@ func (c *ForceUpdateController) UpdateForceUpdate(ctx *fiber.Ctx) error {
 		UpdatedAt:       forceUpdate.UpdatedAt,
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "force_update", "Konfigurasi force update berhasil diperbarui")
 	return utils.SuccessResponse(ctx, "Konfigurasi force update berhasil diperbarui", response)
 }
 
@@ -88,6 +91,7 @@ func (c *ForceUpdateController) DeleteForceUpdate(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, status, "Gagal menghapus konfigurasi force update", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "force_update", "Konfigurasi force update berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Konfigurasi force update berhasil dihapus", nil)
 }
 
@@ -163,5 +167,6 @@ func (c *ForceUpdateController) SetActiveForceUpdate(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, status, "Gagal mengaktifkan force update", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "force_update", "Force update berhasil diaktifkan")
 	return utils.SuccessResponse(ctx, "Force update berhasil diaktifkan", nil)
 }

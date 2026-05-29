@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"project-bulky-be/internal/dto"
+	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
@@ -16,10 +17,11 @@ import (
 type LabelBlogController struct {
 	service        services.LabelBlogService
 	reorderService *services.ReorderService
+	activityLog    services.ActivityLogService
 }
 
-func NewLabelBlogController(service services.LabelBlogService, reorderService *services.ReorderService) *LabelBlogController {
-	return &LabelBlogController{service: service, reorderService: reorderService}
+func NewLabelBlogController(service services.LabelBlogService, reorderService *services.ReorderService, activityLog services.ActivityLogService) *LabelBlogController {
+	return &LabelBlogController{service: service, reorderService: reorderService, activityLog: activityLog}
 }
 
 func (c *LabelBlogController) Create(ctx *fiber.Ctx) error {
@@ -33,6 +35,7 @@ func (c *LabelBlogController) Create(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat label", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "label_blog", "Label blog berhasil dibuat")
 	return utils.SimpleSuccessResponse(ctx, http.StatusCreated, "Label berhasil dibuat", label)
 }
 
@@ -55,6 +58,7 @@ func (c *LabelBlogController) Update(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal memperbarui label", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "label_blog", "Label blog berhasil diupdate")
 	return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Label berhasil diperbarui", label)
 }
 
@@ -71,6 +75,7 @@ func (c *LabelBlogController) Delete(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menghapus label", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "label_blog", "Label blog berhasil dihapus")
 	return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Label berhasil dihapus", nil)
 }
 

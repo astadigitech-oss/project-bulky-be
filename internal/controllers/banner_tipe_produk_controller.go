@@ -16,13 +16,15 @@ type BannerTipeProdukController struct {
 	service        services.BannerTipeProdukService
 	reorderService *services.ReorderService
 	cfg            *config.Config
+	activityLog    services.ActivityLogService
 }
 
-func NewBannerTipeProdukController(service services.BannerTipeProdukService, reorderService *services.ReorderService, cfg *config.Config) *BannerTipeProdukController {
+func NewBannerTipeProdukController(service services.BannerTipeProdukService, reorderService *services.ReorderService, cfg *config.Config, activityLog services.ActivityLogService) *BannerTipeProdukController {
 	return &BannerTipeProdukController{
 		service:        service,
 		reorderService: reorderService,
 		cfg:            cfg,
+		activityLog:    activityLog,
 	}
 }
 
@@ -66,6 +68,7 @@ func (c *BannerTipeProdukController) Create(ctx *fiber.Ctx) error {
 			return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 		}
 
+		c.activityLog.Log(ctx, models.ActionCreate, "banner_tipe_produk", "Banner tipe produk berhasil dibuat")
 		return utils.CreatedResponse(ctx, "Banner berhasil dibuat", result)
 	}
 
@@ -79,6 +82,7 @@ func (c *BannerTipeProdukController) Create(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "banner_tipe_produk", "Banner tipe produk berhasil dibuat")
 	return utils.CreatedResponse(ctx, "Banner berhasil dibuat", result)
 }
 
@@ -185,6 +189,7 @@ func (c *BannerTipeProdukController) Update(ctx *fiber.Ctx) error {
 			return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 		}
 
+		c.activityLog.Log(ctx, models.ActionUpdate, "banner_tipe_produk", "Banner tipe produk berhasil diupdate")
 		return utils.SuccessResponse(ctx, "Banner berhasil diupdate", result)
 	}
 
@@ -198,6 +203,7 @@ func (c *BannerTipeProdukController) Update(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "banner_tipe_produk", "Banner tipe produk berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Banner berhasil diupdate", result)
 }
 
@@ -212,6 +218,7 @@ func (c *BannerTipeProdukController) Delete(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "banner_tipe_produk", "Banner tipe produk berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Banner berhasil dihapus", nil)
 }
 
@@ -223,6 +230,7 @@ func (c *BannerTipeProdukController) ToggleStatus(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "banner_tipe_produk", "Status banner tipe produk berhasil diubah")
 	return utils.SuccessResponse(ctx, "Status banner berhasil diubah", result)
 }
 

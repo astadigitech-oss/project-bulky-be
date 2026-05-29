@@ -11,11 +11,12 @@ import (
 )
 
 type AdminController struct {
-	service services.AdminService
+	service     services.AdminService
+	activityLog services.ActivityLogService
 }
 
-func NewAdminController(service services.AdminService) *AdminController {
-	return &AdminController{service: service}
+func NewAdminController(service services.AdminService, activityLog services.ActivityLogService) *AdminController {
+	return &AdminController{service: service, activityLog: activityLog}
 }
 
 func (c *AdminController) Create(ctx *fiber.Ctx) error {
@@ -33,6 +34,7 @@ func (c *AdminController) Create(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "admin", "Admin berhasil dibuat")
 	return utils.CreatedResponse(ctx, "Admin berhasil dibuat", result)
 }
 
@@ -80,6 +82,7 @@ func (c *AdminController) Update(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "admin", "Admin berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Admin berhasil diupdate", result)
 }
 
@@ -95,6 +98,7 @@ func (c *AdminController) Delete(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "admin", "Admin berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Admin berhasil dihapus", nil)
 }
 
@@ -111,6 +115,7 @@ func (c *AdminController) ToggleStatus(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "admin", "Status admin berhasil diubah")
 	return utils.SuccessResponse(ctx, "Status admin berhasil diubah", result)
 }
 
@@ -130,5 +135,6 @@ func (c *AdminController) ResetPassword(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "admin", "Password admin berhasil direset")
 	return utils.SuccessResponse(ctx, "Password admin berhasil direset", nil)
 }

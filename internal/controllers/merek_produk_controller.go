@@ -13,14 +13,16 @@ import (
 )
 
 type MerekProdukController struct {
-	service services.MerekProdukService
-	cfg     *config.Config
+	service     services.MerekProdukService
+	cfg         *config.Config
+	activityLog services.ActivityLogService
 }
 
-func NewMerekProdukController(service services.MerekProdukService, cfg *config.Config) *MerekProdukController {
+func NewMerekProdukController(service services.MerekProdukService, cfg *config.Config, activityLog services.ActivityLogService) *MerekProdukController {
 	return &MerekProdukController{
-		service: service,
-		cfg:     cfg,
+		service:     service,
+		cfg:         cfg,
+		activityLog: activityLog,
 	}
 }
 
@@ -63,6 +65,7 @@ func (c *MerekProdukController) Create(ctx *fiber.Ctx) error {
 		if err != nil {
 			return utils.ErrorResponse(ctx, http.StatusConflict, err.Error(), nil)
 		}
+		c.activityLog.Log(ctx, models.ActionCreate, "merek_produk", "Merek produk berhasil dibuat")
 		return utils.CreatedResponse(ctx, "Merek produk berhasil dibuat", result)
 	}
 
@@ -76,6 +79,7 @@ func (c *MerekProdukController) Create(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusConflict, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "merek_produk", "Merek produk berhasil dibuat")
 	return utils.CreatedResponse(ctx, "Merek produk berhasil dibuat", result)
 }
 
@@ -157,6 +161,7 @@ func (c *MerekProdukController) Update(ctx *fiber.Ctx) error {
 		if err != nil {
 			return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 		}
+		c.activityLog.Log(ctx, models.ActionUpdate, "merek_produk", "Merek produk berhasil diupdate")
 		return utils.SuccessResponse(ctx, "Merek produk berhasil diupdate", result)
 	}
 
@@ -170,6 +175,7 @@ func (c *MerekProdukController) Update(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "merek_produk", "Merek produk berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Merek produk berhasil diupdate", result)
 }
 
@@ -184,6 +190,7 @@ func (c *MerekProdukController) Delete(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "merek_produk", "Merek produk berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Merek produk berhasil dihapus", nil)
 }
 
@@ -195,6 +202,7 @@ func (c *MerekProdukController) ToggleStatus(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "merek_produk", "Status merek produk berhasil diubah")
 	return utils.SuccessResponse(ctx, "Status merek berhasil diubah", result)
 }
 

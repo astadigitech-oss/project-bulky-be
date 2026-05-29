@@ -16,13 +16,15 @@ type BannerEventPromoController struct {
 	service        services.BannerEventPromoService
 	reorderService *services.ReorderService
 	cfg            *config.Config
+	activityLog    services.ActivityLogService
 }
 
-func NewBannerEventPromoController(service services.BannerEventPromoService, reorderService *services.ReorderService, cfg *config.Config) *BannerEventPromoController {
+func NewBannerEventPromoController(service services.BannerEventPromoService, reorderService *services.ReorderService, cfg *config.Config, activityLog services.ActivityLogService) *BannerEventPromoController {
 	return &BannerEventPromoController{
 		service:        service,
 		reorderService: reorderService,
 		cfg:            cfg,
+		activityLog:    activityLog,
 	}
 }
 
@@ -98,6 +100,7 @@ func (c *BannerEventPromoController) Create(ctx *fiber.Ctx) error {
 			return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 		}
 
+		c.activityLog.Log(ctx, models.ActionCreate, "banner_event_promo", "Banner event promo berhasil dibuat")
 		return utils.CreatedResponse(ctx, "Banner berhasil dibuat", result)
 	}
 
@@ -111,6 +114,7 @@ func (c *BannerEventPromoController) Create(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "banner_event_promo", "Banner event promo berhasil dibuat")
 	return utils.CreatedResponse(ctx, "Banner berhasil dibuat", result)
 }
 
@@ -216,6 +220,7 @@ func (c *BannerEventPromoController) Update(ctx *fiber.Ctx) error {
 			utils.DeleteFile(*oldGambar, c.cfg)
 		}
 
+		c.activityLog.Log(ctx, models.ActionUpdate, "banner_event_promo", "Banner event promo berhasil diupdate")
 		return utils.SuccessResponse(ctx, "Banner berhasil diupdate", result)
 	}
 
@@ -229,6 +234,7 @@ func (c *BannerEventPromoController) Update(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "banner_event_promo", "Banner event promo berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Banner berhasil diupdate", result)
 }
 
@@ -243,6 +249,7 @@ func (c *BannerEventPromoController) Delete(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "banner_event_promo", "Banner event promo berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Banner berhasil dihapus", nil)
 }
 
@@ -263,6 +270,7 @@ func (c *BannerEventPromoController) ToggleStatus(ctx *fiber.Ctx) error {
 		message = "Banner berhasil diaktifkan"
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "banner_event_promo", message)
 	return utils.SuccessResponse(ctx, message, banner)
 }
 

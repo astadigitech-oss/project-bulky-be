@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"project-bulky-be/internal/dto"
+	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
@@ -14,11 +15,13 @@ import (
 
 type PesananAdminController struct {
 	pesananService services.PesananAdminService
+	activityLog    services.ActivityLogService
 }
 
-func NewPesananAdminController(pesananService services.PesananAdminService) *PesananAdminController {
+func NewPesananAdminController(pesananService services.PesananAdminService, activityLog services.ActivityLogService) *PesananAdminController {
 	return &PesananAdminController{
 		pesananService: pesananService,
+		activityLog:    activityLog,
 	}
 }
 
@@ -93,6 +96,7 @@ func (c *PesananAdminController) UpdateStatus(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal update status pesanan", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "pesanan", "Status pesanan berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Status pesanan berhasil diupdate", result)
 }
 
@@ -114,6 +118,7 @@ func (c *PesananAdminController) Delete(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menghapus pesanan", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "pesanan", "Pesanan berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Pesanan berhasil dihapus", nil)
 }
 

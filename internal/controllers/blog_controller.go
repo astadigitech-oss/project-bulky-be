@@ -20,15 +20,18 @@ import (
 type BlogController struct {
 	blogService services.BlogService
 	cfg         *config.Config
+	activityLog services.ActivityLogService
 }
 
 func NewBlogController(
 	blogService services.BlogService,
 	cfg *config.Config,
+	activityLog services.ActivityLogService,
 ) *BlogController {
 	return &BlogController{
 		blogService: blogService,
 		cfg:         cfg,
+		activityLog: activityLog,
 	}
 }
 
@@ -137,6 +140,7 @@ func (c *BlogController) Create(ctx *fiber.Ctx) error {
 			return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat blog", err.Error())
 		}
 
+		c.activityLog.Log(ctx, models.ActionCreate, "blog", "Blog berhasil dibuat")
 		return utils.SimpleSuccessResponse(ctx, http.StatusCreated, "Blog berhasil dibuat", blog)
 	}
 
@@ -150,6 +154,7 @@ func (c *BlogController) Create(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat blog", err.Error())
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "blog", "Blog berhasil dibuat")
 	return utils.SimpleSuccessResponse(ctx, http.StatusCreated, "Blog berhasil dibuat", blog)
 }
 
@@ -263,6 +268,7 @@ func (c *BlogController) Update(ctx *fiber.Ctx) error {
 			return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal memperbarui blog", utils.GetValidationErrorMessage(err))
 		}
 
+		c.activityLog.Log(ctx, models.ActionUpdate, "blog", "Blog berhasil diperbarui")
 		return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Blog berhasil diperbarui", blog)
 	}
 
@@ -279,6 +285,7 @@ func (c *BlogController) Update(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal memperbarui blog", utils.GetValidationErrorMessage(err))
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "blog", "Blog berhasil diperbarui")
 	return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Blog berhasil diperbarui", blog)
 }
 
@@ -295,6 +302,7 @@ func (c *BlogController) Delete(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menghapus blog", utils.GetValidationErrorMessage(err))
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "blog", "Blog berhasil dihapus")
 	return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Blog berhasil dihapus", nil)
 }
 
@@ -407,5 +415,6 @@ func (c *BlogController) ToggleStatus(ctx *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengubah status", utils.GetValidationErrorMessage(err))
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "blog", "Status blog berhasil diubah")
 	return utils.SuccessResponse(ctx, "Status blog berhasil diubah", nil)
 }

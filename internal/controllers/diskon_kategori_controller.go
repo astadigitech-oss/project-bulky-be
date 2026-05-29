@@ -11,11 +11,12 @@ import (
 )
 
 type DiskonKategoriController struct {
-	service services.DiskonKategoriService
+	service     services.DiskonKategoriService
+	activityLog services.ActivityLogService
 }
 
-func NewDiskonKategoriController(service services.DiskonKategoriService) *DiskonKategoriController {
-	return &DiskonKategoriController{service: service}
+func NewDiskonKategoriController(service services.DiskonKategoriService, activityLog services.ActivityLogService) *DiskonKategoriController {
+	return &DiskonKategoriController{service: service, activityLog: activityLog}
 }
 
 func (c *DiskonKategoriController) Create(ctx *fiber.Ctx) error {
@@ -29,6 +30,7 @@ func (c *DiskonKategoriController) Create(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "diskon_kategori", "Diskon kategori berhasil dibuat")
 	return utils.CreatedResponse(ctx, "Diskon kategori berhasil dibuat", result)
 }
 
@@ -89,6 +91,7 @@ func (c *DiskonKategoriController) Update(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "diskon_kategori", "Diskon kategori berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Diskon kategori berhasil diupdate", result)
 }
 
@@ -103,6 +106,7 @@ func (c *DiskonKategoriController) Delete(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "diskon_kategori", "Diskon kategori berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Diskon kategori berhasil dihapus", nil)
 }
 
@@ -114,5 +118,6 @@ func (c *DiskonKategoriController) ToggleStatus(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "diskon_kategori", "Status diskon kategori berhasil diubah")
 	return utils.SuccessResponse(ctx, "Status diskon kategori berhasil diubah", result)
 }

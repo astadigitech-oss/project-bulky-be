@@ -13,11 +13,12 @@ import (
 )
 
 type FAQController struct {
-	service services.FAQService
+	service     services.FAQService
+	activityLog services.ActivityLogService
 }
 
-func NewFAQController(service services.FAQService) *FAQController {
-	return &FAQController{service: service}
+func NewFAQController(service services.FAQService, activityLog services.ActivityLogService) *FAQController {
+	return &FAQController{service: service, activityLog: activityLog}
 }
 
 // GetAll - Get all FAQ items for admin panel with search and pagination
@@ -89,6 +90,7 @@ func (c *FAQController) Create(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "faq", "FAQ berhasil dibuat")
 	return ctx.Status(http.StatusCreated).JSON(fiber.Map{
 		"success": true,
 		"message": "FAQ berhasil dibuat",
@@ -117,6 +119,7 @@ func (c *FAQController) Update(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "faq", "FAQ berhasil diupdate")
 	return utils.SuccessResponse(ctx, "FAQ berhasil diupdate", result)
 }
 
@@ -136,6 +139,7 @@ func (c *FAQController) Delete(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "faq", "FAQ berhasil dihapus")
 	return utils.SuccessResponse(ctx, "FAQ berhasil dihapus", nil)
 }
 
@@ -155,6 +159,7 @@ func (c *FAQController) ToggleStatus(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "faq", "Status FAQ berhasil diubah")
 	return utils.SuccessResponse(ctx, "Status FAQ berhasil diubah", result)
 }
 

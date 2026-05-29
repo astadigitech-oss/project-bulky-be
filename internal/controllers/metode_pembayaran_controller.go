@@ -14,12 +14,14 @@ import (
 type MetodePembayaranController struct {
 	service        services.MetodePembayaranService
 	reorderService *services.ReorderService
+	activityLog    services.ActivityLogService
 }
 
-func NewMetodePembayaranController(service services.MetodePembayaranService, reorderService *services.ReorderService) *MetodePembayaranController {
+func NewMetodePembayaranController(service services.MetodePembayaranService, reorderService *services.ReorderService, activityLog services.ActivityLogService) *MetodePembayaranController {
 	return &MetodePembayaranController{
 		service:        service,
 		reorderService: reorderService,
+		activityLog:    activityLog,
 	}
 }
 
@@ -55,6 +57,7 @@ func (c *MetodePembayaranController) ToggleMethodStatus(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "metode_pembayaran", "Status metode pembayaran berhasil diubah")
 	return utils.SuccessResponse(ctx, "Status metode pembayaran berhasil diubah", result)
 }
 
@@ -74,6 +77,7 @@ func (c *MetodePembayaranController) ToggleGroupStatus(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "metode_pembayaran", "Status group metode pembayaran berhasil diubah")
 	return utils.SuccessResponse(ctx, "Status group berhasil diubah", result)
 }
 
@@ -118,6 +122,7 @@ func (c *MetodePembayaranController) Update(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "metode_pembayaran", "Metode pembayaran berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Metode pembayaran berhasil diupdate", result)
 }
 

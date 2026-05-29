@@ -13,12 +13,14 @@ import (
 type FormulirPartaiBesarController struct {
 	service        services.FormulirPartaiBesarService
 	reorderService *services.ReorderService
+	activityLog    services.ActivityLogService
 }
 
-func NewFormulirPartaiBesarController(service services.FormulirPartaiBesarService, reorderService *services.ReorderService) *FormulirPartaiBesarController {
+func NewFormulirPartaiBesarController(service services.FormulirPartaiBesarService, reorderService *services.ReorderService, activityLog services.ActivityLogService) *FormulirPartaiBesarController {
 	return &FormulirPartaiBesarController{
 		service:        service,
 		reorderService: reorderService,
+		activityLog:    activityLog,
 	}
 }
 
@@ -46,6 +48,7 @@ func (c *FormulirPartaiBesarController) UpdateConfig(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "formulir_partai_besar", "Konfigurasi formulir berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Konfigurasi formulir berhasil diupdate", result)
 }
 
@@ -84,6 +87,7 @@ func (c *FormulirPartaiBesarController) CreateAnggaran(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionCreate, "formulir_partai_besar", "Anggaran berhasil ditambahkan")
 	return utils.CreatedResponse(ctx, "Anggaran berhasil ditambahkan", result)
 }
 
@@ -100,6 +104,7 @@ func (c *FormulirPartaiBesarController) UpdateAnggaran(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionUpdate, "formulir_partai_besar", "Anggaran berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Anggaran berhasil diupdate", result)
 }
 
@@ -114,6 +119,7 @@ func (c *FormulirPartaiBesarController) DeleteAnggaran(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, status, err.Error(), nil)
 	}
 
+	c.activityLog.Log(ctx, models.ActionDelete, "formulir_partai_besar", "Anggaran berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Anggaran berhasil dihapus", nil)
 }
 
