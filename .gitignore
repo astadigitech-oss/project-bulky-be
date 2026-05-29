@@ -19,6 +19,9 @@ go.work
 
 # Environment variables
 .env
+.env.staging
+.env.production
+.env.local
 
 # IDE
 .vscode/

@@ -76,6 +76,7 @@ func main() {
 	videoRepo := repositories.NewVideoRepository(db)
 	kategoriVideoRepo := repositories.NewKategoriVideoRepository(db)
 	kuponRepo := repositories.NewKuponRepository(db)
+	dasborRepo := repositories.NewDasborRepository(db)
 
 	// Auth V2 repositories
 	authRepo := repositories.NewAuthRepository(db)
@@ -123,6 +124,7 @@ func main() {
 	videoService := services.NewVideoService(videoRepo, kategoriVideoRepo, cfg)
 	kategoriVideoService := services.NewKategoriVideoService(kategoriVideoRepo)
 	kuponService := services.NewKuponService(kuponRepo, kategoriRepo, db)
+	dasborService := services.NewDasborService(dasborRepo)
 
 	// Auth V2 services
 	authV2Service := services.NewAuthV2Service(authRepo, activityLogRepo)
@@ -167,6 +169,7 @@ func main() {
 	videoController := controllers.NewVideoController(videoService, kategoriVideoService, cfg)
 	kategoriVideoController := controllers.NewKategoriVideoController(kategoriVideoService, reorderService)
 	kuponController := controllers.NewKuponController(kuponService)
+	dasborController := controllers.NewDasborController(dasborService)
 
 	// Auth V2 controllers
 	authV2Controller := controllers.NewAuthV2Controller(authV2Service, adminService, buyerService)
@@ -179,6 +182,7 @@ func main() {
 
 	routes.SetupRoutes(
 		router,
+		dasborController,
 		kategoriController, merekController, kondisiController, kondisiPaketController, sumberController,
 		warehouseController, tipeProdukController, diskonKategoriController, bannerTipeProdukController,
 		produkController, authController, adminController, masterController,
