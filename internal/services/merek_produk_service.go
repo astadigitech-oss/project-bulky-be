@@ -298,9 +298,8 @@ func (s *merekProdukService) GetAllForDropdown(ctx context.Context) ([]map[strin
 	result := make([]map[string]interface{}, len(mereks))
 	for i, m := range mereks {
 		result[i] = map[string]interface{}{
-			"id":      m.ID.String(),
-			"nama_id": m.NamaID,
-			"nama_en": m.NamaEN,
+			"id":   m.ID.String(),
+			"nama": m.NamaID,
 		}
 	}
 	return result, nil

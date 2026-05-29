@@ -123,5 +123,13 @@ func (c *SumberProdukController) Dropdown(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data sumber", nil)
 	}
 
-	return utils.SuccessResponse(ctx, "Data dropdown sumber produk berhasil diambil", sumberList)
+	response := make([]map[string]interface{}, len(sumberList))
+	for i, s := range sumberList {
+		response[i] = map[string]interface{}{
+			"id":   s.ID,
+			"nama": s.Nama.ID,
+		}
+	}
+
+	return utils.SuccessResponse(ctx, "Data dropdown sumber produk berhasil diambil", response)
 }

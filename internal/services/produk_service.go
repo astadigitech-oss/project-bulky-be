@@ -16,6 +16,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type ProdukService interface {
@@ -391,8 +392,8 @@ func (s *produkService) Update(ctx context.Context, id string, req *models.Updat
 		}
 	}()
 
-	// Update produk record
-	if err := tx.Save(produk).Error; err != nil {
+	// Update produk record (Omit associations to prevent GORM from overriding FK fields with preloaded association IDs)
+	if err := tx.Omit(clause.Associations).Save(produk).Error; err != nil {
 		tx.Rollback()
 		return nil, err
 	}
