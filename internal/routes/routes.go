@@ -11,6 +11,7 @@ import (
 
 func SetupRoutes(
 	router *fiber.App,
+	dasborController *controllers.DasborController,
 	kategoriController *controllers.KategoriProdukController,
 	merekController *controllers.MerekProdukController,
 	kondisiController *controllers.KondisiProdukController,
@@ -62,6 +63,22 @@ func SetupRoutes(
 
 	// API routes
 	v1 := router.Group("/api")
+
+	// Dasbor Admin Routes
+	dasbor := v1.Group("/panel/dasbor",
+		middleware.AuthMiddleware(),
+		middleware.AdminOnly(),
+		middleware.RequirePermission("dashboard:read"),
+	)
+	dasbor.Get("/chart-transaksi", dasborController.GetChartTransaksi)
+	dasbor.Get("/chart-revenue", dasborController.GetChartRevenue)
+	dasbor.Get("/chart-transaksi-per-kategori", dasborController.GetChartTransaksiPerKategori)
+	dasbor.Get("/kpi", dasborController.GetKPI)
+	dasbor.Get("/stok-per-kategori", dasborController.GetStokPerKategori)
+	dasbor.Get("/penjualan-per-buyer", dasborController.GetPenjualanPerBuyer)
+	dasbor.Get("/tabel-transaksi", dasborController.GetTabelTransaksi)
+	dasbor.Get("/ekspor-transaksi", dasborController.EksporTransaksi)
+	dasbor.Get("/user-transaction", dasborController.GetUserTransaction)
 
 	// Admin Management Routes (Protected)
 	admin := v1.Group("/panel/admin",

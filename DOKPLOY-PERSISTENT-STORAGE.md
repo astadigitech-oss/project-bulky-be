@@ -4,7 +4,57 @@
 
 File upload (icon kategori, gambar produk, dll) akan disimpan ke **persistent storage** agar tidak hilang saat redeploy.
 
-## Setup di Dokploy
+## Checklist Deployment ke Dokploy
+
+### ✅ 1. Environment Variables
+
+Di Dokploy UI > Application > **Environment**, set environment variables.
+
+**Cara cepat:** Copy dari `.env.staging.example` dan sesuaikan nilai-nilainya:
+
+```env
+UPLOAD_PATH=/app/uploads
+BASE_URL=https://api-staging.bulky.id
+DB_HOST=<your-db-host>
+DB_PASSWORD=<your-db-password>
+JWT_SECRET=<generate-with-openssl-rand-base64-32>
+# ... dst
+```
+
+**Catatan:** 
+- Sesuaikan `BASE_URL` dengan domain staging/production Anda
+- Gunakan secret key yang berbeda untuk staging dan production
+- Lihat `.env.staging.example` untuk template lengkap
+
+### ✅ 2. Volume Mount
+
+Di Dokploy UI > Application > **Volumes & Mounts**:
+
+1. Klik **Add Volume**
+2. Isi:
+   - **Volume Name:** `bulky-uploads`
+   - **Mount Path:** `/app/uploads`
+3. **Save**
+
+### ✅ 3. Deploy
+
+Setelah setup volume, klik **Redeploy**. File upload akan tersimpan persistent di volume `bulky-uploads`.
+
+### ✅ 4. Testing
+
+Upload file via endpoint (contoh kategori produk):
+```
+PUT /api/v1/panel/kategori-produk/{id}/upload
+```
+
+File akan tersimpan di volume dan accessible via:
+```
+https://api-staging.bulky.id/uploads/product-categories/{filename}
+```
+
+---
+
+## Setup di Dokploy (Detail)
 
 ### 1. Environment Variables
 
@@ -21,33 +71,56 @@ BASE_URL=https://api.bulky.id/uploads
 
 ### 2. Volume Mapping
 
-Di Dokploy web UI, tambahkan volume mount:
+Di Dokploy web UI, buat dan mount volume:
 
-```yaml
-Host Path: /var/lib/dokploy/volumes/bulky-uploads
-Container Path: /app/uploads
-```
+**Langkah-langkah:**
+1. Masuk ke aplikasi > **Volumes & Mounts**
+2. Klik **Add Volume**
+3. Isi field:
+   ```
+   Volume Name: bulky-uploads
+   Mount Path: /app/uploads
+   ```
+4. **Save** dan **Redeploy**
 
 **Penjelasan:**
-- File disimpan di host `/var/lib/dokploy/volumes/bulky-uploads`
-- Di-mount ke container `/app/uploads`
+- Volume Name: nama volume di Dokploy (managed volume)
+- Mount Path: path di dalam container tempat volume di-mount
+- Dokploy otomatis handle persistent storage di host server
 - Data persist meskipun container di-redeploy
 
-### 3. Nginx Configuration (Optional)
+### 3. Static File Serving
 
-Jika ingin serve static files via nginx:
+**Option 1: Go Application (Recommended untuk Dokploy)**
+
+Go application sudah handle serving static files via routes. Pastikan `BASE_URL` di environment variables sesuai dengan domain staging/production:
+
+```env
+BASE_URL=https://api-staging.bulky.id
+```
+
+**Option 2: Nginx Reverse Proxy (Optional)**
+
+Jika ingin nginx serve static files untuk performance, konfigurasi nginx di Dokploy:
 
 ```nginx
-# In your nginx config
+# Proxy untuk API
+location /api/ {
+    proxy_pass http://container:8080;
+    proxy_set_header Host $host;
+}
+
+# Direct serve untuk uploads (butuh akses ke named volume)
 location /uploads/ {
-    alias /var/lib/dokploy/volumes/bulky-uploads/;
+    # Ini memerlukan nginx container yang share volume yang sama
+    alias /app/uploads/;
     access_log off;
     expires 30d;
     add_header Cache-Control "public, immutable";
 }
 ```
 
-Atau biarkan Go application serve static files (sudah di-handle di routes).
+Untuk Dokploy, **Option 1** (Go serve) lebih simple dan tidak butuh konfigurasi nginx tambahan.
 
 ## Development Setup
 
