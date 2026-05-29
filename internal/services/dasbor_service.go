@@ -197,8 +197,8 @@ func (s *dasborService) GetKPI(ctx context.Context, periode string) (*dto.Dasbor
 
 	return &dto.DasborKPIResponse{
 		Periode:           periode,
-		PaletboxAvailable: available,
-		PaletboxSold:      sold,
+		StokPaletbox:    available,
+		PaletboxTerjual: sold,
 		Revenue:           revenue,
 	}, nil
 }
