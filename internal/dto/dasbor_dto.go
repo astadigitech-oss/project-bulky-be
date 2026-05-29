@@ -90,8 +90,8 @@ type DasborChartKategoriSerie struct {
 // DasborKPIResponse for GET /kpi
 type DasborKPIResponse struct {
 	Periode           string  `json:"periode"`
-	PaletboxAvailable int64   `json:"paletbox_available"`
-	PaletboxSold      int64   `json:"paletbox_sold"`
+	StokPaletbox   int64   `json:"stok_paletbox"`
+	PaletboxTerjual int64   `json:"paletbox_terjual"`
 	Revenue           float64 `json:"revenue"`
 }
 
