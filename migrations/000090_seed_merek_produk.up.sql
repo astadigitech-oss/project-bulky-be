@@ -1,24 +1,57 @@
 -- migrations/000090_seed_merek_produk.up.sql
--- Seed data untuk tabel merek_produk
+-- Seed data merek produk (43 brands, bilingual, with WMS ID)
 
-INSERT INTO merek_produk (nama_id, nama_en, slug, logo_url, is_active, created_at, updated_at)
+INSERT INTO merek_produk (id, nama_id, nama_en, slug, wms_id, logo_url, is_active, created_at, updated_at)
 VALUES
-    ('Samsung', 'Samsung', 'samsung', NULL, true, NOW(), NOW()),
-    ('LG', 'LG', 'lg', NULL, true, NOW() + INTERVAL '1 second', NOW() + INTERVAL '1 second'),
-    ('Sony', 'Sony', 'sony', NULL, true, NOW() + INTERVAL '2 second', NOW() + INTERVAL '2 second'),
-    ('Philips', 'Philips', 'philips', NULL, true, NOW() + INTERVAL '3 second', NOW() + INTERVAL '3 second'),
-    ('Panasonic', 'Panasonic', 'panasonic', NULL, true, NOW() + INTERVAL '4 second', NOW() + INTERVAL '4 second'),
-    ('Apple', 'Apple', 'apple', NULL, true, NOW() + INTERVAL '5 second', NOW() + INTERVAL '5 second'),
-    ('Xiaomi', 'Xiaomi', 'xiaomi', NULL, true, NOW() + INTERVAL '6 second', NOW() + INTERVAL '6 second'),
-    ('Lenovo', 'Lenovo', 'lenovo', NULL, true, NOW() + INTERVAL '7 second', NOW() + INTERVAL '7 second'),
-    ('HP', 'HP', 'hp', NULL, true, NOW() + INTERVAL '8 second', NOW() + INTERVAL '8 second'),
-    ('Dell', 'Dell', 'dell', NULL, true, NOW() + INTERVAL '9 second', NOW() + INTERVAL '9 second'),
-    ('Asus', 'Asus', 'asus', NULL, true, NOW() + INTERVAL '10 second', NOW() + INTERVAL '10 second'),
-    ('Acer', 'Acer', 'acer', NULL, true, NOW() + INTERVAL '11 second', NOW() + INTERVAL '11 second'),
-    ('Canon', 'Canon', 'canon', NULL, true, NOW() + INTERVAL '12 second', NOW() + INTERVAL '12 second'),
-    ('Epson', 'Epson', 'epson', NULL, true, NOW() + INTERVAL '13 second', NOW() + INTERVAL '13 second'),
-    ('Brother', 'Brother', 'brother', NULL, true, NOW() + INTERVAL '14 second', NOW() + INTERVAL '14 second'),
-    ('Lainnya', 'Others', 'lainnya', NULL, true, NOW() + INTERVAL '15 second', NOW() + INTERVAL '15 second')
-ON CONFLICT (slug) DO NOTHING;
+    ('9db4b97e-1c46-4468-806c-17796465443b', 'New Balance', 'New Balance', 'new-balance', 1,  NULL, true, NOW(), NOW()),
+    ('9db4b942-bc57-4d83-9349-74dda924a468', 'RCB',         'RCB',         'rcb',         2,  NULL, true, NOW(), NOW()),
+    ('9db4b924-ed44-4009-bb2e-21a701255a4f', 'Adidas',      'Adidas',      'adidas',      3,  NULL, true, NOW(), NOW()),
+    ('9db4b90c-4d0e-4a3f-aab6-7c7710a1a07d', 'Asics',       'Asics',       'asics',       4,  NULL, true, NOW(), NOW()),
+    ('9daea3be-c5b4-4558-bcbd-f9e58208b064', 'TCL',         'TCL',         'tcl',         5,  NULL, true, NOW(), NOW()),
+    ('9da22ab1-263f-4f67-a27d-fea2709c8732', 'Barry M',     'Barry M',     'barry-m',     6,  NULL, true, NOW(), NOW()),
+    ('9d4b94e4-6d4c-4b87-a0a6-6e42bfd0ae17', 'Pokky',       'Pokky',       'pokky',       7,  NULL, true, NOW(), NOW()),
+    ('9d4b94cf-255f-4027-909e-b9724e8b1eb3', 'Mamy Poko',   'Mamy Poko',   'mamy-poko',   8,  NULL, true, NOW(), NOW()),
+    ('9d4b94bb-0f0d-42f7-8fd6-643e09616ac5', 'Converse',    'Converse',    'converse',    9,  NULL, true, NOW(), NOW()),
+    ('9d4b94b0-86d2-4252-b5bf-0166d7f3005f', 'Wardah',      'Wardah',      'wardah',      10, NULL, true, NOW(), NOW()),
+    ('9d4b948a-1980-44e0-9077-8f287a0cff8e', 'Citra',       'Citra',       'citra',       11, NULL, true, NOW(), NOW()),
+    ('9d4b9484-400e-4ac6-a248-93b881f32c1e', 'Vaseline',    'Vaseline',    'vaseline',    12, NULL, true, NOW(), NOW()),
+    ('9d4b9447-1694-4e58-a2f9-28bf2af82c39', 'Garnier',     'Garnier',     'garnier',     13, NULL, true, NOW(), NOW()),
+    ('9d4b942b-f651-4ba2-a99a-faa7682555a1', 'Maybelline',  'Maybelline',  'maybelline',  14, NULL, true, NOW(), NOW()),
+    ('9d4b940c-1bfa-4e0b-a139-15a532bea53f', 'Loreal',      'Loreal',      'loreal',      15, NULL, true, NOW(), NOW()),
+    ('9d45984b-6bc8-401d-8ccd-81db075cb838', 'Nike',        'Nike',        'nike',        16, NULL, true, NOW(), NOW()),
+    ('9d2f7d1c-41fa-4e34-8792-d6f48e97d4e8', 'Gaabor',      'Gaabor',      'gaabor',      17, NULL, true, NOW(), NOW()),
+    ('9cff8874-bc76-4bb1-9ce6-316bfc7a91ba', 'Hitachi',     'Hitachi',     'hitachi',     18, NULL, true, NOW(), NOW()),
+    ('9cff8710-3dd1-42cc-920c-65a9ede33f1c', 'All Brand',   'All Brand',   'all-brand',   19, NULL, true, NOW(), NOW()),
+    ('9cc2e9ff-118b-42e6-ba23-d25eecd6609f', 'Redknot',     'Redknot',     'redknot',     20, NULL, true, NOW(), NOW()),
+    ('9cc2e6fe-6d9c-48d2-9d14-1870a778ee47', 'Unbranded',   'Unbranded',   'unbranded',   21, NULL, true, NOW(), NOW()),
+    ('9cc2de5f-98ef-4bb1-a42d-788cc3f07224', 'Sanyo',       'Sanyo',       'sanyo',       22, NULL, true, NOW(), NOW()),
+    ('9cc2de32-1d5a-4270-b6c2-fc9e82a8ba74', 'Delizia',     'Delizia',     'delizia',     23, NULL, true, NOW(), NOW()),
+    ('9cc2de01-2a41-4ed6-822a-a4de9d7ce8a7', 'Aqua',        'Aqua',        'aqua',        24, NULL, true, NOW(), NOW()),
+    ('9cc2ddf0-330c-48fc-aed7-cc1d923be9a5', 'Toshiba',     'Toshiba',     'toshiba',     25, NULL, true, NOW(), NOW()),
+    ('9cc2ddd9-1265-47f0-b28f-5220b82e8f1b', 'Changhong',   'Changhong',   'changhong',   26, NULL, true, NOW(), NOW()),
+    ('9cc2ddc6-a6eb-4468-a257-8b30a7627761', 'Cooca',       'Cooca',       'cooca',       27, NULL, true, NOW(), NOW()),
+    ('9cc2ddbf-7c46-420a-8c78-c3ec7d080b95', 'Xiaomi',      'Xiaomi',      'xiaomi',      28, NULL, true, NOW(), NOW()),
+    ('9cc2ddb9-66e0-4807-b754-88e495ac4c76', 'Philips',     'Philips',     'philips',     29, NULL, true, NOW(), NOW()),
+    ('9cc1089d-f018-49b7-9feb-638282d29ddd', 'Sharp',       'Sharp',       'sharp',       30, NULL, true, NOW(), NOW()),
+    ('9cc1088f-c038-4a24-95e2-4013ea81cb07', 'Sanken',      'Sanken',      'sanken',      31, NULL, true, NOW(), NOW()),
+    ('9cc1087f-91eb-4d92-a8ba-38c9a6690a54', 'Electrolux',  'Electrolux',  'electrolux',  32, NULL, true, NOW(), NOW()),
+    ('9cc0e31e-32c0-4c69-bdf7-ed7c45c7a0b3', 'Panasonic',   'Panasonic',   'panasonic',   33, NULL, true, NOW(), NOW()),
+    ('9cc0e314-57bd-4dd0-85ed-de015376deeb', 'Samsung',     'Samsung',     'samsung',     34, NULL, true, NOW(), NOW()),
+    ('9cc0e324-87c3-443a-8464-5ad51e7f006b', 'LG',          'LG',          'lg',          35, NULL, true, NOW(), NOW()),
+    ('9f126b8f-9628-4ff2-819a-8aab2e758b5f', 'Cosmos',      'Cosmos',      'cosmos',      37, NULL, true, NOW(), NOW()),
+    ('9f126bad-4a1e-48b5-b687-5d6ae226ae39', 'Krisbow',     'Krisbow',     'krisbow',     38, NULL, true, NOW(), NOW()),
+    ('a01dfad3-ff6b-40d8-a8ea-b6aa2d7a1678', 'Mixio',       'Mixio',       'mixio',       39, NULL, true, NOW(), NOW()),
+    ('a01dfaf0-6c2a-42ae-a330-1901e4471eec', 'Robot',       'Robot',       'robot',       40, NULL, true, NOW(), NOW()),
+    ('a01dfb2e-ba0a-475d-aa1a-1268b868ba23', 'V-GeN',       'V-GeN',       'v-gen',       41, NULL, true, NOW(), NOW()),
+    ('a01dfb7c-d490-459f-bae8-bb3115c5189d', 'Infinix',     'Infinix',     'infinix',     42, NULL, true, NOW(), NOW()),
+    ('a01e03f3-2ea3-4dcc-8798-6ce4d4e2a9d3', 'Quantum',     'Quantum',     'quantum',     43, NULL, true, NOW(), NOW()),
+    ('a068b238-1470-46a7-ab38-3601b2c526d5', 'M Tools',     'M Tools',     'm-tools',     44, NULL, true, NOW(), NOW())
+ON CONFLICT (id) DO UPDATE SET
+    nama_id    = EXCLUDED.nama_id,
+    nama_en    = EXCLUDED.nama_en,
+    slug       = EXCLUDED.slug,
+    wms_id     = EXCLUDED.wms_id,
+    is_active  = EXCLUDED.is_active,
+    updated_at = NOW();
 
 COMMENT ON TABLE merek_produk IS 'Master data merek produk untuk B2B recommerce';
