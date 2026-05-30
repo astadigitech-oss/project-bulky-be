@@ -78,6 +78,38 @@ func (s *videoService) Create(ctx context.Context, req *dto.CreateVideoRequest) 
 		slugEN = &s
 	}
 
+	// Auto-generate meta SEO fields when not provided
+	metaTitleID := req.MetaTitleID
+	if metaTitleID == nil {
+		v := truncateMeta(req.JudulID, 200)
+		metaTitleID = &v
+	}
+
+	metaTitleEN := req.MetaTitleEN
+	if metaTitleEN == nil && req.JudulEN != "" {
+		v := truncateMeta(req.JudulEN, 200)
+		metaTitleEN = &v
+	}
+
+	metaDescriptionID := req.MetaDescriptionID
+	if metaDescriptionID == nil {
+		v := truncateMeta(stripHTML(req.DeskripsiID), 160)
+		metaDescriptionID = &v
+	}
+
+	metaDescriptionEN := req.MetaDescriptionEN
+	if metaDescriptionEN == nil && req.DeskripsiEN != "" {
+		v := truncateMeta(stripHTML(req.DeskripsiEN), 160)
+		metaDescriptionEN = &v
+	}
+
+	metaKeywords := req.MetaKeywords
+	if metaKeywords == nil {
+		judulEN := &req.JudulEN
+		kw := generateMetaKeywords(req.JudulID, judulEN, nil)
+		metaKeywords = &kw
+	}
+
 	video := &models.Video{
 		JudulID:           req.JudulID,
 		JudulEN:           &req.JudulEN,
@@ -89,11 +121,11 @@ func (s *videoService) Create(ctx context.Context, req *dto.CreateVideoRequest) 
 		VideoURL:          req.VideoURL,
 		ThumbnailURL:      req.ThumbnailURL,
 		KategoriID:        req.KategoriID,
-		MetaTitleID:       req.MetaTitleID,
-		MetaTitleEN:       req.MetaTitleEN,
-		MetaDescriptionID: req.MetaDescriptionID,
-		MetaDescriptionEN: req.MetaDescriptionEN,
-		MetaKeywords:      req.MetaKeywords,
+		MetaTitleID:       metaTitleID,
+		MetaTitleEN:       metaTitleEN,
+		MetaDescriptionID: metaDescriptionID,
+		MetaDescriptionEN: metaDescriptionEN,
+		MetaKeywords:      metaKeywords,
 		IsActive:          isActive,
 	}
 
@@ -147,20 +179,40 @@ func (s *videoService) Update(ctx context.Context, id uuid.UUID, req *dto.Update
 	if req.KategoriID != nil {
 		video.KategoriID = *req.KategoriID
 	}
+	// Meta SEO: gunakan nilai eksplisit jika ada, auto-generate jika source berubah
 	if req.MetaTitleID != nil {
 		video.MetaTitleID = req.MetaTitleID
+	} else if req.JudulID != nil {
+		v := truncateMeta(video.JudulID, 200)
+		video.MetaTitleID = &v
 	}
+
 	if req.MetaTitleEN != nil {
 		video.MetaTitleEN = req.MetaTitleEN
+	} else if req.JudulEN != nil && *req.JudulEN != "" {
+		v := truncateMeta(*req.JudulEN, 200)
+		video.MetaTitleEN = &v
 	}
+
 	if req.MetaDescriptionID != nil {
 		video.MetaDescriptionID = req.MetaDescriptionID
+	} else if req.DeskripsiID != nil {
+		v := truncateMeta(stripHTML(video.DeskripsiID), 160)
+		video.MetaDescriptionID = &v
 	}
+
 	if req.MetaDescriptionEN != nil {
 		video.MetaDescriptionEN = req.MetaDescriptionEN
+	} else if req.DeskripsiEN != nil && video.DeskripsiEN != nil {
+		v := truncateMeta(stripHTML(*video.DeskripsiEN), 160)
+		video.MetaDescriptionEN = &v
 	}
+
 	if req.MetaKeywords != nil {
 		video.MetaKeywords = req.MetaKeywords
+	} else if req.JudulID != nil || req.JudulEN != nil {
+		kw := generateMetaKeywords(video.JudulID, video.JudulEN, nil)
+		video.MetaKeywords = &kw
 	}
 	if req.IsActive != nil {
 		// Convert string to boolean

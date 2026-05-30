@@ -178,7 +178,9 @@ func main() {
 	roleController := controllers.NewRoleController(roleService)
 	permissionController := controllers.NewPermissionController(permissionService)
 
-	router := fiber.New()
+	router := fiber.New(fiber.Config{
+		BodyLimit: 500 * 1024 * 1024, // 500MB untuk upload file video
+	})
 	router.Use(logger.New())
 	router.Use(middleware.CORSMiddleware())
 
