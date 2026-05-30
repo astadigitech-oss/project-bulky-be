@@ -3,6 +3,9 @@ package services
 import (
 	"context"
 	"errors"
+	"regexp"
+	"strings"
+	"unicode"
 
 	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/dto"
@@ -13,6 +16,83 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
+
+var htmlTagRegex = regexp.MustCompile(`<[^>]*>`)
+
+var metaStopwords = map[string]bool{
+	// Indonesian
+	"yang": true, "dan": true, "di": true, "ke": true, "dari": true,
+	"ini": true, "itu": true, "dengan": true, "untuk": true, "pada": true,
+	"adalah": true, "akan": true, "sudah": true, "tidak": true, "ada": true,
+	"juga": true, "dalam": true, "sebagai": true, "atau": true, "karena": true,
+	"jika": true, "bisa": true, "saat": true, "oleh": true, "lebih": true,
+	"satu": true, "para": true, "agar": true, "kami": true, "kita": true,
+	"anda": true, "nya": true, "pun": true, "sangat": true, "hanya": true,
+	// English
+	"the": true, "and": true, "for": true, "are": true, "but": true,
+	"not": true, "you": true, "all": true, "can": true, "had": true,
+	"was": true, "one": true, "our": true, "out": true, "get": true,
+	"has": true, "him": true, "his": true, "how": true, "new": true,
+	"now": true, "see": true, "two": true, "way": true, "who": true,
+	"did": true, "its": true, "let": true, "put": true, "say": true,
+	"she": true, "too": true, "use": true, "with": true, "have": true,
+	"this": true, "will": true, "your": true, "from": true, "they": true,
+	"know": true, "want": true, "been": true, "good": true, "much": true,
+	"some": true, "time": true, "very": true, "when": true, "come": true,
+	"here": true, "just": true, "like": true, "long": true, "make": true,
+	"many": true, "more": true, "only": true, "over": true, "such": true,
+	"take": true, "than": true, "them": true, "well": true, "were": true,
+	"that": true,
+}
+
+func stripHTML(s string) string {
+	s = htmlTagRegex.ReplaceAllString(s, " ")
+	// collapse whitespace
+	fields := strings.FieldsFunc(s, func(r rune) bool { return unicode.IsSpace(r) })
+	return strings.Join(fields, " ")
+}
+
+func truncateMeta(s string, max int) string {
+	runes := []rune(s)
+	if len(runes) <= max {
+		return s
+	}
+	// cut at last space before max to avoid mid-word cut
+	truncated := string(runes[:max])
+	if idx := strings.LastIndex(truncated, " "); idx > 0 {
+		truncated = truncated[:idx]
+	}
+	return strings.TrimSpace(truncated) + "..."
+}
+
+func generateMetaKeywords(judulID string, judulEN *string, labels []models.LabelBlog) string {
+	seen := make(map[string]bool)
+	var keywords []string
+
+	addWords := func(text string) {
+		words := strings.FieldsFunc(strings.ToLower(text), func(r rune) bool {
+			return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+		})
+		for _, w := range words {
+			if len([]rune(w)) < 3 || metaStopwords[w] || seen[w] {
+				continue
+			}
+			seen[w] = true
+			keywords = append(keywords, w)
+		}
+	}
+
+	addWords(judulID)
+	if judulEN != nil {
+		addWords(*judulEN)
+	}
+	for _, label := range labels {
+		addWords(label.NamaID)
+		addWords(label.NamaEN)
+	}
+
+	return strings.Join(keywords, ", ")
+}
 
 type BlogService interface {
 	Create(ctx context.Context, req *dto.CreateBlogRequest) (*dto.BlogResponse, error)
@@ -63,12 +143,14 @@ func (s *blogService) Create(ctx context.Context, req *dto.CreateBlogRequest) (*
 	}
 
 	// Validate labels exist
+	var labelModels []models.LabelBlog
 	if len(req.LabelIDs) > 0 {
-		labels, err := s.labelRepo.FindByIDs(ctx, req.LabelIDs)
+		var err error
+		labelModels, err = s.labelRepo.FindByIDs(ctx, req.LabelIDs)
 		if err != nil {
 			return nil, err
 		}
-		if len(labels) != len(req.LabelIDs) {
+		if len(labelModels) != len(req.LabelIDs) {
 			return nil, errors.New("one or more labels not found")
 		}
 	}
@@ -79,6 +161,37 @@ func (s *blogService) Create(ctx context.Context, req *dto.CreateBlogRequest) (*
 	if req.KontenEN != nil {
 		sanitized := s.sanitizer.Sanitize(*req.KontenEN)
 		sanitizedKontenEN = &sanitized
+	}
+
+	// Auto-generate meta SEO fields when not provided
+	metaTitleID := req.MetaTitleID
+	if metaTitleID == nil {
+		v := truncateMeta(req.JudulID, 200)
+		metaTitleID = &v
+	}
+
+	metaTitleEN := req.MetaTitleEN
+	if metaTitleEN == nil && req.JudulEN != nil {
+		v := truncateMeta(*req.JudulEN, 200)
+		metaTitleEN = &v
+	}
+
+	metaDescriptionID := req.MetaDescriptionID
+	if metaDescriptionID == nil {
+		v := truncateMeta(stripHTML(sanitizedKontenID), 160)
+		metaDescriptionID = &v
+	}
+
+	metaDescriptionEN := req.MetaDescriptionEN
+	if metaDescriptionEN == nil && sanitizedKontenEN != nil {
+		v := truncateMeta(stripHTML(*sanitizedKontenEN), 160)
+		metaDescriptionEN = &v
+	}
+
+	metaKeywords := req.MetaKeywords
+	if metaKeywords == nil {
+		kw := generateMetaKeywords(req.JudulID, req.JudulEN, labelModels)
+		metaKeywords = &kw
 	}
 
 	// Generate/use slug_id
@@ -100,23 +213,23 @@ func (s *blogService) Create(ctx context.Context, req *dto.CreateBlogRequest) (*
 	}
 
 	blog := &models.Blog{
-		JudulID:          req.JudulID,
-		JudulEN:          req.JudulEN,
-		Slug:             slugIDVal,
-		SlugID:           slugIDPtr,
-		SlugEN:           slugEN,
-		KontenID:         sanitizedKontenID,
-		KontenEN:         sanitizedKontenEN,
-		FeaturedImageURL: req.FeaturedImageURL,
-		KategoriID:       req.KategoriID,
-		// MetaTitleID:       req.MetaTitleID,
-		// MetaTitleEN:       req.MetaTitleEN,
-		// MetaDescriptionID: req.MetaDescriptionID,
-		// MetaDescriptionEN: req.MetaDescriptionEN,
-		// MetaKeywords:      req.MetaKeywords,
-		HighlightID: req.HighlightID,
-		HighlightEN: req.HighlightEN,
-		IsActive:    req.IsActive,
+		JudulID:           req.JudulID,
+		JudulEN:           req.JudulEN,
+		Slug:              slugIDVal,
+		SlugID:            slugIDPtr,
+		SlugEN:            slugEN,
+		KontenID:          sanitizedKontenID,
+		KontenEN:          sanitizedKontenEN,
+		FeaturedImageURL:  req.FeaturedImageURL,
+		KategoriID:        req.KategoriID,
+		MetaTitleID:       metaTitleID,
+		MetaTitleEN:       metaTitleEN,
+		MetaDescriptionID: metaDescriptionID,
+		MetaDescriptionEN: metaDescriptionEN,
+		MetaKeywords:      metaKeywords,
+		HighlightID:       req.HighlightID,
+		HighlightEN:       req.HighlightEN,
+		IsActive:          req.IsActive,
 	}
 
 	if err := s.blogRepo.Create(ctx, blog); err != nil {
@@ -164,12 +277,10 @@ func (s *blogService) Update(ctx context.Context, id uuid.UUID, req *dto.UpdateB
 		blog.SlugEN = &generated
 	}
 	if req.KontenID != nil {
-		// Sanitize HTML content
 		sanitized := s.sanitizer.Sanitize(*req.KontenID)
 		blog.KontenID = sanitized
 	}
 	if req.KontenEN != nil {
-		// Sanitize HTML content
 		sanitized := s.sanitizer.Sanitize(*req.KontenEN)
 		blog.KontenEN = &sanitized
 	}
@@ -185,21 +296,41 @@ func (s *blogService) Update(ctx context.Context, id uuid.UUID, req *dto.UpdateB
 	if req.HighlightEN != nil {
 		blog.HighlightEN = req.HighlightEN
 	}
-	// if req.MetaTitleID != nil {
-	// 	blog.MetaTitleID = req.MetaTitleID
-	// }
-	// if req.MetaTitleEN != nil {
-	// 	blog.MetaTitleEN = req.MetaTitleEN
-	// }
-	// if req.MetaDescriptionID != nil {
-	// 	blog.MetaDescriptionID = req.MetaDescriptionID
-	// }
-	// if req.MetaDescriptionEN != nil {
-	// 	blog.MetaDescriptionEN = req.MetaDescriptionEN
-	// }
-	// if req.MetaKeywords != nil {
-	// 	blog.MetaKeywords = req.MetaKeywords
-	// }
+
+	// Meta SEO: gunakan nilai eksplisit jika ada, auto-generate jika source berubah
+	if req.MetaTitleID != nil {
+		blog.MetaTitleID = req.MetaTitleID
+	} else if req.JudulID != nil {
+		v := truncateMeta(blog.JudulID, 200)
+		blog.MetaTitleID = &v
+	}
+
+	if req.MetaTitleEN != nil {
+		blog.MetaTitleEN = req.MetaTitleEN
+	} else if req.JudulEN != nil && *req.JudulEN != "" {
+		v := truncateMeta(*req.JudulEN, 200)
+		blog.MetaTitleEN = &v
+	}
+
+	if req.MetaDescriptionID != nil {
+		blog.MetaDescriptionID = req.MetaDescriptionID
+	} else if req.KontenID != nil {
+		v := truncateMeta(stripHTML(blog.KontenID), 160)
+		blog.MetaDescriptionID = &v
+	}
+
+	if req.MetaDescriptionEN != nil {
+		blog.MetaDescriptionEN = req.MetaDescriptionEN
+	} else if req.KontenEN != nil && blog.KontenEN != nil {
+		v := truncateMeta(stripHTML(*blog.KontenEN), 160)
+		blog.MetaDescriptionEN = &v
+	}
+
+	// meta_keywords eksplisit bisa diset sebelum Update pertama
+	if req.MetaKeywords != nil {
+		blog.MetaKeywords = req.MetaKeywords
+	}
+
 	if req.IsActive != nil {
 		blog.IsActive = *req.IsActive
 	}
@@ -217,6 +348,19 @@ func (s *blogService) Update(ctx context.Context, id uuid.UUID, req *dto.UpdateB
 			if err := s.blogRepo.AddLabels(ctx, id, req.LabelIDs); err != nil {
 				return nil, err
 			}
+		}
+	}
+
+	// Auto-regenerate meta_keywords jika judul/labels berubah dan tidak diset eksplisit
+	if req.MetaKeywords == nil && (req.LabelIDs != nil || req.JudulID != nil || req.JudulEN != nil) {
+		updatedBlog, err := s.blogRepo.FindByID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		kw := generateMetaKeywords(updatedBlog.JudulID, updatedBlog.JudulEN, updatedBlog.Labels)
+		updatedBlog.MetaKeywords = &kw
+		if err := s.blogRepo.Update(ctx, updatedBlog); err != nil {
+			return nil, err
 		}
 	}
 
@@ -361,27 +505,27 @@ func (s *blogService) ToggleStatus(ctx context.Context, id uuid.UUID) error {
 
 func (s *blogService) toBlogResponse(blog *models.Blog) *dto.BlogResponse {
 	resp := &dto.BlogResponse{
-		ID:               blog.ID,
-		JudulID:          blog.JudulID,
-		JudulEN:          blog.JudulEN,
-		SlugID:           blog.SlugID,
-		SlugEN:           blog.SlugEN,
-		KontenID:         blog.KontenID,
-		KontenEN:         blog.KontenEN,
-		FeaturedImageURL: utils.GetFileURLPtr(blog.FeaturedImageURL, s.cfg),
-		KategoriID:       blog.KategoriID,
-		// MetaTitleID:       blog.MetaTitleID,
-		// MetaTitleEN:       blog.MetaTitleEN,
-		// MetaDescriptionID: blog.MetaDescriptionID,
-		// MetaDescriptionEN: blog.MetaDescriptionEN,
-		// MetaKeywords:      blog.MetaKeywords,
-		HighlightID: blog.HighlightID,
-		HighlightEN: blog.HighlightEN,
-		IsActive:    blog.IsActive,
-		ViewCount:   blog.ViewCount,
-		PublishedAt: blog.PublishedAt,
-		CreatedAt:   blog.CreatedAt,
-		UpdatedAt:   blog.UpdatedAt,
+		ID:                blog.ID,
+		JudulID:           blog.JudulID,
+		JudulEN:           blog.JudulEN,
+		SlugID:            blog.SlugID,
+		SlugEN:            blog.SlugEN,
+		KontenID:          blog.KontenID,
+		KontenEN:          blog.KontenEN,
+		FeaturedImageURL:  utils.GetFileURLPtr(blog.FeaturedImageURL, s.cfg),
+		KategoriID:        blog.KategoriID,
+		MetaTitleID:       blog.MetaTitleID,
+		MetaTitleEN:       blog.MetaTitleEN,
+		MetaDescriptionID: blog.MetaDescriptionID,
+		MetaDescriptionEN: blog.MetaDescriptionEN,
+		MetaKeywords:      blog.MetaKeywords,
+		HighlightID:       blog.HighlightID,
+		HighlightEN:       blog.HighlightEN,
+		IsActive:          blog.IsActive,
+		ViewCount:         blog.ViewCount,
+		PublishedAt:       blog.PublishedAt,
+		CreatedAt:         blog.CreatedAt,
+		UpdatedAt:         blog.UpdatedAt,
 	}
 
 	if blog.Kategori != nil {
