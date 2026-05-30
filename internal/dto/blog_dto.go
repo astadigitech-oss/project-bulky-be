@@ -17,15 +17,15 @@ type CreateBlogRequest struct {
 	KontenEN         *string   `json:"konten_en"`
 	FeaturedImageURL *string   `json:"featured_image_url" validate:"omitempty,max=500"`
 	KategoriID       uuid.UUID `json:"kategori_id" validate:"required"`
-	// MetaTitleID       *string     `json:"meta_title_id" validate:"omitempty,max=200"`
-	// MetaTitleEN       *string     `json:"meta_title_en" validate:"omitempty,max=200"`
-	// MetaDescriptionID *string     `json:"meta_description_id"`
-	// MetaDescriptionEN *string     `json:"meta_description_en"`
-	// MetaKeywords      *string     `json:"meta_keywords"`
-	HighlightID *string     `json:"highlight_id" validate:"omitempty"`
-	HighlightEN *string     `json:"highlight_en" validate:"omitempty"`
-	IsActive    bool        `json:"is_active"`
-	LabelIDs    []uuid.UUID `json:"label_ids"`
+	MetaTitleID       *string     `json:"meta_title_id" validate:"omitempty,max=200"`
+	MetaTitleEN       *string     `json:"meta_title_en" validate:"omitempty,max=200"`
+	MetaDescriptionID *string     `json:"meta_description_id"`
+	MetaDescriptionEN *string     `json:"meta_description_en"`
+	MetaKeywords      *string     `json:"meta_keywords"`
+	HighlightID       *string     `json:"highlight_id" validate:"omitempty"`
+	HighlightEN       *string     `json:"highlight_en" validate:"omitempty"`
+	IsActive          bool        `json:"is_active"`
+	LabelIDs          []uuid.UUID `json:"label_ids"`
 }
 
 type UpdateBlogRequest struct {
@@ -37,15 +37,15 @@ type UpdateBlogRequest struct {
 	KontenEN         *string    `json:"konten_en"`
 	FeaturedImageURL *string    `json:"featured_image_url" validate:"omitempty,max=500"`
 	KategoriID       *uuid.UUID `json:"kategori_id"`
-	// MetaTitleID       *string     `json:"meta_title_id" validate:"omitempty,max=200"`
-	// MetaTitleEN       *string     `json:"meta_title_en" validate:"omitempty,max=200"`
-	// MetaDescriptionID *string     `json:"meta_description_id"`
-	// MetaDescriptionEN *string     `json:"meta_description_en"`
-	// MetaKeywords      *string     `json:"meta_keywords"`
-	HighlightID *string     `json:"highlight_id" validate:"omitempty"`
-	HighlightEN *string     `json:"highlight_en" validate:"omitempty"`
-	IsActive    *bool       `json:"is_active"`
-	LabelIDs    []uuid.UUID `json:"label_ids"`
+	MetaTitleID       *string     `json:"meta_title_id" validate:"omitempty,max=200"`
+	MetaTitleEN       *string     `json:"meta_title_en" validate:"omitempty,max=200"`
+	MetaDescriptionID *string     `json:"meta_description_id"`
+	MetaDescriptionEN *string     `json:"meta_description_en"`
+	MetaKeywords      *string     `json:"meta_keywords"`
+	HighlightID       *string     `json:"highlight_id" validate:"omitempty"`
+	HighlightEN       *string     `json:"highlight_en" validate:"omitempty"`
+	IsActive          *bool       `json:"is_active"`
+	LabelIDs          []uuid.UUID `json:"label_ids"`
 }
 
 type BlogResponse struct {
@@ -59,12 +59,12 @@ type BlogResponse struct {
 	FeaturedImageURL *string            `json:"featured_image_url"`
 	KategoriID       uuid.UUID          `json:"kategori_id"`
 	Kategori         *KategoriBlogBrief `json:"kategori,omitempty"`
-	// MetaTitleID       *string            `json:"meta_title_id"`
-	// MetaTitleEN       *string            `json:"meta_title_en"`
-	// MetaDescriptionID *string            `json:"meta_description_id"`
-	// MetaDescriptionEN *string            `json:"meta_description_en"`
-	// MetaKeywords      *string            `json:"meta_keywords"`
-	HighlightID *string          `json:"highlight_id"`
+	MetaTitleID       *string            `json:"meta_title_id"`
+	MetaTitleEN       *string            `json:"meta_title_en"`
+	MetaDescriptionID *string            `json:"meta_description_id"`
+	MetaDescriptionEN *string            `json:"meta_description_en"`
+	MetaKeywords      *string            `json:"meta_keywords"`
+	HighlightID       *string            `json:"highlight_id"`
 	HighlightEN *string          `json:"highlight_en"`
 	IsActive    bool             `json:"is_active"`
 	ViewCount   int              `json:"view_count"`
