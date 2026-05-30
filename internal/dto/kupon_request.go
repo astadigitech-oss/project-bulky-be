@@ -18,7 +18,7 @@ type CreateKuponRequest struct {
 	LimitPemakaian    *int        `json:"limit_pemakaian" validate:"omitempty,gt=0"`
 	TanggalKedaluarsa time.Time   `json:"tanggal_kedaluarsa" validate:"required"`
 	IsAllKategori     *bool       `json:"is_all_kategori" validate:"required"`
-	KategoriIDs       []uuid.UUID `json:"kategori" validate:"omitempty,dive,uuid"`
+	KategoriIDs       []uuid.UUID `json:"kategori" validate:"omitempty,dive"`
 }
 
 // Validate performs custom validation for CreateKuponRequest
@@ -66,7 +66,7 @@ type UpdateKuponRequest struct {
 	LimitPemakaian    *int        `json:"limit_pemakaian" validate:"omitempty,gt=0"`
 	TanggalKedaluarsa time.Time   `json:"tanggal_kedaluarsa" validate:"required"`
 	IsAllKategori     *bool       `json:"is_all_kategori" validate:"required"`
-	KategoriIDs       []uuid.UUID `json:"kategori" validate:"omitempty,dive,uuid"`
+	KategoriIDs       []uuid.UUID `json:"kategori" validate:"omitempty,dive"`
 }
 
 // Validate performs custom validation for UpdateKuponRequest
