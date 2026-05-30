@@ -297,9 +297,9 @@ func (s *kuponService) GetUsages(ctx context.Context, kuponID uuid.UUID, page, l
 
 	usageResponses := make([]dto.KuponUsageItemResponse, len(usages))
 	for i, usage := range usages {
-		usageResponses[i] = dto.KuponUsageItemResponse{
-			ID: usage.ID,
-			Buyer: dto.KuponUsageBuyerInfo{
+		var buyerInfo dto.KuponUsageBuyerInfo
+		if usage.Buyer != nil {
+			buyerInfo = dto.KuponUsageBuyerInfo{
 				ID:   usage.Buyer.ID,
 				Nama: usage.Buyer.Nama,
 				Email: func() string {
@@ -308,11 +308,21 @@ func (s *kuponService) GetUsages(ctx context.Context, kuponID uuid.UUID, page, l
 					}
 					return ""
 				}(),
-			},
-			Pesanan: dto.KuponUsagePesananInfo{
+			}
+		}
+
+		var pesananInfo dto.KuponUsagePesananInfo
+		if usage.Pesanan != nil {
+			pesananInfo = dto.KuponUsagePesananInfo{
 				ID:   usage.Pesanan.ID,
 				Kode: usage.Pesanan.Kode,
-			},
+			}
+		}
+
+		usageResponses[i] = dto.KuponUsageItemResponse{
+			ID:            usage.ID,
+			Buyer:         buyerInfo,
+			Pesanan:       pesananInfo,
 			NilaiPotongan: usage.NilaiPotongan,
 			CreatedAt:     usage.CreatedAt.UTC(),
 		}
