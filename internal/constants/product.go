@@ -7,8 +7,8 @@ const (
 	// DefaultTipeProdukNama is the name for default tipe produk
 	DefaultTipeProdukNama = "Palet load"
 
-	// DefaultWarehouseSlug is the slug for "Gudang Cilodong" warehouse
-	DefaultWarehouseSlug = "gudang-cilodong"
+	// DefaultWarehouseSlug is the slug for "Warehouse Cibinong" warehouse
+	DefaultWarehouseSlug = "warehouse-cibinong"
 	// DefaultWarehouseNama is the name for default warehouse
-	DefaultWarehouseNama = "Gudang Cilodong"
+	DefaultWarehouseNama = "Warehouse Cibinong"
 )
