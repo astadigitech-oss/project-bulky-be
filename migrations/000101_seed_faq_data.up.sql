@@ -10,7 +10,7 @@ VALUES
 
 -- Tentang Bulky.id / About Bulky.id
 (
-    'b0faq001-0000-4000-8000-000000000001',
+    'b0fa0001-0000-4000-8000-000000000001',
     'Apa itu Bulky.id?',
     'What is Bulky.id?',
     'Bulky.id adalah platform re-commerce grosir B2B Indonesia. Kami mengambil persediaan surplus, kelebihan stok, dan barang retur dari platform e-commerce, penyedia logistik, dan perusahaan, kemudian menyediakannya kepada reseller, pedagang, dan UKM dengan harga grosir. Kami berbasis di Jakarta.',
@@ -18,7 +18,7 @@ VALUES
     1, true, NOW(), NOW()
 ),
 (
-    'b0faq001-0000-4000-8000-000000000002',
+    'b0fa0001-0000-4000-8000-000000000002',
     'Untuk siapa Bulky.id?',
     'Who is Bulky.id for?',
     'Bulky.id dirancang untuk pembeli bisnis — reseller, pedagang, UKM, dan distributor. Ini adalah platform B2B, bukan marketplace konsumen. Jika Anda ingin memulai atau mengembangkan bisnis resale, Bulky.id untuk Anda.',
@@ -26,7 +26,7 @@ VALUES
     2, true, NOW(), NOW()
 ),
 (
-    'b0faq001-0000-4000-8000-000000000003',
+    'b0fa0001-0000-4000-8000-000000000003',
     'Apakah ada minimum pembelian?',
     'Is there a minimum order?',
     'Tidak ada nilai minimum pesanan yang tetap. Produk di Bulky.id dijual dalam unit grosir yang sudah dikemas — pembelian minimum adalah unit terkecil yang tersedia untuk setiap listing, yang bisa berupa palet, satu truk, satu kontainer, atau jumlah grosir lain yang telah ditentukan. Ukuran dan jumlah unit yang tersedia tercantum jelas di setiap listing produk.',
@@ -36,7 +36,7 @@ VALUES
 
 -- Tentang Produk / About Products
 (
-    'b0faq001-0000-4000-8000-000000000004',
+    'b0fa0001-0000-4000-8000-000000000004',
     'Jenis produk apa yang dijual Bulky.id?',
     'What types of products does Bulky.id sell?',
     'Lot grosir dalam lima kategori: Fashion dan Pakaian, Elektronik, FMCG dan Perawatan Pribadi, Rumah Tangga dan Barang Umum, serta Aksesori Otomotif. Bersumber sebagai surplus, kelebihan stok, dan barang retur dari mitra e-commerce dan logistik yang sah.',
@@ -44,7 +44,7 @@ VALUES
     4, true, NOW(), NOW()
 ),
 (
-    'b0faq001-0000-4000-8000-000000000005',
+    'b0fa0001-0000-4000-8000-000000000005',
     'Apa saja grade kondisi?',
     'What are the condition grades?',
     'Baru (tersegel pabrik), Seperti Baru (dibuka tapi belum digunakan atau hampir baru), Bekas (pernah digunakan, berfungsi), dan Salvage (rusak atau tidak berfungsi, untuk suku cadang atau daur ulang). Grade ditampilkan di setiap listing produk.',
@@ -52,7 +52,7 @@ VALUES
     5, true, NOW(), NOW()
 ),
 (
-    'b0faq001-0000-4000-8000-000000000006',
+    'b0fa0001-0000-4000-8000-000000000006',
     'Apakah produk asli?',
     'Are the products authentic?',
     'Ya. Bulky.id mengambil sumber langsung dari platform e-commerce berlisensi, operator logistik, dan perusahaan. Semua produk melalui proses skrining penerimaan kami. Kami tidak dengan sengaja mendaftarkan produk palsu. Sebagai barang re-commerce, produk dijual apa adanya tanpa garansi merek.',
@@ -60,7 +60,7 @@ VALUES
     6, true, NOW(), NOW()
 ),
 (
-    'b0faq001-0000-4000-8000-000000000007',
+    'b0fa0001-0000-4000-8000-000000000007',
     'Apa maksudnya dijual apa adanya (as-is)?',
     'What does as-is mean?',
     'Produk dijual dalam kondisi saat ini tanpa garansi tambahan dari Bulky.id. Unit individual dalam satu lot dapat bervariasi dalam kondisi, kelengkapan, dan spesifikasi — ini adalah sifat dari inventaris surplus dan barang retur. Harga mencerminkan hal ini.',
@@ -70,7 +70,7 @@ VALUES
 
 -- Tentang Pemesanan dan Pembayaran / About Ordering and Payment
 (
-    'b0faq001-0000-4000-8000-000000000008',
+    'b0fa0001-0000-4000-8000-000000000008',
     'Metode pembayaran apa yang diterima?',
     'What payment methods are accepted?',
     'Virtual Account (BCA, BNI, BRI, Mandiri, Permata, BSI, CIMB Niaga, Danamon, BJB), Kartu Kredit dan Debit (Visa, Mastercard, JCB), E-Wallet (OVO, DANA, GoPay, ShopeePay, LinkAja), dan QRIS. Semua pembayaran melalui Xendit. Tidak ada tunai atau COD.',
@@ -78,7 +78,7 @@ VALUES
     8, true, NOW(), NOW()
 ),
 (
-    'b0faq001-0000-4000-8000-000000000009',
+    'b0fa0001-0000-4000-8000-000000000009',
     'Apa itu Virtual Account?',
     'What is a Virtual Account?',
     'Nomor rekening bank unik yang dibuat untuk transaksi Anda. Transfer jumlah yang tepat ke nomor VA yang diberikan dan pembayaran direkonsiliasi secara otomatis. Aman, cepat diatur, dan banyak digunakan untuk transaksi B2B di Indonesia.',
@@ -86,7 +86,7 @@ VALUES
     9, true, NOW(), NOW()
 ),
 (
-    'b0faq001-0000-4000-8000-000000000010',
+    'b0fa0001-0000-4000-8000-000000000010',
     'Berapa lama saya harus membayar?',
     'How long do I have to pay?',
     '15 menit untuk pembelian reguler, atau 30 menit untuk pesanan Patungan. Pesanan yang tidak dibayar dalam batas waktu ini akan dibatalkan secara otomatis.',
@@ -94,7 +94,7 @@ VALUES
     10, true, NOW(), NOW()
 ),
 (
-    'b0faq001-0000-4000-8000-000000000011',
+    'b0fa0001-0000-4000-8000-000000000011',
     'Apa itu Patungan?',
     'What is Patungan?',
     'Fitur split-payment pembelian bersama dari Bulky.id. Dua atau lebih pembeli terdaftar membagi biaya satu pesanan — masing-masing membayar bagian yang disepakati melalui saluran pembayaran mereka sendiri. Dirancang untuk reseller yang menggabungkan sumber daya untuk membeli lot lebih besar.',
@@ -104,7 +104,7 @@ VALUES
 
 -- Tentang Pengiriman dan Pengambilan / About Delivery and Pickup
 (
-    'b0faq001-0000-4000-8000-000000000012',
+    'b0fa0001-0000-4000-8000-000000000012',
     'Bisakah saya mengambil pesanan sendiri?',
     'Can I pick up my order?',
     'Ya. Pengambilan mandiri di gudang Cibinong kami (Jl. Raya Mayor Oking No. 62a, Cibinong, Jawa Barat), Senin hingga Sabtu 09:00 hingga 18:00 WIB. Bawa konfirmasi pesanan dan ID yang valid. Jadwalkan terlebih dahulu via WhatsApp.',
@@ -112,7 +112,7 @@ VALUES
     12, true, NOW(), NOW()
 ),
 (
-    'b0faq001-0000-4000-8000-000000000013',
+    'b0fa0001-0000-4000-8000-000000000013',
     'Apakah ada layanan pengiriman?',
     'Do you offer delivery?',
     'Ya. Bulky.id menawarkan pengiriman domestik ke seluruh Indonesia melalui Deliveree dan Forwarder.ai. Biaya pengiriman dihitung saat checkout berdasarkan jarak, berat, dan dimensi pesanan. Pengiriman mencakup seluruh kepulauan Indonesia.',
@@ -120,7 +120,7 @@ VALUES
     13, true, NOW(), NOW()
 ),
 (
-    'b0faq001-0000-4000-8000-000000000014',
+    'b0fa0001-0000-4000-8000-000000000014',
     'Bagaimana jika pesanan saya memiliki item lebih sedikit dari yang saya bayar?',
     'What if my order has fewer items than I paid for?',
     'Periksa pesanan Anda saat diterima dan laporkan kekurangan jumlah dalam 24 jam dengan dokumentasi foto. Laporan setelah 24 jam atau tanpa dokumentasi tidak akan dipertimbangkan. Lihat Syarat dan Ketentuan lengkap kami untuk detailnya.',
@@ -130,7 +130,7 @@ VALUES
 
 -- Tentang Pengembalian dan Refund / About Returns and Refunds
 (
-    'b0faq001-0000-4000-8000-000000000015',
+    'b0fa0001-0000-4000-8000-000000000015',
     'Bisakah saya mengembalikan produk?',
     'Can I return products?',
     'Semua penjualan bersifat final. Pengembalian tidak diizinkan kecuali dalam keadaan yang sangat terbatas — kekurangan jumlah material atau terbuktinya kesalahan sortir dari Bulky.id — dilaporkan dalam 24 jam dengan dokumentasi. Harap tinjau Syarat dan Ketentuan lengkap kami sebelum membeli.',
@@ -138,7 +138,7 @@ VALUES
     15, true, NOW(), NOW()
 ),
 (
-    'b0faq001-0000-4000-8000-000000000016',
+    'b0fa0001-0000-4000-8000-000000000016',
     'Bagaimana jika saya tidak puas dengan kondisi produk?',
     'What if I am unsatisfied with product condition?',
     'Variasi kondisi adalah hal yang melekat dalam inventaris surplus dan barang retur — inilah yang membuat penetapan harga menjadi mungkin. Ketidakpuasan dengan kondisi saja tidak memenuhi syarat untuk refund. Kami mendorong pembeli untuk meninjau grade kondisi dengan seksama dan membeli dengan ekspektasi yang realistis.',
@@ -146,7 +146,7 @@ VALUES
     16, true, NOW(), NOW()
 ),
 (
-    'b0faq001-0000-4000-8000-000000000017',
+    'b0fa0001-0000-4000-8000-000000000017',
     'Bagaimana refund diproses?',
     'How are refunds processed?',
     'Refund yang disetujui diproses ke metode pembayaran asli dalam 7 hingga 14 hari kerja.',

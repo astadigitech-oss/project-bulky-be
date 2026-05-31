@@ -22,6 +22,9 @@ ALTER TABLE disclaimer ADD COLUMN IF NOT EXISTS slug_en VARCHAR(200);
 
 UPDATE disclaimer SET slug_id = slug WHERE slug IS NOT NULL AND slug_id IS NULL;
 
+-- Set slug_en for disclaimer (purchasing disclaimer)
+UPDATE disclaimer SET slug_en = 'purchasing-disclaimer' WHERE slug_id = 'disclaimer-pembelian' AND slug_en IS NULL;
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_disclaimer_slug_id ON disclaimer(slug_id) WHERE slug_id IS NOT NULL AND deleted_at IS NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_disclaimer_slug_en ON disclaimer(slug_en) WHERE slug_en IS NOT NULL AND deleted_at IS NULL;
 
@@ -32,6 +35,15 @@ ALTER TABLE dokumen_kebijakan ADD COLUMN IF NOT EXISTS slug_id VARCHAR(100);
 ALTER TABLE dokumen_kebijakan ADD COLUMN IF NOT EXISTS slug_en VARCHAR(100);
 
 UPDATE dokumen_kebijakan SET slug_id = slug WHERE slug IS NOT NULL AND slug_id IS NULL;
+
+-- Set slug_en for each dokumen_kebijakan page
+UPDATE dokumen_kebijakan SET slug_en = 'about-us'             WHERE slug_id = 'tentang-kami'         AND slug_en IS NULL;
+UPDATE dokumen_kebijakan SET slug_en = 'how-to-buy'           WHERE slug_id = 'cara-membeli'          AND slug_en IS NULL;
+UPDATE dokumen_kebijakan SET slug_en = 'about-payment'        WHERE slug_id = 'tentang-pembayaran'    AND slug_en IS NULL;
+UPDATE dokumen_kebijakan SET slug_en = 'contact-us'           WHERE slug_id = 'hubungi-kami'          AND slug_en IS NULL;
+UPDATE dokumen_kebijakan SET slug_en = 'faq'                  WHERE slug_id = 'faq'                   AND slug_en IS NULL;
+UPDATE dokumen_kebijakan SET slug_en = 'terms-and-conditions' WHERE slug_id = 'syarat-ketentuan'      AND slug_en IS NULL;
+UPDATE dokumen_kebijakan SET slug_en = 'privacy-policy'       WHERE slug_id = 'kebijakan-privasi'     AND slug_en IS NULL;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_dokumen_kebijakan_slug_id ON dokumen_kebijakan(slug_id) WHERE slug_id IS NOT NULL AND deleted_at IS NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_dokumen_kebijakan_slug_en ON dokumen_kebijakan(slug_en) WHERE slug_en IS NOT NULL AND deleted_at IS NULL;
