@@ -1,14 +1,130 @@
--- Seed dokumen kebijakan (7 halaman fixed) - konten bahasa Indonesia
--- Note: kolom bilingual (judul_en, konten_en, slug_id, slug_en) belum ada di step ini.
--- Kolom bilingual ditambahkan di migration 085 dan 138.
+-- Fix missing seed data from migration ordering issues
+-- Applies: dokumen_kebijakan English content, warehouse coordinates, disclaimer slug_en
 
-DELETE FROM dokumen_kebijakan WHERE deleted_at IS NULL;
+-- ============================================================
+-- 1. Dokumen Kebijakan — judul_en & konten_en (actual English)
+-- ============================================================
+UPDATE dokumen_kebijakan SET judul_en = 'About Us', konten_en = $$<h2>Who We Are</h2>
+<p>Bulky.id is Indonesia's leading B2B wholesale re-commerce platform. We source surplus, overstock, and returned inventory directly from major e-commerce platforms, logistics providers, and corporations, process every item through our professional warehouse facility, and make it available to resellers, traders, and SMEs at transparent wholesale prices.</p>
+<p>Founded in 2022 and headquartered in Jakarta, Bulky.id has processed over 700 metric tonnes of goods and serves thousands of active resellers across Indonesia. Our technology-first approach — featuring a proprietary Warehouse Management System (WMS), dedicated mobile app, and real-time inventory tracking — ensures transparency, reliability, and efficiency at every step.</p>
+<h2>Vision</h2>
+<p>To be Indonesia's most trusted and transparent wholesale re-commerce platform — empowering the next generation of Indonesian resellers and SMEs through reliable access to quality surplus inventory at honest, competitive prices.</p>
+<h2>Mission</h2>
+<p>Bulky.id exists to serve resellers, traders, and small businesses with honesty and reliability. Our mission is carried out through four commitments:</p>
+<ol>
+<li>To provide resellers and traders with reliable, consistent access to quality wholesale surplus inventory through a transparent, technology-enabled platform.</li>
+<li>To support Indonesia's MSME ecosystem by lowering barriers to wholesale sourcing — giving anyone the real opportunity to build a viable resale business.</li>
+<li>To promote responsible commercial practices by giving surplus, overstock, and returned goods a second productive life — reducing commercial and logistical waste.</li>
+<li>To continuously improve our platform, warehouse operations, and service quality to deliver the most professional, honest, and efficient wholesale buying experience in Indonesia.</li>
+</ol>
+<h2>Our Values</h2>
+<ul>
+<li><strong>Transparency</strong> | Clear pricing, honest condition grades, no hidden fees. What you see is what you get.</li>
+<li><strong>Reliability</strong> | Consistent inventory supply, professional warehouse operations, and committed timelines — every order, every time.</li>
+<li><strong>Access</strong> | Leveling the playing field for Indonesian resellers and SMEs. Quality wholesale inventory should not be the privilege of large buyers only.</li>
+<li><strong>Sustainability</strong> | Every purchase gives surplus inventory a second life. Bulky.id actively reduces commercial waste through responsible re-commerce.</li>
+<li><strong>Integrity</strong> | Honest business practices, clear terms, and direct communication — because your business depends on a partner you can trust.</li>
+</ul>$$ WHERE slug_id = 'tentang-kami';
 
-INSERT INTO dokumen_kebijakan (judul, slug, konten, urutan, is_active, created_at, updated_at)
-VALUES (
-    'Tentang Kami',
-    'tentang-kami',
-    $$<h2>Siapa Kami</h2>
+UPDATE dokumen_kebijakan SET judul_en = 'How to Buy', konten_en = $$<p>Buying at Bulky.id is easy. Follow the steps below to place your first order. For enquiries, contact our team via WhatsApp or email.</p>
+<h2>Main Purchase Flow</h2>
+<h3>STEP 1 — Create Your Account</h3>
+<p>Download the Bulky.id app or visit bulky.id. Click Register and complete your profile. Account activation is typically within 1 x 24 hours.</p>
+<h3>STEP 2 — Browse Products</h3>
+<p>Once logged in, browse the catalogue by category or use the search function. Each listing shows the condition grade, quantity, and price.</p>
+<h3>STEP 3 — Add to Cart</h3>
+<p>Select the product and quantity, then add to cart.</p>
+<h3>STEP 4 — Choose Delivery or Pickup</h3>
+<p>Select self-pickup at Cibinong Warehouse, or delivery via Deliveree or Forwarder.ai. Delivery costs are calculated at checkout.</p>
+<h3>STEP 5 — Choose Payment Method</h3>
+<p>Select Pay Directly or Pay Patungan with Friends to share the cost with partners.</p>
+<h3>STEP 6 — Complete Payment</h3>
+<p>Choose your payment channel and complete within the specified time limit. Unpaid orders will be automatically cancelled.</p>
+<h2>Self-Pickup Information</h2>
+<p>Warehouse: Jl. Raya Mayor Oking No. 62a, Cibinong, West Java. Monday to Saturday, 09:00 to 18:00 WIB.</p>$$ WHERE slug_id = 'cara-membeli';
+
+UPDATE dokumen_kebijakan SET judul_en = 'About Payment', konten_en = $$<h2>Virtual Accounts (Bank Transfer)</h2>
+<p>Supported banks: BCA, BNI, BRI, Mandiri, Permata, BSI, CIMB Niaga, Danamon, BJB.</p>
+<h2>Credit &amp; Debit Cards</h2>
+<p>Visa, Mastercard, JCB.</p>
+<h2>E-Wallets</h2>
+<p>OVO, DANA, GoPay, ShopeePay, LinkAja.</p>
+<h2>QRIS</h2>
+<p>Scan the QRIS code for instant payment from any mobile banking app or e-wallet that supports QRIS.</p>
+<p>Note: No cash or COD. All payments are processed via Xendit.</p>$$ WHERE slug_id = 'tentang-pembayaran';
+
+UPDATE dokumen_kebijakan SET judul_en = 'Contact Us', konten_en = $$<p>We are here to help. Contact us through:</p>
+<h2>Warehouse Address</h2>
+<p>Jl. Raya Mayor Oking Jaya Atmaja No.62a, Kel Cirimekar, Kec. Cibinong, Kabupaten Bogor, West Java 16918</p>
+<h2>Phone / WhatsApp</h2>
+<p><a href="https://wa.me/62811833164">+62811 833 164</a></p>
+<h2>Email</h2>
+<p><a href="mailto:admin@bulky.id">admin@bulky.id</a></p>
+<h2>Operating Hours</h2>
+<p>Monday to Saturday: 09:00 to 18:00 WIB. Sunday: Closed.</p>$$ WHERE slug_id = 'hubungi-kami';
+
+UPDATE dokumen_kebijakan SET judul_en = 'Frequently Asked Questions', konten_en = $$<p>Can't find what you're looking for? Contact us via WhatsApp at <a href="https://wa.me/62811833164">0811 833 164</a> or email <a href="mailto:admin@bulky.id">admin@bulky.id</a>.</p>
+<h2>About Bulky.id</h2>
+<h3>What is Bulky.id?</h3>
+<p>Bulky.id is Indonesia's B2B wholesale re-commerce platform. We source surplus, overstock, and returned inventory from e-commerce platforms, logistics providers, and corporations, then make it available to resellers, traders, and SMEs at wholesale prices.</p>
+<h3>Is there a minimum order?</h3>
+<p>There is no fixed minimum order value. Products are sold in pre-packed bulk units. The minimum purchase is the smallest available unit for each listing.</p>
+<h2>About Products</h2>
+<h3>What are the condition grades?</h3>
+<p>New (factory-sealed), Like New (opened but unused), Used (previously used, functional), and Salvage (damaged, for parts or recycling).</p>
+<h2>About Ordering and Payment</h2>
+<h3>What payment methods are accepted?</h3>
+<p>Virtual Account, Credit/Debit Cards, E-Wallets (OVO, DANA, GoPay, ShopeePay, LinkAja), and QRIS via Xendit.</p>
+<h3>What is Patungan?</h3>
+<p>Bulky.id's co-purchase split-payment feature. Two or more registered buyers split the cost of one order.</p>$$ WHERE slug_id = 'faq';
+
+UPDATE dokumen_kebijakan SET judul_en = 'Terms and Conditions', konten_en = $$<p>The full Buyer Terms and Conditions govern all transactions on Bulky.id. By purchasing on Bulky.id, you agree to be bound by the full Terms and Conditions.</p>
+<h2>Key Principles</h2>
+<ul>
+<li><strong>Platform Purpose:</strong> B2B wholesale re-commerce for resellers, traders, and SMEs — not a consumer marketplace.</li>
+<li><strong>Product Nature:</strong> All products are surplus, overstock, or returned goods sold on an AS-IS basis.</li>
+<li><strong>No Warranties:</strong> Bulky.id disclaims all implied warranties.</li>
+<li><strong>All Sales Final:</strong> Returns not permitted except for material quantity shortfalls reported within 24 hours.</li>
+<li><strong>Governing Law:</strong> Indonesian law. Disputes via South Jakarta District Court.</li>
+</ul>$$ WHERE slug_id = 'syarat-ketentuan';
+
+UPDATE dokumen_kebijakan SET judul_en = 'Privacy Policy', konten_en = $$<p>Bulky.id is committed to protecting the privacy and personal data of all users. This Privacy Policy describes how we collect, use, store, share, and protect your personal information.</p>
+<h2>Personal Data We Collect</h2>
+<ul>
+<li>Account registration: full name, email, phone, business information</li>
+<li>Transaction data: order history, payment records, shipping addresses</li>
+<li>Usage data: pages visited, device and access information</li>
+</ul>
+<h2>Your Rights</h2>
+<p>You have the right to access, correct, delete, and port your personal data. Contact <a href="mailto:admin@bulky.id">admin@bulky.id</a> with subject "Data Privacy Request".</p>$$ WHERE slug_id = 'kebijakan-privasi';
+
+-- slug_en for dokumen_kebijakan
+UPDATE dokumen_kebijakan SET slug_en = 'about-us'             WHERE slug_id = 'tentang-kami'         AND slug_en IS NULL;
+UPDATE dokumen_kebijakan SET slug_en = 'how-to-buy'           WHERE slug_id = 'cara-membeli'          AND slug_en IS NULL;
+UPDATE dokumen_kebijakan SET slug_en = 'about-payment'        WHERE slug_id = 'tentang-pembayaran'    AND slug_en IS NULL;
+UPDATE dokumen_kebijakan SET slug_en = 'contact-us'           WHERE slug_id = 'hubungi-kami'          AND slug_en IS NULL;
+UPDATE dokumen_kebijakan SET slug_en = 'faq'                  WHERE slug_id = 'faq'                   AND slug_en IS NULL;
+UPDATE dokumen_kebijakan SET slug_en = 'terms-and-conditions' WHERE slug_id = 'syarat-ketentuan'      AND slug_en IS NULL;
+UPDATE dokumen_kebijakan SET slug_en = 'privacy-policy'       WHERE slug_id = 'kebijakan-privasi'     AND slug_en IS NULL;
+
+-- ============================================================
+-- 2. Warehouse — latitude & longitude untuk warehouse-cibinong
+-- ============================================================
+UPDATE warehouse
+SET latitude = -6.46958024, longitude = 106.85984984
+WHERE slug = 'warehouse-cibinong' AND (latitude IS NULL OR longitude IS NULL);
+
+-- ============================================================
+-- 3. Disclaimer — slug_en
+-- ============================================================
+UPDATE disclaimer
+SET slug_en = 'purchasing-disclaimer'
+WHERE slug_id = 'disclaimer-pembelian' AND slug_en IS NULL;
+
+-- ============================================================
+-- 4. Dokumen Kebijakan — konten (restore Indonesian content)
+-- ============================================================
+UPDATE dokumen_kebijakan SET konten = $$<h2>Siapa Kami</h2>
 <p>Bulky.id adalah platform re-commerce grosir B2B terkemuka di Indonesia. Kami mengambil persediaan surplus, kelebihan stok, dan barang retur langsung dari platform e-commerce besar, penyedia logistik, dan perusahaan, memproses setiap barang melalui fasilitas gudang profesional kami, dan menyediakannya kepada reseller, pedagang, dan UKM dengan harga grosir yang transparan.</p>
 <p>Didirikan pada tahun 2022 dan berkantor pusat di Jakarta, Bulky.id telah memproses lebih dari 700 metrik ton barang dan melayani ribuan reseller aktif di seluruh Indonesia. Pendekatan berbasis teknologi kami — menampilkan Sistem Manajemen Gudang (WMS) eksklusif, aplikasi mobile khusus, dan pelacakan inventaris real-time — memastikan transparansi, keandalan, dan efisiensi di setiap langkah.</p>
 <h2>Visi</h2>
@@ -54,20 +170,8 @@ VALUES (
 <li><strong>Patungan Split-Payment</strong> — fitur split-payment grosir pertama di Indonesia untuk reseller yang menggabungkan sumber daya</li>
 <li><strong>Live Inventory Feed</strong> — visibilitas stok real-time setiap saat</li>
 </ul>
-<p>Bulky.id dirancang khusus untuk industri re-commerce Indonesia — bukan marketplace generik.</p>$$,
-    1, true, NOW(), NOW()
-) ON CONFLICT (slug) DO UPDATE SET
-    judul = EXCLUDED.judul,
-    konten = EXCLUDED.konten,
-    urutan = EXCLUDED.urutan,
-    is_active = EXCLUDED.is_active,
-    updated_at = NOW();
-
-INSERT INTO dokumen_kebijakan (judul, slug, konten, urutan, is_active, created_at, updated_at)
-VALUES (
-    'Cara Membeli',
-    'cara-membeli',
-    $$<p>Membeli di Bulky.id sangat mudah. Ikuti langkah-langkah di bawah ini untuk menempatkan pesanan pertama Anda. Untuk pertanyaan, hubungi tim kami via WhatsApp atau email.</p>
+<p>Bulky.id dirancang khusus untuk industri re-commerce Indonesia — bukan marketplace generik.</p>$$ WHERE slug_id = 'tentang-kami';
+UPDATE dokumen_kebijakan SET konten = $$<p>Membeli di Bulky.id sangat mudah. Ikuti langkah-langkah di bawah ini untuk menempatkan pesanan pertama Anda. Untuk pertanyaan, hubungi tim kami via WhatsApp atau email.</p>
 <h2>Alur Pembelian Utama</h2>
 <h3>LANGKAH 1 — Buat Akun Anda</h3>
 <p>Unduh aplikasi Bulky.id (App Store atau Google Play) atau kunjungi bulky.id. Klik Daftar dan lengkapi profil dengan nama, nomor telepon, email, dan informasi bisnis. Aktivasi akun biasanya dalam 1 x 24 jam.</p>
@@ -113,20 +217,8 @@ VALUES (
 <tr><td><strong>Yang Dibawa</strong></td><td>Konfirmasi pesanan (dari aplikasi atau cetak) dan KTP/identitas resmi yang valid</td></tr>
 <tr><td><strong>Penjadwalan</strong></td><td>Harap jadwalkan pengambilan terlebih dahulu via WhatsApp agar pesanan Anda sudah siap saat tiba.</td></tr>
 </tbody>
-</table>$$,
-    2, true, NOW(), NOW()
-) ON CONFLICT (slug) DO UPDATE SET
-    judul = EXCLUDED.judul,
-    konten = EXCLUDED.konten,
-    urutan = EXCLUDED.urutan,
-    is_active = EXCLUDED.is_active,
-    updated_at = NOW();
-
-INSERT INTO dokumen_kebijakan (judul, slug, konten, urutan, is_active, created_at, updated_at)
-VALUES (
-    'Tentang Pembayaran',
-    'tentang-pembayaran',
-    $$<h2>Virtual Account (Transfer Bank)</h2>
+</table>$$ WHERE slug_id = 'cara-membeli';
+UPDATE dokumen_kebijakan SET konten = $$<h2>Virtual Account (Transfer Bank)</h2>
 <p>Pembayaran dari berbagai bank dapat dikenali dan diterima secara otomatis dan mudah hanya dengan satu Virtual Account, tanpa harus menggunakan rekening dari berbagai bank.</p>
 <p><strong>Bank yang didukung:</strong> BCA, BNI, BRI, Mandiri, Permata, BSI, CIMB Niaga, Danamon, BJB</p>
 <h3>Cara Bayar via Virtual Account BRI (BRIVA)</h3>
@@ -155,20 +247,8 @@ VALUES (
 </ul>
 <h2>QRIS</h2>
 <p>Scan kode QRIS untuk pembayaran instan dari aplikasi mobile banking atau e-wallet manapun yang mendukung QRIS.</p>
-<p><strong>Catatan:</strong> Tidak ada pembayaran tunai atau COD. Semua pembayaran diproses melalui Xendit.</p>$$,
-    3, true, NOW(), NOW()
-) ON CONFLICT (slug) DO UPDATE SET
-    judul = EXCLUDED.judul,
-    konten = EXCLUDED.konten,
-    urutan = EXCLUDED.urutan,
-    is_active = EXCLUDED.is_active,
-    updated_at = NOW();
-
-INSERT INTO dokumen_kebijakan (judul, slug, konten, urutan, is_active, created_at, updated_at)
-VALUES (
-    'Hubungi Kami',
-    'hubungi-kami',
-    $$<p>Kami siap membantu Anda. Hubungi kami melalui:</p>
+<p><strong>Catatan:</strong> Tidak ada pembayaran tunai atau COD. Semua pembayaran diproses melalui Xendit.</p>$$ WHERE slug_id = 'tentang-pembayaran';
+UPDATE dokumen_kebijakan SET konten = $$<p>Kami siap membantu Anda. Hubungi kami melalui:</p>
 <h2>Alamat Gudang</h2>
 <p>Jl. Raya Mayor Oking Jaya Atmaja No.62a, Kel Cirimekar, Kec. Cibinong, Kabupaten Bogor, Jawa Barat 16918</p>
 <h2>Telepon / WhatsApp</h2>
@@ -182,20 +262,8 @@ VALUES (
 <li><strong>Instagram:</strong> <a href="https://www.instagram.com/bulky.id/" target="_blank">@bulky.id</a></li>
 <li><strong>Facebook:</strong> <a href="https://www.facebook.com/liquid8wholesale" target="_blank">liquid8wholesale</a></li>
 <li><strong>TikTok:</strong> <a href="https://www.tiktok.com/@bulky.id" target="_blank">@bulky.id</a></li>
-</ul>$$,
-    4, true, NOW(), NOW()
-) ON CONFLICT (slug) DO UPDATE SET
-    judul = EXCLUDED.judul,
-    konten = EXCLUDED.konten,
-    urutan = EXCLUDED.urutan,
-    is_active = EXCLUDED.is_active,
-    updated_at = NOW();
-
-INSERT INTO dokumen_kebijakan (judul, slug, konten, urutan, is_active, created_at, updated_at)
-VALUES (
-    'Sering Ditanyakan',
-    'faq',
-    $$<p>Tidak menemukan yang Anda cari? Hubungi kami via WhatsApp di <a href="https://wa.me/62811833164">0811 833 164</a> atau email <a href="mailto:admin@bulky.id">admin@bulky.id</a>.</p>
+</ul>$$ WHERE slug_id = 'hubungi-kami';
+UPDATE dokumen_kebijakan SET konten = $$<p>Tidak menemukan yang Anda cari? Hubungi kami via WhatsApp di <a href="https://wa.me/62811833164">0811 833 164</a> atau email <a href="mailto:admin@bulky.id">admin@bulky.id</a>.</p>
 <h2>Tentang Bulky.id</h2>
 <h3>Apa itu Bulky.id?</h3>
 <p>Bulky.id adalah platform re-commerce grosir B2B Indonesia. Kami mengambil persediaan surplus, kelebihan stok, dan barang retur dari platform e-commerce, penyedia logistik, dan perusahaan, kemudian menyediakannya kepada reseller, pedagang, dan UKM dengan harga grosir. Kami berbasis di Jakarta.</p>
@@ -234,20 +302,8 @@ VALUES (
 <h3>Bagaimana jika saya tidak puas dengan kondisi produk?</h3>
 <p>Variasi kondisi adalah hal yang melekat dalam inventaris surplus dan barang retur — inilah yang membuat penetapan harga menjadi mungkin. Ketidakpuasan dengan kondisi saja tidak memenuhi syarat untuk refund. Kami mendorong pembeli untuk meninjau grade kondisi dengan seksama dan membeli dengan ekspektasi yang realistis.</p>
 <h3>Bagaimana refund diproses?</h3>
-<p>Refund yang disetujui diproses ke metode pembayaran asli dalam 7 hingga 14 hari kerja.</p>$$,
-    5, true, NOW(), NOW()
-) ON CONFLICT (slug) DO UPDATE SET
-    judul = EXCLUDED.judul,
-    konten = EXCLUDED.konten,
-    urutan = EXCLUDED.urutan,
-    is_active = EXCLUDED.is_active,
-    updated_at = NOW();
-
-INSERT INTO dokumen_kebijakan (judul, slug, konten, urutan, is_active, created_at, updated_at)
-VALUES (
-    'Syarat dan Ketentuan',
-    'syarat-ketentuan',
-    $$<p>Syarat dan Ketentuan Pembelian lengkap mengatur semua transaksi di Bulky.id. Ringkasan di bawah ini menyoroti poin-poin terpenting. Dengan membeli di Bulky.id, Anda setuju untuk terikat oleh Syarat dan Ketentuan lengkap — harap baca seluruhnya sebelum pembelian pertama Anda.</p>
+<p>Refund yang disetujui diproses ke metode pembayaran asli dalam 7 hingga 14 hari kerja.</p>$$ WHERE slug_id = 'faq';
+UPDATE dokumen_kebijakan SET konten = $$<p>Syarat dan Ketentuan Pembelian lengkap mengatur semua transaksi di Bulky.id. Ringkasan di bawah ini menyoroti poin-poin terpenting. Dengan membeli di Bulky.id, Anda setuju untuk terikat oleh Syarat dan Ketentuan lengkap — harap baca seluruhnya sebelum pembelian pertama Anda.</p>
 <p>Syarat dan Ketentuan Pembeli lengkap (Versi 3.0, berlaku 1 Juni 2026) harus ditinjau dan diterima saat checkout. Di bawah ini hanya ringkasan dan tidak menggantikan dokumen lengkap.</p>
 <h2>Prinsip Utama</h2>
 <table>
@@ -266,20 +322,8 @@ VALUES (
 <tr><td><strong>Persetujuan Elektronik</strong></td><td>Penerimaan saat checkout (scroll dan centang) merupakan perjanjian elektronik yang mengikat secara hukum berdasarkan UU ITE Indonesia.</td></tr>
 </tbody>
 </table>
-<p><strong>SYARAT DAN KETENTUAN LENGKAP HARUS DIBACA SELURUHNYA SEBELUM MEMBELI. RINGKASAN INI BUKAN NASIHAT HUKUM.</strong></p>$$,
-    6, true, NOW(), NOW()
-) ON CONFLICT (slug) DO UPDATE SET
-    judul = EXCLUDED.judul,
-    konten = EXCLUDED.konten,
-    urutan = EXCLUDED.urutan,
-    is_active = EXCLUDED.is_active,
-    updated_at = NOW();
-
-INSERT INTO dokumen_kebijakan (judul, slug, konten, urutan, is_active, created_at, updated_at)
-VALUES (
-    'Kebijakan Privasi',
-    'kebijakan-privasi',
-    $$<p>Bulky.id berkomitmen untuk melindungi privasi dan data pribadi semua pengguna platform kami. Kebijakan Privasi ini menjelaskan bagaimana kami mengumpulkan, menggunakan, menyimpan, berbagi, dan melindungi informasi pribadi Anda saat Anda mengakses dan menggunakan situs web dan aplikasi mobile Bulky.id.</p>
+<p><strong>SYARAT DAN KETENTUAN LENGKAP HARUS DIBACA SELURUHNYA SEBELUM MEMBELI. RINGKASAN INI BUKAN NASIHAT HUKUM.</strong></p>$$ WHERE slug_id = 'syarat-ketentuan';
+UPDATE dokumen_kebijakan SET konten = $$<p>Bulky.id berkomitmen untuk melindungi privasi dan data pribadi semua pengguna platform kami. Kebijakan Privasi ini menjelaskan bagaimana kami mengumpulkan, menggunakan, menyimpan, berbagi, dan melindungi informasi pribadi Anda saat Anda mengakses dan menggunakan situs web dan aplikasi mobile Bulky.id.</p>
 <p>Kebijakan Privasi ini mematuhi Undang-Undang Indonesia No. 27 Tahun 2022 tentang Perlindungan Data Pribadi (UU PDP), Undang-Undang No. 11 Tahun 2008 tentang Informasi dan Transaksi Elektronik (UU ITE) sebagaimana telah diubah, dan Peraturan Pemerintah No. 71 Tahun 2019.</p>
 <h2>1. Data Pribadi yang Kami Kumpulkan</h2>
 <h3>1.1 Data yang Anda Berikan</h3>
@@ -366,12 +410,4 @@ VALUES (
 <tr><td><strong>Kantor</strong></td><td>Plaza Mutiara Lt. 16, Jl. Lingkar Mega Kuningan Kav. E 1.2 No. 1 &amp; 2, Jakarta Selatan 12950</td></tr>
 <tr><td><strong>Jam Operasional</strong></td><td>Senin hingga Sabtu, 09:00 hingga 18:00 WIB</td></tr>
 </tbody>
-</table>$$,
-    7, true, NOW(), NOW()
-) ON CONFLICT (slug) DO UPDATE SET
-    judul = EXCLUDED.judul,
-    konten = EXCLUDED.konten,
-    urutan = EXCLUDED.urutan,
-    is_active = EXCLUDED.is_active,
-    updated_at = NOW();
-
+</table>$$ WHERE slug_id = 'kebijakan-privasi';

@@ -1,12 +1,10 @@
 -- Seed disclaimer (bilingual: ID + EN)
-INSERT INTO disclaimer (id, judul, judul_en, slug, slug_id, slug_en, konten, konten_en, is_active, created_at, updated_at)
+INSERT INTO disclaimer (id, judul, judul_en, slug, konten, konten_en, is_active, created_at, updated_at)
 VALUES (
     'a068ba72-4dc9-4160-930d-0ab42a1f5ab6',
     'Penafian Pembelian',
     'Purchasing Disclaimer',
     'disclaimer-pembelian',
-    'disclaimer-pembelian',
-    'purchasing-disclaimer',
     $$<h1>PENAFIAN &amp; PERNYATAAN KESETUJUAN PEMBELI</h1>
 <p><strong>Bulky.id</strong> – Platform Likuidasi Surplus &amp; Overstock di Indonesia</p>
 <p>Dengan mengakses dan/atau melakukan pembelian melalui platform <strong>Bulky.id</strong>, pengguna ("Pembeli") dengan ini <strong>menyetujui dan memahami</strong> seluruh ketentuan berikut:</p>
@@ -83,8 +81,6 @@ ON CONFLICT (id) DO UPDATE SET
     judul       = EXCLUDED.judul,
     judul_en    = EXCLUDED.judul_en,
     slug        = EXCLUDED.slug,
-    slug_id     = EXCLUDED.slug_id,
-    slug_en     = EXCLUDED.slug_en,
     konten      = EXCLUDED.konten,
     konten_en   = EXCLUDED.konten_en,
     is_active   = EXCLUDED.is_active,

@@ -4,7 +4,7 @@
 -- Remove old Cilodong record if exists
 DELETE FROM warehouse WHERE slug = 'gudang-cilodong';
 
-INSERT INTO warehouse (nama, slug, alamat, kota, kode_pos, telepon, latitude, longitude, is_active, created_at, updated_at)
+INSERT INTO warehouse (nama, slug, alamat, kota, kode_pos, telepon, is_active, created_at, updated_at)
 VALUES (
     'Warehouse Cibinong',
     'warehouse-cibinong',
@@ -12,8 +12,6 @@ VALUES (
     'Kabupaten Bogor',
     '16918',
     '62811833164',
-    -6.46958024,
-    106.85984984,
     true,
     NOW(),
     NOW()
@@ -24,8 +22,6 @@ ON CONFLICT (slug) DO UPDATE SET
     kota       = EXCLUDED.kota,
     kode_pos   = EXCLUDED.kode_pos,
     telepon    = EXCLUDED.telepon,
-    latitude   = EXCLUDED.latitude,
-    longitude  = EXCLUDED.longitude,
     is_active  = EXCLUDED.is_active,
     updated_at = NOW();
 
