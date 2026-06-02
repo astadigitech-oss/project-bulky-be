@@ -24,7 +24,8 @@ type Buyer struct {
 	DeletedAt         gorm.DeletedAt `gorm:"type:timestamptz;index" json:"-"`
 
 	// Relations
-	Alamat []AlamatBuyer `gorm:"foreignKey:BuyerID" json:"alamat,omitempty"`
+	Alamat         []AlamatBuyer `gorm:"foreignKey:BuyerID" json:"alamat,omitempty"`
+	OAuthProviders []BuyerOAuth  `gorm:"foreignKey:BuyerID" json:"oauth_providers,omitempty"`
 }
 
 func (Buyer) TableName() string {
