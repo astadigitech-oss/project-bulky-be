@@ -81,7 +81,12 @@ func (r *buyerRepository) Update(ctx context.Context, buyer *models.Buyer) error
 }
 
 func (r *buyerRepository) Delete(ctx context.Context, id string) error {
-	return r.db.WithContext(ctx).Delete(&models.Buyer{}, "id = ?", id).Error
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("buyer_id = ?", id).Delete(&models.BuyerOAuth{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&models.Buyer{}, "id = ?", id).Error
+	})
 }
 
 func (r *buyerRepository) ExistsByUsername(ctx context.Context, username string, excludeID *string) (bool, error) {
