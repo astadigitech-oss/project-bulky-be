@@ -154,13 +154,14 @@ func (r *dasborRepository) GetChartTransaksiPerKategori(periode string) ([]dto.D
 	return rows, nil
 }
 
-// GetKPIPaletboxAvailable returns current active product stock.
+// GetKPIPaletboxAvailable returns current count of available (unsold) active products.
 func (r *dasborRepository) GetKPIPaletboxAvailable() (int64, error) {
 	var total int64
 	err := r.db.Raw(`
-		SELECT COALESCE(SUM(quantity), 0)
+		SELECT COUNT(*) AS paletbox_available
 		FROM produk
-		WHERE is_active = true AND deleted_at IS NULL
+		WHERE is_sold = false
+		  AND is_active = true AND deleted_at IS NULL
 	`).Scan(&total).Error
 	return total, err
 }
@@ -205,15 +206,16 @@ func (r *dasborRepository) GetKPIRevenue(periode string) (float64, error) {
 	return total, nil
 }
 
-// GetStokPerKategori returns current stock per kategori (all categories, zero if none).
+// GetStokPerKategori returns current available palet count per kategori (all categories, zero if none).
 func (r *dasborRepository) GetStokPerKategori() ([]dto.DasborKategoriStok, error) {
 	var rows []dto.DasborKategoriStok
 	err := r.db.Raw(`
 		SELECT
 			kp.nama_id AS kategori,
-			COALESCE(SUM(p.quantity), 0) AS total_stok
+			COUNT(p.id) AS total_stok
 		FROM kategori_produk kp
 		LEFT JOIN produk p ON p.kategori_id = kp.id
+			AND p.is_sold = false
 			AND p.is_active = true
 			AND p.deleted_at IS NULL
 		WHERE kp.deleted_at IS NULL

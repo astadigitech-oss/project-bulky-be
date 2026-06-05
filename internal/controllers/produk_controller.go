@@ -209,23 +209,6 @@ func (c *ProdukController) ToggleStatus(ctx *fiber.Ctx) error {
 	return utils.SuccessResponse(ctx, "Status produk berhasil diubah", result)
 }
 
-func (c *ProdukController) UpdateStock(ctx *fiber.Ctx) error {
-	id := ctx.Params("id")
-
-	var req models.UpdateStockRequest
-	if err := BindJSON(ctx, &req); err != nil {
-		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
-	}
-
-	result, err := c.service.UpdateStock(ctx.UserContext(), id, &req)
-	if err != nil {
-		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-	}
-
-	c.activityLog.Log(ctx, models.ActionUpdate, "produk", "Stok produk berhasil diupdate")
-	return utils.SuccessResponse(ctx, "Stok produk berhasil diupdate", result)
-}
-
 // ========================================
 // Produk Gambar Handlers
 // ========================================
