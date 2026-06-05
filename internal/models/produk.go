@@ -8,34 +8,34 @@ import (
 )
 
 type Produk struct {
-	ID                 uuid.UUID      `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
-	NamaID             string         `gorm:"type:varchar(255);not null" json:"nama_id"`
-	NamaEN             string         `gorm:"type:varchar(255);not null" json:"nama_en"`
-	Slug               string         `gorm:"type:varchar(280);unique;not null" json:"slug"`
-	SlugID             *string        `gorm:"type:varchar(280);uniqueIndex" json:"slug_id"`
-	SlugEN             *string        `gorm:"type:varchar(280);uniqueIndex" json:"slug_en"`
-	IDCargo            *string        `gorm:"type:varchar(50);unique;column:id_cargo" json:"id_cargo"`
-	ReferenceID        *string        `gorm:"type:varchar(100);column:reference_id" json:"reference_id"`
-	KategoriID         uuid.UUID      `gorm:"type:uuid;not null" json:"kategori_id"`
-	KondisiID          uuid.UUID      `gorm:"type:uuid;not null" json:"kondisi_id"`
-	KondisiPaketID     uuid.UUID      `gorm:"type:uuid;not null" json:"kondisi_paket_id"`
-	SumberID           *uuid.UUID     `gorm:"type:uuid" json:"sumber_id"`
-	WarehouseID        uuid.UUID      `gorm:"type:uuid;not null" json:"warehouse_id"`
-	TipeProdukID       uuid.UUID      `gorm:"type:uuid;not null" json:"tipe_produk_id"`
-	HargaSebelumDiskon float64        `gorm:"type:decimal(15,2);not null" json:"harga_sebelum_diskon"`
-	HargaSesudahDiskon float64        `gorm:"type:decimal(15,2);not null" json:"harga_sesudah_diskon"`
-	Quantity           int            `gorm:"not null;default:0" json:"quantity"`
-	QuantityTerjual    int            `gorm:"default:0" json:"quantity_terjual"`
-	Discrepancy           *string  `gorm:"type:text;column:discrepancy" json:"discrepancy"`
-	DiscrepancyPercentage float64  `gorm:"type:decimal(5,2);not null;default:0;column:discrepancy_percentage" json:"discrepancy_percentage"`
-	Panjang            float64        `gorm:"type:decimal(10,2);not null;default:0" json:"panjang"` // cm
-	Lebar              float64        `gorm:"type:decimal(10,2);not null;default:0" json:"lebar"`   // cm
-	Tinggi             float64        `gorm:"type:decimal(10,2);not null;default:0" json:"tinggi"`  // cm
-	Berat              float64        `gorm:"type:decimal(10,2);not null;default:0" json:"berat"`   // kg
-	IsActive           bool           `gorm:"not null" json:"is_active"`
-	CreatedAt          time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
-	UpdatedAt          time.Time      `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
-	DeletedAt          gorm.DeletedAt `gorm:"type:timestamptz;index" json:"-"`
+	ID                    uuid.UUID      `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
+	NamaID                string         `gorm:"type:varchar(255);not null" json:"nama_id"`
+	NamaEN                string         `gorm:"type:varchar(255);not null" json:"nama_en"`
+	Slug                  string         `gorm:"type:varchar(280);unique;not null" json:"slug"`
+	SlugID                *string        `gorm:"type:varchar(280);uniqueIndex" json:"slug_id"`
+	SlugEN                *string        `gorm:"type:varchar(280);uniqueIndex" json:"slug_en"`
+	IDCargo               *string        `gorm:"type:varchar(50);unique;column:id_cargo" json:"id_cargo"`
+	ReferenceID           *string        `gorm:"type:varchar(100);column:reference_id" json:"reference_id"`
+	KategoriID            uuid.UUID      `gorm:"type:uuid;not null" json:"kategori_id"`
+	KondisiID             uuid.UUID      `gorm:"type:uuid;not null" json:"kondisi_id"`
+	KondisiPaketID        uuid.UUID      `gorm:"type:uuid;not null" json:"kondisi_paket_id"`
+	SumberID              *uuid.UUID     `gorm:"type:uuid" json:"sumber_id"`
+	WarehouseID           uuid.UUID      `gorm:"type:uuid;not null" json:"warehouse_id"`
+	TipeProdukID          uuid.UUID      `gorm:"type:uuid;not null" json:"tipe_produk_id"`
+	HargaSebelumDiskon    float64        `gorm:"type:decimal(15,2);not null" json:"harga_sebelum_diskon"`
+	HargaSesudahDiskon    float64        `gorm:"type:decimal(15,2);not null" json:"harga_sesudah_diskon"`
+	Quantity              int            `gorm:"not null;default:0" json:"quantity"`
+	IsSold                bool           `gorm:"not null;default:false" json:"is_sold"`
+	Discrepancy           *string        `gorm:"type:text;column:discrepancy" json:"discrepancy"`
+	DiscrepancyPercentage float64        `gorm:"type:decimal(5,2);not null;default:0;column:discrepancy_percentage" json:"discrepancy_percentage"`
+	Panjang               float64        `gorm:"type:decimal(10,2);not null;default:0" json:"panjang"` // cm
+	Lebar                 float64        `gorm:"type:decimal(10,2);not null;default:0" json:"lebar"`   // cm
+	Tinggi                float64        `gorm:"type:decimal(10,2);not null;default:0" json:"tinggi"`  // cm
+	Berat                 float64        `gorm:"type:decimal(10,2);not null;default:0" json:"berat"`   // kg
+	IsActive              bool           `gorm:"not null" json:"is_active"`
+	CreatedAt             time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt             time.Time      `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
+	DeletedAt             gorm.DeletedAt `gorm:"type:timestamptz;index" json:"-"`
 
 	// Relations
 	Kategori     KategoriProduk  `gorm:"foreignKey:KategoriID" json:"kategori,omitempty"`
@@ -71,7 +71,7 @@ type ProdukResponse struct {
 	HargaSebelumDiskon float64   `json:"harga_sebelum_diskon"`
 	HargaSesudahDiskon float64   `json:"harga_sesudah_diskon"`
 	Quantity           int       `json:"quantity"`
-	QuantityTerjual    int       `json:"quantity_terjual"`
+	IsSold             bool      `json:"is_sold"`
 	Discrepancy        *string   `json:"discrepancy"`
 	Panjang            float64   `json:"panjang"`          // cm
 	Lebar              float64   `json:"lebar"`            // cm

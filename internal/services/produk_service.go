@@ -29,7 +29,6 @@ type ProdukService interface {
 	UpdateWithFiles(ctx context.Context, id string, req *models.UpdateProdukRequest, dokumenFiles []*multipart.FileHeader, dokumenNama []string) (*models.ProdukDetailResponse, error)
 	Delete(ctx context.Context, id string) error
 	ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error)
-	UpdateStock(ctx context.Context, id string, req *models.UpdateStockRequest) (*models.ProdukDetailResponse, error)
 }
 
 type produkService struct {
@@ -135,18 +134,18 @@ func (s *produkService) CreateWithFiles(
 		HargaSebelumDiskon: req.HargaSebelumDiskon,
 		HargaSesudahDiskon: req.HargaSesudahDiskon,
 		Quantity:           req.Quantity,
-		Discrepancy: req.Discrepancy,
+		Discrepancy:        req.Discrepancy,
 		DiscrepancyPercentage: func() float64 {
 			if req.DiscrepancyPercentage != nil {
 				return *req.DiscrepancyPercentage
 			}
 			return 0
 		}(),
-		Panjang:               req.Panjang,
-		Lebar:              req.Lebar,
-		Tinggi:             req.Tinggi,
-		Berat:              req.Berat,
-		IsActive:           isActive,
+		Panjang:  req.Panjang,
+		Lebar:    req.Lebar,
+		Tinggi:   req.Tinggi,
+		Berat:    req.Berat,
+		IsActive: isActive,
 	}
 
 	if req.SumberID != nil {
@@ -541,20 +540,6 @@ func (s *produkService) ToggleStatus(ctx context.Context, id string) (*models.To
 	}, nil
 }
 
-func (s *produkService) UpdateStock(ctx context.Context, id string, req *models.UpdateStockRequest) (*models.ProdukDetailResponse, error) {
-	produk, err := s.repo.FindByID(ctx, id)
-	if err != nil {
-		return nil, errors.New("produk tidak ditemukan")
-	}
-
-	produk.Quantity = req.Quantity
-	if err := s.repo.Update(ctx, produk); err != nil {
-		return nil, err
-	}
-
-	return s.FindByID(ctx, id)
-}
-
 func (s *produkService) toListResponse(p *models.Produk) *models.ProdukListResponse {
 	resp := &models.ProdukListResponse{
 		ID:     p.ID.String(),
@@ -591,7 +576,7 @@ func (s *produkService) toListResponse(p *models.Produk) *models.ProdukListRespo
 		// PersentaseDiskon:   p.PersentaseDiskon,
 		HargaSesudahDiskon: p.HargaSesudahDiskon,
 		Quantity:           p.Quantity,
-		QuantityTerjual:    p.QuantityTerjual,
+		IsSold:             p.IsSold,
 		Berat:              p.Berat,
 		IsActive:           p.IsActive,
 		CreatedAt:          p.CreatedAt,
@@ -703,8 +688,8 @@ func (s *produkService) toDetailResponse(p *models.Produk) *models.ProdukDetailR
 		HargaSebelumDiskon: p.HargaSebelumDiskon,
 		HargaSesudahDiskon: p.HargaSesudahDiskon,
 		Quantity:           p.Quantity,
-		QuantityTerjual:    p.QuantityTerjual,
-		Discrepancy: p.Discrepancy,
+		IsSold:             p.IsSold,
+		Discrepancy:        p.Discrepancy,
 		Panjang:            p.Panjang,
 		Lebar:              p.Lebar,
 		Tinggi:             p.Tinggi,

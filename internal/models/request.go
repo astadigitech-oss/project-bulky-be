@@ -429,11 +429,6 @@ func (r *UpdateProdukRequest) GetMerekIDs() ([]uuid.UUID, bool) {
 	return result, true
 }
 
-type UpdateStockRequest struct {
-	Quantity int     `json:"quantity" binding:"required,min=0"`
-	Catatan  *string `json:"catatan"`
-}
-
 type ProdukFilterRequest struct {
 	PaginationRequest
 	KategoriID     string  `form:"kategori_id"`
@@ -445,6 +440,7 @@ type ProdukFilterRequest struct {
 	TipeProdukID   string  `form:"tipe_produk_id"`
 	HargaMin       float64 `form:"harga_min"`
 	HargaMax       float64 `form:"harga_max"`
+	IsSold         *bool   `form:"is_sold"`
 }
 
 // ========================================

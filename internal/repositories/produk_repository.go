@@ -129,6 +129,9 @@ func (r *produkRepository) FindAll(ctx context.Context, params *models.ProdukFil
 	if params.IsActive != nil {
 		query = query.Where("is_active = ?", *params.IsActive)
 	}
+	if params.IsSold != nil {
+		query = query.Where("is_sold = ?", *params.IsSold)
+	}
 
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
