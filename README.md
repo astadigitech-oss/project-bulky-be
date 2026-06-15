@@ -503,6 +503,50 @@ Ini akan membuat 2 file:
 - `000XXX_create_new_table.up.sql` - Migration untuk apply
 - `000XXX_create_new_table.down.sql` - Migration untuk rollback
 
+## Seeder Scripts
+
+Project ini memiliki beberapa one-time seeder script yang dijalankan manual setelah migration.
+
+### 1. Create Admin Account
+
+Membuat akun admin baru secara interaktif.
+
+```bash
+go run ./cmd/seed/main.go
+```
+
+### 2. Seed Kategori Produk
+
+Populate data kategori produk default (Elektronik, Fashion, dll).
+
+```bash
+go run ./cmd/seed-kategori-produk/main.go
+```
+
+### 3. Seed Forwarder City Mapping
+
+Populate tabel `forwarder_city_mapping` dari Forwarder.ai `citylist` API. Dijalankan setelah migration `000151`.
+
+**Prasyarat:** Pastikan env vars berikut sudah di-set di `.env`:
+```
+FORWARDER_API_URL=https://platform-api.forwarder.ai/fordex-sandbox
+FORWARDER_CLIENT_NAME=...
+FORWARDER_USERNAME=...
+FORWARDER_PASSWORD=...
+```
+
+**Hanya seed kota:**
+```bash
+go run ./cmd/seed-forwarder-cities/main.go
+```
+
+**Seed kota + kecamatan (subdistrict):**
+```bash
+go run ./cmd/seed-forwarder-cities/main.go --with-subdistricts
+```
+
+> Seeder ini bersifat **upsert-safe** — aman dijalankan ulang. Data lama akan diupdate jika ada perubahan dari API Forwarder.ai.
+
 ### Migration Files
 
 Project ini memiliki 50+ migration files yang mencakup:

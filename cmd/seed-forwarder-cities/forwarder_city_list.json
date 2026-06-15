@@ -1,0 +1,762 @@
+{
+    "msg": "Success",
+    "data": [
+        {
+            "item_id": 1026,
+            "item_name": "ACEH BARAT DAYA"
+        },
+        {
+            "item_id": 1,
+            "item_name": "AMBON"
+        },
+        {
+            "item_id": 291,
+            "item_name": "BADUNG"
+        },
+        {
+            "item_id": 986,
+            "item_name": "BALARAJA"
+        },
+        {
+            "item_id": 2,
+            "item_name": "BALIKPAPAN"
+        },
+        {
+            "item_id": 44,
+            "item_name": "BANDA ACEH"
+        },
+        {
+            "item_id": 181,
+            "item_name": "BANDUNG"
+        },
+        {
+            "item_id": 372,
+            "item_name": "BANGGAI"
+        },
+        {
+            "item_id": 185,
+            "item_name": "BANGKALAN"
+        },
+        {
+            "item_id": 183,
+            "item_name": "BANJAR"
+        },
+        {
+            "item_id": 331,
+            "item_name": "BANJARBARU"
+        },
+        {
+            "item_id": 3,
+            "item_name": "BANJARMASIN"
+        },
+        {
+            "item_id": 184,
+            "item_name": "BANJARNEGARA"
+        },
+        {
+            "item_id": 186,
+            "item_name": "BANTUL"
+        },
+        {
+            "item_id": 187,
+            "item_name": "BANYUMAS"
+        },
+        {
+            "item_id": 188,
+            "item_name": "BANYUWANGI"
+        },
+        {
+            "item_id": 4,
+            "item_name": "BATAM"
+        },
+        {
+            "item_id": 189,
+            "item_name": "BATANG"
+        },
+        {
+            "item_id": 190,
+            "item_name": "BATU"
+        },
+        {
+            "item_id": 6,
+            "item_name": "BAU-BAU"
+        },
+        {
+            "item_id": 191,
+            "item_name": "BEKASI"
+        },
+        {
+            "item_id": 7,
+            "item_name": "BELAWAN"
+        },
+        {
+            "item_id": 52,
+            "item_name": "BENGKALIS"
+        },
+        {
+            "item_id": 334,
+            "item_name": "BENGKAYANG"
+        },
+        {
+            "item_id": 53,
+            "item_name": "BENGKULU"
+        },
+        {
+            "item_id": 9,
+            "item_name": "BERAU"
+        },
+        {
+            "item_id": 54,
+            "item_name": "BINJAI"
+        },
+        {
+            "item_id": 56,
+            "item_name": "BIREUEN"
+        },
+        {
+            "item_id": 11,
+            "item_name": "BITUNG"
+        },
+        {
+            "item_id": 192,
+            "item_name": "BLITAR"
+        },
+        {
+            "item_id": 193,
+            "item_name": "BLORA"
+        },
+        {
+            "item_id": 194,
+            "item_name": "BOGOR"
+        },
+        {
+            "item_id": 195,
+            "item_name": "BOJONEGORO"
+        },
+        {
+            "item_id": 196,
+            "item_name": "BONDOWOSO"
+        },
+        {
+            "item_id": 335,
+            "item_name": "BONTANG"
+        },
+        {
+            "item_id": 197,
+            "item_name": "BOYOLALI"
+        },
+        {
+            "item_id": 198,
+            "item_name": "BREBES"
+        },
+        {
+            "item_id": 60,
+            "item_name": "BUKITTINGGI"
+        },
+        {
+            "item_id": 378,
+            "item_name": "BULUKUMBA"
+        },
+        {
+            "item_id": 200,
+            "item_name": "CIAMIS"
+        },
+        {
+            "item_id": 199,
+            "item_name": "CIANJUR"
+        },
+        {
+            "item_id": 987,
+            "item_name": "CIBITUNG"
+        },
+        {
+            "item_id": 202,
+            "item_name": "CIKAMPEK"
+        },
+        {
+            "item_id": 988,
+            "item_name": "CIKANDE"
+        },
+        {
+            "item_id": 203,
+            "item_name": "CIKARANG"
+        },
+        {
+            "item_id": 204,
+            "item_name": "CILACAP"
+        },
+        {
+            "item_id": 205,
+            "item_name": "CILEGON"
+        },
+        {
+            "item_id": 989,
+            "item_name": "CILEUNGSI"
+        },
+        {
+            "item_id": 206,
+            "item_name": "CIREBON"
+        },
+        {
+            "item_id": 207,
+            "item_name": "DEMAK"
+        },
+        {
+            "item_id": 295,
+            "item_name": "DENPASAR"
+        },
+        {
+            "item_id": 208,
+            "item_name": "DEPOK"
+        },
+        {
+            "item_id": 382,
+            "item_name": "DONGGALA"
+        },
+        {
+            "item_id": 65,
+            "item_name": "DUMAI"
+        },
+        {
+            "item_id": 383,
+            "item_name": "ENREKANG"
+        },
+        {
+            "item_id": 12,
+            "item_name": "FAKFAK"
+        },
+        {
+            "item_id": 209,
+            "item_name": "GARUT"
+        },
+        {
+            "item_id": 384,
+            "item_name": "GORONTALO"
+        },
+        {
+            "item_id": 210,
+            "item_name": "GRESIK"
+        },
+        {
+            "item_id": 996,
+            "item_name": "GROBOGAN"
+        },
+        {
+            "item_id": 994,
+            "item_name": "GUNUNG KIDUL"
+        },
+        {
+            "item_id": 990,
+            "item_name": "GUNUNG PUTRI"
+        },
+        {
+            "item_id": 211,
+            "item_name": "INDRAMAYU"
+        },
+        {
+            "item_id": 13,
+            "item_name": "JAKARTA"
+        },
+        {
+            "item_id": 983,
+            "item_name": "JAKARTA BARAT"
+        },
+        {
+            "item_id": 984,
+            "item_name": "JAKARTA PUSAT"
+        },
+        {
+            "item_id": 981,
+            "item_name": "JAKARTA SELATAN"
+        },
+        {
+            "item_id": 982,
+            "item_name": "JAKARTA TIMUR"
+        },
+        {
+            "item_id": 980,
+            "item_name": "JAKARTA UTARA"
+        },
+        {
+            "item_id": 14,
+            "item_name": "JAYAPURA"
+        },
+        {
+            "item_id": 212,
+            "item_name": "JEMBER"
+        },
+        {
+            "item_id": 385,
+            "item_name": "JENEPONTO"
+        },
+        {
+            "item_id": 213,
+            "item_name": "JEPARA"
+        },
+        {
+            "item_id": 214,
+            "item_name": "JOMBANG"
+        },
+        {
+            "item_id": 15,
+            "item_name": "KAIMANA"
+        },
+        {
+            "item_id": 216,
+            "item_name": "KARANGANYAR"
+        },
+        {
+            "item_id": 485,
+            "item_name": "KARAWANG"
+        },
+        {
+            "item_id": 217,
+            "item_name": "KEBUMEN"
+        },
+        {
+            "item_id": 218,
+            "item_name": "KEDIRI"
+        },
+        {
+            "item_id": 219,
+            "item_name": "KENDAL"
+        },
+        {
+            "item_id": 16,
+            "item_name": "KENDARI"
+        },
+        {
+            "item_id": 327,
+            "item_name": "KETAPANG"
+        },
+        {
+            "item_id": 221,
+            "item_name": "KLATEN"
+        },
+        {
+            "item_id": 387,
+            "item_name": "KOLAKA"
+        },
+        {
+            "item_id": 338,
+            "item_name": "KOTABARU"
+        },
+        {
+            "item_id": 388,
+            "item_name": "KOTAMOBAGU"
+        },
+        {
+            "item_id": 979,
+            "item_name": "KUALA TANJUNG"
+        },
+        {
+            "item_id": 222,
+            "item_name": "KUDUS"
+        },
+        {
+            "item_id": 995,
+            "item_name": "KULON PROGO"
+        },
+        {
+            "item_id": 223,
+            "item_name": "KUNINGAN"
+        },
+        {
+            "item_id": 17,
+            "item_name": "KUPANG"
+        },
+        {
+            "item_id": 224,
+            "item_name": "LAMONGAN"
+        },
+        {
+            "item_id": 90,
+            "item_name": "LHOKSEUMAWE"
+        },
+        {
+            "item_id": 97,
+            "item_name": "LUBUK LINGGAU"
+        },
+        {
+            "item_id": 225,
+            "item_name": "LUMAJANG"
+        },
+        {
+            "item_id": 391,
+            "item_name": "LUWUK"
+        },
+        {
+            "item_id": 226,
+            "item_name": "MADIUN"
+        },
+        {
+            "item_id": 227,
+            "item_name": "MAGELANG"
+        },
+        {
+            "item_id": 228,
+            "item_name": "MAGETAN"
+        },
+        {
+            "item_id": 229,
+            "item_name": "MAJALENGKA"
+        },
+        {
+            "item_id": 18,
+            "item_name": "MAKASSAR"
+        },
+        {
+            "item_id": 230,
+            "item_name": "MALANG"
+        },
+        {
+            "item_id": 342,
+            "item_name": "MALINAU"
+        },
+        {
+            "item_id": 991,
+            "item_name": "MALINGPING"
+        },
+        {
+            "item_id": 396,
+            "item_name": "MAMUJU"
+        },
+        {
+            "item_id": 397,
+            "item_name": "MANADO"
+        },
+        {
+            "item_id": 19,
+            "item_name": "MANOKWARI"
+        },
+        {
+            "item_id": 399,
+            "item_name": "MAROS"
+        },
+        {
+            "item_id": 20,
+            "item_name": "MEDAN"
+        },
+        {
+            "item_id": 326,
+            "item_name": "MEMPAWAH"
+        },
+        {
+            "item_id": 992,
+            "item_name": "MERAK"
+        },
+        {
+            "item_id": 21,
+            "item_name": "MERAUKE"
+        },
+        {
+            "item_id": 231,
+            "item_name": "MOJOKERTO"
+        },
+        {
+            "item_id": 112,
+            "item_name": "MUARA ENIM"
+        },
+        {
+            "item_id": 22,
+            "item_name": "NABIRE"
+        },
+        {
+            "item_id": 234,
+            "item_name": "NGANJUK"
+        },
+        {
+            "item_id": 235,
+            "item_name": "NGAWI"
+        },
+        {
+            "item_id": 23,
+            "item_name": "NUNUKAN"
+        },
+        {
+            "item_id": 236,
+            "item_name": "PACITAN"
+        },
+        {
+            "item_id": 24,
+            "item_name": "PADANG"
+        },
+        {
+            "item_id": 1025,
+            "item_name": "PADANG PARIAMAN"
+        },
+        {
+            "item_id": 119,
+            "item_name": "PADANG SIDEMPUAN"
+        },
+        {
+            "item_id": 25,
+            "item_name": "PALEMBANG"
+        },
+        {
+            "item_id": 403,
+            "item_name": "PALOPO"
+        },
+        {
+            "item_id": 26,
+            "item_name": "PALU"
+        },
+        {
+            "item_id": 237,
+            "item_name": "PAMEKASAN"
+        },
+        {
+            "item_id": 238,
+            "item_name": "PANDEGLANG"
+        },
+        {
+            "item_id": 487,
+            "item_name": "PANGANDARAN"
+        },
+        {
+            "item_id": 241,
+            "item_name": "PASURUAN"
+        },
+        {
+            "item_id": 240,
+            "item_name": "PATI"
+        },
+        {
+            "item_id": 129,
+            "item_name": "PAYAKUMBUH"
+        },
+        {
+            "item_id": 242,
+            "item_name": "PEKALONGAN"
+        },
+        {
+            "item_id": 27,
+            "item_name": "PEKANBARU"
+        },
+        {
+            "item_id": 244,
+            "item_name": "PEMALANG"
+        },
+        {
+            "item_id": 130,
+            "item_name": "PEMATANG SIANTAR"
+        },
+        {
+            "item_id": 408,
+            "item_name": "PINRANG"
+        },
+        {
+            "item_id": 245,
+            "item_name": "PONOROGO"
+        },
+        {
+            "item_id": 29,
+            "item_name": "PONTIANAK"
+        },
+        {
+            "item_id": 410,
+            "item_name": "POSO"
+        },
+        {
+            "item_id": 246,
+            "item_name": "PROBOLINGGO"
+        },
+        {
+            "item_id": 353,
+            "item_name": "PULANG PISAU"
+        },
+        {
+            "item_id": 247,
+            "item_name": "PURBALINGGA"
+        },
+        {
+            "item_id": 248,
+            "item_name": "PURWAKARTA"
+        },
+        {
+            "item_id": 251,
+            "item_name": "PURWOREJO"
+        },
+        {
+            "item_id": 252,
+            "item_name": "RANGKASBITUNG"
+        },
+        {
+            "item_id": 253,
+            "item_name": "REMBANG"
+        },
+        {
+            "item_id": 254,
+            "item_name": "SALATIGA"
+        },
+        {
+            "item_id": 30,
+            "item_name": "SAMARINDA"
+        },
+        {
+            "item_id": 330,
+            "item_name": "SAMBAS"
+        },
+        {
+            "item_id": 255,
+            "item_name": "SAMPANG"
+        },
+        {
+            "item_id": 256,
+            "item_name": "SEMARANG"
+        },
+        {
+            "item_id": 993,
+            "item_name": "SENTUL"
+        },
+        {
+            "item_id": 257,
+            "item_name": "SERANG"
+        },
+        {
+            "item_id": 259,
+            "item_name": "SIDOARJO"
+        },
+        {
+            "item_id": 324,
+            "item_name": "SINGKAWANG"
+        },
+        {
+            "item_id": 418,
+            "item_name": "SINJAI"
+        },
+        {
+            "item_id": 328,
+            "item_name": "SINTANG"
+        },
+        {
+            "item_id": 261,
+            "item_name": "SITUBONDO"
+        },
+        {
+            "item_id": 263,
+            "item_name": "SLEMAN"
+        },
+        {
+            "item_id": 157,
+            "item_name": "SOLOK"
+        },
+        {
+            "item_id": 33,
+            "item_name": "SORONG"
+        },
+        {
+            "item_id": 265,
+            "item_name": "SRAGEN"
+        },
+        {
+            "item_id": 266,
+            "item_name": "SUBANG"
+        },
+        {
+            "item_id": 267,
+            "item_name": "SUKABUMI"
+        },
+        {
+            "item_id": 268,
+            "item_name": "SUKOHARJO"
+        },
+        {
+            "item_id": 270,
+            "item_name": "SUMEDANG"
+        },
+        {
+            "item_id": 271,
+            "item_name": "SUMENEP"
+        },
+        {
+            "item_id": 34,
+            "item_name": "SURABAYA"
+        },
+        {
+            "item_id": 272,
+            "item_name": "SURAKARTA"
+        },
+        {
+            "item_id": 422,
+            "item_name": "TAKALAR"
+        },
+        {
+            "item_id": 274,
+            "item_name": "TANGERANG"
+        },
+        {
+            "item_id": 275,
+            "item_name": "TANGERANG SELATAN"
+        },
+        {
+            "item_id": 997,
+            "item_name": "TANGKIANG"
+        },
+        {
+            "item_id": 166,
+            "item_name": "TANJUNG BALAI"
+        },
+        {
+            "item_id": 36,
+            "item_name": "TARAKAN"
+        },
+        {
+            "item_id": 273,
+            "item_name": "TASIKMALAYA"
+        },
+        {
+            "item_id": 174,
+            "item_name": "TEBING TINGGI"
+        },
+        {
+            "item_id": 276,
+            "item_name": "TEGAL"
+        },
+        {
+            "item_id": 277,
+            "item_name": "TEMANGGUNG"
+        },
+        {
+            "item_id": 37,
+            "item_name": "TERNATE"
+        },
+        {
+            "item_id": 425,
+            "item_name": "TOMOHON"
+        },
+        {
+            "item_id": 279,
+            "item_name": "TRENGGALEK"
+        },
+        {
+            "item_id": 39,
+            "item_name": "TUAL"
+        },
+        {
+            "item_id": 280,
+            "item_name": "TUBAN"
+        },
+        {
+            "item_id": 281,
+            "item_name": "TULUNGAGUNG"
+        },
+        {
+            "item_id": 323,
+            "item_name": "WAINGAPU"
+        },
+        {
+            "item_id": 285,
+            "item_name": "WONOGIRI"
+        },
+        {
+            "item_id": 287,
+            "item_name": "WONOSOBO"
+        },
+        {
+            "item_id": 288,
+            "item_name": "YOGYAKARTA"
+        }
+    ],
+    "isSuccess": "ok"
+}
