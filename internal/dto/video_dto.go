@@ -61,6 +61,8 @@ type VideoResponse struct {
 	MetaDescriptionID *string             `json:"meta_description_id"`
 	MetaDescriptionEN *string             `json:"meta_description_en"`
 	MetaKeywords      *string             `json:"meta_keywords"`
+	TranscodeStatus   string              `json:"transcode_status"`
+	TranscodeError    *string             `json:"transcode_error,omitempty"`
 	IsActive          bool                `json:"is_active"`
 	ViewCount         int                 `json:"view_count"`
 	PublishedAt       *time.Time          `json:"published_at"`
@@ -68,20 +70,27 @@ type VideoResponse struct {
 	UpdatedAt         time.Time           `json:"updated_at"`
 }
 
+type VideoTranscodeStatusResponse struct {
+	ID              uuid.UUID `json:"id"`
+	TranscodeStatus string    `json:"transcode_status"`
+	TranscodeError  *string   `json:"transcode_error,omitempty"`
+}
+
 type VideoListResponse struct {
-	ID           uuid.UUID           `json:"id"`
-	JudulID      string              `json:"judul_id"`
-	JudulEN      *string             `json:"judul_en"`
-	SlugID       *string             `json:"slug_id"`
-	SlugEN       *string             `json:"slug_en"`
-	DeskripsiID  string              `json:"deskripsi_id"`
-	DeskripsiEN  *string             `json:"deskripsi_en"`
-	ThumbnailURL *string             `json:"thumbnail_url"`
-	Kategori     *KategoriVideoBrief `json:"kategori,omitempty"`
-	IsActive     bool                `json:"is_active"`
-	ViewCount    int                 `json:"view_count"`
-	PublishedAt  *time.Time          `json:"published_at"`
-	CreatedAt    time.Time           `json:"created_at"`
+	ID              uuid.UUID           `json:"id"`
+	JudulID         string              `json:"judul_id"`
+	JudulEN         *string             `json:"judul_en"`
+	SlugID          *string             `json:"slug_id"`
+	SlugEN          *string             `json:"slug_en"`
+	DeskripsiID     string              `json:"deskripsi_id"`
+	DeskripsiEN     *string             `json:"deskripsi_en"`
+	ThumbnailURL    *string             `json:"thumbnail_url"`
+	Kategori        *KategoriVideoBrief `json:"kategori,omitempty"`
+	TranscodeStatus string              `json:"transcode_status"`
+	IsActive        bool                `json:"is_active"`
+	ViewCount       int                 `json:"view_count"`
+	PublishedAt     *time.Time          `json:"published_at"`
+	CreatedAt       time.Time           `json:"created_at"`
 }
 
 type KategoriVideoBrief struct {

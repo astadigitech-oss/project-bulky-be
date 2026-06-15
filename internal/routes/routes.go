@@ -617,6 +617,7 @@ func SetupRoutes(
 	videoAdmin.Get("/dropdown", middleware.RequirePermission("marketing:read"), videoController.GetDropdownOptions)
 	videoAdmin.Get("/search", middleware.RequirePermission("marketing:read"), videoController.Search)
 	videoAdmin.Get("/:id", middleware.RequirePermission("marketing:read"), videoController.GetByID)
+	videoAdmin.Get("/:id/transcode-status", middleware.RequirePermission("marketing:read"), videoController.GetTranscodeStatus)
 	videoAdmin.Post("", middleware.RequirePermission("marketing:manage"), videoController.Create)
 	videoAdmin.Put("/:id", middleware.RequirePermission("marketing:manage"), videoController.Update)
 	videoAdmin.Delete("/:id", middleware.RequirePermission("marketing:manage"), videoController.Delete)

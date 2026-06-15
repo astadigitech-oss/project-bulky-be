@@ -60,10 +60,8 @@ func GenerateThumbnailFromVideo(videoPath string, directory string, cfg *config.
 		return "", fmt.Errorf("thumbnail file tidak terbuat")
 	}
 
-	// Return relative path for URL
-	relativePath := filepath.Join("/uploads", directory, thumbnailFilename)
-	// Convert backslashes to forward slashes for URL
-	relativePath = filepath.ToSlash(relativePath)
+	// Return relative path for URL (tanpa prefix /uploads/, konsisten dengan SaveUploadedFile)
+	relativePath := filepath.ToSlash(filepath.Join(directory, thumbnailFilename))
 
 	return relativePath, nil
 }

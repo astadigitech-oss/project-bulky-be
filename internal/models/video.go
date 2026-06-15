@@ -25,6 +25,8 @@ type Video struct {
 	MetaDescriptionID *string        `gorm:"type:text" json:"meta_description_id"`
 	MetaDescriptionEN *string        `gorm:"type:text" json:"meta_description_en"`
 	MetaKeywords      *string        `gorm:"type:text" json:"meta_keywords"`
+	TranscodeStatus   string         `gorm:"type:varchar(20);not null;default:pending" json:"transcode_status"`
+	TranscodeError    *string        `gorm:"type:text" json:"transcode_error,omitempty"`
 	IsActive          bool           `gorm:"default:false" json:"is_active"`
 	ViewCount         int            `gorm:"default:0" json:"view_count"`
 	PublishedAt       *time.Time     `gorm:"type:timestamptz" json:"published_at"`

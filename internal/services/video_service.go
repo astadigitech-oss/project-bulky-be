@@ -3,6 +3,8 @@ package services
 import (
 	"context"
 	"errors"
+	"log"
+	"time"
 
 	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/dto"
@@ -16,6 +18,11 @@ import (
 
 type VideoService interface {
 	Create(ctx context.Context, req *dto.CreateVideoRequest) (*dto.VideoResponse, error)
+	CreateDraft(ctx context.Context, req *dto.CreateVideoRequest) (*models.Video, error)
+	MarkReady(ctx context.Context, id uuid.UUID, videoURL string, durasiDetik int) error
+	MarkFailed(ctx context.Context, id uuid.UUID, errMsg string) error
+	RecoverStuckJobs(ctx context.Context)
+	GetTranscodeStatus(ctx context.Context, id uuid.UUID) (*dto.VideoTranscodeStatusResponse, error)
 	Update(ctx context.Context, id uuid.UUID, req *dto.UpdateVideoRequest) (*dto.VideoResponse, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 	GetByID(ctx context.Context, id uuid.UUID) (*dto.VideoResponse, error)
@@ -336,6 +343,126 @@ func (s *videoService) ToggleStatus(ctx context.Context, id uuid.UUID) error {
 	return s.videoRepo.ToggleStatus(ctx, id)
 }
 
+func (s *videoService) CreateDraft(ctx context.Context, req *dto.CreateVideoRequest) (*models.Video, error) {
+	_, err := s.kategoriRepo.FindByID(ctx, req.KategoriID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("kategori not found")
+		}
+		return nil, err
+	}
+
+	isActive := req.IsActive == "true"
+
+	var slugIDVal string
+	if req.SlugID != nil && *req.SlugID != "" {
+		slugIDVal = *req.SlugID
+	} else {
+		slugIDVal = utils.GenerateSlug(req.JudulID)
+	}
+	slugIDPtr := &slugIDVal
+
+	var slugEN *string
+	if req.SlugEN != nil && *req.SlugEN != "" {
+		slugEN = req.SlugEN
+	} else if req.JudulEN != "" {
+		s := utils.GenerateSlug(req.JudulEN)
+		slugEN = &s
+	}
+
+	metaTitleID := req.MetaTitleID
+	if metaTitleID == nil {
+		v := truncateMeta(req.JudulID, 200)
+		metaTitleID = &v
+	}
+	metaTitleEN := req.MetaTitleEN
+	if metaTitleEN == nil && req.JudulEN != "" {
+		v := truncateMeta(req.JudulEN, 200)
+		metaTitleEN = &v
+	}
+	metaDescriptionID := req.MetaDescriptionID
+	if metaDescriptionID == nil {
+		v := truncateMeta(stripHTML(req.DeskripsiID), 160)
+		metaDescriptionID = &v
+	}
+	metaDescriptionEN := req.MetaDescriptionEN
+	if metaDescriptionEN == nil && req.DeskripsiEN != "" {
+		v := truncateMeta(stripHTML(req.DeskripsiEN), 160)
+		metaDescriptionEN = &v
+	}
+	metaKeywords := req.MetaKeywords
+	if metaKeywords == nil {
+		judulEN := &req.JudulEN
+		kw := generateMetaKeywords(req.JudulID, judulEN, nil)
+		metaKeywords = &kw
+	}
+
+	video := &models.Video{
+		JudulID:           req.JudulID,
+		JudulEN:           &req.JudulEN,
+		Slug:              slugIDVal,
+		SlugID:            slugIDPtr,
+		SlugEN:            slugEN,
+		DeskripsiID:       req.DeskripsiID,
+		DeskripsiEN:       &req.DeskripsiEN,
+		VideoURL:          req.VideoURL,
+		ThumbnailURL:      req.ThumbnailURL,
+		KategoriID:        req.KategoriID,
+		MetaTitleID:       metaTitleID,
+		MetaTitleEN:       metaTitleEN,
+		MetaDescriptionID: metaDescriptionID,
+		MetaDescriptionEN: metaDescriptionEN,
+		MetaKeywords:      metaKeywords,
+		IsActive:          isActive,
+		TranscodeStatus:   "processing",
+	}
+
+	if err := s.videoRepo.Create(ctx, video); err != nil {
+		return nil, err
+	}
+
+	return video, nil
+}
+
+func (s *videoService) MarkReady(ctx context.Context, id uuid.UUID, videoURL string, durasiDetik int) error {
+	return s.videoRepo.UpdateFields(ctx, id, map[string]interface{}{
+		"video_url":        videoURL,
+		"durasi_detik":     durasiDetik,
+		"transcode_status": "ready",
+		"transcode_error":  gorm.Expr("NULL"),
+	})
+}
+
+func (s *videoService) MarkFailed(ctx context.Context, id uuid.UUID, errMsg string) error {
+	return s.videoRepo.UpdateFields(ctx, id, map[string]interface{}{
+		"transcode_status": "failed",
+		"transcode_error":  errMsg,
+	})
+}
+
+func (s *videoService) RecoverStuckJobs(ctx context.Context) {
+	affected, err := s.videoRepo.MarkStuckAsFailed(ctx, 15*time.Minute)
+	if err != nil {
+		log.Printf("[video] RecoverStuckJobs error: %v", err)
+		return
+	}
+	if affected > 0 {
+		log.Printf("[video] RecoverStuckJobs: %d video dikembalikan ke status failed", affected)
+	}
+}
+
+func (s *videoService) GetTranscodeStatus(ctx context.Context, id uuid.UUID) (*dto.VideoTranscodeStatusResponse, error) {
+	video, err := s.videoRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &dto.VideoTranscodeStatusResponse{
+		ID:              video.ID,
+		TranscodeStatus: video.TranscodeStatus,
+		TranscodeError:  video.TranscodeError,
+	}, nil
+}
+
 func (s *videoService) toVideoResponse(video *models.Video) *dto.VideoResponse {
 	resp := &dto.VideoResponse{
 		ID:                video.ID,
@@ -353,6 +480,8 @@ func (s *videoService) toVideoResponse(video *models.Video) *dto.VideoResponse {
 		MetaDescriptionID: video.MetaDescriptionID,
 		MetaDescriptionEN: video.MetaDescriptionEN,
 		MetaKeywords:      video.MetaKeywords,
+		TranscodeStatus:   video.TranscodeStatus,
+		TranscodeError:    video.TranscodeError,
 		IsActive:          video.IsActive,
 		ViewCount:         video.ViewCount,
 		PublishedAt:       video.PublishedAt,
@@ -375,19 +504,20 @@ func (s *videoService) toVideoResponse(video *models.Video) *dto.VideoResponse {
 
 func (s *videoService) toVideoListResponse(video *models.Video) dto.VideoListResponse {
 	resp := dto.VideoListResponse{
-		ID:           video.ID,
-		JudulID:      video.JudulID,
-		JudulEN:      video.JudulEN,
-		SlugID:       video.SlugID,
-		SlugEN:       video.SlugEN,
-		DeskripsiID:  video.DeskripsiID,
-		DeskripsiEN:  video.DeskripsiEN,
-		ThumbnailURL: utils.GetFileURLPtr(video.ThumbnailURL, s.cfg),
-		Kategori:     nil,
-		IsActive:     video.IsActive,
-		ViewCount:    video.ViewCount,
-		PublishedAt:  video.PublishedAt,
-		CreatedAt:    video.CreatedAt,
+		ID:              video.ID,
+		JudulID:         video.JudulID,
+		JudulEN:         video.JudulEN,
+		SlugID:          video.SlugID,
+		SlugEN:          video.SlugEN,
+		DeskripsiID:     video.DeskripsiID,
+		DeskripsiEN:     video.DeskripsiEN,
+		ThumbnailURL:    utils.GetFileURLPtr(video.ThumbnailURL, s.cfg),
+		Kategori:        nil,
+		TranscodeStatus: video.TranscodeStatus,
+		IsActive:        video.IsActive,
+		ViewCount:       video.ViewCount,
+		PublishedAt:     video.PublishedAt,
+		CreatedAt:       video.CreatedAt,
 	}
 
 	if video.Kategori != nil {

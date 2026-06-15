@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 
@@ -124,6 +125,9 @@ func main() {
 	labelBlogService := services.NewLabelBlogService(labelBlogRepo)
 	videoService := services.NewVideoService(videoRepo, kategoriVideoRepo, cfg)
 	kategoriVideoService := services.NewKategoriVideoService(kategoriVideoRepo)
+
+	// Recovery: kembalikan video yang stuck di status 'processing' ke 'failed' saat startup
+	videoService.RecoverStuckJobs(context.Background())
 	kuponService := services.NewKuponService(kuponRepo, kategoriRepo, db)
 	dasborService := services.NewDasborService(dasborRepo)
 
