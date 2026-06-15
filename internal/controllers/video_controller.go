@@ -564,7 +564,5 @@ func (c *VideoController) runTranscode(videoID uuid.UUID, rawRelativePath string
 	base := strings.TrimSuffix(filepath.Base(rawRelativePath), filepath.Ext(rawRelativePath))
 	relativeStreamURL := filepath.ToSlash(filepath.Join(dir, "stream_"+base+".mp4"))
 
-	transcoder.Cleanup(result.OutputPath)
-
 	_ = c.videoService.MarkReady(context.Background(), videoID, relativeStreamURL, result.DurasiDetik)
 }
