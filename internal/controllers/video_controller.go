@@ -3,7 +3,10 @@ package controllers
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -543,6 +546,186 @@ func (c *VideoController) GetTranscodeStatus(ctx *fiber.Ctx) error {
 	}
 
 	return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Status transcode berhasil diambil", result)
+}
+
+// UploadChunk menerima satu bagian (chunk) dari file video besar.
+// Client harus mengirim: upload_id, chunk_index, total_chunks, chunk_data (file).
+func (c *VideoController) UploadChunk(ctx *fiber.Ctx) error {
+	uploadID := ctx.FormValue("upload_id")
+	chunkIndexStr := ctx.FormValue("chunk_index")
+	totalChunksStr := ctx.FormValue("total_chunks")
+
+	if uploadID == "" {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "upload_id wajib diisi", "")
+	}
+	chunkIndex, err := strconv.Atoi(chunkIndexStr)
+	if err != nil || chunkIndex < 0 {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "chunk_index tidak valid", "")
+	}
+	totalChunks, err := strconv.Atoi(totalChunksStr)
+	if err != nil || totalChunks <= 0 {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "total_chunks tidak valid", "")
+	}
+
+	file, err := ctx.FormFile("chunk_data")
+	if err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "chunk_data wajib diisi", err.Error())
+	}
+
+	tempDir := filepath.Join(c.cfg.UploadPath, "chunks", uploadID)
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat direktori temp", err.Error())
+	}
+
+	chunkPath := filepath.Join(tempDir, fmt.Sprintf("chunk_%05d", chunkIndex))
+	if err := ctx.SaveFile(file, chunkPath); err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan chunk", err.Error())
+	}
+
+	return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Chunk berhasil disimpan", fiber.Map{
+		"chunk_index":  chunkIndex,
+		"total_chunks": totalChunks,
+	})
+}
+
+// FinalizeChunk menggabungkan semua chunk yang sudah diupload, lalu membuat record video
+// dan menjalankan transcode di background. Endpoint ini dipanggil setelah semua chunk terkirim.
+func (c *VideoController) FinalizeChunk(ctx *fiber.Ctx) error {
+	uploadID := ctx.FormValue("upload_id")
+	totalChunksStr := ctx.FormValue("total_chunks")
+	originalExt := strings.ToLower(ctx.FormValue("original_ext"))
+
+	if uploadID == "" {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "upload_id wajib diisi", "")
+	}
+	totalChunks, err := strconv.Atoi(totalChunksStr)
+	if err != nil || totalChunks <= 0 {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "total_chunks tidak valid", "")
+	}
+
+	validExts := map[string]bool{".mp4": true, ".mov": true, ".m4v": true}
+	if !validExts[originalExt] {
+		originalExt = ".mp4"
+	}
+
+	// Parse metadata video
+	var req dto.CreateVideoRequest
+	req.JudulID = ctx.FormValue("judul_id")
+	req.JudulEN = ctx.FormValue("judul_en")
+	if v := ctx.FormValue("slug_id"); v != "" {
+		req.SlugID = &v
+	}
+	if v := ctx.FormValue("slug_en"); v != "" {
+		req.SlugEN = &v
+	}
+	req.DeskripsiID = ctx.FormValue("deskripsi_id")
+	req.DeskripsiEN = ctx.FormValue("deskripsi_en")
+	req.IsActive = ctx.FormValue("is_active")
+
+	if kategoriIDStr := ctx.FormValue("kategori_id"); kategoriIDStr != "" {
+		kategoriID, err := uuid.Parse(kategoriIDStr)
+		if err != nil {
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "kategori_id tidak valid", err.Error())
+		}
+		req.KategoriID = kategoriID
+	}
+
+	if req.JudulID == "" {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "judul_id wajib diisi", "")
+	}
+	if req.JudulEN == "" {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "judul_en wajib diisi", "")
+	}
+	if req.DeskripsiID == "" {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "deskripsi_id wajib diisi", "")
+	}
+	if req.DeskripsiEN == "" {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "deskripsi_en wajib diisi", "")
+	}
+	if req.IsActive == "" {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "is_active wajib diisi", "")
+	}
+
+	// Buat file final dari gabungan chunk
+	videoDir := filepath.Join(c.cfg.UploadPath, "video")
+	if err := os.MkdirAll(videoDir, 0755); err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat direktori video", err.Error())
+	}
+
+	finalFilename := uuid.New().String() + originalExt
+	finalPath := filepath.Join(videoDir, finalFilename)
+	relativeVideoPath := "video/" + finalFilename
+	tempDir := filepath.Join(c.cfg.UploadPath, "chunks", uploadID)
+
+	dst, err := os.Create(finalPath)
+	if err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat file final", err.Error())
+	}
+
+	for i := 0; i < totalChunks; i++ {
+		chunkPath := filepath.Join(tempDir, fmt.Sprintf("chunk_%05d", i))
+		chunk, err := os.Open(chunkPath)
+		if err != nil {
+			dst.Close()
+			os.Remove(finalPath)
+			os.RemoveAll(tempDir)
+			return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, fmt.Sprintf("Chunk %d tidak ditemukan", i), err.Error())
+		}
+		_, copyErr := io.Copy(dst, chunk)
+		chunk.Close()
+		if copyErr != nil {
+			dst.Close()
+			os.Remove(finalPath)
+			os.RemoveAll(tempDir)
+			return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menggabungkan chunk", copyErr.Error())
+		}
+	}
+	dst.Sync()
+	dst.Close()
+	os.RemoveAll(tempDir)
+
+	req.VideoURL = relativeVideoPath
+
+	// Handle thumbnail (opsional)
+	var thumbnailURL *string
+	if file, err := ctx.FormFile("thumbnail_file"); err == nil {
+		if !utils.IsValidImageType(file) {
+			os.Remove(finalPath)
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file thumbnail tidak didukung", "")
+		}
+		savedPath, err := utils.SaveUploadedFile(file, "video/thumbnail", c.cfg)
+		if err != nil {
+			os.Remove(finalPath)
+			return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan thumbnail", err.Error())
+		}
+		thumbnailURL = &savedPath
+		req.ThumbnailURL = thumbnailURL
+	} else {
+		// Coba auto-generate thumbnail dari video (butuh ffmpeg)
+		if generated, err := utils.GenerateThumbnailFromVideo(relativeVideoPath, "video/thumbnail", c.cfg); err == nil {
+			req.ThumbnailURL = &generated
+		}
+	}
+
+	video, err := c.videoService.CreateDraft(ctx.UserContext(), &req)
+	if err != nil {
+		os.Remove(finalPath)
+		if thumbnailURL != nil {
+			utils.DeleteFile(*thumbnailURL, c.cfg)
+		}
+		if err.Error() == "kategori not found" {
+			return utils.SimpleErrorResponse(ctx, http.StatusUnprocessableEntity, "Kategori tidak ditemukan", "")
+		}
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat data video", err.Error())
+	}
+
+	go c.runTranscode(video.ID, relativeVideoPath)
+
+	c.activityLog.Log(ctx, models.ActionCreate, "video", "Video sedang diproses (chunk upload)")
+	return utils.SimpleSuccessResponse(ctx, http.StatusAccepted, "Video sedang diproses", fiber.Map{
+		"id":               video.ID,
+		"transcode_status": "processing",
+	})
 }
 
 // runTranscode dijalankan di goroutine background setelah Create menerima file upload.
