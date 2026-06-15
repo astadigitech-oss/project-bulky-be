@@ -13,6 +13,8 @@ import (
 type VideoRepository interface {
 	Create(ctx context.Context, video *models.Video) error
 	Update(ctx context.Context, video *models.Video) error
+	UpdateFields(ctx context.Context, id uuid.UUID, fields map[string]interface{}) error
+	MarkStuckAsFailed(ctx context.Context, threshold time.Duration) (int64, error)
 	Delete(ctx context.Context, video *models.Video) error
 	FindByID(ctx context.Context, id uuid.UUID) (*models.Video, error)
 	FindBySlug(ctx context.Context, slug string) (*models.Video, error)
@@ -39,6 +41,28 @@ func (r *videoRepository) Create(ctx context.Context, video *models.Video) error
 
 func (r *videoRepository) Update(ctx context.Context, video *models.Video) error {
 	return r.db.WithContext(ctx).Save(video).Error
+}
+
+func (r *videoRepository) UpdateFields(ctx context.Context, id uuid.UUID, fields map[string]interface{}) error {
+	return r.db.WithContext(ctx).
+		Model(&models.Video{}).
+		Where("id = ?", id).
+		Updates(fields).Error
+}
+
+func (r *videoRepository) MarkStuckAsFailed(ctx context.Context, threshold time.Duration) (int64, error) {
+	cutoff := time.Now().Add(-threshold)
+	errMsg := "Proses transcode terputus (server restart). Silakan upload ulang."
+
+	result := r.db.WithContext(ctx).
+		Model(&models.Video{}).
+		Where("transcode_status = ? AND updated_at < ?", "processing", cutoff).
+		Updates(map[string]interface{}{
+			"transcode_status": "failed",
+			"transcode_error":  errMsg,
+		})
+
+	return result.RowsAffected, result.Error
 }
 
 func (r *videoRepository) Delete(ctx context.Context, video *models.Video) error {

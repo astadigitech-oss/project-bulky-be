@@ -1,8 +1,10 @@
 package controllers
 
 import (
+	"context"
 	"errors"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -10,6 +12,7 @@ import (
 	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/services"
+	"project-bulky-be/pkg/transcoder"
 	"project-bulky-be/pkg/utils"
 
 	"github.com/gofiber/fiber/v2"
@@ -161,14 +164,34 @@ func (c *VideoController) Create(ctx *fiber.Ctx) error {
 			// If external video URL and no thumbnail provided, thumbnailURL remains nil
 		}
 
+		// Async transcode path: video file was uploaded → create draft + goroutine
+		if uploadedFilePath != "" {
+			video, err := c.videoService.CreateDraft(ctx.UserContext(), &req)
+			if err != nil {
+				utils.DeleteFile(uploadedFilePath, c.cfg)
+				if thumbnailURL != nil && strings.HasPrefix(*thumbnailURL, "/uploads/") {
+					utils.DeleteFile(*thumbnailURL, c.cfg)
+				}
+				if err.Error() == "kategori not found" {
+					return utils.SimpleErrorResponse(ctx, http.StatusUnprocessableEntity, "Kategori tidak ditemukan", "")
+				}
+				return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat data video", err.Error())
+			}
+
+			go c.runTranscode(video.ID, uploadedFilePath)
+
+			c.activityLog.Log(ctx, models.ActionCreate, "video", "Video sedang diproses (transcode)")
+			return utils.SimpleSuccessResponse(ctx, http.StatusAccepted, "Video sedang diproses", fiber.Map{
+				"id":               video.ID,
+				"transcode_status": "processing",
+			})
+		}
+
+		// Sync path: external video_url provided → create normally
 		video, err := c.videoService.Create(ctx.UserContext(), &req)
 		if err != nil {
-			// Rollback: delete uploaded files if creation fails
-			if videoURL != "" && strings.HasPrefix(videoURL, "/uploads/") {
-				utils.DeleteFile(videoURL, c.cfg)
-			}
-			if thumbnailURL != nil && strings.HasPrefix(*thumbnailURL, "/uploads/") {
-				utils.DeleteFile(*thumbnailURL, c.cfg)
+			if err.Error() == "kategori not found" {
+				return utils.SimpleErrorResponse(ctx, http.StatusUnprocessableEntity, "Kategori tidak ditemukan", "")
 			}
 			return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat video", err.Error())
 		}
@@ -506,4 +529,42 @@ func (c *VideoController) GetDropdownOptions(ctx *fiber.Ctx) error {
 	}
 
 	return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Data dropdown berhasil diambil", data)
+}
+
+func (c *VideoController) GetTranscodeStatus(ctx *fiber.Ctx) error {
+	id, err := uuid.Parse(ctx.Params("id"))
+	if err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Invalid ID", err.Error())
+	}
+
+	result, err := c.videoService.GetTranscodeStatus(ctx.UserContext(), id)
+	if err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Video tidak ditemukan", err.Error())
+	}
+
+	return utils.SimpleSuccessResponse(ctx, http.StatusOK, "Status transcode berhasil diambil", result)
+}
+
+// runTranscode dijalankan di goroutine background setelah Create menerima file upload.
+// Ia melakukan transcode, lalu mengupdate DB dengan hasilnya.
+func (c *VideoController) runTranscode(videoID uuid.UUID, rawRelativePath string) {
+	rawAbsPath := filepath.Join(c.cfg.UploadPath, filepath.FromSlash(rawRelativePath))
+
+	result, err := transcoder.Transcode(rawAbsPath)
+	// Hapus file raw setelah proses transcode (sukses maupun gagal)
+	transcoder.Cleanup(rawAbsPath)
+
+	if err != nil {
+		_ = c.videoService.MarkFailed(context.Background(), videoID, err.Error())
+		return
+	}
+
+	// Derive relative URL dari rawRelativePath (konsisten dengan SaveUploadedFile yang menyimpan tanpa prefix "uploads/")
+	dir := filepath.Dir(rawRelativePath)
+	base := strings.TrimSuffix(filepath.Base(rawRelativePath), filepath.Ext(rawRelativePath))
+	relativeStreamURL := filepath.ToSlash(filepath.Join(dir, "stream_"+base+".mp4"))
+
+	transcoder.Cleanup(result.OutputPath)
+
+	_ = c.videoService.MarkReady(context.Background(), videoID, relativeStreamURL, result.DurasiDetik)
 }

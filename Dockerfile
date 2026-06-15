@@ -10,6 +10,8 @@ RUN apk add --no-cache \
     bash \
     curl \
     postgresql-client \
+    ffmpeg \
+    ca-certificates \
     tzdata
 
 COPY . .
