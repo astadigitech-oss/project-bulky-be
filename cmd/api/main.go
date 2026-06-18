@@ -175,6 +175,7 @@ func main() {
 	kategoriVideoController := controllers.NewKategoriVideoController(kategoriVideoService, reorderService, activityLogService)
 	kuponController := controllers.NewKuponController(kuponService, activityLogService)
 	dasborController := controllers.NewDasborController(dasborService)
+	internalUploadController := controllers.NewInternalUploadController(cfg)
 
 	// Auth V2 controllers
 	authV2Controller := controllers.NewAuthV2Controller(authV2Service, adminService, buyerService)
@@ -190,6 +191,7 @@ func main() {
 
 	routes.SetupRoutes(
 		router,
+		cfg,
 		dasborController,
 		kategoriController, merekController, kondisiController, kondisiPaketController, sumberController,
 		warehouseController, tipeProdukController, diskonKategoriController, bannerTipeProdukController,
@@ -207,6 +209,7 @@ func main() {
 		blogController, kategoriBlogController, labelBlogController,
 		videoController, kategoriVideoController,
 		kuponController,
+		internalUploadController,
 	)
 
 	// Setup Auth V2 routes (new authentication system with roles & permissions)
