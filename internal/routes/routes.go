@@ -3,6 +3,7 @@ package routes
 import (
 	"os"
 
+	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/controllers"
 	"project-bulky-be/internal/middleware"
 
@@ -11,6 +12,7 @@ import (
 
 func SetupRoutes(
 	router *fiber.App,
+	cfg *config.Config,
 	dasborController *controllers.DasborController,
 	kategoriController *controllers.KategoriProdukController,
 	merekController *controllers.MerekProdukController,
@@ -48,6 +50,7 @@ func SetupRoutes(
 	videoController *controllers.VideoController,
 	kategoriVideoController *controllers.KategoriVideoController,
 	kuponController *controllers.KuponController,
+	internalUploadController *controllers.InternalUploadController,
 ) {
 	// Health check
 	router.Get("/api/health", func(c *fiber.Ctx) error {
@@ -649,6 +652,12 @@ func SetupRoutes(
 	// Kategori Video - Public
 	v1.Get("/public/kategori-video", kategoriVideoController.GetAllPublic)
 	v1.Get("/public/kategori-video/dropdown", kategoriVideoController.GetDropdownOptions)
+
+	// Internal upload routes — only accessible via X-Internal-Key header (storefront BE)
+	internalUpload := v1.Group("/internal/upload",
+		middleware.InternalKeyMiddleware(cfg.InternalAPIKey),
+	)
+	internalUpload.Post("/ulasan", internalUploadController.UploadUlasanGambar)
 
 	// Routes list endpoint
 	router.Get("/api/routes", func(c *fiber.Ctx) error {
