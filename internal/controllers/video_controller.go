@@ -28,6 +28,7 @@ type VideoController struct {
 	kategoriVideoService services.KategoriVideoService
 	cfg                  *config.Config
 	activityLog          services.ActivityLogService
+	transcodeSem         chan struct{}
 }
 
 func NewVideoController(
@@ -41,6 +42,7 @@ func NewVideoController(
 		kategoriVideoService: kategoriVideoService,
 		cfg:                  cfg,
 		activityLog:          activityLog,
+		transcodeSem:         make(chan struct{}, 2),
 	}
 }
 
@@ -730,7 +732,11 @@ func (c *VideoController) FinalizeChunk(ctx *fiber.Ctx) error {
 
 // runTranscode dijalankan di goroutine background setelah Create menerima file upload.
 // Ia melakukan transcode, lalu mengupdate DB dengan hasilnya.
+// Semaphore transcodeSem membatasi maksimal 2 job transcode berjalan bersamaan.
 func (c *VideoController) runTranscode(videoID uuid.UUID, rawRelativePath string) {
+	c.transcodeSem <- struct{}{}
+	defer func() { <-c.transcodeSem }()
+
 	rawAbsPath := filepath.Join(c.cfg.UploadPath, filepath.FromSlash(rawRelativePath))
 
 	result, err := transcoder.Transcode(rawAbsPath)

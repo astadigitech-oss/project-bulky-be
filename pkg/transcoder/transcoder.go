@@ -26,6 +26,7 @@ func Transcode(inputPath string) (*TranscodeResult, error) {
 
 	cmd := exec.Command("ffmpeg",
 		"-i", inputPath,
+		"-threads", "2",
 		"-c:v", "libx264",
 		"-preset", "fast",
 		"-crf", "28",
