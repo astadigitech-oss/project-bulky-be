@@ -176,6 +176,7 @@ func main() {
 	kuponController := controllers.NewKuponController(kuponService, activityLogService)
 	dasborController := controllers.NewDasborController(dasborService)
 	internalUploadController := controllers.NewInternalUploadController(cfg)
+	assetMigrationController := controllers.NewAssetMigrationController(db, cfg)
 
 	// Auth V2 controllers
 	authV2Controller := controllers.NewAuthV2Controller(authV2Service, adminService, buyerService)
@@ -210,6 +211,7 @@ func main() {
 		videoController, kategoriVideoController,
 		kuponController,
 		internalUploadController,
+		assetMigrationController,
 	)
 
 	// Setup Auth V2 routes (new authentication system with roles & permissions)
