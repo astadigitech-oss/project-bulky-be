@@ -229,6 +229,9 @@ func SaveUploadedFileWithCustomName(file *multipart.FileHeader, directory, custo
 func GetFileURL(filePath interface{}, cfg *config.Config) string {
 	base := strings.TrimRight(cfg.BaseURL, "/")
 	base = strings.TrimSuffix(base, "/uploads")
+	if base != "" && !strings.HasPrefix(base, "http://") && !strings.HasPrefix(base, "https://") {
+		base = "https://" + base
+	}
 	normalize := func(p string) string {
 		if p == "" {
 			return ""
@@ -264,6 +267,9 @@ func GetFileURLPtr(filePath *string, cfg *config.Config) *string {
 	p = strings.TrimPrefix(p, "uploads/")
 	base := strings.TrimRight(cfg.BaseURL, "/")
 	base = strings.TrimSuffix(base, "/uploads")
+	if base != "" && !strings.HasPrefix(base, "http://") && !strings.HasPrefix(base, "https://") {
+		base = "https://" + base
+	}
 	url := fmt.Sprintf("%s/uploads/%s", base, p)
 	return &url
 }
