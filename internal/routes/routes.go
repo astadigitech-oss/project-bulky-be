@@ -51,6 +51,7 @@ func SetupRoutes(
 	kategoriVideoController *controllers.KategoriVideoController,
 	kuponController *controllers.KuponController,
 	internalUploadController *controllers.InternalUploadController,
+	assetMigrationController *controllers.AssetMigrationController,
 ) {
 	// Health check
 	router.Get("/api/health", func(c *fiber.Ctx) error {
@@ -652,6 +653,14 @@ func SetupRoutes(
 	// Kategori Video - Public
 	v1.Get("/public/kategori-video", kategoriVideoController.GetAllPublic)
 	v1.Get("/public/kategori-video/dropdown", kategoriVideoController.GetDropdownOptions)
+
+	// Asset migration routes — Super Admin only
+	assetMigration := v1.Group("/panel/assets",
+		middleware.AuthMiddleware(),
+		middleware.SuperAdminOnly(),
+	)
+	assetMigration.Get("/export", assetMigrationController.ExportAssets)
+	assetMigration.Post("/import", assetMigrationController.ImportAssets)
 
 	// Internal upload routes — only accessible via X-Internal-Key header (storefront BE)
 	internalUpload := v1.Group("/internal/upload",
