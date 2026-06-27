@@ -18,6 +18,7 @@ type PesananRepository interface {
 	AdminFindAll(filters map[string]interface{}, page, perPage int, sortBy, sortOrder string) ([]models.Pesanan, int64, error)
 	AdminFindByID(id uuid.UUID) (*models.Pesanan, error)
 	UpdateStatus(id uuid.UUID, orderStatus models.OrderStatus, note *string, adminID uuid.UUID) error
+	UpdateBookingResult(id uuid.UUID, delivereeBookingID *string, forwarderTrackingNo *string, bookingError *string) error
 	Delete(id uuid.UUID) error
 	GetStatistics(tanggalDari, tanggalSampai *time.Time) (map[string]interface{}, error)
 	GetChartData(dari, sampai *time.Time, groupBy string) ([]models.ChartRawPoint, error)
@@ -183,6 +184,19 @@ func (r *pesananRepository) UpdateStatus(id uuid.UUID, orderStatus models.OrderS
 	})
 }
 
+func (r *pesananRepository) UpdateBookingResult(id uuid.UUID, delivereeBookingID *string, forwarderTrackingNo *string, bookingError *string) error {
+	updates := map[string]interface{}{
+		"booking_error": bookingError,
+	}
+	if delivereeBookingID != nil {
+		updates["deliveree_booking_id"] = *delivereeBookingID
+	}
+	if forwarderTrackingNo != nil {
+		updates["forwarder_tracking_no"] = *forwarderTrackingNo
+	}
+	return r.db.Model(&models.Pesanan{}).Where("id = ?", id).UpdateColumns(updates).Error
+}
+
 func (r *pesananRepository) Delete(id uuid.UUID) error {
 	// Check if status is CANCELLED
 	var pesanan models.Pesanan
@@ -319,6 +333,7 @@ func isValidStatusTransition(from, to models.OrderStatus) bool {
 		},
 		models.OrderStatusReady: {
 			models.OrderStatusShipped,
+			models.OrderStatusCompleted, // PICKUP: langsung READY → COMPLETED tanpa SHIPPED
 			models.OrderStatusCancelled,
 		},
 		models.OrderStatusShipped: {

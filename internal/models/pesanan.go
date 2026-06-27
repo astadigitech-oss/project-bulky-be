@@ -62,6 +62,7 @@ type Pesanan struct {
 	CancelledReason     *string         `gorm:"type:text" json:"cancelled_reason"`
 	DelivereeBookingID  *string         `gorm:"type:varchar(100)" json:"deliveree_booking_id"`
 	ForwarderTrackingNo *string         `gorm:"type:varchar(100)" json:"forwarder_tracking_no"`
+	BookingError        *string         `gorm:"type:text" json:"booking_error"`
 	CreatedAt           time.Time       `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
 	UpdatedAt           time.Time       `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
 	DeletedAt           gorm.DeletedAt  `gorm:"type:timestamptz;index" json:"-"`

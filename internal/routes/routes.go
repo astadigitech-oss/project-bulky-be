@@ -380,6 +380,8 @@ func SetupRoutes(
 	pesananAdmin.Get("/statistics", middleware.RequirePermission("pesanan:read"), pesananAdminController.GetStatistics)
 	pesananAdmin.Get("/:id", middleware.RequirePermission("pesanan:read"), pesananAdminController.GetByID)
 	pesananAdmin.Patch("/:id/update-status", middleware.RequirePermission("pesanan:update_status"), pesananAdminController.UpdateStatus)
+	pesananAdmin.Post("/:id/retry-booking", middleware.RequirePermission("pesanan:update_status"), pesananAdminController.RetryBooking)
+	pesananAdmin.Get("/:id/tracking", middleware.RequirePermission("pesanan:read"), pesananAdminController.TrackDelivery)
 	pesananAdmin.Delete("/:id", middleware.RequirePermission("pesanan:delete"), pesananAdminController.Delete)
 
 	// Ulasan - Buyer

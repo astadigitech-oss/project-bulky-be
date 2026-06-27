@@ -59,6 +59,7 @@ type PesananAdminDetailResponse struct {
 	Buyer            PesananAdminBuyerDetailResponse     `json:"buyer"`
 	AlamatPengiriman *PesananAdminAlamatResponse         `json:"alamat_pengiriman"`
 	DeliveryType     string                              `json:"delivery_type"`
+	ShippingInfo     PesananShippingInfo                 `json:"shipping_info"`
 	PaymentType      string                              `json:"payment_type"`
 	PaymentStatus    string                              `json:"payment_status"`
 	OrderStatus      string                              `json:"order_status"`
@@ -68,12 +69,30 @@ type PesananAdminDetailResponse struct {
 	BiayaProduk      decimal.Decimal                     `json:"biaya_produk"`
 	BiayaPengiriman  decimal.Decimal                     `json:"biaya_pengiriman"`
 	BiayaPPN         decimal.Decimal                     `json:"biaya_ppn"`
+	BiayaLainnya     decimal.Decimal                     `json:"biaya_lainnya"`
 	PotonganKupon    decimal.Decimal                     `json:"potongan_kupon"`
 	TotalBayar       decimal.Decimal                     `json:"total_bayar"`
 	CatatanBuyer     *string                             `json:"catatan_buyer"`
 	CatatanAdmin     *string                             `json:"catatan_admin"`
 	CreatedAt        time.Time                           `json:"created_at"`
 	UpdatedAt        time.Time                           `json:"updated_at"`
+}
+
+// PesananShippingInfo shipping booking info
+type PesananShippingInfo struct {
+	DeliveryType  string  `json:"delivery_type"`
+	BookingID     *string `json:"booking_id"`
+	TrackingNo    *string `json:"tracking_no"`
+	BookingStatus string  `json:"booking_status"`
+	BookingError  *string `json:"booking_error"`
+}
+
+// RetryBookingResponse response for retry-booking endpoint
+type RetryBookingResponse struct {
+	PesananID    string  `json:"pesanan_id"`
+	DeliveryType string  `json:"delivery_type"`
+	BookingID    *string `json:"booking_id"`
+	TrackingNo   *string `json:"tracking_no"`
 }
 
 // PesananAdminBuyerResponse buyer info for list

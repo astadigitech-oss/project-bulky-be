@@ -7,6 +7,7 @@ import (
 	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,19 +19,23 @@ type PesananAdminService interface {
 	GetAll(ctx context.Context, params *dto.PesananAdminQueryParams) ([]dto.PesananAdminListResponse, *models.PaginationMeta, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*dto.PesananAdminDetailResponse, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, req *dto.UpdatePesananStatusRequest, adminID uuid.UUID) (*dto.UpdatePesananStatusResponse, error)
+	RetryBooking(ctx context.Context, id uuid.UUID) (*dto.RetryBookingResponse, error)
+	TrackDelivery(ctx context.Context, id uuid.UUID) (*TrackingResult, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 	GetStatistics(ctx context.Context, params *dto.StatisticsQueryParams) (*dto.PesananStatisticsResponse, error)
 }
 
 type pesananAdminService struct {
-	pesananRepo repositories.PesananRepository
-	db          *gorm.DB
+	pesananRepo     repositories.PesananRepository
+	shippingService ShippingService
+	db              *gorm.DB
 }
 
-func NewPesananAdminService(pesananRepo repositories.PesananRepository, db *gorm.DB) PesananAdminService {
+func NewPesananAdminService(pesananRepo repositories.PesananRepository, shippingService ShippingService, db *gorm.DB) PesananAdminService {
 	return &pesananAdminService{
-		pesananRepo: pesananRepo,
-		db:          db,
+		pesananRepo:     pesananRepo,
+		shippingService: shippingService,
+		db:              db,
 	}
 }
 
@@ -112,8 +117,20 @@ func (s *pesananAdminService) UpdateStatus(ctx context.Context, id uuid.UUID, re
 
 	// Update status
 	orderStatus := models.OrderStatus(req.OrderStatus)
+
+	// PICKUP tidak punya status SHIPPED — buyer ambil sendiri ke gudang
+	if pesanan.DeliveryType == models.DeliveryTypePickup && orderStatus == models.OrderStatusShipped {
+		return nil, errors.New("pesanan tipe PICKUP tidak memiliki status SHIPPED")
+	}
+
 	if err := s.pesananRepo.UpdateStatus(id, orderStatus, req.Note, adminID); err != nil {
 		return nil, err
+	}
+
+	// Trigger booking async when status → READY for DELIVEREE/FORWARDER
+	if orderStatus == models.OrderStatusReady &&
+		(pesanan.DeliveryType == models.DeliveryTypeDeliveree || pesanan.DeliveryType == models.DeliveryTypeForwarder) {
+		s.shippingService.TriggerBookingAsync(pesanan)
 	}
 
 	return &dto.UpdatePesananStatusResponse{
@@ -124,6 +141,70 @@ func (s *pesananAdminService) UpdateStatus(ctx context.Context, id uuid.UUID, re
 		UpdatedAt:      time.Now().UTC(),
 		UpdatedBy:      adminID,
 	}, nil
+}
+
+func (s *pesananAdminService) RetryBooking(ctx context.Context, id uuid.UUID) (*dto.RetryBookingResponse, error) {
+	pesanan, err := s.pesananRepo.AdminFindByID(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("pesanan tidak ditemukan")
+		}
+		return nil, err
+	}
+
+	if pesanan.DeliveryType == models.DeliveryTypePickup {
+		return nil, errors.New("retry:bad_request:Retry tidak diperlukan. Pesanan tipe PICKUP tidak memerlukan booking.")
+	}
+	if pesanan.OrderStatus != models.OrderStatusProcessing && pesanan.OrderStatus != models.OrderStatusShipped {
+		return nil, errors.New("retry:bad_request:Retry hanya bisa dilakukan pada pesanan berstatus PROCESSING atau SHIPPED.")
+	}
+
+	// Already booked
+	if pesanan.DeliveryType == models.DeliveryTypeDeliveree && pesanan.DelivereeBookingID != nil {
+		return nil, errors.New("retry:already_booked:" + *pesanan.DelivereeBookingID)
+	}
+	if pesanan.DeliveryType == models.DeliveryTypeForwarder && pesanan.ForwarderTrackingNo != nil {
+		return nil, errors.New("retry:already_booked:" + *pesanan.ForwarderTrackingNo)
+	}
+
+	// Run synchronous booking
+	delivereeID, trackingNo, bookErr := s.shippingService.BookDelivery(ctx, pesanan)
+	if bookErr != nil {
+		errMsg := bookErr.Error()
+		_ = s.pesananRepo.UpdateBookingResult(id, nil, nil, &errMsg)
+
+		// City not mapped — distinguish 422
+		if strings.Contains(errMsg, "tidak ditemukan di Forwarder mapping") {
+			return nil, errors.New("retry:city_not_mapped:" + errMsg)
+		}
+		return nil, errors.New("retry:provider_error:" + string(pesanan.DeliveryType) + ":" + errMsg)
+	}
+
+	_ = s.pesananRepo.UpdateBookingResult(id, delivereeID, trackingNo, nil)
+
+	return &dto.RetryBookingResponse{
+		PesananID:    id.String(),
+		DeliveryType: string(pesanan.DeliveryType),
+		BookingID:    delivereeID,
+		TrackingNo:   trackingNo,
+	}, nil
+}
+
+
+func (s *pesananAdminService) TrackDelivery(ctx context.Context, id uuid.UUID) (*TrackingResult, error) {
+	pesanan, err := s.pesananRepo.AdminFindByID(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("pesanan tidak ditemukan")
+		}
+		return nil, err
+	}
+
+	if pesanan.DeliveryType == models.DeliveryTypePickup {
+		return nil, errors.New("tracking:not_applicable:Pesanan tipe PICKUP tidak memiliki tracking pengiriman")
+	}
+
+	return s.shippingService.TrackDelivery(ctx, pesanan)
 }
 
 func (s *pesananAdminService) Delete(ctx context.Context, id uuid.UUID) error {
@@ -226,6 +307,30 @@ func (s *pesananAdminService) GetStatistics(ctx context.Context, params *dto.Sta
 		PerPaymentStatus: stats["per_payment_status"].(map[string]int64),
 		ChartData:        buildChartData(rawPoints, chartDari, chartSampai, groupBy, isWeekFilter),
 	}, nil
+}
+
+func buildShippingInfo(p *models.Pesanan) dto.PesananShippingInfo {
+	info := dto.PesananShippingInfo{
+		DeliveryType: string(p.DeliveryType),
+		BookingID:    p.DelivereeBookingID,
+		TrackingNo:   p.ForwarderTrackingNo,
+		BookingError: p.BookingError,
+	}
+
+	switch {
+	case p.DeliveryType == models.DeliveryTypePickup:
+		info.BookingStatus = "NOT_APPLICABLE"
+	case p.BookingError != nil:
+		info.BookingStatus = "FAILED"
+	case p.OrderStatus == models.OrderStatusReady && p.DelivereeBookingID == nil && p.ForwarderTrackingNo == nil:
+		info.BookingStatus = "IN_PROGRESS"
+	case p.DelivereeBookingID != nil || p.ForwarderTrackingNo != nil:
+		info.BookingStatus = "BOOKED"
+	default:
+		info.BookingStatus = "PENDING"
+	}
+
+	return info
 }
 
 // buildChartData fills all periods in range with data (zero for missing periods)
@@ -407,6 +512,7 @@ func (s *pesananAdminService) mapToDetailResponse(p *models.Pesanan, statusHisto
 			Telepon: p.Buyer.Telepon,
 		},
 		DeliveryType:    string(p.DeliveryType),
+		ShippingInfo:    buildShippingInfo(p),
 		PaymentType:     string(p.PaymentType),
 		PaymentStatus:   string(p.PaymentStatus),
 		OrderStatus:     string(p.OrderStatus),
@@ -416,6 +522,7 @@ func (s *pesananAdminService) mapToDetailResponse(p *models.Pesanan, statusHisto
 		BiayaProduk:     p.BiayaProduk,
 		BiayaPengiriman: p.BiayaPengiriman,
 		BiayaPPN:        p.BiayaPPN,
+		BiayaLainnya:    p.BiayaLainnya,
 		PotonganKupon:   decimal.Zero, // TODO: implement kupon if needed
 		TotalBayar:      p.Total,
 		CatatanBuyer:    p.Catatan,
