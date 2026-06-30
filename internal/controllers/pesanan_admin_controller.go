@@ -201,6 +201,29 @@ func (c *PesananAdminController) TrackDelivery(ctx *fiber.Ctx) error {
 	return utils.SuccessResponse(ctx, "Data tracking berhasil diambil", result)
 }
 
+func (c *PesananAdminController) GetForwarderInvoice(ctx *fiber.Ctx) error {
+	idParam := ctx.Params("id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
+	}
+
+	result, err := c.pesananService.GetForwarderInvoice(ctx.UserContext(), id)
+	if err != nil {
+		msg := err.Error()
+		switch {
+		case msg == "pesanan tidak ditemukan":
+			return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Pesanan tidak ditemukan", "")
+		case strings.HasPrefix(msg, "invoice:not_applicable:"):
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, msg[23:], "")
+		default:
+			return utils.SimpleErrorResponse(ctx, http.StatusBadGateway, "Gagal mengambil invoice Forwarder", msg)
+		}
+	}
+
+	return utils.SuccessResponse(ctx, "Invoice berhasil diambil", result)
+}
+
 // GetStatistics retrieves pesanan statistics
 func (c *PesananAdminController) GetStatistics(ctx *fiber.Ctx) error {
 	var params dto.StatisticsQueryParams

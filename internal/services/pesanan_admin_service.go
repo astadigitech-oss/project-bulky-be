@@ -21,6 +21,7 @@ type PesananAdminService interface {
 	UpdateStatus(ctx context.Context, id uuid.UUID, req *dto.UpdatePesananStatusRequest, adminID uuid.UUID) (*dto.UpdatePesananStatusResponse, error)
 	RetryBooking(ctx context.Context, id uuid.UUID) (*dto.RetryBookingResponse, error)
 	TrackDelivery(ctx context.Context, id uuid.UUID) (*TrackingResult, error)
+	GetForwarderInvoice(ctx context.Context, id uuid.UUID) ([]ForwarderInvoice, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 	GetStatistics(ctx context.Context, params *dto.StatisticsQueryParams) (*dto.PesananStatisticsResponse, error)
 }
@@ -205,6 +206,26 @@ func (s *pesananAdminService) TrackDelivery(ctx context.Context, id uuid.UUID) (
 	}
 
 	return s.shippingService.TrackDelivery(ctx, pesanan)
+}
+
+func (s *pesananAdminService) GetForwarderInvoice(ctx context.Context, id uuid.UUID) ([]ForwarderInvoice, error) {
+	pesanan, err := s.pesananRepo.AdminFindByID(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("pesanan tidak ditemukan")
+		}
+		return nil, err
+	}
+
+	if pesanan.DeliveryType != models.DeliveryTypeForwarder && pesanan.DeliveryType != models.DeliveryTypeForwarderLCL {
+		return nil, errors.New("invoice:not_applicable:Pesanan ini tidak menggunakan layanan Forwarder")
+	}
+
+	if pesanan.ForwarderTrackingNo == nil || *pesanan.ForwarderTrackingNo == "" {
+		return nil, errors.New("invoice:not_applicable:Pesanan belum memiliki booking number Forwarder")
+	}
+
+	return s.shippingService.GetForwarderInvoice(ctx, *pesanan.ForwarderTrackingNo)
 }
 
 func (s *pesananAdminService) Delete(ctx context.Context, id uuid.UUID) error {

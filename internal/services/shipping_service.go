@@ -42,6 +42,8 @@ type ShippingService interface {
 	BookDelivery(ctx context.Context, pesanan *models.Pesanan) (delivereeBookingID *string, forwarderTrackingNo *string, err error)
 	// TrackDelivery retrieves live tracking info from the shipping provider.
 	TrackDelivery(ctx context.Context, pesanan *models.Pesanan) (*TrackingResult, error)
+	// GetForwarderInvoice retrieves invoice list from Forwarder by booking number.
+	GetForwarderInvoice(ctx context.Context, bookingNo string) ([]ForwarderInvoice, error)
 }
 
 type shippingService struct {
@@ -50,6 +52,24 @@ type shippingService struct {
 
 func NewShippingService(db *gorm.DB) ShippingService {
 	return &shippingService{db: db}
+}
+
+var jawaBaliProvinces = map[string]bool{
+	"dki jakarta":                true,
+	"jakarta":                    true,
+	"jawa barat":                 true,
+	"jawa tengah":                true,
+	"jawa timur":                 true,
+	"d.i. yogyakarta":            true,
+	"di yogyakarta":              true,
+	"daerah istimewa yogyakarta": true,
+	"yogyakarta":                 true,
+	"banten":                     true,
+	"bali":                       true,
+}
+
+func isLuarJawaBali(provinsi string) bool {
+	return !jawaBaliProvinces[strings.ToLower(strings.TrimSpace(provinsi))]
 }
 
 func (s *shippingService) TriggerBookingAsync(pesanan *models.Pesanan) {
@@ -84,8 +104,14 @@ func (s *shippingService) BookDelivery(ctx context.Context, pesanan *models.Pesa
 			return nil, nil, err
 		}
 		return bookingID, nil, nil
-	case models.DeliveryTypeForwarder:
-		trackingNo, err := s.bookForwarder(ctx, pesanan)
+	case models.DeliveryTypeForwarder, models.DeliveryTypeForwarderLCL:
+		var trackingNo *string
+		var err error
+		if pesanan.AlamatBuyer != nil && isLuarJawaBali(pesanan.AlamatBuyer.Provinsi) {
+			trackingNo, err = s.bookForwarderLCL(ctx, pesanan)
+		} else {
+			trackingNo, err = s.bookForwarder(ctx, pesanan)
+		}
 		if err != nil {
 			return nil, nil, err
 		}
@@ -561,6 +587,289 @@ func (s *shippingService) bookForwarder(ctx context.Context, pesanan *models.Pes
 	return &result.Data.BookingNo, nil
 }
 
+// ─── Forwarder LCL (Sea Freight / Luar Jawa) ──────────────────────────────────
+
+type forwarderBookingDetail struct {
+	Qty             string  `json:"qty"`
+	ContainerTypeID string  `json:"containertypeid"`
+	PackageID       string  `json:"packageid"`
+	Length          float64 `json:"length"`
+	Width           float64 `json:"width"`
+	Height          float64 `json:"height"`
+	Volume          float64 `json:"volume"`
+	Weight          float64 `json:"weight"`
+	CargoID         string  `json:"cargoid"`
+	CargoDesc       string  `json:"cargodesc"`
+}
+
+type forwarderCreateBookingLCLRequest struct {
+	TransportID              string                   `json:"transportid"`
+	MoveTypeID               string                   `json:"movetypeid"`
+	LoadTypeID               string                   `json:"loadtypeid"`
+	ServiceTypeID            string                   `json:"servicetypeid"`
+	OriginCityID             string                   `json:"origincityid"`
+	DestinationCityID        string                   `json:"destinationcityid"`
+	DestinationSubdistrictID string                   `json:"destinationsubdistrictid"`
+	LCLBasisID               string                   `json:"lclbasisid"`
+	CargoReadyDate           string                   `json:"cargoreadydate"`
+	Shipper                  string                   `json:"shipper"`
+	ShipperAddress           string                   `json:"shipperaddress"`
+	ShipperLat               string                   `json:"shipperlat"`
+	ShipperLng               string                   `json:"shipperlng"`
+	ShipperCountry           string                   `json:"shippercountry"`
+	ShipperProvince          string                   `json:"shipperprovince"`
+	ShipperCity              string                   `json:"shippercity"`
+	ShipperPostalCode        string                   `json:"shipperpostalcode"`
+	ShipperRemark            string                   `json:"shipperremark"`
+	Consignee                string                   `json:"consignee"`
+	ConsigneeAddress         string                   `json:"consigneeaddress"`
+	ConsigneeLat             string                   `json:"consigneelat"`
+	ConsigneeLng             string                   `json:"consigneelng"`
+	ConsigneeCountry         string                   `json:"consigneecountry"`
+	ConsigneeProvince        string                   `json:"consigneeprovince"`
+	ConsigneeCity            string                   `json:"consigneecity"`
+	ConsigneePostalCode      string                   `json:"consigneepostalcode"`
+	ConsigneeRemark          string                   `json:"consigneeremark"`
+	Pickup                   string                   `json:"pickup"`
+	PickupAddress            string                   `json:"pickupaddress"`
+	PickupLat                string                   `json:"pickuplat"`
+	PickupLng                string                   `json:"pickuplng"`
+	PickupCountry            string                   `json:"pickupcountry"`
+	PickupProvince           string                   `json:"pickupprovince"`
+	PickupCity               string                   `json:"pickupcity"`
+	PickupPostalCode         string                   `json:"pickuppostalcode"`
+	PickupPhone              string                   `json:"pickupphone"`
+	PickupRemark             string                   `json:"pickupremark"`
+	Delivery                 string                   `json:"delivery"`
+	DeliveryAddress          string                   `json:"deliveryaddress"`
+	DeliveryLat              string                   `json:"deliverylat"`
+	DeliveryLng              string                   `json:"deliverylng"`
+	DeliveryCountry          string                   `json:"deliverycountry"`
+	DeliveryProvince         string                   `json:"deliveryprovince"`
+	DeliveryCity             string                   `json:"deliverycity"`
+	DeliveryPostalCode       string                   `json:"deliverypostalcode"`
+	DeliveryPhone            string                   `json:"deliveryphone"`
+	DeliveryRemark           string                   `json:"deliveryremark"`
+	VoucherCode              string                   `json:"vouchercode"`
+	CurrencyID               string                   `json:"currencyid"`
+	Incoterm                 string                   `json:"incoterm"`
+	WithInsurance            string                   `json:"withinsurance"`
+	CommodityAmount          string                   `json:"commodityamount,omitempty"`
+	InsuranceID              string                   `json:"insuranceid,omitempty"`
+	PremiAmount              string                   `json:"premiamount,omitempty"`
+	BookingDetail            []forwarderBookingDetail `json:"bookingdetail"`
+}
+
+func (s *shippingService) bookForwarderLCL(ctx context.Context, pesanan *models.Pesanan) (*string, error) {
+	apiURL := os.Getenv("FORWARDER_API_URL")
+	clientName := os.Getenv("FORWARDER_CLIENT_NAME")
+	username := os.Getenv("FORWARDER_USERNAME")
+	password := os.Getenv("FORWARDER_PASSWORD")
+	if apiURL == "" || clientName == "" || username == "" || password == "" {
+		return nil, fmt.Errorf("konfigurasi Forwarder tidak lengkap")
+	}
+
+	token, err := s.getForwarderToken(ctx, apiURL, clientName, username, password, "CREATEBOOKING")
+	if err != nil {
+		return nil, fmt.Errorf("gagal mendapatkan token Forwarder: %w", err)
+	}
+
+	warehouse, err := s.getActiveWarehouse()
+	if err != nil {
+		return nil, fmt.Errorf("gagal mendapatkan data warehouse: %w", err)
+	}
+
+	if pesanan.AlamatBuyer == nil {
+		return nil, fmt.Errorf("pesanan tidak memiliki alamat pengiriman")
+	}
+	alamat := pesanan.AlamatBuyer
+
+	if warehouse.Kota == nil || *warehouse.Kota == "" {
+		return nil, fmt.Errorf("warehouse tidak memiliki data kota")
+	}
+	var originMapping models.ForwarderCityMapping
+	if err := s.db.Where("kota_pattern = ?", utils.NormalizeKota(*warehouse.Kota)).First(&originMapping).Error; err != nil {
+		return nil, fmt.Errorf("kota asal warehouse (%s) tidak ditemukan di Forwarder mapping", *warehouse.Kota)
+	}
+
+	var destMapping models.ForwarderCityMapping
+	if err := s.db.Where("kota_pattern = ?", utils.NormalizeKota(alamat.Kota)).First(&destMapping).Error; err != nil {
+		return nil, fmt.Errorf("kota tujuan tidak ditemukan di Forwarder mapping. Silakan tambahkan mapping untuk kota: %s", alamat.Kota)
+	}
+
+	subdistrictID := "0"
+	if alamat.Kecamatan != nil && *alamat.Kecamatan != "" {
+		var subdistMapping models.ForwarderSubdistrictMapping
+		err := s.db.Where("kecamatan_pattern = ? AND forwarder_city_id = ?",
+			utils.NormalizeKecamatan(*alamat.Kecamatan), destMapping.ForwarderCityID).
+			First(&subdistMapping).Error
+		if err == nil {
+			subdistrictID = strconv.Itoa(subdistMapping.ForwarderSubdistrictID)
+		}
+	}
+
+	bookingDetail := make([]forwarderBookingDetail, 0, len(pesanan.Items))
+	for _, item := range pesanan.Items {
+		p := item.Produk
+		vol := (p.Panjang * p.Lebar * p.Tinggi) / 1_000_000
+		bookingDetail = append(bookingDetail, forwarderBookingDetail{
+			Qty:             strconv.Itoa(item.Qty),
+			ContainerTypeID: "15",
+			PackageID:       "7",
+			Length:          p.Panjang,
+			Width:           p.Lebar,
+			Height:          p.Tinggi,
+			Volume:          vol * float64(item.Qty),
+			Weight:          p.Berat * float64(item.Qty),
+			CargoID:         "78",
+			CargoDesc:       item.NamaProduk,
+		})
+	}
+
+	warehouseAlamat := ""
+	if warehouse.Alamat != nil {
+		warehouseAlamat = *warehouse.Alamat
+	}
+	warehouseTelepon := ""
+	if warehouse.Telepon != nil {
+		warehouseTelepon = *warehouse.Telepon
+	}
+	warehouseKodePos := ""
+	if warehouse.KodePos != nil {
+		warehouseKodePos = *warehouse.KodePos
+	}
+	warehouseLat := "0"
+	if warehouse.Latitude != nil {
+		warehouseLat = strconv.FormatFloat(*warehouse.Latitude, 'f', 8, 64)
+	}
+	warehouseLng := "0"
+	if warehouse.Longitude != nil {
+		warehouseLng = strconv.FormatFloat(*warehouse.Longitude, 'f', 8, 64)
+	}
+	buyerLat := "0"
+	if alamat.Latitude != nil {
+		buyerLat = strconv.FormatFloat(*alamat.Latitude, 'f', 8, 64)
+	}
+	buyerLng := "0"
+	if alamat.Longitude != nil {
+		buyerLng = strconv.FormatFloat(*alamat.Longitude, 'f', 8, 64)
+	}
+	buyerKodePos := ""
+	if alamat.KodePos != nil {
+		buyerKodePos = *alamat.KodePos
+	}
+
+	withInsurance := "0"
+	commodityAmount := ""
+	insuranceID := ""
+	premiAmount := ""
+	if pesanan.BiayaLainnya.IsPositive() {
+		withInsurance = "1"
+		commodityAmount = pesanan.BiayaProduk.StringFixed(0)
+		insuranceID = "1"
+		premiAmount = pesanan.BiayaLainnya.StringFixed(0)
+	}
+
+	bookingReq := forwarderCreateBookingLCLRequest{
+		TransportID:              "1",
+		MoveTypeID:               "1",
+		LoadTypeID:               "2",
+		ServiceTypeID:            "1",
+		OriginCityID:             strconv.Itoa(originMapping.ForwarderCityID),
+		DestinationCityID:        strconv.Itoa(destMapping.ForwarderCityID),
+		DestinationSubdistrictID: subdistrictID,
+		LCLBasisID:               "1",
+		CargoReadyDate:           "",
+		Shipper:                  "Liquid8",
+		ShipperAddress:           warehouseAlamat,
+		ShipperLat:               warehouseLat,
+		ShipperLng:               warehouseLng,
+		ShipperCountry:           "Indonesia",
+		ShipperProvince:          "",
+		ShipperCity:              *warehouse.Kota,
+		ShipperPostalCode:        warehouseKodePos,
+		ShipperRemark:            "",
+		Consignee:                alamat.NamaPenerima,
+		ConsigneeAddress:         alamat.AlamatLengkap,
+		ConsigneeLat:             buyerLat,
+		ConsigneeLng:             buyerLng,
+		ConsigneeCountry:         "Indonesia",
+		ConsigneeProvince:        alamat.Provinsi,
+		ConsigneeCity:            alamat.Kota,
+		ConsigneePostalCode:      buyerKodePos,
+		ConsigneeRemark:          "",
+		Pickup:                   "Liquid8",
+		PickupAddress:            warehouseAlamat,
+		PickupLat:                warehouseLat,
+		PickupLng:                warehouseLng,
+		PickupCountry:            "Indonesia",
+		PickupProvince:           "",
+		PickupCity:               *warehouse.Kota,
+		PickupPostalCode:         warehouseKodePos,
+		PickupPhone:              warehouseTelepon,
+		PickupRemark:             "",
+		Delivery:                 alamat.NamaPenerima,
+		DeliveryAddress:          alamat.AlamatLengkap,
+		DeliveryLat:              buyerLat,
+		DeliveryLng:              buyerLng,
+		DeliveryCountry:          "Indonesia",
+		DeliveryProvince:         alamat.Provinsi,
+		DeliveryCity:             alamat.Kota,
+		DeliveryPostalCode:       buyerKodePos,
+		DeliveryPhone:            alamat.TeleponPenerima,
+		DeliveryRemark:           "",
+		VoucherCode:              "",
+		CurrencyID:               "1",
+		Incoterm:                 "",
+		WithInsurance:            withInsurance,
+		CommodityAmount:          commodityAmount,
+		InsuranceID:              insuranceID,
+		PremiAmount:              premiAmount,
+		BookingDetail:            bookingDetail,
+	}
+
+	body, err := json.Marshal(bookingReq)
+	if err != nil {
+		return nil, fmt.Errorf("gagal membuat request body: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL+"/createbooking", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("gagal membuat HTTP request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+token)
+	httpReq.Header.Set("Client_name", clientName)
+
+	log.Printf("[forwarder] --> POST /createbooking pesanan=%s transport=%s load=%s origin_city=%s dest_city=%s consignee=%s body=%s",
+		pesanan.Kode, bookingReq.TransportID, bookingReq.LoadTypeID,
+		bookingReq.OriginCityID, bookingReq.DestinationCityID, bookingReq.Consignee, string(body))
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		log.Printf("[forwarder] <-- POST /createbooking pesanan=%s error=%v", pesanan.Kode, err)
+		return nil, fmt.Errorf("connection timeout atau gagal menghubungi Forwarder: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	log.Printf("[forwarder] <-- POST /createbooking pesanan=%s status=%d body=%s", pesanan.Kode, resp.StatusCode, string(respBody))
+
+	var result forwarderBookingResponse
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, fmt.Errorf("gagal parse response Forwarder: %w", err)
+	}
+
+	if result.IsSuccess != "ok" {
+		return nil, fmt.Errorf("Forwarder API error: %s", result.Msg)
+	}
+	if result.Data.BookingNo == "" {
+		return nil, fmt.Errorf("Forwarder tidak mengembalikan booking number")
+	}
+
+	return &result.Data.BookingNo, nil
+}
+
 func (s *shippingService) getForwarderToken(ctx context.Context, apiURL, clientName, username, password, scope string) (string, error) {
 	tokenReq := forwarderTokenRequest{Scope: scope}
 	body, _ := json.Marshal(tokenReq)
@@ -591,13 +900,109 @@ func (s *shippingService) getForwarderToken(ctx context.Context, apiURL, clientN
 	return result.AccessToken, nil
 }
 
+// ─── Forwarder Invoice ────────────────────────────────────────────────────────
+
+type ForwarderInvoiceDetail struct {
+	FreightElementName string `json:"freight_element_name"`
+	BasisName          string `json:"basis_name"`
+	TotalIDR           string `json:"total_idr"`
+	Amount             string `json:"amount"`
+	Total              string `json:"total"`
+	Subtotal           string `json:"subtotal"`
+	InvoiceNo          string `json:"invoice_no"`
+	Qty                string `json:"qty"`
+	ContainerType      string `json:"container_type"`
+	Currency           string `json:"currency"`
+	Tax                string `json:"tax"`
+	Remark             string `json:"remark"`
+}
+
+type ForwarderInvoice struct {
+	BookingNo          string                   `json:"booking_no"`
+	InvoiceNo          string                   `json:"invoice_no"`
+	DueDate            string                   `json:"due_date"`
+	InvoiceID          string                   `json:"invoice_id"`
+	Currency           string                   `json:"currency"`
+	Remark             string                   `json:"remark"`
+	CreateDate         string                   `json:"create_date"`
+	DownloadInvoiceURL string                   `json:"download_invoice_url"`
+	DataDetail         []ForwarderInvoiceDetail `json:"data_detail"`
+	InvoiceDate        string                   `json:"invoice_date"`
+	QuotationNo        string                   `json:"quotation_no"`
+	Status             string                   `json:"status"`
+}
+
+type forwarderInvoiceListRequest struct {
+	UserName  string `json:"user_name"`
+	BookingNo string `json:"booking_no"`
+	InvoiceNo string `json:"invoice_no"`
+}
+
+type forwarderInvoiceListResponse struct {
+	Msg       string             `json:"msg"`
+	Data      []ForwarderInvoice `json:"data"`
+	IsSuccess string             `json:"isSuccess"`
+}
+
+func (s *shippingService) GetForwarderInvoice(ctx context.Context, bookingNo string) ([]ForwarderInvoice, error) {
+	apiURL := os.Getenv("FORWARDER_API_URL")
+	clientName := os.Getenv("FORWARDER_CLIENT_NAME")
+	username := os.Getenv("FORWARDER_USERNAME")
+	password := os.Getenv("FORWARDER_PASSWORD")
+	if apiURL == "" || clientName == "" || username == "" || password == "" {
+		return nil, fmt.Errorf("konfigurasi Forwarder tidak lengkap")
+	}
+
+	token, err := s.getForwarderToken(ctx, apiURL, clientName, username, password, "INVOICELIST")
+	if err != nil {
+		return nil, fmt.Errorf("gagal mendapatkan token Forwarder: %w", err)
+	}
+
+	reqBody := forwarderInvoiceListRequest{
+		UserName:  clientName,
+		BookingNo: bookingNo,
+		InvoiceNo: "",
+	}
+	body, _ := json.Marshal(reqBody)
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL+"/invoicelist", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("gagal membuat HTTP request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+token)
+	httpReq.Header.Set("Client_name", clientName)
+
+	log.Printf("[forwarder] --> POST /invoicelist booking_no=%s", bookingNo)
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		log.Printf("[forwarder] <-- POST /invoicelist booking_no=%s error=%v", bookingNo, err)
+		return nil, fmt.Errorf("connection timeout atau gagal menghubungi Forwarder: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	log.Printf("[forwarder] <-- POST /invoicelist booking_no=%s status=%d body=%s", bookingNo, resp.StatusCode, string(respBody))
+
+	var result forwarderInvoiceListResponse
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, fmt.Errorf("gagal parse response Forwarder: %w", err)
+	}
+	if result.IsSuccess != "ok" {
+		return nil, fmt.Errorf("Forwarder API error: %s", result.Msg)
+	}
+
+	return result.Data, nil
+}
+
 // ─── Tracking ─────────────────────────────────────────────────────────────────
 
 func (s *shippingService) TrackDelivery(ctx context.Context, pesanan *models.Pesanan) (*TrackingResult, error) {
 	switch pesanan.DeliveryType {
 	case models.DeliveryTypeDeliveree:
 		return s.trackDeliveree(ctx, pesanan)
-	case models.DeliveryTypeForwarder:
+	case models.DeliveryTypeForwarder, models.DeliveryTypeForwarderLCL:
 		return s.trackForwarder(ctx, pesanan)
 	default:
 		return nil, fmt.Errorf("delivery type %s tidak mendukung tracking", pesanan.DeliveryType)

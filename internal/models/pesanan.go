@@ -14,9 +14,10 @@ type PaymentStatus string
 type OrderStatus string
 
 const (
-	DeliveryTypePickup    DeliveryType = "PICKUP"
-	DeliveryTypeDeliveree DeliveryType = "DELIVEREE"
-	DeliveryTypeForwarder DeliveryType = "FORWARDER"
+	DeliveryTypePickup       DeliveryType = "PICKUP"
+	DeliveryTypeDeliveree    DeliveryType = "DELIVEREE"
+	DeliveryTypeForwarder    DeliveryType = "FORWARDER"
+	DeliveryTypeForwarderLCL DeliveryType = "FORWARDER_LCL"
 
 	PaymentTypeRegular PaymentType = "REGULAR"
 	PaymentTypeSplit   PaymentType = "SPLIT"
@@ -81,7 +82,7 @@ func (Pesanan) TableName() string {
 // Request DTOs
 type CreatePesananRequest struct {
 	BuyerID         string                     `json:"buyer_id" binding:"required,uuid"`
-	DeliveryType    string                     `json:"delivery_type" binding:"required,oneof=PICKUP DELIVEREE FORWARDER"`
+	DeliveryType    string                     `json:"delivery_type" binding:"required,oneof=PICKUP DELIVEREE FORWARDER FORWARDER_LCL"`
 	AlamatBuyerID   *string                    `json:"alamat_buyer_id" binding:"omitempty,uuid"`
 	PaymentType     string                     `json:"payment_type" binding:"required,oneof=REGULAR SPLIT"`
 	Items           []CreatePesananItemRequest `json:"items" binding:"required,min=1,dive"`
