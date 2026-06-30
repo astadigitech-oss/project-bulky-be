@@ -161,12 +161,14 @@ func (r *pesananRepository) UpdateStatus(id uuid.UUID, orderStatus models.OrderS
 			}
 		}
 
+		// Capture statusFrom BEFORE update — GORM mutates the struct in memory after Updates()
+		statusFrom := string(pesanan.OrderStatus)
+
 		if err := tx.Model(&pesanan).Where("id = ?", id).Updates(updates).Error; err != nil {
 			return err
 		}
 
 		// Create status history
-		statusFrom := string(pesanan.OrderStatus)
 		history := models.PesananStatusHistory{
 			PesananID:  id,
 			StatusFrom: &statusFrom,
