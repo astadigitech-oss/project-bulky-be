@@ -35,6 +35,74 @@ type TrackingResult struct {
 	History     []TrackingEvent `json:"history"`
 }
 
+// DelivereeVehicleTypeInfo is the vehicle info returned by Deliveree.
+type DelivereeVehicleTypeInfo struct {
+	ID             int     `json:"id"`
+	Name           string  `json:"name"`
+	CargoLength    float64 `json:"cargo_length"`
+	CargoHeight    float64 `json:"cargo_height"`
+	CargoWidth     float64 `json:"cargo_width"`
+	CargoWeight    float64 `json:"cargo_weight"`
+	CargoCubicMeter float64 `json:"cargo_cubic_meter"`
+}
+
+// DelivereeDriver is the driver info returned by Deliveree.
+type DelivereeDriver struct {
+	ID                     int     `json:"id"`
+	Name                   string  `json:"name"`
+	Phone                  string  `json:"phone"`
+	DriverImageURL         string  `json:"driver_image_url"`
+	LastKnownPositionLat   float64 `json:"last_known_position_lat"`
+	LastKnownPositionLng   float64 `json:"last_known_position_lng"`
+}
+
+// DelivereeDeliveryLocation is a location entry in the Deliveree delivery detail.
+type DelivereeDeliveryLocation struct {
+	ID                  int     `json:"id"`
+	Name                string  `json:"name"`
+	DriverNote          string  `json:"driver_note"`
+	Note                string  `json:"note"`
+	RecipientName       string  `json:"recipient_name"`
+	RecipientPhone      string  `json:"recipient_phone"`
+	DeliveryStatus      string  `json:"delivery_status"`
+	FailedDeliveryReason string `json:"failed_delivery_reason"`
+	SignatureURL        string  `json:"signature_url"`
+	ArrivedAt          string  `json:"arrived_at"`
+	LeavedAt           string  `json:"leaved_at"`
+	Latitude           float64 `json:"latitude"`
+	Longitude          float64 `json:"longitude"`
+	ParkingFees        float64 `json:"parking_fees"`
+	TollsFees          float64 `json:"tolls_fees"`
+	WaitingTimeFees    float64 `json:"waiting_time_fees"`
+	TrackingSharing    string  `json:"tracking_sharing"`
+}
+
+// DelivereeDeliveryDetail is the full delivery detail response from Deliveree API.
+type DelivereeDeliveryDetail struct {
+	ID                int                         `json:"id"`
+	CustomerName      string                      `json:"customer_name"`
+	DriverID          int                         `json:"driver_id"`
+	VehicleTypeInfo   DelivereeVehicleTypeInfo     `json:"vehicle_type_info"`
+	TimeType          string                      `json:"time_type"`
+	Status            string                      `json:"status"`
+	Note              string                      `json:"note"`
+	TotalFees         float64                     `json:"total_fees"`
+	Currency          string                      `json:"currency"`
+	TrackingURL       string                      `json:"tracking_url"`
+	JobOrderNumber    string                      `json:"job_order_number"`
+	CreatedAt         string                      `json:"created_at"`
+	PickupTime        string                      `json:"pickup_time"`
+	CompletedAt       string                      `json:"completed_at"`
+	Driver            *DelivereeDriver             `json:"driver"`
+	Locations         []DelivereeDeliveryLocation `json:"locations"`
+	RequireSignatures bool                        `json:"require_signatures"`
+	DistanceFees      float64                     `json:"distance_fees"`
+	CODPODFees        float64                     `json:"cod_pod_fees"`
+	CODPOD            bool                        `json:"cod_pod"`
+	SurchargesFees    float64                     `json:"surcharges_fees"`
+	WayPointFees      float64                     `json:"way_point_fees"`
+}
+
 type ShippingService interface {
 	// TriggerBookingAsync launches booking in a goroutine (non-blocking).
 	TriggerBookingAsync(pesanan *models.Pesanan)
@@ -42,6 +110,8 @@ type ShippingService interface {
 	BookDelivery(ctx context.Context, pesanan *models.Pesanan) (delivereeBookingID *string, forwarderTrackingNo *string, err error)
 	// TrackDelivery retrieves live tracking info from the shipping provider.
 	TrackDelivery(ctx context.Context, pesanan *models.Pesanan) (*TrackingResult, error)
+	// GetDelivereeDetail retrieves full delivery detail from Deliveree API.
+	GetDelivereeDetail(ctx context.Context, pesanan *models.Pesanan) (*DelivereeDeliveryDetail, error)
 	// GetForwarderInvoice retrieves invoice list from Forwarder by booking number.
 	GetForwarderInvoice(ctx context.Context, bookingNo string) ([]ForwarderInvoice, error)
 }
@@ -74,6 +144,12 @@ func isLuarJawaBali(provinsi string) bool {
 
 func (s *shippingService) TriggerBookingAsync(pesanan *models.Pesanan) {
 	go func(p *models.Pesanan) {
+		// Skip jika booking sudah ada — cegah double-booking jika status READY dipanggil ulang
+		if p.DelivereeBookingID != nil || p.ForwarderTrackingNo != nil {
+			log.Printf("[shipping] skip booking async: pesanan=%s sudah punya booking_id/tracking_no", p.Kode)
+			return
+		}
+
 		log.Printf("[shipping] trigger booking async: pesanan=%s delivery_type=%s", p.Kode, p.DeliveryType)
 		ctx := context.Background()
 		delivereeID, trackingNo, err := s.BookDelivery(ctx, p)
@@ -141,6 +217,7 @@ type delivereeLocation struct {
 type delivereeCreateRequest struct {
 	VehicleTypeID        int                 `json:"vehicle_type_id"`
 	BookingPaymentType   string              `json:"booking_payment_type"`
+	Note                 string              `json:"note,omitempty"`
 	TimeType             string              `json:"time_type"`
 	PickupTime           string              `json:"pickup_time"`
 	JobOrderNumber       string              `json:"job_order_number,omitempty"`
@@ -1128,6 +1205,47 @@ func (s *shippingService) trackDeliveree(ctx context.Context, pesanan *models.Pe
 		TrackingURL: data.TrackingURL,
 		History:     history,
 	}, nil
+}
+
+func (s *shippingService) GetDelivereeDetail(ctx context.Context, pesanan *models.Pesanan) (*DelivereeDeliveryDetail, error) {
+	baseURL := os.Getenv("DELIVEREE_BASE_URL")
+	apiKey := os.Getenv("DELIVEREE_API_KEY")
+	if baseURL == "" || apiKey == "" {
+		return nil, fmt.Errorf("konfigurasi Deliveree tidak lengkap")
+	}
+	if pesanan.DelivereeBookingID == nil {
+		return nil, fmt.Errorf("pesanan belum memiliki Deliveree booking ID")
+	}
+
+	url := baseURL + "/deliveries/" + *pesanan.DelivereeBookingID
+	log.Printf("[deliveree] --> GET /deliveries/%s (detail) pesanan=%s", *pesanan.DelivereeBookingID, pesanan.Kode)
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("gagal membuat HTTP request: %w", err)
+	}
+	httpReq.Header.Set("Authorization", apiKey)
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		log.Printf("[deliveree] <-- GET /deliveries/%s (detail) pesanan=%s error=%v", *pesanan.DelivereeBookingID, pesanan.Kode, err)
+		return nil, fmt.Errorf("gagal menghubungi Deliveree: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	log.Printf("[deliveree] <-- GET /deliveries/%s (detail) pesanan=%s status=%d", *pesanan.DelivereeBookingID, pesanan.Kode, resp.StatusCode)
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Deliveree API error (status %d): %s", resp.StatusCode, string(respBody))
+	}
+
+	var detail DelivereeDeliveryDetail
+	if err := json.Unmarshal(respBody, &detail); err != nil {
+		return nil, fmt.Errorf("gagal parse response Deliveree: %w", err)
+	}
+
+	return &detail, nil
 }
 
 func (s *shippingService) trackForwarder(ctx context.Context, pesanan *models.Pesanan) (*TrackingResult, error) {

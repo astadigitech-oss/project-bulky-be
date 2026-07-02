@@ -21,6 +21,7 @@ type PesananAdminService interface {
 	UpdateStatus(ctx context.Context, id uuid.UUID, req *dto.UpdatePesananStatusRequest, adminID uuid.UUID) (*dto.UpdatePesananStatusResponse, error)
 	RetryBooking(ctx context.Context, id uuid.UUID) (*dto.RetryBookingResponse, error)
 	TrackDelivery(ctx context.Context, id uuid.UUID) (*TrackingResult, error)
+	GetDelivereeDetail(ctx context.Context, id uuid.UUID) (*DelivereeDeliveryDetail, error)
 	GetForwarderInvoice(ctx context.Context, id uuid.UUID) ([]ForwarderInvoice, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 	GetStatistics(ctx context.Context, params *dto.StatisticsQueryParams) (*dto.PesananStatisticsResponse, error)
@@ -128,9 +129,11 @@ func (s *pesananAdminService) UpdateStatus(ctx context.Context, id uuid.UUID, re
 		return nil, err
 	}
 
-	// Trigger booking async when status → READY for DELIVEREE/FORWARDER
+	// Trigger booking async when status → READY for DELIVEREE/FORWARDER/FORWARDER_LCL
 	if orderStatus == models.OrderStatusReady &&
-		(pesanan.DeliveryType == models.DeliveryTypeDeliveree || pesanan.DeliveryType == models.DeliveryTypeForwarder) {
+		(pesanan.DeliveryType == models.DeliveryTypeDeliveree ||
+			pesanan.DeliveryType == models.DeliveryTypeForwarder ||
+			pesanan.DeliveryType == models.DeliveryTypeForwarderLCL) {
 		s.shippingService.TriggerBookingAsync(pesanan)
 	}
 
@@ -156,15 +159,17 @@ func (s *pesananAdminService) RetryBooking(ctx context.Context, id uuid.UUID) (*
 	if pesanan.DeliveryType == models.DeliveryTypePickup {
 		return nil, errors.New("retry:bad_request:Retry tidak diperlukan. Pesanan tipe PICKUP tidak memerlukan booking.")
 	}
-	if pesanan.OrderStatus != models.OrderStatusProcessing && pesanan.OrderStatus != models.OrderStatusShipped {
-		return nil, errors.New("retry:bad_request:Retry hanya bisa dilakukan pada pesanan berstatus PROCESSING atau SHIPPED.")
+	if pesanan.OrderStatus != models.OrderStatusProcessing &&
+		pesanan.OrderStatus != models.OrderStatusShipped &&
+		pesanan.OrderStatus != models.OrderStatusReady {
+		return nil, errors.New("retry:bad_request:Retry hanya bisa dilakukan pada pesanan berstatus PROCESSING, READY, atau SHIPPED.")
 	}
 
 	// Already booked
 	if pesanan.DeliveryType == models.DeliveryTypeDeliveree && pesanan.DelivereeBookingID != nil {
 		return nil, errors.New("retry:already_booked:" + *pesanan.DelivereeBookingID)
 	}
-	if pesanan.DeliveryType == models.DeliveryTypeForwarder && pesanan.ForwarderTrackingNo != nil {
+	if (pesanan.DeliveryType == models.DeliveryTypeForwarder || pesanan.DeliveryType == models.DeliveryTypeForwarderLCL) && pesanan.ForwarderTrackingNo != nil {
 		return nil, errors.New("retry:already_booked:" + *pesanan.ForwarderTrackingNo)
 	}
 
@@ -206,6 +211,22 @@ func (s *pesananAdminService) TrackDelivery(ctx context.Context, id uuid.UUID) (
 	}
 
 	return s.shippingService.TrackDelivery(ctx, pesanan)
+}
+
+func (s *pesananAdminService) GetDelivereeDetail(ctx context.Context, id uuid.UUID) (*DelivereeDeliveryDetail, error) {
+	pesanan, err := s.pesananRepo.AdminFindByID(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("pesanan tidak ditemukan")
+		}
+		return nil, err
+	}
+
+	if pesanan.DeliveryType != models.DeliveryTypeDeliveree {
+		return nil, errors.New("deliveree:not_applicable:Pesanan ini tidak menggunakan layanan Deliveree")
+	}
+
+	return s.shippingService.GetDelivereeDetail(ctx, pesanan)
 }
 
 func (s *pesananAdminService) GetForwarderInvoice(ctx context.Context, id uuid.UUID) ([]ForwarderInvoice, error) {

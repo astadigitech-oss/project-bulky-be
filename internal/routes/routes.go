@@ -382,6 +382,7 @@ func SetupRoutes(
 	pesananAdmin.Patch("/:id/update-status", middleware.RequirePermission("pesanan:update_status"), pesananAdminController.UpdateStatus)
 	pesananAdmin.Post("/:id/retry-booking", middleware.RequirePermission("pesanan:update_status"), pesananAdminController.RetryBooking)
 	pesananAdmin.Get("/:id/tracking", middleware.RequirePermission("pesanan:read"), pesananAdminController.TrackDelivery)
+	pesananAdmin.Get("/:id/deliveree-detail", middleware.RequirePermission("pesanan:read"), pesananAdminController.GetDelivereeDetail)
 	pesananAdmin.Get("/:id/invoice", middleware.RequirePermission("pesanan:read"), pesananAdminController.GetForwarderInvoice)
 	pesananAdmin.Delete("/:id", middleware.RequirePermission("pesanan:delete"), pesananAdminController.Delete)
 

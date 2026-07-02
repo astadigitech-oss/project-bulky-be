@@ -201,6 +201,32 @@ func (c *PesananAdminController) TrackDelivery(ctx *fiber.Ctx) error {
 	return utils.SuccessResponse(ctx, "Data tracking berhasil diambil", result)
 }
 
+// GetDelivereeDetail retrieves full delivery detail from Deliveree API
+func (c *PesananAdminController) GetDelivereeDetail(ctx *fiber.Ctx) error {
+	idParam := ctx.Params("id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
+	}
+
+	result, err := c.pesananService.GetDelivereeDetail(ctx.UserContext(), id)
+	if err != nil {
+		msg := err.Error()
+		switch {
+		case msg == "pesanan tidak ditemukan":
+			return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Pesanan tidak ditemukan", "")
+		case strings.HasPrefix(msg, "deliveree:not_applicable:"):
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, msg[25:], "")
+		case strings.Contains(msg, "belum memiliki"):
+			return utils.SimpleErrorResponse(ctx, http.StatusConflict, msg, "")
+		default:
+			return utils.SimpleErrorResponse(ctx, http.StatusBadGateway, "Gagal mengambil detail Deliveree", msg)
+		}
+	}
+
+	return utils.SuccessResponse(ctx, "Detail Deliveree berhasil diambil", result)
+}
+
 func (c *PesananAdminController) GetForwarderInvoice(ctx *fiber.Ctx) error {
 	idParam := ctx.Params("id")
 	id, err := uuid.Parse(idParam)
