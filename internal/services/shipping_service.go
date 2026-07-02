@@ -668,7 +668,7 @@ type forwarderBookingDetail struct {
 	Width           float64 `json:"width"`
 	Height          float64 `json:"height"`
 	Volume          float64 `json:"volume"`
-	Weight          float64 `json:"weight"`
+	Weight          string  `json:"weight"`
 	CargoID         string  `json:"cargoid"`
 	CargoDesc       string  `json:"cargodesc"`
 }
@@ -785,7 +785,7 @@ func (s *shippingService) bookForwarderLCL(ctx context.Context, pesanan *models.
 			Width:           p.Lebar,
 			Height:          p.Tinggi,
 			Volume:          vol * float64(item.Qty),
-			Weight:          p.Berat * float64(item.Qty),
+			Weight:          strconv.FormatFloat(p.Berat*float64(item.Qty), 'f', 0, 64),
 			CargoID:         "78",
 			CargoDesc:       item.NamaProduk,
 		})
