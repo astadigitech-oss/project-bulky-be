@@ -429,13 +429,7 @@ func (s *shippingService) bookForwarder(ctx context.Context, pesanan *models.Pes
 	// Lookup destination subdistrict (optional for LTL)
 	subdistrictID := "0"
 	if alamat.Kecamatan != nil && *alamat.Kecamatan != "" {
-		var subdistMapping models.ForwarderSubdistrictMapping
-		err := s.db.Where("kecamatan_pattern = ? AND forwarder_city_id = ?",
-			utils.NormalizeKecamatan(*alamat.Kecamatan), destMapping.ForwarderCityID).
-			First(&subdistMapping).Error
-		if err == nil {
-			subdistrictID = strconv.Itoa(subdistMapping.ForwarderSubdistrictID)
-		}
+		subdistrictID = s.resolveForwarderSubdistrictID(ctx, *alamat.Kecamatan, destMapping.ForwarderCityID, apiURL, clientName, username, password)
 	}
 
 	// Build datadetail from items
@@ -699,13 +693,7 @@ func (s *shippingService) bookForwarderLCL(ctx context.Context, pesanan *models.
 
 	subdistrictID := "0"
 	if alamat.Kecamatan != nil && *alamat.Kecamatan != "" {
-		var subdistMapping models.ForwarderSubdistrictMapping
-		err := s.db.Where("kecamatan_pattern = ? AND forwarder_city_id = ?",
-			utils.NormalizeKecamatan(*alamat.Kecamatan), destMapping.ForwarderCityID).
-			First(&subdistMapping).Error
-		if err == nil {
-			subdistrictID = strconv.Itoa(subdistMapping.ForwarderSubdistrictID)
-		}
+		subdistrictID = s.resolveForwarderSubdistrictID(ctx, *alamat.Kecamatan, destMapping.ForwarderCityID, apiURL, clientName, username, password)
 	}
 
 	bookingDetail := make([]forwarderBookingDetail, 0, len(pesanan.Items))
@@ -868,6 +856,78 @@ func (s *shippingService) bookForwarderLCL(ctx context.Context, pesanan *models.
 	}
 
 	return &result.Data.BookingNo, nil
+}
+
+// resolveForwarderSubdistrictID mencari subdistrict ID dengan 3 langkah fallback:
+// 1. DB lookup by kecamatan_pattern + forwarder_city_id
+// 2. DB lookup by kecamatan_pattern saja (any city)
+// 3. API call ke /subdistrictlist
+func (s *shippingService) resolveForwarderSubdistrictID(ctx context.Context, kecamatan string, forwarderCityID int, apiURL, clientName, username, password string) string {
+	normalized := utils.NormalizeKecamatan(kecamatan)
+	if normalized == "" {
+		return "0"
+	}
+
+	// Step 1: match by kecamatan + city_id
+	var m models.ForwarderSubdistrictMapping
+	if err := s.db.Where("kecamatan_pattern = ? AND forwarder_city_id = ?", normalized, forwarderCityID).First(&m).Error; err == nil {
+		return strconv.Itoa(m.ForwarderSubdistrictID)
+	}
+
+	// Step 2: match by kecamatan saja — hanya pakai kalau hasilnya tunggal
+	var all []models.ForwarderSubdistrictMapping
+	if err := s.db.Where("kecamatan_pattern = ?", normalized).Find(&all).Error; err == nil && len(all) == 1 {
+		return strconv.Itoa(all[0].ForwarderSubdistrictID)
+	}
+
+	// Step 3: API call ke /subdistrictlist
+	token, err := s.getForwarderToken(ctx, apiURL, clientName, username, password, "SUBDISTRICTLIST")
+	if err != nil {
+		log.Printf("[forwarder] resolveSubdistrict: gagal get token: %v", err)
+		return "0"
+	}
+
+	reqBody, _ := json.Marshal(map[string]string{
+		"subdistrict_name": strings.ToUpper(normalized),
+		"city_id":          strconv.Itoa(forwarderCityID),
+	})
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL+"/subdistrictlist", bytes.NewReader(reqBody))
+	if err != nil {
+		return "0"
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+token)
+	httpReq.Header.Set("Client_name", clientName)
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		log.Printf("[forwarder] resolveSubdistrict: API error: %v", err)
+		return "0"
+	}
+	defer resp.Body.Close()
+	respBody, _ := io.ReadAll(resp.Body)
+
+	var result struct {
+		IsSuccess string `json:"isSuccess"`
+		Data      []struct {
+			ItemID   int    `json:"item_id"`
+			ItemName string `json:"item_name"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(respBody, &result); err != nil || result.IsSuccess != "ok" || len(result.Data) == 0 {
+		log.Printf("[forwarder] resolveSubdistrict: tidak ditemukan via API untuk kecamatan=%s city_id=%d body=%s", normalized, forwarderCityID, string(respBody))
+		return "0"
+	}
+
+	// Simpan ke DB agar lookup berikutnya tidak perlu API call
+	s.db.Create(&models.ForwarderSubdistrictMapping{
+		KecamatanPattern:         normalized,
+		ForwarderCityID:          forwarderCityID,
+		ForwarderSubdistrictID:   result.Data[0].ItemID,
+		ForwarderSubdistrictName: result.Data[0].ItemName,
+	})
+
+	return strconv.Itoa(result.Data[0].ItemID)
 }
 
 func (s *shippingService) getForwarderToken(ctx context.Context, apiURL, clientName, username, password, scope string) (string, error) {
