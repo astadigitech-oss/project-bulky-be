@@ -516,7 +516,7 @@ func (s *shippingService) bookForwarder(ctx context.Context, pesanan *models.Pes
 		vol := (p.Panjang * p.Lebar * p.Tinggi) / 1_000_000 // cm³ → m³
 		dataDetail = append(dataDetail, forwarderDataDetail{
 			Packaging:   "5",
-			Commodity:   "155",
+			Commodity:   "222",
 			CargoDesc:   item.NamaProduk,
 			Qty:         item.Qty,
 			Length:      p.Panjang,
