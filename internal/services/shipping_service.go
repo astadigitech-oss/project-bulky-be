@@ -862,7 +862,7 @@ func (s *shippingService) bookForwarderLCL(ctx context.Context, pesanan *models.
 		MoveTypeID:               "1",
 		LoadTypeID:               "2",
 		ServiceTypeID:            "1",
-		OriginCityID:             "18", // Jakarta — pelabuhan terdekat dari gudang Bogor untuk LCL
+		OriginCityID:             "13", // Jakarta — pelabuhan terdekat dari gudang Bogor untuk LCL
 		DestinationCityID:        strconv.Itoa(destMapping.ForwarderCityID),
 		DestinationSubdistrictID: subdistrictID,
 		LCLBasisID:               "1",
