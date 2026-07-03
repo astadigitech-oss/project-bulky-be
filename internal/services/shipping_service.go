@@ -1049,6 +1049,7 @@ func (s *shippingService) getForwarderToken(ctx context.Context, apiURL, clientN
 	defer resp.Body.Close()
 
 	respBody, _ := io.ReadAll(resp.Body)
+	log.Printf("[forwarder] <-- POST /accesstoken scope=%s status=%d body=%s", scope, resp.StatusCode, string(respBody))
 	var result forwarderTokenResponse
 	if err := json.Unmarshal(respBody, &result); err != nil {
 		return "", fmt.Errorf("gagal parse token response: %w", err)
