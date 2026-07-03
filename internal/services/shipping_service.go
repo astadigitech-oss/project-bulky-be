@@ -28,53 +28,53 @@ type TrackingEvent struct {
 
 // TrackingResult hasil tracking pengiriman dari provider
 type TrackingResult struct {
-	Provider    string         `json:"provider"`
-	BookingRef  string         `json:"booking_ref"`
-	Status      string         `json:"status"`
-	TrackingURL string         `json:"tracking_url,omitempty"`
+	Provider    string          `json:"provider"`
+	BookingRef  string          `json:"booking_ref"`
+	Status      string          `json:"status"`
+	TrackingURL string          `json:"tracking_url,omitempty"`
 	History     []TrackingEvent `json:"history"`
 }
 
 // DelivereeVehicleTypeInfo is the vehicle info returned by Deliveree.
 type DelivereeVehicleTypeInfo struct {
-	ID             int     `json:"id"`
-	Name           string  `json:"name"`
-	CargoLength    float64 `json:"cargo_length"`
-	CargoHeight    float64 `json:"cargo_height"`
-	CargoWidth     float64 `json:"cargo_width"`
-	CargoWeight    float64 `json:"cargo_weight"`
+	ID              int     `json:"id"`
+	Name            string  `json:"name"`
+	CargoLength     float64 `json:"cargo_length"`
+	CargoHeight     float64 `json:"cargo_height"`
+	CargoWidth      float64 `json:"cargo_width"`
+	CargoWeight     float64 `json:"cargo_weight"`
 	CargoCubicMeter float64 `json:"cargo_cubic_meter"`
 }
 
 // DelivereeDriver is the driver info returned by Deliveree.
 type DelivereeDriver struct {
-	ID                     int     `json:"id"`
-	Name                   string  `json:"name"`
-	Phone                  string  `json:"phone"`
-	DriverImageURL         string  `json:"driver_image_url"`
-	LastKnownPositionLat   float64 `json:"last_known_position_lat"`
-	LastKnownPositionLng   float64 `json:"last_known_position_lng"`
+	ID                   int     `json:"id"`
+	Name                 string  `json:"name"`
+	Phone                string  `json:"phone"`
+	DriverImageURL       string  `json:"driver_image_url"`
+	LastKnownPositionLat float64 `json:"last_known_position_lat"`
+	LastKnownPositionLng float64 `json:"last_known_position_lng"`
 }
 
 // DelivereeDeliveryLocation is a location entry in the Deliveree delivery detail.
 type DelivereeDeliveryLocation struct {
-	ID                  int     `json:"id"`
-	Name                string  `json:"name"`
-	DriverNote          string  `json:"driver_note"`
-	Note                string  `json:"note"`
-	RecipientName       string  `json:"recipient_name"`
-	RecipientPhone      string  `json:"recipient_phone"`
-	DeliveryStatus      string  `json:"delivery_status"`
-	FailedDeliveryReason string `json:"failed_delivery_reason"`
-	SignatureURL        string  `json:"signature_url"`
-	ArrivedAt          string  `json:"arrived_at"`
-	LeavedAt           string  `json:"leaved_at"`
-	Latitude           float64 `json:"latitude"`
-	Longitude          float64 `json:"longitude"`
-	ParkingFees        float64 `json:"parking_fees"`
-	TollsFees          float64 `json:"tolls_fees"`
-	WaitingTimeFees    float64 `json:"waiting_time_fees"`
-	TrackingSharing    string  `json:"tracking_sharing"`
+	ID                   int     `json:"id"`
+	Name                 string  `json:"name"`
+	DriverNote           string  `json:"driver_note"`
+	Note                 string  `json:"note"`
+	RecipientName        string  `json:"recipient_name"`
+	RecipientPhone       string  `json:"recipient_phone"`
+	DeliveryStatus       string  `json:"delivery_status"`
+	FailedDeliveryReason string  `json:"failed_delivery_reason"`
+	SignatureURL         string  `json:"signature_url"`
+	ArrivedAt            string  `json:"arrived_at"`
+	LeavedAt             string  `json:"leaved_at"`
+	Latitude             float64 `json:"latitude"`
+	Longitude            float64 `json:"longitude"`
+	ParkingFees          float64 `json:"parking_fees"`
+	TollsFees            float64 `json:"tolls_fees"`
+	WaitingTimeFees      float64 `json:"waiting_time_fees"`
+	TrackingSharing      string  `json:"tracking_sharing"`
 }
 
 // DelivereeDeliveryDetail is the full delivery detail response from Deliveree API.
@@ -82,7 +82,7 @@ type DelivereeDeliveryDetail struct {
 	ID                int                         `json:"id"`
 	CustomerName      string                      `json:"customer_name"`
 	DriverID          int                         `json:"driver_id"`
-	VehicleTypeInfo   DelivereeVehicleTypeInfo     `json:"vehicle_type_info"`
+	VehicleTypeInfo   DelivereeVehicleTypeInfo    `json:"vehicle_type_info"`
 	TimeType          string                      `json:"time_type"`
 	Status            string                      `json:"status"`
 	Note              string                      `json:"note"`
@@ -93,7 +93,7 @@ type DelivereeDeliveryDetail struct {
 	CreatedAt         string                      `json:"created_at"`
 	PickupTime        string                      `json:"pickup_time"`
 	CompletedAt       string                      `json:"completed_at"`
-	Driver            *DelivereeDriver             `json:"driver"`
+	Driver            *DelivereeDriver            `json:"driver"`
 	Locations         []DelivereeDeliveryLocation `json:"locations"`
 	RequireSignatures bool                        `json:"require_signatures"`
 	DistanceFees      float64                     `json:"distance_fees"`
@@ -195,6 +195,28 @@ func (s *shippingService) BookDelivery(ctx context.Context, pesanan *models.Pesa
 	default:
 		return nil, nil, fmt.Errorf("delivery type %s tidak memerlukan booking", pesanan.DeliveryType)
 	}
+}
+
+// buildFullAddress menggabungkan alamat lengkap dengan data wilayah agar
+// address yang dikirim ke provider tidak hanya berisi nama jalan saja.
+func buildFullAddress(alamat *models.AlamatBuyer) string {
+	parts := []string{alamat.AlamatLengkap}
+	if alamat.Kelurahan != nil && *alamat.Kelurahan != "" {
+		parts = append(parts, *alamat.Kelurahan)
+	}
+	if alamat.Kecamatan != nil && *alamat.Kecamatan != "" {
+		parts = append(parts, *alamat.Kecamatan)
+	}
+	if alamat.Kota != "" {
+		parts = append(parts, alamat.Kota)
+	}
+	if alamat.Provinsi != "" {
+		parts = append(parts, alamat.Provinsi)
+	}
+	if alamat.KodePos != nil && *alamat.KodePos != "" {
+		parts = append(parts, *alamat.KodePos)
+	}
+	return strings.Join(parts, ", ")
 }
 
 // ─── Deliveree ────────────────────────────────────────────────────────────────
@@ -307,13 +329,13 @@ func (s *shippingService) bookDeliveree(ctx context.Context, pesanan *models.Pes
 				Address:        warehouseAlamat,
 				Latitude:       warehouseLat,
 				Longitude:      warehouseLng,
-				RecipientName:  "Warehouse",
+				RecipientName:  "Bulky.id",
 				RecipientPhone: warehouseTelepon,
 				Note:           "Pickup at warehouse",
 				IsPayer:        false,
 			},
 			{
-				Address:        alamat.AlamatLengkap,
+				Address:        buildFullAddress(alamat),
 				Latitude:       buyerLat,
 				Longitude:      buyerLng,
 				RecipientName:  alamat.NamaPenerima,
@@ -455,8 +477,8 @@ type forwarderCreateBookingRequest struct {
 }
 
 type forwarderBookingResponse struct {
-	Msg       string `json:"msg"`
-	Data      struct {
+	Msg  string `json:"msg"`
+	Data struct {
 		BookingNo string `json:"booking_no"`
 	} `json:"data"`
 	IsSuccess string `json:"isSuccess"`
@@ -577,12 +599,12 @@ func (s *shippingService) bookForwarder(ctx context.Context, pesanan *models.Pes
 		PickupTimeOn:             "",
 		VehicleID:                "0",
 		VehicleQty:               1,
-		ShipperName:              "Liquid8",
+		ShipperName:              "Liquid8 | Bulky",
 		ShipperPhone:             warehouseTelepon,
 		ShipperAddress:           warehouseAlamat,
 		ConsigneeName:            alamat.NamaPenerima,
 		ConsigneePhone:           alamat.TeleponPenerima,
-		ConsigneeAddress:         alamat.AlamatLengkap,
+		ConsigneeAddress:         buildFullAddress(alamat),
 		EstDistance:              "0",
 		EstPrice:                 "",
 		BasisPrice:               "ECONOMY",
@@ -598,19 +620,19 @@ func (s *shippingService) bookForwarder(ctx context.Context, pesanan *models.Pes
 				Longitude: warehouseLng,
 				Type:      "PICKUP",
 				Order:     1,
-				PicName:   "Liquid8",
+				PicName:   "Liquid8 | Bulky",
 				PicPhone:  warehouseTelepon,
 				Detail:    warehouseAlamat,
 			},
 			{
-				Address:   alamat.AlamatLengkap,
+				Address:   buildFullAddress(alamat),
 				Latitude:  buyerLat,
 				Longitude: buyerLng,
 				Type:      "DELIVERY",
 				Order:     2,
 				PicName:   alamat.NamaPenerima,
 				PicPhone:  alamat.TeleponPenerima,
-				Detail:    alamat.AlamatLengkap,
+				Detail:    buildFullAddress(alamat),
 			},
 		},
 		DataDetail: dataDetail,
@@ -840,7 +862,7 @@ func (s *shippingService) bookForwarderLCL(ctx context.Context, pesanan *models.
 		MoveTypeID:               "1",
 		LoadTypeID:               "2",
 		ServiceTypeID:            "1",
-		OriginCityID:             strconv.Itoa(originMapping.ForwarderCityID),
+		OriginCityID:             "18", // Jakarta — pelabuhan terdekat dari gudang Bogor untuk LCL
 		DestinationCityID:        strconv.Itoa(destMapping.ForwarderCityID),
 		DestinationSubdistrictID: subdistrictID,
 		LCLBasisID:               "1",
@@ -855,7 +877,7 @@ func (s *shippingService) bookForwarderLCL(ctx context.Context, pesanan *models.
 		ShipperPostalCode:        warehouseKodePos,
 		ShipperRemark:            "",
 		Consignee:                alamat.NamaPenerima,
-		ConsigneeAddress:         alamat.AlamatLengkap,
+		ConsigneeAddress:         buildFullAddress(alamat),
 		ConsigneeLat:             buyerLat,
 		ConsigneeLng:             buyerLng,
 		ConsigneeCountry:         "Indonesia",
@@ -874,7 +896,7 @@ func (s *shippingService) bookForwarderLCL(ctx context.Context, pesanan *models.
 		PickupPhone:              warehouseTelepon,
 		PickupRemark:             "",
 		Delivery:                 alamat.NamaPenerima,
-		DeliveryAddress:          alamat.AlamatLengkap,
+		DeliveryAddress:          buildFullAddress(alamat),
 		DeliveryLat:              buyerLat,
 		DeliveryLng:              buyerLng,
 		DeliveryCountry:          "Indonesia",
