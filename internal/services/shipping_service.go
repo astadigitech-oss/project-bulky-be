@@ -801,7 +801,7 @@ func (s *shippingService) bookForwarderLCL(ctx context.Context, pesanan *models.
 		vol := (p.Panjang * p.Lebar * p.Tinggi) / 1_000_000
 		bookingDetail = append(bookingDetail, forwarderBookingDetail{
 			Qty:             strconv.Itoa(item.Qty),
-			ContainerTypeID: "15",
+			ContainerTypeID: "0", // LCL tidak pakai container type spesifik (Less than Container Load)
 			PackageID:       "7",
 			Length:          p.Panjang,
 			Width:           p.Lebar,
