@@ -305,7 +305,7 @@ func (r *pesananRepository) GetChartData(dari, sampai *time.Time, groupBy string
 
 	var results []models.ChartRawPoint
 	q := r.db.Model(&models.Pesanan{}).
-		Select("TO_CHAR(created_at, '" + format + "') as period, COUNT(*) as total_pesanan").
+		Select("TO_CHAR(created_at AT TIME ZONE 'Asia/Jakarta', '" + format + "') as period, COUNT(*) as total_pesanan").
 		Group("period").
 		Order("period ASC")
 

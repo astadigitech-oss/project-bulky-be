@@ -292,13 +292,17 @@ func parseFlexibleDate(dateStr string) (time.Time, error) {
 		return t, nil
 	}
 
-	// Try date only format (yyyy-mm-dd)
-	if t, err := time.Parse("2006-01-02", dateStr); err == nil {
+	// Try date only format (yyyy-mm-dd) — interpret as Asia/Jakarta midnight
+	jakartaLoc, _ := time.LoadLocation("Asia/Jakarta")
+	if jakartaLoc == nil {
+		jakartaLoc = time.UTC
+	}
+	if t, err := time.ParseInLocation("2006-01-02", dateStr, jakartaLoc); err == nil {
 		return t, nil
 	}
 
-	// Try datetime without timezone
-	if t, err := time.Parse("2006-01-02T15:04:05", dateStr); err == nil {
+	// Try datetime without timezone — interpret as Asia/Jakarta
+	if t, err := time.ParseInLocation("2006-01-02T15:04:05", dateStr, jakartaLoc); err == nil {
 		return t, nil
 	}
 

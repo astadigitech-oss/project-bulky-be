@@ -185,6 +185,10 @@ func (s *shippingService) BookDelivery(ctx context.Context, pesanan *models.Pesa
 		var err error
 		if pesanan.AlamatBuyer != nil && isLuarJawaBali(pesanan.AlamatBuyer.Provinsi) {
 			trackingNo, err = s.bookForwarderLCL(ctx, pesanan)
+			if err == nil {
+				// Update delivery_type ke FORWARDER_LCL agar label di FE sesuai
+				s.db.Model(&models.Pesanan{}).Where("id = ?", pesanan.ID).Update("delivery_type", models.DeliveryTypeForwarderLCL)
+			}
 		} else {
 			trackingNo, err = s.bookForwarder(ctx, pesanan)
 		}
@@ -801,7 +805,7 @@ func (s *shippingService) bookForwarderLCL(ctx context.Context, pesanan *models.
 		vol := (p.Panjang * p.Lebar * p.Tinggi) / 1_000_000
 		bookingDetail = append(bookingDetail, forwarderBookingDetail{
 			Qty:             strconv.Itoa(item.Qty),
-			ContainerTypeID: "0", // LCL tidak pakai container type spesifik (Less than Container Load)
+			ContainerTypeID: "63", // LCL tidak pakai container type spesifik (Less than Container Load)
 			PackageID:       "7",
 			Length:          p.Panjang,
 			Width:           p.Lebar,
@@ -867,7 +871,7 @@ func (s *shippingService) bookForwarderLCL(ctx context.Context, pesanan *models.
 		DestinationSubdistrictID: subdistrictID,
 		LCLBasisID:               "1",
 		CargoReadyDate:           "",
-		Shipper:                  "Liquid8",
+		Shipper:                  "Liquid8 | Bulky.id",
 		ShipperAddress:           warehouseAlamat,
 		ShipperLat:               warehouseLat,
 		ShipperLng:               warehouseLng,
@@ -885,7 +889,7 @@ func (s *shippingService) bookForwarderLCL(ctx context.Context, pesanan *models.
 		ConsigneeCity:            alamat.Kota,
 		ConsigneePostalCode:      buyerKodePos,
 		ConsigneeRemark:          "",
-		Pickup:                   "Liquid8",
+		Pickup:                   "Liquid8 | Bulky.id",
 		PickupAddress:            warehouseAlamat,
 		PickupLat:                warehouseLat,
 		PickupLng:                warehouseLng,

@@ -1,0 +1,2 @@
+-- PostgreSQL tidak support DROP VALUE dari enum.
+-- Rollback manual: buat ulang enum tanpa FORWARDER_LCL jika diperlukan.

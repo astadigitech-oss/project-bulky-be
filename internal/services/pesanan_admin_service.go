@@ -263,7 +263,11 @@ func (s *pesananAdminService) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 func (s *pesananAdminService) GetStatistics(ctx context.Context, params *dto.StatisticsQueryParams) (*dto.PesananStatisticsResponse, error) {
-	now := time.Now().UTC()
+	jakartaLoc, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		jakartaLoc = time.UTC
+	}
+	now := time.Now().In(jakartaLoc)
 	var chartDari, chartSampai time.Time
 	var summaryDari, summarySampai *time.Time
 	var groupBy string
@@ -273,7 +277,7 @@ func (s *pesananAdminService) GetStatistics(ctx context.Context, params *dto.Sta
 	case params.Tahun != nil && params.Bulan != nil:
 		// Bulan tertentu → group by hari
 		year, month := *params.Tahun, time.Month(*params.Bulan)
-		chartDari = time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
+		chartDari = time.Date(year, month, 1, 0, 0, 0, 0, jakartaLoc)
 		chartSampai = chartDari.AddDate(0, 1, 0).Add(-time.Nanosecond)
 		groupBy = "day"
 
@@ -287,29 +291,29 @@ func (s *pesananAdminService) GetStatistics(ctx context.Context, params *dto.Sta
 	case params.Tahun != nil:
 		// Tahun tertentu → group by bulan
 		year := *params.Tahun
-		chartDari = time.Date(year, time.January, 1, 0, 0, 0, 0, time.UTC)
-		chartSampai = time.Date(year, time.December, 31, 23, 59, 59, 999999999, time.UTC)
+		chartDari = time.Date(year, time.January, 1, 0, 0, 0, 0, jakartaLoc)
+		chartSampai = time.Date(year, time.December, 31, 23, 59, 59, 999999999, jakartaLoc)
 		groupBy = "month"
 
 	case params.TanggalDari != "" || params.TanggalSampai != "":
 		// Custom range
 		if params.TanggalDari != "" {
-			t, err := time.Parse("2006-01-02", params.TanggalDari)
+			t, err := time.ParseInLocation("2006-01-02", params.TanggalDari, jakartaLoc)
 			if err != nil {
 				return nil, errors.New("format tanggal_dari tidak valid")
 			}
 			chartDari = t
 		} else {
-			chartDari = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+			chartDari = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, jakartaLoc)
 		}
 		if params.TanggalSampai != "" {
-			t, err := time.Parse("2006-01-02", params.TanggalSampai)
+			t, err := time.ParseInLocation("2006-01-02", params.TanggalSampai, jakartaLoc)
 			if err != nil {
 				return nil, errors.New("format tanggal_sampai tidak valid")
 			}
 			chartSampai = t.Add(24*time.Hour - time.Nanosecond)
 		} else {
-			chartSampai = time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 999999999, time.UTC)
+			chartSampai = time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 999999999, jakartaLoc)
 		}
 		// Auto group: <=90 hari → per hari, >90 hari → per bulan
 		if int(chartSampai.Sub(chartDari).Hours()/24) > 90 {
@@ -320,8 +324,8 @@ func (s *pesananAdminService) GetStatistics(ctx context.Context, params *dto.Sta
 
 	default:
 		// Default: tahun berjalan, group by bulan
-		chartDari = time.Date(now.Year(), time.January, 1, 0, 0, 0, 0, time.UTC)
-		chartSampai = time.Date(now.Year(), time.December, 31, 23, 59, 59, 999999999, time.UTC)
+		chartDari = time.Date(now.Year(), time.January, 1, 0, 0, 0, 0, jakartaLoc)
+		chartSampai = time.Date(now.Year(), time.December, 31, 23, 59, 59, 999999999, jakartaLoc)
 		groupBy = "month"
 	}
 
