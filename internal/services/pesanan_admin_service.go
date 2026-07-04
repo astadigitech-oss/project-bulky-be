@@ -165,12 +165,17 @@ func (s *pesananAdminService) RetryBooking(ctx context.Context, id uuid.UUID) (*
 		return nil, errors.New("retry:bad_request:Retry hanya bisa dilakukan pada pesanan berstatus PROCESSING, READY, atau SHIPPED.")
 	}
 
-	// Already booked
-	if pesanan.DeliveryType == models.DeliveryTypeDeliveree && pesanan.DelivereeBookingID != nil {
-		return nil, errors.New("retry:already_booked:" + *pesanan.DelivereeBookingID)
-	}
+	// Already booked — Forwarder: block retry (tracking no is permanent)
 	if (pesanan.DeliveryType == models.DeliveryTypeForwarder || pesanan.DeliveryType == models.DeliveryTypeForwarderLCL) && pesanan.ForwarderTrackingNo != nil {
 		return nil, errors.New("retry:already_booked:" + *pesanan.ForwarderTrackingNo)
+	}
+
+	// Deliveree: allow retry even if booking_id exists (e.g. cancelled by provider)
+	// Clear old booking data so booking_status resets to PENDING during retry
+	if pesanan.DeliveryType == models.DeliveryTypeDeliveree && pesanan.DelivereeBookingID != nil {
+		if err := s.pesananRepo.ClearBookingResult(id); err != nil {
+			return nil, err
+		}
 	}
 
 	// Run synchronous booking

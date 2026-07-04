@@ -19,6 +19,7 @@ type PesananRepository interface {
 	AdminFindByID(id uuid.UUID) (*models.Pesanan, error)
 	UpdateStatus(id uuid.UUID, orderStatus models.OrderStatus, note *string, adminID uuid.UUID) error
 	UpdateBookingResult(id uuid.UUID, delivereeBookingID *string, forwarderTrackingNo *string, bookingError *string) error
+	ClearBookingResult(id uuid.UUID) error
 	Delete(id uuid.UUID) error
 	GetStatistics(tanggalDari, tanggalSampai *time.Time) (map[string]interface{}, error)
 	GetChartData(dari, sampai *time.Time, groupBy string) ([]models.ChartRawPoint, error)
@@ -184,6 +185,14 @@ func (r *pesananRepository) UpdateStatus(id uuid.UUID, orderStatus models.OrderS
 
 		return nil
 	})
+}
+
+func (r *pesananRepository) ClearBookingResult(id uuid.UUID) error {
+	return r.db.Model(&models.Pesanan{}).Where("id = ?", id).UpdateColumns(map[string]interface{}{
+		"deliveree_booking_id":  nil,
+		"forwarder_tracking_no": nil,
+		"booking_error":         nil,
+	}).Error
 }
 
 func (r *pesananRepository) UpdateBookingResult(id uuid.UUID, delivereeBookingID *string, forwarderTrackingNo *string, bookingError *string) error {
