@@ -99,7 +99,7 @@ func (r *ulasanRepository) AdminFindByID(id uuid.UUID) (*models.Ulasan, error) {
 	var ulasan models.Ulasan
 	if err := r.db.Preload("Buyer").
 		Preload("Pesanan").
-		Preload("Produk").
+		Preload("Produk.Gambar").
 		Preload("Approver").
 		First(&ulasan, "id = ?", id).Error; err != nil {
 		return nil, err
