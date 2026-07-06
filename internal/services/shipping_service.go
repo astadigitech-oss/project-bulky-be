@@ -861,6 +861,11 @@ func (s *shippingService) bookForwarderLCL(ctx context.Context, pesanan *models.
 		premiAmount = pesanan.BiayaLainnya.StringFixed(0)
 	}
 
+	catatanAlamat := ""
+	if alamat.Catatan != nil {
+		catatanAlamat = *alamat.Catatan
+	}
+
 	bookingReq := forwarderCreateBookingLCLRequest{
 		TransportID:              "1",
 		MoveTypeID:               "1",
@@ -876,10 +881,10 @@ func (s *shippingService) bookForwarderLCL(ctx context.Context, pesanan *models.
 		ShipperLat:               warehouseLat,
 		ShipperLng:               warehouseLng,
 		ShipperCountry:           "Indonesia",
-		ShipperProvince:          "",
+		ShipperProvince:          "Jawa Barat",
 		ShipperCity:              *warehouse.Kota,
 		ShipperPostalCode:        warehouseKodePos,
-		ShipperRemark:            "",
+		ShipperRemark:            pesanan.Kode,
 		Consignee:                alamat.NamaPenerima,
 		ConsigneeAddress:         buildFullAddress(alamat),
 		ConsigneeLat:             buyerLat,
@@ -888,17 +893,17 @@ func (s *shippingService) bookForwarderLCL(ctx context.Context, pesanan *models.
 		ConsigneeProvince:        alamat.Provinsi,
 		ConsigneeCity:            alamat.Kota,
 		ConsigneePostalCode:      buyerKodePos,
-		ConsigneeRemark:          "",
+		ConsigneeRemark:          catatanAlamat,
 		Pickup:                   "Liquid8 | Bulky.id",
 		PickupAddress:            warehouseAlamat,
 		PickupLat:                warehouseLat,
 		PickupLng:                warehouseLng,
 		PickupCountry:            "Indonesia",
-		PickupProvince:           "",
+		PickupProvince:           "Jawa Barat",
 		PickupCity:               *warehouse.Kota,
 		PickupPostalCode:         warehouseKodePos,
 		PickupPhone:              warehouseTelepon,
-		PickupRemark:             "",
+		PickupRemark:             pesanan.Kode,
 		Delivery:                 alamat.NamaPenerima,
 		DeliveryAddress:          buildFullAddress(alamat),
 		DeliveryLat:              buyerLat,
@@ -908,7 +913,7 @@ func (s *shippingService) bookForwarderLCL(ctx context.Context, pesanan *models.
 		DeliveryCity:             alamat.Kota,
 		DeliveryPostalCode:       buyerKodePos,
 		DeliveryPhone:            alamat.TeleponPenerima,
-		DeliveryRemark:           "",
+		DeliveryRemark:           catatanAlamat,
 		VoucherCode:              "",
 		CurrencyID:               "1",
 		Incoterm:                 "",
