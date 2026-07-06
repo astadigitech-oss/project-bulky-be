@@ -861,8 +861,8 @@ func (s *shippingService) bookForwarderLCL(ctx context.Context, pesanan *models.
 		premiAmount = pesanan.BiayaLainnya.StringFixed(0)
 	}
 
-	catatanAlamat := ""
-	if alamat.Catatan != nil {
+	catatanAlamat := "-"
+	if alamat.Catatan != nil && *alamat.Catatan != "" {
 		catatanAlamat = *alamat.Catatan
 	}
 
