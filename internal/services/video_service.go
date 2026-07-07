@@ -187,6 +187,7 @@ func (s *videoService) Update(ctx context.Context, id uuid.UUID, req *dto.Update
 	}
 	if req.KategoriID != nil {
 		video.KategoriID = *req.KategoriID
+		video.Kategori = nil // clear preloaded association agar GORM tidak override FK dengan data lama
 	}
 	// Meta SEO: gunakan nilai eksplisit jika ada, auto-generate jika source berubah
 	if req.MetaTitleID != nil {
