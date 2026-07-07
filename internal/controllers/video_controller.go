@@ -746,6 +746,145 @@ func (c *VideoController) FinalizeChunk(ctx *fiber.Ctx) error {
 	})
 }
 
+// FinalizeChunkUpdate menggabungkan semua chunk yang sudah diupload, lalu mengupdate record video
+// yang sudah ada dan menjalankan transcode di background.
+// Dipanggil setelah semua chunk terkirim pada flow edit video.
+func (c *VideoController) FinalizeChunkUpdate(ctx *fiber.Ctx) error {
+	id, err := uuid.Parse(ctx.Params("id"))
+	if err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
+	}
+
+	uploadID := ctx.FormValue("upload_id")
+	totalChunksStr := ctx.FormValue("total_chunks")
+	originalExt := strings.ToLower(ctx.FormValue("original_ext"))
+
+	if uploadID == "" {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "upload_id wajib diisi", "")
+	}
+	totalChunks, err := strconv.Atoi(totalChunksStr)
+	if err != nil || totalChunks <= 0 {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "total_chunks tidak valid", "")
+	}
+
+	validExts := map[string]bool{".mp4": true, ".mov": true, ".m4v": true}
+	if !validExts[originalExt] {
+		originalExt = ".mp4"
+	}
+
+	// Parse metadata fields (opsional — hanya field yang dikirim yang di-update)
+	var req dto.UpdateVideoRequest
+	if v := ctx.FormValue("judul_id"); v != "" {
+		req.JudulID = &v
+	}
+	if v := ctx.FormValue("judul_en"); v != "" {
+		req.JudulEN = &v
+	}
+	if v := ctx.FormValue("slug_id"); v != "" {
+		req.SlugID = &v
+	}
+	if v := ctx.FormValue("slug_en"); v != "" {
+		req.SlugEN = &v
+	}
+	if v := ctx.FormValue("deskripsi_id"); v != "" {
+		req.DeskripsiID = &v
+	}
+	if v := ctx.FormValue("deskripsi_en"); v != "" {
+		req.DeskripsiEN = &v
+	}
+	if v := ctx.FormValue("is_active"); v != "" {
+		req.IsActive = &v
+	}
+	if v := ctx.FormValue("kategori_id"); v != "" {
+		kategoriID, err := uuid.Parse(v)
+		if err != nil {
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "kategori_id tidak valid", err.Error())
+		}
+		req.KategoriID = &kategoriID
+	}
+
+	// Ambil raw video path lama untuk cleanup setelah transcode selesai
+	oldVideoURL, _ := c.videoService.GetVideoFilePath(ctx.UserContext(), id)
+
+	// Buat file final dari gabungan chunk
+	videoDir := filepath.Join(c.cfg.UploadPath, "video")
+	if err := os.MkdirAll(videoDir, 0755); err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat direktori video", err.Error())
+	}
+
+	finalFilename := uuid.New().String() + originalExt
+	finalPath := filepath.Join(videoDir, finalFilename)
+	relativeVideoPath := "video/" + finalFilename
+	tempDir := filepath.Join(c.cfg.UploadPath, "chunks", uploadID)
+
+	dst, err := os.Create(finalPath)
+	if err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat file final", err.Error())
+	}
+
+	for i := 0; i < totalChunks; i++ {
+		chunkPath := filepath.Join(tempDir, fmt.Sprintf("chunk_%05d", i))
+		chunk, err := os.Open(chunkPath)
+		if err != nil {
+			dst.Close()
+			os.Remove(finalPath)
+			os.RemoveAll(tempDir)
+			return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, fmt.Sprintf("Chunk %d tidak ditemukan", i), err.Error())
+		}
+		_, copyErr := io.Copy(dst, chunk)
+		chunk.Close()
+		if copyErr != nil {
+			dst.Close()
+			os.Remove(finalPath)
+			os.RemoveAll(tempDir)
+			return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menggabungkan chunk", copyErr.Error())
+		}
+	}
+	dst.Sync()
+	dst.Close()
+	os.RemoveAll(tempDir)
+
+	// Handle thumbnail — hanya jika eksplisit dikirim, jangan auto-generate
+	if file, err := ctx.FormFile("thumbnail_file"); err == nil {
+		if !utils.IsValidImageType(file) {
+			os.Remove(finalPath)
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file thumbnail tidak didukung", "")
+		}
+		savedPath, err := utils.SaveUploadedFile(file, "video/thumbnail", c.cfg)
+		if err != nil {
+			os.Remove(finalPath)
+			return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan thumbnail", err.Error())
+		}
+		req.ThumbnailURL = &savedPath
+	} else if v := ctx.FormValue("thumbnail_url"); v != "" {
+		req.ThumbnailURL = &v
+	}
+
+	// Update metadata fields
+	_, err = c.videoService.Update(ctx.UserContext(), id, &req)
+	if err != nil {
+		os.Remove(finalPath)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Video tidak ditemukan", err.Error())
+		}
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengupdate video", err.Error())
+	}
+
+	// Set raw video URL + mark processing
+	if err := c.videoService.MarkProcessing(ctx.UserContext(), id, relativeVideoPath); err != nil {
+		os.Remove(finalPath)
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal memulai proses transcode", err.Error())
+	}
+
+	go c.runTranscodeUpdate(id, relativeVideoPath, oldVideoURL)
+
+	c.activityLog.Log(ctx, models.ActionUpdate, "video", "Video sedang diproses (chunk upload update)")
+	return utils.SimpleSuccessResponse(ctx, http.StatusAccepted, "Video sedang diproses", fiber.Map{
+		"id":               id,
+		"transcode_status": "processing",
+	})
+}
+
 // runTranscodeUpdate dijalankan di goroutine background setelah Update menerima file video baru.
 // Sama dengan runTranscode, tetapi setelah berhasil juga menghapus file video lama.
 func (c *VideoController) runTranscodeUpdate(videoID uuid.UUID, rawRelativePath string, oldVideoURL string) {

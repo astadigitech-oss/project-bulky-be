@@ -629,6 +629,7 @@ func SetupRoutes(
 	videoAdmin.Post("", middleware.RequirePermission("marketing:manage"), videoController.Create)
 	videoAdmin.Post("/upload-chunk", middleware.RequirePermission("marketing:manage"), videoController.UploadChunk)
 	videoAdmin.Post("/finalize-chunk", middleware.RequirePermission("marketing:manage"), videoController.FinalizeChunk)
+	videoAdmin.Post("/:id/finalize-chunk", middleware.RequirePermission("marketing:manage"), videoController.FinalizeChunkUpdate)
 	videoAdmin.Put("/:id", middleware.RequirePermission("marketing:manage"), videoController.Update)
 	videoAdmin.Delete("/:id", middleware.RequirePermission("marketing:manage"), videoController.Delete)
 	videoAdmin.Patch("/:id/toggle-status", middleware.RequirePermission("marketing:manage"), videoController.ToggleStatus)
