@@ -340,22 +340,8 @@ func (c *VideoController) Update(ctx *fiber.Ctx) error {
 			// Thumbnail URL string provided
 			req.ThumbnailURL = &thumbnailURL
 			thumbnailUpdated = true
-		} else if uploadedFilePath != "" {
-			// New video uploaded but no thumbnail provided → try auto-generate (requires ffmpeg)
-			generatedThumbnail, err := utils.GenerateThumbnailFromVideo(uploadedFilePath, "video/thumbnail", c.cfg)
-			if err == nil {
-				req.ThumbnailURL = &generatedThumbnail
-				thumbnailUpdated = true
-
-				// Get existing video to delete old thumbnail
-				existingVideo, err := c.videoService.GetByID(ctx.UserContext(), id)
-				if err == nil && existingVideo.ThumbnailURL != nil {
-					oldThumbnail = existingVideo.ThumbnailURL
-				}
-			}
-			// If ffmpeg not installed or extraction fails, keep existing thumbnail
 		}
-		// If no thumbnail update and no video update → keep old thumbnail (do nothing)
+		// Jika tidak ada thumbnail baru → biarkan thumbnail lama tetap (tidak di-generate otomatis)
 
 		// Async transcode path: file video baru di-upload
 		if uploadedFilePath != "" {
