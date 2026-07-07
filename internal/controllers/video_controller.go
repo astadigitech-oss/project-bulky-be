@@ -282,9 +282,12 @@ func (c *VideoController) Update(ctx *fiber.Ctx) error {
 		}
 
 		// Handle video file upload
+		var uploadedFilePath string
+		var oldVideoURL string
+
 		if file, err := ctx.FormFile("video_file"); err == nil {
-			// Get existing video to delete old file later
-			existingVideo, err := c.videoService.GetByID(ctx.UserContext(), id)
+			// Ambil raw relative path dari DB (bukan DTO yang sudah jadi full URL)
+			rawPath, err := c.videoService.GetVideoFilePath(ctx.UserContext(), id)
 			if err != nil {
 				return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Video tidak ditemukan", err.Error())
 			}
@@ -296,12 +299,9 @@ func (c *VideoController) Update(ctx *fiber.Ctx) error {
 			if err != nil {
 				return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file video: "+err.Error(), "")
 			}
-			req.VideoURL = &savedPath
-
-			// Delete old video file if exists
-			if existingVideo.VideoURL != "" && strings.HasPrefix(existingVideo.VideoURL, "/uploads/") {
-				utils.DeleteFile(existingVideo.VideoURL, c.cfg)
-			}
+			uploadedFilePath = savedPath
+			oldVideoURL = rawPath
+			// Jangan set req.VideoURL dan jangan hapus file lama sekarang — ditangani async via MarkProcessing + runTranscodeUpdate
 		} else {
 			// Check for video_url string
 			if videoURL := ctx.FormValue("video_url"); videoURL != "" {
@@ -340,9 +340,9 @@ func (c *VideoController) Update(ctx *fiber.Ctx) error {
 			// Thumbnail URL string provided
 			req.ThumbnailURL = &thumbnailURL
 			thumbnailUpdated = true
-		} else if req.VideoURL != nil && strings.HasPrefix(*req.VideoURL, "/uploads/") {
+		} else if uploadedFilePath != "" {
 			// New video uploaded but no thumbnail provided → try auto-generate (requires ffmpeg)
-			generatedThumbnail, err := utils.GenerateThumbnailFromVideo(*req.VideoURL, "video/thumbnail", c.cfg)
+			generatedThumbnail, err := utils.GenerateThumbnailFromVideo(uploadedFilePath, "video/thumbnail", c.cfg)
 			if err == nil {
 				req.ThumbnailURL = &generatedThumbnail
 				thumbnailUpdated = true
@@ -357,10 +357,40 @@ func (c *VideoController) Update(ctx *fiber.Ctx) error {
 		}
 		// If no thumbnail update and no video update → keep old thumbnail (do nothing)
 
+		// Async transcode path: file video baru di-upload
+		if uploadedFilePath != "" {
+			_, err := c.videoService.Update(ctx.UserContext(), id, &req)
+			if err != nil {
+				utils.DeleteFile(uploadedFilePath, c.cfg)
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Video tidak ditemukan", err.Error())
+				}
+				return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengupdate video", err.Error())
+			}
+
+			if err := c.videoService.MarkProcessing(ctx.UserContext(), id, uploadedFilePath); err != nil {
+				utils.DeleteFile(uploadedFilePath, c.cfg)
+				return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal memulai proses transcode", err.Error())
+			}
+
+			if thumbnailUpdated && oldThumbnail != nil && *oldThumbnail != "" && strings.HasPrefix(*oldThumbnail, "/uploads/") {
+				utils.DeleteFile(*oldThumbnail, c.cfg)
+			}
+
+			go c.runTranscodeUpdate(id, uploadedFilePath, oldVideoURL)
+
+			c.activityLog.Log(ctx, models.ActionUpdate, "video", "Video sedang diproses (transcode)")
+			return utils.SimpleSuccessResponse(ctx, http.StatusAccepted, "Video sedang diproses", fiber.Map{
+				"id":               id,
+				"transcode_status": "processing",
+			})
+		}
+
+		// Sync path: tidak ada file video baru
 		video, err := c.videoService.Update(ctx.UserContext(), id, &req)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Video not found", err.Error())
+				return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Video tidak ditemukan", err.Error())
 			}
 			return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengupdate video", err.Error())
 		}
@@ -728,6 +758,34 @@ func (c *VideoController) FinalizeChunk(ctx *fiber.Ctx) error {
 		"id":               video.ID,
 		"transcode_status": "processing",
 	})
+}
+
+// runTranscodeUpdate dijalankan di goroutine background setelah Update menerima file video baru.
+// Sama dengan runTranscode, tetapi setelah berhasil juga menghapus file video lama.
+func (c *VideoController) runTranscodeUpdate(videoID uuid.UUID, rawRelativePath string, oldVideoURL string) {
+	c.transcodeSem <- struct{}{}
+	defer func() { <-c.transcodeSem }()
+
+	rawAbsPath := filepath.Join(c.cfg.UploadPath, filepath.FromSlash(rawRelativePath))
+
+	result, err := transcoder.Transcode(rawAbsPath)
+	transcoder.Cleanup(rawAbsPath)
+
+	if err != nil {
+		_ = c.videoService.MarkFailed(context.Background(), videoID, err.Error())
+		return
+	}
+
+	dir := filepath.Dir(rawRelativePath)
+	base := strings.TrimSuffix(filepath.Base(rawRelativePath), filepath.Ext(rawRelativePath))
+	relativeStreamURL := filepath.ToSlash(filepath.Join(dir, "stream_"+base+".mp4"))
+
+	_ = c.videoService.MarkReady(context.Background(), videoID, relativeStreamURL, result.DurasiDetik)
+
+	// Hapus file video lama setelah transcode berhasil (raw relative path, langsung ke DeleteFile)
+	if oldVideoURL != "" {
+		utils.DeleteFile(oldVideoURL, c.cfg)
+	}
 }
 
 // runTranscode dijalankan di goroutine background setelah Create menerima file upload.
