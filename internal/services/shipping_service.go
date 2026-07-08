@@ -1128,7 +1128,7 @@ func (s *shippingService) GetForwarderInvoice(ctx context.Context, bookingNo str
 	}
 
 	reqBody := forwarderInvoiceListRequest{
-		UserName:  clientName,
+		// UserName:  clientName,
 		BookingNo: bookingNo,
 		InvoiceNo: "",
 	}
