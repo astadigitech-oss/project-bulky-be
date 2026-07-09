@@ -238,9 +238,11 @@ func (s *heroSectionService) ToggleStatus(ctx context.Context, id string) (*mode
 
 	hero.IsDefault = !hero.IsDefault
 
-	// Note: Database trigger fn_hero_section_auto_sync() will handle:
-	// - Clear tanggal_mulai & tanggal_selesai when is_default = true
-	// - Unset is_default from other records
+	if hero.IsDefault {
+		if err := s.repo.UnsetAllDefaultExcept(ctx, hero.ID.String()); err != nil {
+			return nil, err
+		}
+	}
 
 	if err := s.repo.Update(ctx, hero); err != nil {
 		return nil, err
@@ -253,6 +255,9 @@ func (s *heroSectionService) ToggleStatus(ctx context.Context, id string) (*mode
 }
 
 func (s *heroSectionService) GetVisibleHero(ctx context.Context) (*models.HeroSectionPublicResponse, error) {
+	// Auto-expire banner scheduled yang tanggal_selesai-nya sudah lewat
+	_ = s.repo.ExpireOutdatedScheduled(ctx)
+
 	hero, err := s.repo.GetVisibleHero(ctx)
 	if err != nil {
 		return nil, nil // Return nil if no visible hero
