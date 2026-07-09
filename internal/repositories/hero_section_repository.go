@@ -90,14 +90,14 @@ func (r *heroSectionRepository) GetVisibleHero(ctx context.Context) (*models.Her
 	err := r.db.WithContext(ctx).
 		Where("deleted_at IS NULL").
 		Where(`
-			(is_default = true AND (tanggal_selesai IS NULL OR tanggal_selesai >= ?))
+			(is_default = true AND tanggal_mulai IS NULL AND tanggal_selesai IS NULL)
 			OR (
 				tanggal_mulai IS NOT NULL
 				AND tanggal_selesai IS NOT NULL
 				AND tanggal_mulai <= ?
 				AND tanggal_selesai >= ?
 			)
-		`, now, now, now).
+		`, now, now).
 		Order("tanggal_mulai DESC NULLS LAST"). // Prioritize scheduled over default
 		First(&hero).Error
 
@@ -143,8 +143,9 @@ func (r *heroSectionRepository) CheckDateRangeOverlap(ctx context.Context, tangg
 }
 
 func (r *heroSectionRepository) UnsetAllDefaultExcept(ctx context.Context, excludeID string) error {
+	// Hanya unset permanent defaults (tanpa tanggal), tidak menyentuh scheduled banners
 	return r.db.WithContext(ctx).Model(&models.HeroSection{}).
-		Where("id != ? AND is_default = true AND deleted_at IS NULL", excludeID).
+		Where("id != ? AND is_default = true AND tanggal_mulai IS NULL AND tanggal_selesai IS NULL AND deleted_at IS NULL", excludeID).
 		Updates(map[string]interface{}{"is_default": false}).Error
 }
 

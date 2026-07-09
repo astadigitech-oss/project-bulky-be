@@ -173,7 +173,13 @@ func (c *HeroSectionController) Update(ctx *fiber.Ctx) error {
 		if nama := ctx.FormValue("nama"); nama != "" {
 			req.Nama = &nama
 		}
-		// Note: is_default cannot be updated here, use toggle endpoint instead
+		if isDefault := ctx.FormValue("is_default"); isDefault == "true" {
+			v := true
+			req.IsDefault = &v
+		} else if isDefault == "false" {
+			v := false
+			req.IsDefault = &v
+		}
 		if tm := ctx.FormValue("tanggal_mulai"); tm != "" {
 			req.TanggalMulai = &tm
 		}
