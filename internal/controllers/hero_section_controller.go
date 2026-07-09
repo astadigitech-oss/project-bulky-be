@@ -46,7 +46,9 @@ func (c *HeroSectionController) Create(ctx *fiber.Ctx) error {
 			req.TanggalSelesai = &ts
 		}
 
-		// Note: is_default cannot be set on create, use toggle endpoint after creation
+		if isDefault := ctx.FormValue("is_default"); isDefault == "true" {
+			req.IsDefault = true
+		}
 
 		// Validate required fields
 		if req.Nama == "" {
