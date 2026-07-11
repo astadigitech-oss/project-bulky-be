@@ -86,6 +86,8 @@ func IsValidVideoType(file *multipart.FileHeader) bool {
 	return validContentType && validExtension
 }
 
+const MaxImageSize = 5 * 1024 * 1024 // 5MB
+
 // SaveUploadedFile saves an uploaded file to the specified directory
 // Returns the relative path for URL generation (e.g., "product-categories/uuid.png")
 // Supports images, documents (PDF), and videos (MP4, MOV, M4V)
@@ -93,6 +95,11 @@ func SaveUploadedFile(file *multipart.FileHeader, directory string, cfg *config.
 	// Validate file type (image, document, or video)
 	if !IsValidImageType(file) && !IsValidDocumentType(file) && !IsValidVideoType(file) {
 		return "", errors.New("tipe file tidak didukung. Hanya jpg, png, webp, svg, pdf, dan video (mp4, mov, m4v) yang diperbolehkan")
+	}
+
+	// Validate image file size (max 5MB)
+	if IsValidImageType(file) && file.Size > MaxImageSize {
+		return "", errors.New("ukuran gambar maksimal 5MB")
 	}
 
 	// Create directory if not exists (use config upload path)

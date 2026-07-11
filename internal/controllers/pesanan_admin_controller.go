@@ -101,6 +101,43 @@ func (c *PesananAdminController) UpdateStatus(ctx *fiber.Ctx) error {
 	return utils.SuccessResponse(ctx, "Status pesanan berhasil diupdate", result)
 }
 
+// CancelOrder membatalkan pesanan dan me-restore is_sold produk (staging/debug only)
+func (c *PesananAdminController) CancelOrder(ctx *fiber.Ctx) error {
+	idParam := ctx.Params("id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
+	}
+
+	var req dto.CancelPesananRequest
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
+	}
+
+	adminIDStr := localsString(ctx, "admin_id")
+	adminID, err := uuid.Parse(adminIDStr)
+	if err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusUnauthorized, "Admin tidak valid", err.Error())
+	}
+
+	result, err := c.pesananService.CancelOrder(ctx.UserContext(), id, &req, adminID)
+	if err != nil {
+		switch err.Error() {
+		case "pesanan tidak ditemukan":
+			return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Pesanan tidak ditemukan", "")
+		case "pesanan dengan status COMPLETED tidak dapat dibatalkan":
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Pesanan sudah selesai dan tidak dapat dibatalkan", "")
+		case "pesanan sudah berstatus CANCELLED":
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Pesanan sudah berstatus CANCELLED", "")
+		default:
+			return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membatalkan pesanan", err.Error())
+		}
+	}
+
+	c.activityLog.Log(ctx, models.ActionUpdate, "pesanan", "Pesanan dibatalkan dan produk di-restore")
+	return utils.SuccessResponse(ctx, "Pesanan berhasil dibatalkan dan produk tersedia kembali", result)
+}
+
 // Delete deletes a pesanan (soft delete)
 func (c *PesananAdminController) Delete(ctx *fiber.Ctx) error {
 	idParam := ctx.Params("id")

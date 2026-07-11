@@ -385,6 +385,7 @@ func SetupRoutes(
 	pesananAdmin.Get("/:id/deliveree-detail", middleware.RequirePermission("pesanan:read"), pesananAdminController.GetDelivereeDetail)
 	pesananAdmin.Get("/:id/invoice", middleware.RequirePermission("pesanan:read"), pesananAdminController.GetForwarderInvoice)
 	pesananAdmin.Delete("/:id", middleware.RequirePermission("pesanan:delete"), pesananAdminController.Delete)
+	pesananAdmin.Post("/:id/cancel", middleware.StagingOnly(cfg.AppEnv), middleware.RequirePermission("pesanan:update_status"), pesananAdminController.CancelOrder)
 
 	// Ulasan - Buyer
 	ulasanBuyer := v1.Group("/buyer/ulasan",

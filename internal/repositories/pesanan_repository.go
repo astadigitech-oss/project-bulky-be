@@ -23,6 +23,9 @@ type PesananRepository interface {
 	Delete(id uuid.UUID) error
 	GetStatistics(tanggalDari, tanggalSampai *time.Time) (map[string]interface{}, error)
 	GetChartData(dari, sampai *time.Time, groupBy string) ([]models.ChartRawPoint, error)
+
+	// Cancel order & restore produk
+	CancelOrder(id uuid.UUID, reason *string, adminID uuid.UUID) error
 }
 
 type pesananRepository struct {
@@ -181,6 +184,65 @@ func (r *pesananRepository) UpdateStatus(id uuid.UUID, orderStatus models.OrderS
 
 		if err := tx.Create(&history).Error; err != nil {
 			return err
+		}
+
+		return nil
+	})
+}
+
+// CancelOrder sets order status to CANCELLED, records history, and restores is_sold on all produk items.
+func (r *pesananRepository) CancelOrder(id uuid.UUID, reason *string, adminID uuid.UUID) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// 1. Load pesanan
+		var pesanan models.Pesanan
+		if err := tx.Preload("Items").First(&pesanan, "id = ?", id).Error; err != nil {
+			return err
+		}
+
+		// 2. Validate: only non-terminal statuses can be cancelled
+		if pesanan.OrderStatus == models.OrderStatusCompleted {
+			return fmt.Errorf("pesanan dengan status COMPLETED tidak dapat dibatalkan")
+		}
+		if pesanan.OrderStatus == models.OrderStatusCancelled {
+			return fmt.Errorf("pesanan sudah berstatus CANCELLED")
+		}
+
+		// 3. Update pesanan → CANCELLED
+		now := time.Now()
+		updates := map[string]interface{}{
+			"order_status": models.OrderStatusCancelled,
+			"cancelled_at": now,
+		}
+		if reason != nil && *reason != "" {
+			updates["cancelled_reason"] = *reason
+		}
+		statusFrom := string(pesanan.OrderStatus)
+		if err := tx.Model(&pesanan).Where("id = ?", id).Updates(updates).Error; err != nil {
+			return err
+		}
+
+		// 4. Record status history
+		history := models.PesananStatusHistory{
+			PesananID:  id,
+			StatusFrom: &statusFrom,
+			StatusTo:   string(models.OrderStatusCancelled),
+			StatusType: models.StatusHistoryTypeOrder,
+			ChangedBy:  &adminID,
+			Note:       reason,
+		}
+		if err := tx.Create(&history).Error; err != nil {
+			return err
+		}
+
+		// 5. Restore is_sold = false for all produk in this order
+		produkIDs := make([]uuid.UUID, 0, len(pesanan.Items))
+		for _, item := range pesanan.Items {
+			produkIDs = append(produkIDs, item.ProdukID)
+		}
+		if len(produkIDs) > 0 {
+			if err := tx.Model(&models.Produk{}).Where("id IN ?", produkIDs).Update("is_sold", false).Error; err != nil {
+				return err
+			}
 		}
 
 		return nil

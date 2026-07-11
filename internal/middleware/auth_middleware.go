@@ -241,6 +241,20 @@ func RequireAllPermissions(requiredPermissions ...string) fiber.Handler {
 	}
 }
 
+// StagingOnly memblokir akses endpoint di environment production.
+// Hanya bisa diakses di staging dan development.
+func StagingOnly(appEnv string) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		if appEnv == "production" {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"success": false,
+				"message": "Endpoint ini tidak tersedia di environment production.",
+			})
+		}
+		return c.Next()
+	}
+}
+
 // SuperAdminOnly memastikan hanya Super Admin yang bisa akses
 func SuperAdminOnly() fiber.Handler {
 	return func(c *fiber.Ctx) error {

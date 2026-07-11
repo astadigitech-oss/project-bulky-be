@@ -6,6 +6,7 @@ import (
 
 	"project-bulky-be/internal/models"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -18,6 +19,7 @@ type ProdukRepository interface {
 	Delete(ctx context.Context, produk *models.Produk) error
 	ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error)
 	ExistsByIDCargo(ctx context.Context, idCargo string, excludeID *string) (bool, error)
+	UpdateIsSoldBatch(ctx context.Context, ids []uuid.UUID, isSold bool) error
 }
 
 type produkRepository struct {
@@ -219,4 +221,11 @@ func (r *produkRepository) ExistsByIDCargo(ctx context.Context, idCargo string, 
 	}
 	err := query.Count(&count).Error
 	return count > 0, err
+}
+
+func (r *produkRepository) UpdateIsSoldBatch(ctx context.Context, ids []uuid.UUID, isSold bool) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	return r.db.WithContext(ctx).Model(&models.Produk{}).Where("id IN ?", ids).Update("is_sold", isSold).Error
 }

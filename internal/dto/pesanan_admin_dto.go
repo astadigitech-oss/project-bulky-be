@@ -184,6 +184,23 @@ type UpdatePesananStatusResponse struct {
 	UpdatedBy      uuid.UUID `json:"updated_by"`
 }
 
+// CancelPesananRequest request body untuk cancel order
+type CancelPesananRequest struct {
+	Reason *string `json:"reason" validate:"omitempty,max=500"`
+}
+
+// CancelPesananResponse response setelah cancel order
+type CancelPesananResponse struct {
+	ID              uuid.UUID `json:"id"`
+	Kode            string    `json:"kode"`
+	PreviousStatus  string    `json:"previous_status"`
+	OrderStatus     string    `json:"order_status"`
+	CancelledReason *string   `json:"cancelled_reason"`
+	RestoredProduk  int       `json:"restored_produk_count"`
+	CancelledAt     time.Time `json:"cancelled_at"`
+	CancelledBy     uuid.UUID `json:"cancelled_by"`
+}
+
 // PesananStatisticsResponse response for pesanan statistics
 type PesananStatisticsResponse struct {
 	TotalPesanan     int64            `json:"total_pesanan"`

@@ -19,6 +19,7 @@ type PesananAdminService interface {
 	GetAll(ctx context.Context, params *dto.PesananAdminQueryParams) ([]dto.PesananAdminListResponse, *models.PaginationMeta, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*dto.PesananAdminDetailResponse, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, req *dto.UpdatePesananStatusRequest, adminID uuid.UUID) (*dto.UpdatePesananStatusResponse, error)
+	CancelOrder(ctx context.Context, id uuid.UUID, req *dto.CancelPesananRequest, adminID uuid.UUID) (*dto.CancelPesananResponse, error)
 	RetryBooking(ctx context.Context, id uuid.UUID) (*dto.RetryBookingResponse, error)
 	TrackDelivery(ctx context.Context, id uuid.UUID) (*TrackingResult, error)
 	GetDelivereeDetail(ctx context.Context, id uuid.UUID) (*DelivereeDeliveryDetail, error)
@@ -144,6 +145,35 @@ func (s *pesananAdminService) UpdateStatus(ctx context.Context, id uuid.UUID, re
 		PreviousStatus: previousStatus,
 		UpdatedAt:      time.Now().UTC(),
 		UpdatedBy:      adminID,
+	}, nil
+}
+
+func (s *pesananAdminService) CancelOrder(ctx context.Context, id uuid.UUID, req *dto.CancelPesananRequest, adminID uuid.UUID) (*dto.CancelPesananResponse, error) {
+	// Load pesanan untuk validasi awal dan ambil data items
+	pesanan, err := s.pesananRepo.AdminFindByID(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("pesanan tidak ditemukan")
+		}
+		return nil, err
+	}
+
+	previousStatus := string(pesanan.OrderStatus)
+
+	// Jalankan cancel dalam satu transaksi (update status + restore is_sold)
+	if err := s.pesananRepo.CancelOrder(id, req.Reason, adminID); err != nil {
+		return nil, err
+	}
+
+	return &dto.CancelPesananResponse{
+		ID:              id,
+		Kode:            pesanan.Kode,
+		PreviousStatus:  previousStatus,
+		OrderStatus:     string(models.OrderStatusCancelled),
+		CancelledReason: req.Reason,
+		RestoredProduk:  len(pesanan.Items),
+		CancelledAt:     time.Now().UTC(),
+		CancelledBy:     adminID,
 	}, nil
 }
 
