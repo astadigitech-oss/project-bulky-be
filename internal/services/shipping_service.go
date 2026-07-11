@@ -300,7 +300,9 @@ func (s *shippingService) TriggerBookingAsync(pesanan *models.Pesanan) {
 			errMsg := err.Error()
 			updates["booking_error"] = errMsg
 		} else {
-			log.Printf("[shipping] booking sukses: pesanan=%s delivery_type=%s deliveree_id=%v tracking_no=%v", p.Kode, p.DeliveryType, delivereeID, trackingNo)
+			// delivery_type mungkin sudah diubah oleh BookDelivery (FORWARDER → FORWARDER_LCL),
+			// log pakai nilai dari p.DeliveryType hanya sebagai referensi awal.
+			log.Printf("[shipping] booking sukses: pesanan=%s initial_delivery_type=%s deliveree_id=%v tracking_no=%v", p.Kode, p.DeliveryType, delivereeID, trackingNo)
 			updates["booking_error"] = nil
 			if delivereeID != nil {
 				updates["deliveree_booking_id"] = *delivereeID
@@ -333,9 +335,25 @@ func (s *shippingService) BookDelivery(ctx context.Context, pesanan *models.Pesa
 		var err error
 		if pesanan.AlamatBuyer != nil && isInLTLProvince(pesanan.AlamatBuyer.Provinsi) {
 			// Provinsi dilayani LTL (darat).
+			// Update delivery_type ke FORWARDER di awal agar UI langsung reflect routing yang benar,
+			// termasuk saat booking gagal dan admin melihat status di panel.
+			if pesanan.DeliveryType != models.DeliveryTypeForwarder {
+				s.db.Model(&models.Pesanan{}).Where("id = ?", pesanan.ID).Update("delivery_type", models.DeliveryTypeForwarder)
+			}
+			log.Printf("[shipping] routing LTL pesanan=%s provinsi=%s", pesanan.Kode, pesanan.AlamatBuyer.Provinsi)
 			trackingNo, err = s.bookForwarder(ctx, pesanan)
 		} else {
-			// Provinsi di luar coverage LTL → langsung LCL (laut).
+			// Provinsi di luar coverage LTL → LCL (laut).
+			// Update delivery_type ke FORWARDER_LCL di awal agar UI langsung reflect routing yang benar,
+			// termasuk saat booking gagal dan admin melihat status di panel.
+			provinsi := ""
+			if pesanan.AlamatBuyer != nil {
+				provinsi = pesanan.AlamatBuyer.Provinsi
+			}
+			if pesanan.DeliveryType != models.DeliveryTypeForwarderLCL {
+				s.db.Model(&models.Pesanan{}).Where("id = ?", pesanan.ID).Update("delivery_type", models.DeliveryTypeForwarderLCL)
+			}
+			log.Printf("[shipping] routing LCL pesanan=%s provinsi=%s (luar LTL coverage)", pesanan.Kode, provinsi)
 			trackingNo, err = s.bookForwarderLCL(ctx, pesanan)
 		}
 		if err != nil {

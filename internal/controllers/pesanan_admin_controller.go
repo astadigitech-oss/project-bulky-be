@@ -135,27 +135,26 @@ func (c *PesananAdminController) RetryBooking(ctx *fiber.Ctx) error {
 	if err != nil {
 		msg := err.Error()
 		switch {
-		case len(msg) > 17 && msg[:17] == "retry:bad_request":
+		case strings.HasPrefix(msg, "retry:bad_request:"):
 			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest,
 				"Retry tidak diperlukan. Booking sudah berhasil atau pesanan bukan tipe delivery.", "")
-		case len(msg) > 19 && msg[:19] == "retry:already_booked":
-			bookingRef := msg[20:]
+		case strings.HasPrefix(msg, "retry:already_booked:"):
+			bookingRef := strings.TrimPrefix(msg, "retry:already_booked:")
 			return ctx.Status(http.StatusOK).JSON(fiber.Map{
 				"success": false,
 				"message": "Booking sudah ada, tidak perlu retry",
 				"data":    fiber.Map{"booking_id": bookingRef},
 			})
-		case len(msg) > 20 && msg[:20] == "retry:city_not_mapped":
-			// extract kota name from error message
+		case strings.HasPrefix(msg, "retry:city_not_mapped:"):
 			return ctx.Status(http.StatusUnprocessableEntity).JSON(fiber.Map{
 				"success": false,
-				"message": msg[21:],
+				"message": strings.TrimPrefix(msg, "retry:city_not_mapped:"),
 				"data":    fiber.Map{},
 			})
-		case len(msg) > 20 && msg[:20] == "retry:provider_error":
-			parts := strings.SplitN(msg[21:], ":", 2)
+		case strings.HasPrefix(msg, "retry:provider_error:"):
+			parts := strings.SplitN(strings.TrimPrefix(msg, "retry:provider_error:"), ":", 2)
 			provider := ""
-			errDetail := msg[21:]
+			errDetail := strings.TrimPrefix(msg, "retry:provider_error:")
 			if len(parts) == 2 {
 				provider = parts[0]
 				errDetail = parts[1]

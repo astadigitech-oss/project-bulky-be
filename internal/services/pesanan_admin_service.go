@@ -184,23 +184,38 @@ func (s *pesananAdminService) RetryBooking(ctx context.Context, id uuid.UUID) (*
 		errMsg := bookErr.Error()
 		_ = s.pesananRepo.UpdateBookingResult(id, nil, nil, &errMsg)
 
+		// Re-fetch delivery_type — BookDelivery may have routed FORWARDER → FORWARDER_LCL
+		// before failing, so use the actual type for accurate error reporting.
+		actualDeliveryType := string(pesanan.DeliveryType)
+		var routedPesanan models.Pesanan
+		if err := s.db.Select("delivery_type").First(&routedPesanan, "id = ?", id).Error; err == nil {
+			actualDeliveryType = string(routedPesanan.DeliveryType)
+		}
+
 		// City not mapped — distinguish 422
 		if strings.Contains(errMsg, "tidak ditemukan di Forwarder mapping") {
 			return nil, errors.New("retry:city_not_mapped:" + errMsg)
 		}
-		return nil, errors.New("retry:provider_error:" + string(pesanan.DeliveryType) + ":" + errMsg)
+		return nil, errors.New("retry:provider_error:" + actualDeliveryType + ":" + errMsg)
 	}
 
 	_ = s.pesananRepo.UpdateBookingResult(id, delivereeID, trackingNo, nil)
 
+	// Re-fetch delivery_type from DB — bookForwarderLCL may have updated it
+	// from FORWARDER → FORWARDER_LCL during booking.
+	finalDeliveryType := string(pesanan.DeliveryType)
+	var updatedPesanan models.Pesanan
+	if err := s.db.Select("delivery_type").First(&updatedPesanan, "id = ?", id).Error; err == nil {
+		finalDeliveryType = string(updatedPesanan.DeliveryType)
+	}
+
 	return &dto.RetryBookingResponse{
 		PesananID:    id.String(),
-		DeliveryType: string(pesanan.DeliveryType),
+		DeliveryType: finalDeliveryType,
 		BookingID:    delivereeID,
 		TrackingNo:   trackingNo,
 	}, nil
 }
-
 
 func (s *pesananAdminService) TrackDelivery(ctx context.Context, id uuid.UUID) (*TrackingResult, error) {
 	pesanan, err := s.pesananRepo.AdminFindByID(id)
