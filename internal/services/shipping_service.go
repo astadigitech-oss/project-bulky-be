@@ -124,22 +124,163 @@ func NewShippingService(db *gorm.DB) ShippingService {
 	return &shippingService{db: db}
 }
 
-var jawaBaliProvinces = map[string]bool{
-	"dki jakarta":                true,
-	"jakarta":                    true,
-	"jawa barat":                 true,
-	"jawa tengah":                true,
-	"jawa timur":                 true,
-	"d.i. yogyakarta":            true,
-	"di yogyakarta":              true,
-	"daerah istimewa yogyakarta": true,
-	"yogyakarta":                 true,
-	"banten":                     true,
-	"bali":                       true,
+// forwarderLTLProvinsi adalah daftar provinsi (lowercase) yang dilayani forwarder
+// via jalur darat (LTL). Provinsi di luar list ini dikirim via laut (LCL).
+// Nama provinsi bisa dalam bahasa Indonesia maupun Inggris (Google Maps).
+var forwarderLTLProvinsi = map[string]bool{
+	// Bali
+	"bali": true,
+
+	// Bangka Belitung
+	"kepulauan bangka belitung": true,
+	"bangkabelitung islands":    true,
+
+	// Bengkulu
+	"bengkulu": true,
+
+	// DI Yogyakarta
+	"daerah istimewa yogyakarta":   true,
+	"special region of yogyakarta": true,
+	"di yogyakarta":                true,
+	"yogyakarta":                   true,
+
+	// Gorontalo
+	"gorontalo": true,
+
+	// Jambi
+	"jambi": true,
+
+	// DKI Jakarta
+	"dki jakarta": true,
+	"jakarta":     true,
+
+	// Jawa Barat
+	"jawa barat": true,
+	"west java":  true,
+
+	// Jawa Tengah
+	"jawa tengah":  true,
+	"central java": true,
+
+	// Jawa Timur
+	"jawa timur": true,
+	"east java":  true,
+
+	// Banten
+	"banten": true,
+
+	// Kepulauan Riau
+	"kepulauan riau": true,
+	"riau islands":   true,
+
+	// Lampung
+	"lampung": true,
+
+	// Nanggroe Aceh Darussalam
+	"aceh": true,
+
+	// Nusa Tenggara Barat
+	"nusa tenggara barat": true,
+	"west nusa tenggara":  true,
+
+	// Riau
+	"riau": true,
+
+	// Sumatera Barat
+	"sumatera barat": true,
+	"west sumatra":   true,
+
+	// Sumatera Selatan
+	"sumatera selatan": true,
+	"south sumatra":    true,
+
+	// Sumatera Utara
+	"sumatera utara": true,
+	"north sumatra":  true,
+
+	// Sulawesi Utara
+	"sulawesi utara": true,
+	"north sulawesi": true,
+
+	// Sulawesi Tengah
+	"sulawesi tengah":  true,
+	"central sulawesi": true,
+
+	// Sulawesi Selatan
+	"sulawesi selatan": true,
+	"south sulawesi":   true,
+
+	// Sulawesi Tenggara
+	"sulawesi tenggara":  true,
+	"southeast sulawesi": true,
+
+	// Sulawesi Barat
+	"sulawesi barat": true,
+	"west sulawesi":  true,
+
+	// Gorontalo sudah ada di atas
 }
 
-func isLuarJawaBali(provinsi string) bool {
-	return !jawaBaliProvinces[strings.ToLower(strings.TrimSpace(provinsi))]
+// isInLTLProvince mengembalikan true jika provinsi dilayani forwarder via darat (LTL).
+// Provinsi yang tidak ada di list dikirim via laut (LCL).
+func isInLTLProvince(provinsi string) bool {
+	return forwarderLTLProvinsi[strings.ToLower(strings.TrimSpace(provinsi))]
+}
+
+// delivereeProvinsi adalah daftar provinsi (lowercase) yang dilayani Deliveree.
+// Deliveree hanya beroperasi di Jawa, Sumatra, dan Bali.
+var delivereeProvinsi = map[string]bool{
+	// Bali
+	"bali": true,
+	// Banten
+	"banten": true,
+	// Bengkulu
+	"bengkulu": true,
+	// DI Yogyakarta
+	"daerah istimewa yogyakarta":   true,
+	"special region of yogyakarta": true,
+	"di yogyakarta":                true,
+	"yogyakarta":                   true,
+	// DKI Jakarta
+	"dki jakarta": true,
+	"jakarta":     true,
+	// Jambi
+	"jambi": true,
+	// Jawa Barat
+	"jawa barat": true,
+	"west java":  true,
+	// Jawa Tengah
+	"jawa tengah":  true,
+	"central java": true,
+	// Jawa Timur
+	"jawa timur": true,
+	"east java":  true,
+	// Lampung
+	"lampung": true,
+	// Nanggroe Aceh Darussalam
+	"aceh": true,
+	// Riau
+	"riau": true,
+	// Kepulauan Riau
+	"kepulauan riau": true,
+	"riau islands":   true,
+	// Bangka Belitung
+	"kepulauan bangka belitung": true,
+	"bangkabelitung islands":    true,
+	// Sumatera Barat
+	"sumatera barat": true,
+	"west sumatra":   true,
+	// Sumatera Selatan
+	"sumatera selatan": true,
+	"south sumatra":    true,
+	// Sumatera Utara
+	"sumatera utara": true,
+	"north sumatra":  true,
+}
+
+// isInDelivereeProvince mengembalikan true jika provinsi dilayani Deliveree (Jawa, Sumatra, Bali).
+func isInDelivereeProvince(provinsi string) bool {
+	return delivereeProvinsi[strings.ToLower(strings.TrimSpace(provinsi))]
 }
 
 func (s *shippingService) TriggerBookingAsync(pesanan *models.Pesanan) {
@@ -175,6 +316,13 @@ func (s *shippingService) TriggerBookingAsync(pesanan *models.Pesanan) {
 func (s *shippingService) BookDelivery(ctx context.Context, pesanan *models.Pesanan) (*string, *string, error) {
 	switch pesanan.DeliveryType {
 	case models.DeliveryTypeDeliveree:
+		if pesanan.AlamatBuyer == nil || !isInDelivereeProvince(pesanan.AlamatBuyer.Provinsi) {
+			provinsi := ""
+			if pesanan.AlamatBuyer != nil {
+				provinsi = pesanan.AlamatBuyer.Provinsi
+			}
+			return nil, nil, fmt.Errorf("Deliveree tidak tersedia untuk provinsi %q (hanya Jawa, Sumatra, dan Bali)", provinsi)
+		}
 		bookingID, err := s.bookDeliveree(ctx, pesanan)
 		if err != nil {
 			return nil, nil, err
@@ -183,14 +331,12 @@ func (s *shippingService) BookDelivery(ctx context.Context, pesanan *models.Pesa
 	case models.DeliveryTypeForwarder, models.DeliveryTypeForwarderLCL:
 		var trackingNo *string
 		var err error
-		if pesanan.AlamatBuyer != nil && isLuarJawaBali(pesanan.AlamatBuyer.Provinsi) {
-			trackingNo, err = s.bookForwarderLCL(ctx, pesanan)
-			if err == nil {
-				// Update delivery_type ke FORWARDER_LCL agar label di FE sesuai
-				s.db.Model(&models.Pesanan{}).Where("id = ?", pesanan.ID).Update("delivery_type", models.DeliveryTypeForwarderLCL)
-			}
-		} else {
+		if pesanan.AlamatBuyer != nil && isInLTLProvince(pesanan.AlamatBuyer.Provinsi) {
+			// Provinsi dilayani LTL (darat).
 			trackingNo, err = s.bookForwarder(ctx, pesanan)
+		} else {
+			// Provinsi di luar coverage LTL → langsung LCL (laut).
+			trackingNo, err = s.bookForwarderLCL(ctx, pesanan)
 		}
 		if err != nil {
 			return nil, nil, err
