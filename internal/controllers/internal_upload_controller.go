@@ -49,7 +49,7 @@ func (ctrl *InternalUploadController) UploadUlasanGambar(c *fiber.Ctx) error {
 // UploadBuyerFoto menerima foto profil buyer dari storefront BE dan menyimpannya ke folder uploads.
 // Endpoint ini hanya bisa diakses oleh internal service via X-Internal-Key header.
 func (ctrl *InternalUploadController) UploadBuyerFoto(c *fiber.Ctx) error {
-	file, err := c.FormFile("foto")
+	file, err := c.FormFile("image")
 	if err != nil {
 		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "File foto tidak ditemukan", err.Error())
 	}
