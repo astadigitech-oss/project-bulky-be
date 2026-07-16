@@ -20,6 +20,14 @@ var allowedImageTypes = []string{
 	"image/svg+xml",
 }
 
+// allowedBannerImageTypes - SVG tidak diizinkan untuk banner/hero section
+// karena berpotensi mengandung script berbahaya (XSS)
+var allowedBannerImageTypes = []string{
+	"image/jpeg",
+	"image/png",
+	"image/webp",
+}
+
 var allowedDocumentTypes = []string{
 	"application/pdf",
 }
@@ -41,6 +49,18 @@ var allowedVideoExtensions = []string{
 func IsValidImageType(file *multipart.FileHeader) bool {
 	contentType := file.Header.Get("Content-Type")
 	for _, allowed := range allowedImageTypes {
+		if contentType == allowed {
+			return true
+		}
+	}
+	return false
+}
+
+// IsValidBannerImageType validates image type for banner/hero section uploads.
+// SVG is explicitly rejected to prevent XSS via embedded scripts.
+func IsValidBannerImageType(file *multipart.FileHeader) bool {
+	contentType := file.Header.Get("Content-Type")
+	for _, allowed := range allowedBannerImageTypes {
 		if contentType == allowed {
 			return true
 		}

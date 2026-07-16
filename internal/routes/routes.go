@@ -110,6 +110,13 @@ func SetupRoutes(
 	buyerManagement.Delete("/:id", middleware.RequirePermission("buyer:manage"), buyerController.Delete)
 	buyerManagement.Put("/:id/reset-password", middleware.RequirePermission("buyer:manage"), buyerController.ResetPassword)
 
+	// Buyer Profile Routes (Buyer Only)
+	buyerProfile := v1.Group("/buyer/profile",
+		middleware.AuthMiddleware(),
+		middleware.BuyerOnly(),
+	)
+	buyerProfile.Post("/foto", buyerController.UploadFoto)
+
 	// Alamat Buyer Routes (Buyer Only)
 	alamatBuyer := v1.Group("/buyer/alamat",
 		middleware.AuthMiddleware(),

@@ -57,8 +57,8 @@ func (c *HeroSectionController) Create(ctx *fiber.Ctx) error {
 
 		// Handle gambar_id upload (required)
 		if file, err := ctx.FormFile("gambar_id"); err == nil {
-			if !utils.IsValidImageType(file) {
-				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_id tidak didukung", nil)
+			if !utils.IsValidBannerImageType(file) {
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_id tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "hero-section", c.cfg)
 			if err != nil {
@@ -72,12 +72,12 @@ func (c *HeroSectionController) Create(ctx *fiber.Ctx) error {
 
 		// Handle gambar_en upload (optional)
 		if file, err := ctx.FormFile("gambar_en"); err == nil {
-			if !utils.IsValidImageType(file) {
+			if !utils.IsValidBannerImageType(file) {
 				// Rollback gambar_id if gambar_en is invalid
 				if gambarIDURL != nil {
 					utils.DeleteFile(*gambarIDURL, c.cfg)
 				}
-				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_en tidak didukung", nil)
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_en tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "hero-section", c.cfg)
 			if err != nil {
@@ -189,8 +189,8 @@ func (c *HeroSectionController) Update(ctx *fiber.Ctx) error {
 
 		// Handle gambar_id upload (optional for update)
 		if file, err := ctx.FormFile("gambar_id"); err == nil {
-			if !utils.IsValidImageType(file) {
-				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_id tidak didukung", nil)
+			if !utils.IsValidBannerImageType(file) {
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_id tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "hero-section", c.cfg)
 			if err != nil {
@@ -202,12 +202,12 @@ func (c *HeroSectionController) Update(ctx *fiber.Ctx) error {
 
 		// Handle gambar_en upload (optional for update)
 		if file, err := ctx.FormFile("gambar_en"); err == nil {
-			if !utils.IsValidImageType(file) {
+			if !utils.IsValidBannerImageType(file) {
 				// Rollback gambar_id if gambar_en is invalid
 				if gambarIDURL != nil {
 					utils.DeleteFile(*gambarIDURL, c.cfg)
 				}
-				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_en tidak didukung", nil)
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_en tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "hero-section", c.cfg)
 			if err != nil {

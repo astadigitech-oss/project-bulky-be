@@ -59,8 +59,8 @@ func (c *BannerEventPromoController) Create(ctx *fiber.Ctx) error {
 
 		// Handle gambar_id upload (required)
 		if file, err := ctx.FormFile("gambar_id"); err == nil {
-			if !utils.IsValidImageType(file) {
-				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_id tidak didukung", nil)
+			if !utils.IsValidBannerImageType(file) {
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_id tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "banner-event-promo", c.cfg)
 			if err != nil {
@@ -73,8 +73,8 @@ func (c *BannerEventPromoController) Create(ctx *fiber.Ctx) error {
 
 		// Handle gambar_en upload (required)
 		if file, err := ctx.FormFile("gambar_en"); err == nil {
-			if !utils.IsValidImageType(file) {
-				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_en tidak didukung", nil)
+			if !utils.IsValidBannerImageType(file) {
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_en tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "banner-event-promo", c.cfg)
 			if err != nil {
@@ -181,8 +181,8 @@ func (c *BannerEventPromoController) Update(ctx *fiber.Ctx) error {
 
 		// Handle gambar_id upload (optional for update)
 		if file, err := ctx.FormFile("gambar_id"); err == nil {
-			if !utils.IsValidImageType(file) {
-				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_id tidak didukung", nil)
+			if !utils.IsValidBannerImageType(file) {
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_id tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "banner-event-promo", c.cfg)
 			if err != nil {
@@ -195,8 +195,8 @@ func (c *BannerEventPromoController) Update(ctx *fiber.Ctx) error {
 		// Handle gambar_en upload (optional for update)
 		var gambarENURL *string
 		if file, err := ctx.FormFile("gambar_en"); err == nil {
-			if !utils.IsValidImageType(file) {
-				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_en tidak didukung", nil)
+			if !utils.IsValidBannerImageType(file) {
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_en tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "banner-event-promo", c.cfg)
 			if err != nil {
