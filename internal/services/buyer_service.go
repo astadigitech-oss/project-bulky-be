@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"mime/multipart"
 	"time"
 
 	"project-bulky-be/internal/config"
@@ -25,7 +24,6 @@ type BuyerService interface {
 	UpdateProfile(ctx context.Context, id, nama, username, email, telepon string) (*models.Buyer, error)
 	IsEmailExistExcludeID(ctx context.Context, email, excludeID string) (bool, error)
 	IsUsernameExistExcludeID(ctx context.Context, username, excludeID string) (bool, error)
-	UploadFoto(ctx context.Context, id string, file *multipart.FileHeader) (*string, error)
 }
 
 type buyerService struct {
@@ -342,44 +340,4 @@ func (s *buyerService) IsEmailExistExcludeID(ctx context.Context, email, exclude
 // IsUsernameExistExcludeID checks if username exists excluding specific ID
 func (s *buyerService) IsUsernameExistExcludeID(ctx context.Context, username, excludeID string) (bool, error) {
 	return s.repo.ExistsByUsername(ctx, username, &excludeID)
-}
-
-// UploadFoto uploads buyer profile photo, replaces old one, and updates DB
-func (s *buyerService) UploadFoto(ctx context.Context, id string, file *multipart.FileHeader) (*string, error) {
-	buyer, err := s.repo.FindByID(ctx, id)
-	if err != nil {
-		return nil, errors.New("buyer tidak ditemukan")
-	}
-
-	// Validate image type
-	if !utils.IsValidImageType(file) {
-		return nil, errors.New("format file tidak didukung. Gunakan jpg, jpeg, png, atau webp")
-	}
-
-	// Validate file size (max 5MB)
-	if file.Size > utils.MaxImageSize {
-		return nil, errors.New("ukuran file maksimal 5MB")
-	}
-
-	// Delete old photo if exists
-	if buyer.FotoURL != nil && *buyer.FotoURL != "" {
-		_ = utils.DeleteFile(*buyer.FotoURL, s.cfg)
-	}
-
-	// Save new photo
-	relativePath, err := utils.SaveUploadedFile(file, "buyer/foto-profil", s.cfg)
-	if err != nil {
-		return nil, fmt.Errorf("gagal menyimpan foto: %w", err)
-	}
-
-	// Update DB
-	buyer.FotoURL = &relativePath
-	if err := s.repo.Update(ctx, buyer); err != nil {
-		// Cleanup file jika update DB gagal
-		_ = utils.DeleteFile(relativePath, s.cfg)
-		return nil, fmt.Errorf("gagal memperbarui data buyer: %w", err)
-	}
-
-	fotoURL := utils.GetFileURL(relativePath, s.cfg)
-	return &fotoURL, nil
 }

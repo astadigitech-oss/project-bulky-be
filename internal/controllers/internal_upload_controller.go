@@ -45,3 +45,33 @@ func (ctrl *InternalUploadController) UploadUlasanGambar(c *fiber.Ctx) error {
 		"url":  fileURL,
 	})
 }
+
+// UploadBuyerFoto menerima foto profil buyer dari storefront BE dan menyimpannya ke folder uploads.
+// Endpoint ini hanya bisa diakses oleh internal service via X-Internal-Key header.
+func (ctrl *InternalUploadController) UploadBuyerFoto(c *fiber.Ctx) error {
+	file, err := c.FormFile("foto")
+	if err != nil {
+		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "File foto tidak ditemukan", err.Error())
+	}
+
+	if !utils.IsValidImageType(file) {
+		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "Tipe file tidak didukung. Hanya jpg, jpeg, png, webp yang diperbolehkan", "")
+	}
+
+	// Max 5MB
+	if file.Size > 5*1024*1024 {
+		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "Ukuran file maksimal 5MB", "")
+	}
+
+	relativePath, err := utils.SaveUploadedFile(file, "buyer/foto-profil", ctrl.cfg)
+	if err != nil {
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan file", err.Error())
+	}
+
+	fileURL := utils.GetFileURL(relativePath, ctrl.cfg)
+
+	return utils.SimpleSuccessResponse(c, http.StatusOK, "Foto profil berhasil diupload", fiber.Map{
+		"path": relativePath,
+		"url":  fileURL,
+	})
+}

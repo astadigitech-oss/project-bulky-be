@@ -90,33 +90,3 @@ func (c *BuyerController) GetChart(ctx *fiber.Ctx) error {
 	}
 	return utils.SuccessResponse(ctx, "Data chart berhasil diambil", result)
 }
-
-// UploadFoto godoc
-// @Summary Upload buyer profile photo
-// @Tags Buyer - Profile
-// @Security BearerAuth
-// @Accept multipart/form-data
-// @Param foto formData file true "Profile photo (jpg, jpeg, png, webp, max 5MB)"
-// @Success 200 {object} utils.SuccessResponse
-// @Failure 400 {object} utils.ErrorResponse
-// @Router /buyer/profile/foto [post]
-func (c *BuyerController) UploadFoto(ctx *fiber.Ctx) error {
-	buyerID, ok := ctx.Locals("buyer_id").(string)
-	if !ok || buyerID == "" {
-		return utils.ErrorResponse(ctx, http.StatusUnauthorized, "Buyer ID tidak ditemukan", nil)
-	}
-
-	file, err := ctx.FormFile("foto")
-	if err != nil {
-		return utils.ErrorResponse(ctx, http.StatusBadRequest, "File foto wajib disertakan", nil)
-	}
-
-	fotoURL, err := c.service.UploadFoto(ctx.UserContext(), buyerID, file)
-	if err != nil {
-		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-	}
-
-	return utils.SuccessResponse(ctx, "Foto profil berhasil diperbarui", fiber.Map{
-		"foto_url": fotoURL,
-	})
-}
