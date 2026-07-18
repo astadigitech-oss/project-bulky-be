@@ -79,6 +79,7 @@ func main() {
 	kategoriVideoRepo := repositories.NewKategoriVideoRepository(db)
 	kuponRepo := repositories.NewKuponRepository(db)
 	dasborRepo := repositories.NewDasborRepository(db)
+	disclaimerConsentRepo := repositories.NewBuyerDisclaimerConsentRepository(db)
 
 	// Auth V2 repositories
 	authRepo := repositories.NewAuthRepository(db)
@@ -117,6 +118,7 @@ func main() {
 	metodePembayaranService := services.NewMetodePembayaranService(metodePembayaranRepo, metodePembayaranGroupRepo)
 	dokumenKebijakanService := services.NewDokumenKebijakanService(dokumenKebijakanRepo)
 	disclaimerService := services.NewDisclaimerService(disclaimerRepo)
+	disclaimerConsentService := services.NewBuyerDisclaimerConsentService(disclaimerConsentRepo)
 	emailService := services.NewEmailService()
 	formulirPartaiBesarService := services.NewFormulirPartaiBesarService(formulirPartaiBesarRepo, kategoriRepo, reorderService, emailService)
 	whatsappHandlerService := services.NewWhatsAppHandlerService(whatsappHandlerRepo)
@@ -166,6 +168,7 @@ func main() {
 	metodePembayaranController := controllers.NewMetodePembayaranController(metodePembayaranService, reorderService, activityLogService)
 	dokumenKebijakanController := controllers.NewDokumenKebijakanController(dokumenKebijakanService, activityLogService)
 	disclaimerController := controllers.NewDisclaimerController(disclaimerService, activityLogService)
+	disclaimerConsentController := controllers.NewBuyerDisclaimerConsentController(disclaimerConsentService)
 	formulirPartaiBesarController := controllers.NewFormulirPartaiBesarController(formulirPartaiBesarService, reorderService, activityLogService)
 	whatsappHandlerController := controllers.NewWhatsAppHandlerController(whatsappHandlerService)
 	faqController := controllers.NewFAQController(faqService, activityLogService)
@@ -205,7 +208,7 @@ func main() {
 		forceUpdateController, modeMaintenanceController, appStatusController,
 		ppnController,
 		metodePembayaranController,
-		dokumenKebijakanController, disclaimerController,
+		dokumenKebijakanController, disclaimerController, disclaimerConsentController,
 		formulirPartaiBesarController, whatsappHandlerController,
 		faqController,
 		blogController, kategoriBlogController, labelBlogController,

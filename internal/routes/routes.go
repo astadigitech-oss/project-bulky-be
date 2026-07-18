@@ -41,6 +41,7 @@ func SetupRoutes(
 	metodePembayaranController *controllers.MetodePembayaranController,
 	dokumenKebijakanController *controllers.DokumenKebijakanController,
 	disclaimerController *controllers.DisclaimerController,
+	disclaimerConsentController *controllers.BuyerDisclaimerConsentController,
 	formulirPartaiBesarController *controllers.FormulirPartaiBesarController,
 	whatsappHandlerController *controllers.WhatsAppHandlerController,
 	faqController *controllers.FAQController,
@@ -500,6 +501,14 @@ func SetupRoutes(
 
 	// Disclaimer - Public
 	v1.Get("/public/disclaimer", disclaimerController.GetActive)
+
+	// Disclaimer Consent - Admin (audit log)
+	disclaimerConsentAdmin := v1.Group("/panel/disclaimer-consent",
+		middleware.AuthMiddleware(),
+		middleware.AdminOnly(),
+	)
+	disclaimerConsentAdmin.Get("", middleware.RequirePermission("system:read"), disclaimerConsentController.GetAllConsents)
+	disclaimerConsentAdmin.Get("/:id", middleware.RequirePermission("system:read"), disclaimerConsentController.GetConsentByPesanan)
 
 	// Formulir Partai Besar - Config (Admin)
 	formulirConfigAdmin := v1.Group("/panel/formulir-partai-besar/config",
