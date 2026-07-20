@@ -14,7 +14,6 @@ type ModeMaintenanceService interface {
 	GetAllMaintenances(page, limit int) ([]models.ModeMaintenance, int64, error)
 	ActivateMaintenance(id string) error
 	DeactivateMaintenance(id string) error
-	CheckMaintenance() (*models.CheckMaintenanceResponse, error)
 }
 
 type modeMaintenanceService struct {
@@ -107,29 +106,4 @@ func (s *modeMaintenanceService) DeactivateMaintenance(id string) error {
 	}
 
 	return s.repo.Deactivate(id)
-}
-
-func (s *modeMaintenanceService) CheckMaintenance() (*models.CheckMaintenanceResponse, error) {
-	activeMaintenance, err := s.repo.FindActive()
-	if err != nil {
-		return nil, err
-	}
-
-	// No active maintenance
-	if activeMaintenance == nil {
-		return &models.CheckMaintenanceResponse{
-			IsMaintenance:   false,
-			Judul:           nil,
-			TipeMaintenance: nil,
-			Deskripsi:       nil,
-		}, nil
-	}
-
-	maintenanceTypeStr := string(activeMaintenance.TipeMaintenance)
-	return &models.CheckMaintenanceResponse{
-		IsMaintenance:   true,
-		Judul:           &activeMaintenance.Judul,
-		TipeMaintenance: &maintenanceTypeStr,
-		Deskripsi:       &activeMaintenance.Deskripsi,
-	}, nil
 }

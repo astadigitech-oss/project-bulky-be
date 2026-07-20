@@ -19,8 +19,6 @@ type Config struct {
 	BcryptCost        int
 	UploadPath        string
 	BaseURL           string
-	PlayStoreURL      string
-	AppStoreURL       string
 	InternalAPIKey    string
 }
 
@@ -44,8 +42,6 @@ func LoadConfig() *Config {
 		BcryptCost:        bcryptCost,
 		UploadPath:        getEnv("UPLOAD_PATH", "./uploads"),
 		BaseURL:           getEnv("BASE_URL", "http://localhost:8080"),
-		PlayStoreURL:      getEnv("PLAY_STORE_URL", "https://play.google.com/store/apps/details?id=com.bulky"),
-		AppStoreURL:       getEnv("APP_STORE_URL", "https://apps.apple.com/app/bulky/id123456789"),
 		InternalAPIKey:    getEnv("INTERNAL_API_KEY", ""),
 	}
 }

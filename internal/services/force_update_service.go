@@ -4,7 +4,6 @@ import (
 	"errors"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
-	"project-bulky-be/pkg/utils"
 )
 
 type ForceUpdateService interface {
@@ -14,20 +13,15 @@ type ForceUpdateService interface {
 	GetForceUpdateByID(id string) (*models.ForceUpdateApp, error)
 	GetAllForceUpdates(page, limit int) ([]models.ForceUpdateApp, int64, error)
 	SetActiveForceUpdate(id string) error
-	CheckVersion(currentVersion string) (*models.CheckVersionResponse, error)
 }
 
 type forceUpdateService struct {
-	repo         repositories.ForceUpdateRepository
-	playStoreURL string
-	appStoreURL  string
+	repo repositories.ForceUpdateRepository
 }
 
-func NewForceUpdateService(repo repositories.ForceUpdateRepository, playStoreURL, appStoreURL string) ForceUpdateService {
+func NewForceUpdateService(repo repositories.ForceUpdateRepository) ForceUpdateService {
 	return &forceUpdateService{
-		repo:         repo,
-		playStoreURL: playStoreURL,
-		appStoreURL:  appStoreURL,
+		repo: repo,
 	}
 }
 
@@ -102,37 +96,4 @@ func (s *forceUpdateService) SetActiveForceUpdate(id string) error {
 	}
 
 	return s.repo.SetActive(id)
-}
-
-func (s *forceUpdateService) CheckVersion(currentVersion string) (*models.CheckVersionResponse, error) {
-	activeUpdate, err := s.repo.FindActive()
-	if err != nil {
-		return nil, err
-	}
-
-	// No active force update configured
-	if activeUpdate == nil {
-		return &models.CheckVersionResponse{
-			ShouldUpdate:    false,
-			UpdateType:      nil,
-			LatestVersion:   nil,
-			CurrentVersion:  currentVersion,
-			InformasiUpdate: nil,
-			StoreURL:        nil,
-		}, nil
-	}
-
-	needsUpdate := utils.NeedsUpdate(currentVersion, activeUpdate.KodeVersi)
-	updateTypeStr := string(activeUpdate.UpdateType)
-
-	response := &models.CheckVersionResponse{
-		ShouldUpdate:    needsUpdate,
-		CurrentVersion:  currentVersion,
-		LatestVersion:   &activeUpdate.KodeVersi,
-		UpdateType:      &updateTypeStr,
-		InformasiUpdate: &activeUpdate.InformasiUpdate,
-		StoreURL:        &s.playStoreURL,
-	}
-
-	return response, nil
 }

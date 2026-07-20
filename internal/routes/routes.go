@@ -36,7 +36,6 @@ func SetupRoutes(
 	pesananAdminController *controllers.PesananAdminController,
 	forceUpdateController *controllers.ForceUpdateController,
 	modeMaintenanceController *controllers.ModeMaintenanceController,
-	appStatusController *controllers.AppStatusController,
 	ppnController *controllers.PPNController,
 	metodePembayaranController *controllers.MetodePembayaranController,
 	dokumenKebijakanController *controllers.DokumenKebijakanController,
@@ -426,12 +425,6 @@ func SetupRoutes(
 	modeMaintenanceAdmin.Delete("/:id", modeMaintenanceController.DeleteMaintenance)
 	modeMaintenanceAdmin.Post("/:id/activate", modeMaintenanceController.ActivateMaintenance)
 	modeMaintenanceAdmin.Post("/:id/deactivate", modeMaintenanceController.DeactivateMaintenance)
-
-	// App Status - Public
-	appStatus := v1.Group("/public")
-	appStatus.Get("/check-version", appStatusController.CheckVersion)
-	appStatus.Get("/check-maintenance", appStatusController.CheckMaintenance)
-	appStatus.Get("/app-status", appStatusController.AppStatus)
 
 	// PPN - Admin
 	ppnAdmin := v1.Group("/panel/ppn",

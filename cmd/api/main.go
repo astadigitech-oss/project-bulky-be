@@ -112,7 +112,7 @@ func main() {
 	ulasanAdminService := services.NewUlasanAdminService(ulasanRepo)
 	shippingService := services.NewShippingService(db)
 	pesananAdminService := services.NewPesananAdminService(pesananRepo, shippingService, db)
-	forceUpdateService := services.NewForceUpdateService(forceUpdateRepo, cfg.PlayStoreURL, cfg.AppStoreURL)
+	forceUpdateService := services.NewForceUpdateService(forceUpdateRepo)
 	modeMaintenanceService := services.NewModeMaintenanceService(modeMaintenanceRepo)
 	ppnService := services.NewPPNService(ppnRepo)
 	metodePembayaranService := services.NewMetodePembayaranService(metodePembayaranRepo, metodePembayaranGroupRepo)
@@ -163,7 +163,6 @@ func main() {
 	pesananAdminController := controllers.NewPesananAdminController(pesananAdminService, activityLogService)
 	forceUpdateController := controllers.NewForceUpdateController(forceUpdateService, activityLogService)
 	modeMaintenanceController := controllers.NewModeMaintenanceController(modeMaintenanceService, activityLogService)
-	appStatusController := controllers.NewAppStatusController(forceUpdateService, modeMaintenanceService)
 	ppnController := controllers.NewPPNController(ppnService, activityLogService)
 	metodePembayaranController := controllers.NewMetodePembayaranController(metodePembayaranService, reorderService, activityLogService)
 	dokumenKebijakanController := controllers.NewDokumenKebijakanController(dokumenKebijakanService, activityLogService)
@@ -205,7 +204,7 @@ func main() {
 		heroSectionController, bannerEventPromoController,
 		ulasanController,
 		ulasanAdminController, pesananAdminController,
-		forceUpdateController, modeMaintenanceController, appStatusController,
+		forceUpdateController, modeMaintenanceController,
 		ppnController,
 		metodePembayaranController,
 		dokumenKebijakanController, disclaimerController, disclaimerConsentController,
