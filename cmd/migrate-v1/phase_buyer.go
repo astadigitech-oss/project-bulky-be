@@ -67,7 +67,9 @@ func (a *App) phaseBuyer() error {
 		}
 
 		// telepon
-		telepon := "UNKNOWN-" + id8(u.ID)
+		telepon := placeholderPhone(u.ID, func(t string) bool {
+			return a.tgt.BuyerTelepon[t] || batchTelepon[t]
+		})
 		if phone, ok := normalizePhone(u.Phone.String); ok {
 			switch {
 			case phoneWinner[phone] != u.ID:

@@ -101,6 +101,36 @@ func id8(id string) string {
 	return id
 }
 
+// placeholderPhone membuat nomor telepon placeholder "UNKNOWN-..." yang unik
+// untuk buyer tanpa nomor telepon valid. Kolom telepon v2 dibatasi varchar(20),
+// jadi seluruh 12 karakter sisa (setelah prefix "UNKNOWN-") diisi dari UUID
+// (tanpa dash) demi entropi maksimal — memakai id8() (8 char) saja terbukti
+// rawan tabrakan antar UUID yang kebetulan sama di 8 karakter awal.
+// Bila tetap bentrok (sangat jarang), fallback menambah suffix counter.
+func placeholderPhone(id string, isTaken func(string) bool) string {
+	const prefix = "UNKNOWN-"
+	const maxLen = 20
+	hex := strings.ReplaceAll(id, "-", "")
+
+	base := prefix + truncate(hex, maxLen-len(prefix))
+	if !isTaken(base) {
+		return base
+	}
+	for n := 1; n < 1000; n++ {
+		suffix := fmt.Sprintf("%d", n)
+		avail := maxLen - len(prefix) - len(suffix)
+		if avail < 0 {
+			avail = 0
+		}
+		candidate := prefix + truncate(hex, avail) + suffix
+		if !isTaken(candidate) {
+			return candidate
+		}
+	}
+	// Fallback praktis tak tercapai (butuh 1000 tabrakan beruntun pada id yang sama).
+	return prefix + truncate(hex, maxLen-len(prefix))
+}
+
 // slugSpace melacak slug terpakai dalam satu ruang unique (existing target + alokasi baru).
 type slugSpace struct{ used map[string]bool }
 

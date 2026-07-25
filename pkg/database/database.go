@@ -17,8 +17,12 @@ import (
 var DB *gorm.DB
 
 func InitDB(cfg *config.Config) {
+	// Password di-quote agar tetap valid saat kosong atau mengandung karakter
+	// khusus (spasi, tanda sama dengan, dll). Tanpa quote, DSN keyword/value
+	// bisa salah parsing dan mengabaikan parameter setelahnya (mis. dbname),
+	// sehingga koneksi jatuh ke database default alih-alih cfg.DBName.
 	dsn := fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
+		"host=%s user=%s password='%s' dbname=%s port=%s sslmode=disable TimeZone=UTC",
 		cfg.DBHost,
 		cfg.DBUser,
 		cfg.DBPassword,
