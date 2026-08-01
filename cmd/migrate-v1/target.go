@@ -49,6 +49,21 @@ type TargetState struct {
 	RoleAdminID string
 
 	AlamatIDs map[string]bool
+
+	DisclaimerIDs   map[string]bool
+	DisclaimerSlugs map[string]bool
+
+	PesananIDs     map[string]bool
+	PesananKode    map[string]bool
+	PesananItemIDs map[string]bool
+	PembayaranIDs  map[string]bool
+
+	KuponIDs      map[string]bool
+	KuponUsageIDs map[string]bool
+	UlasanIDs     map[string]bool
+	ConsentIDs    map[string]bool
+
+	KeranjangByBuyer map[string]string
 }
 
 func LoadTargetState(db *gorm.DB) *TargetState {
@@ -97,6 +112,25 @@ func LoadTargetState(db *gorm.DB) *TargetState {
 	t.RoleAdminID = roleID[0]
 
 	t.AlamatIDs = loadSet(db, `SELECT id::text FROM alamat_buyer`)
+
+	t.DisclaimerIDs = loadSet(db, `SELECT id::text FROM disclaimer`)
+	// slug, slug_id, slug_en berbagi satu ruang nama agar alokasi slug baru
+	// tidak bentrok dengan kolom mana pun yang sudah terisi di target.
+	t.DisclaimerSlugs = loadSet(db, `SELECT slug FROM disclaimer WHERE slug IS NOT NULL
+		UNION SELECT slug_id FROM disclaimer WHERE slug_id IS NOT NULL
+		UNION SELECT slug_en FROM disclaimer WHERE slug_en IS NOT NULL`)
+
+	t.PesananIDs = loadSet(db, `SELECT id::text FROM pesanan`)
+	t.PesananKode = loadSet(db, `SELECT kode FROM pesanan`)
+	t.PesananItemIDs = loadSet(db, `SELECT id::text FROM pesanan_item`)
+	t.PembayaranIDs = loadSet(db, `SELECT id::text FROM pesanan_pembayaran`)
+
+	t.KuponIDs = loadSet(db, `SELECT id::text FROM kupon`)
+	t.KuponUsageIDs = loadSet(db, `SELECT id::text FROM kupon_usage`)
+	t.UlasanIDs = loadSet(db, `SELECT id::text FROM ulasan`)
+	t.ConsentIDs = loadSet(db, `SELECT id::text FROM buyer_disclaimer_consent`)
+
+	t.KeranjangByBuyer = loadMap(db, `SELECT buyer_id::text, id::text FROM keranjang`)
 
 	log.Printf("target: %d produk, %d kategori, %d merek, %d kondisi, %d kondisi_paket, %d buyer, %d admin, %d alamat",
 		len(t.ProdukIDs), len(t.KategoriIDs), len(t.MerekIDs), len(t.KondisiIDs), len(t.PaketIDs),

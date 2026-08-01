@@ -111,14 +111,17 @@ type PesananAdminBuyerDetailResponse struct {
 
 // PesananAdminAlamatResponse alamat info
 type PesananAdminAlamatResponse struct {
-	ID            uuid.UUID `json:"id"`
-	Label         string    `json:"label"`
-	NamaPenerima  string    `json:"nama_penerima"`
-	Telepon       string    `json:"telepon"`
-	AlamatLengkap string    `json:"alamat_lengkap"`
-	Kota          string    `json:"kota"`
-	Provinsi      string    `json:"provinsi"`
-	KodePos       string    `json:"kode_pos"`
+	// ID bernilai null untuk alamat hasil snapshot (mis. pesanan migrasi v1)
+	// yang tidak punya relasi ke tabel alamat_buyer.
+	ID            *uuid.UUID `json:"id"`
+	Label         string     `json:"label"`
+	NamaPenerima  string     `json:"nama_penerima"`
+	Telepon       string     `json:"telepon"`
+	AlamatLengkap string     `json:"alamat_lengkap"`
+	Kota          string     `json:"kota"`
+	Provinsi      string     `json:"provinsi"`
+	KodePos       string     `json:"kode_pos"`
+	IsSnapshot    bool       `json:"is_snapshot"`
 }
 
 // PesananAdminItemResponse pesanan item info

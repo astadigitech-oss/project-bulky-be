@@ -43,6 +43,11 @@ type Pesanan struct {
 	BuyerID             uuid.UUID       `gorm:"type:uuid;not null" json:"buyer_id"`
 	DeliveryType        DeliveryType    `gorm:"type:delivery_type;not null" json:"delivery_type"`
 	AlamatBuyerID       *uuid.UUID      `gorm:"type:uuid" json:"alamat_buyer_id"`
+	AlamatSnapshot      *string         `gorm:"type:text" json:"alamat_snapshot"`
+	NamaPenerimaSnap    *string         `gorm:"column:nama_penerima_snapshot;type:varchar(100)" json:"nama_penerima_snapshot"`
+	TeleponPenerimaSnap *string         `gorm:"column:telepon_penerima_snapshot;type:varchar(20)" json:"telepon_penerima_snapshot"`
+	LatitudeSnapshot    *float64        `gorm:"column:latitude_snapshot;type:decimal(10,8)" json:"latitude_snapshot"`
+	LongitudeSnapshot   *float64        `gorm:"column:longitude_snapshot;type:decimal(11,8)" json:"longitude_snapshot"`
 	PaymentType         PaymentType     `gorm:"type:payment_type;not null;default:'REGULAR'" json:"payment_type"`
 	PaymentStatus       PaymentStatus   `gorm:"type:payment_status;not null;default:'PENDING'" json:"payment_status"`
 	OrderStatus         OrderStatus     `gorm:"type:order_status;not null;default:'PENDING'" json:"order_status"`
@@ -106,6 +111,9 @@ type PesananResponse struct {
 	BuyerID             string                      `json:"buyer_id"`
 	DeliveryType        string                      `json:"delivery_type"`
 	AlamatBuyerID       *string                     `json:"alamat_buyer_id"`
+	AlamatSnapshot      *string                     `json:"alamat_snapshot,omitempty"`
+	NamaPenerimaSnap    *string                     `json:"nama_penerima_snapshot,omitempty"`
+	TeleponPenerimaSnap *string                     `json:"telepon_penerima_snapshot,omitempty"`
 	PaymentType         string                      `json:"payment_type"`
 	PaymentStatus       string                      `json:"payment_status"`
 	OrderStatus         string                      `json:"order_status"`

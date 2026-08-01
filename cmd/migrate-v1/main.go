@@ -41,6 +41,24 @@ type App struct {
 	// state hasil Fase 2/3 (untuk fase berikutnya)
 	produkKnown map[string]bool
 	buyerKnown  map[string]bool
+
+	// state hasil Fase 5 (untuk fase transaksi)
+	disclaimerKnown   map[string]bool   // id disclaimer valid di v2
+	disclaimerBySlug  map[string]string // slug -> id (user_consents.version berisi slug)
+	paymentMethodCode map[string]string // payment_methods.id -> code
+
+	// state hasil Fase 6 (untuk fase pembayaran, ulasan, consent)
+	pesananKnown        map[string]bool // pesanan yang ada di v2
+	orderExists         map[string]bool // order yang ada di v1 (bedakan yatim vs ter-skip)
+	pesananItemInserted map[string]bool // item yang berhasil masuk pada fase 6
+
+	// state hasil Fase 8
+	kuponKnown         map[string]bool   // kupon yang ada di v2
+	kuponPunyaKategori map[string]bool   // kupon dgn pembatasan kategori -> is_all_kategori=false
+	itemByOrderProduct map[string]string // "order|produk" -> id order_item v1
+
+	// state hasil Fase 9
+	keranjangByBuyer map[string]string // buyer_id -> id keranjang v2
 }
 
 const (
@@ -106,6 +124,11 @@ func main() {
 		{"Fase 2: produk + gambar + dokumen + merek pivot", app.phaseProduk},
 		{"Fase 3: buyer + admin", app.phaseBuyer},
 		{"Fase 4: alamat buyer", app.phaseAlamat},
+		{"Fase 5: master transaksi (disclaimer, metode bayar, settings)", app.phaseMasterTransaksi},
+		{"Fase 6: pesanan + item", app.phasePesanan},
+		{"Fase 7: pembayaran (invoices)", app.phasePembayaran},
+		{"Fase 8: kupon, ulasan, consent", app.phasePromo},
+		{"Fase 9: keranjang", app.phaseKeranjang},
 	}
 	for _, p := range phases {
 		log.Printf("--- %s ---", p.name)

@@ -405,6 +405,14 @@ func (s *pesananAdminService) GetStatistics(ctx context.Context, params *dto.Sta
 	}, nil
 }
 
+// derefString mengembalikan nilai string dari pointer, atau string kosong bila nil.
+func derefString(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
 func buildShippingInfo(p *models.Pesanan) dto.PesananShippingInfo {
 	info := dto.PesananShippingInfo{
 		DeliveryType: string(p.DeliveryType),
@@ -629,8 +637,9 @@ func (s *pesananAdminService) mapToDetailResponse(p *models.Pesanan, statusHisto
 
 	// Map alamat if exists
 	if p.AlamatBuyer != nil {
+		alamatID := p.AlamatBuyer.ID
 		response.AlamatPengiriman = &dto.PesananAdminAlamatResponse{
-			ID:            p.AlamatBuyer.ID,
+			ID:            &alamatID,
 			Label:         p.AlamatBuyer.Label,
 			NamaPenerima:  p.AlamatBuyer.NamaPenerima,
 			Telepon:       p.AlamatBuyer.TeleponPenerima,
@@ -643,6 +652,16 @@ func (s *pesananAdminService) mapToDetailResponse(p *models.Pesanan, statusHisto
 				}
 				return ""
 			}(),
+		}
+	} else if p.AlamatSnapshot != nil && strings.TrimSpace(*p.AlamatSnapshot) != "" {
+		// Fallback snapshot: dipakai pesanan hasil migrasi v1 yang tidak punya
+		// relasi ke alamat_buyer, atau bila alamat buyer sudah dihapus.
+		response.AlamatPengiriman = &dto.PesananAdminAlamatResponse{
+			Label:         "Alamat Pesanan",
+			NamaPenerima:  derefString(p.NamaPenerimaSnap),
+			Telepon:       derefString(p.TeleponPenerimaSnap),
+			AlamatLengkap: *p.AlamatSnapshot,
+			IsSnapshot:    true,
 		}
 	}
 
