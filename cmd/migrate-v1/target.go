@@ -15,20 +15,24 @@ type TargetState struct {
 	ProdukSlugEN map[string]bool
 	IDCargo      map[string]bool
 
-	KategoriIDs   map[string]bool
-	KategoriSlugs map[string]bool
-	KategoriBySlug map[string]string
+	KategoriIDs     map[string]bool
+	KategoriSlugs   map[string]bool
+	KategoriSlugsEN map[string]bool
+	KategoriBySlug  map[string]string
 
-	MerekIDs   map[string]bool
-	MerekSlugs map[string]bool
+	MerekIDs     map[string]bool
+	MerekSlugs   map[string]bool
+	MerekSlugsEN map[string]bool
 
-	KondisiIDs    map[string]bool
-	KondisiBySlug map[string]string
-	KondisiSlugs  map[string]bool
+	KondisiIDs     map[string]bool
+	KondisiBySlug  map[string]string
+	KondisiSlugs   map[string]bool
+	KondisiSlugsEN map[string]bool
 
-	PaketIDs    map[string]bool
-	PaketBySlug map[string]string
-	PaketSlugs  map[string]bool
+	PaketIDs     map[string]bool
+	PaketBySlug  map[string]string
+	PaketSlugs   map[string]bool
+	PaketSlugsEN map[string]bool
 
 	SumberBySlug map[string]string
 	TipeBySlug   map[string]string
@@ -57,18 +61,22 @@ func LoadTargetState(db *gorm.DB) *TargetState {
 
 	t.KategoriIDs = loadSet(db, `SELECT id::text FROM kategori_produk`)
 	t.KategoriSlugs = loadSet(db, `SELECT slug FROM kategori_produk`)
+	t.KategoriSlugsEN = loadSet(db, `SELECT slug_en FROM kategori_produk WHERE slug_en IS NOT NULL`)
 	t.KategoriBySlug = loadMap(db, `SELECT slug, id::text FROM kategori_produk WHERE deleted_at IS NULL`)
 
 	t.MerekIDs = loadSet(db, `SELECT id::text FROM merek_produk`)
 	t.MerekSlugs = loadSet(db, `SELECT slug FROM merek_produk`)
+	t.MerekSlugsEN = loadSet(db, `SELECT slug_en FROM merek_produk WHERE slug_en IS NOT NULL`)
 
 	t.KondisiIDs = loadSet(db, `SELECT id::text FROM kondisi_produk`)
 	t.KondisiBySlug = loadMap(db, `SELECT slug, id::text FROM kondisi_produk WHERE deleted_at IS NULL`)
 	t.KondisiSlugs = loadSet(db, `SELECT slug FROM kondisi_produk`)
+	t.KondisiSlugsEN = loadSet(db, `SELECT slug_en FROM kondisi_produk WHERE slug_en IS NOT NULL`)
 
 	t.PaketIDs = loadSet(db, `SELECT id::text FROM kondisi_paket`)
 	t.PaketBySlug = loadMap(db, `SELECT slug, id::text FROM kondisi_paket WHERE deleted_at IS NULL`)
 	t.PaketSlugs = loadSet(db, `SELECT slug FROM kondisi_paket`)
+	t.PaketSlugsEN = loadSet(db, `SELECT slug_en FROM kondisi_paket WHERE slug_en IS NOT NULL`)
 
 	t.SumberBySlug = loadMap(db, `SELECT slug, id::text FROM sumber_produk WHERE deleted_at IS NULL`)
 	t.TipeBySlug = loadMap(db, `SELECT slug, id::text FROM tipe_produk WHERE deleted_at IS NULL`)

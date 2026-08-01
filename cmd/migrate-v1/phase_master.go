@@ -39,6 +39,7 @@ func (a *App) masterKategori() error {
 		a.kategoriKnown[id] = true
 	}
 	slugs := newSlugSpace(a.tgt.KategoriSlugs)
+	slugsEN := newSlugSpace(a.tgt.KategoriSlugsEN)
 
 	rows, err := a.my.Query(`SELECT id, name, name_trans, slug, icon, deleted_at, created_at, updated_at
 		FROM product_categories ORDER BY created_at`)
@@ -65,10 +66,11 @@ func (a *App) masterKategori() error {
 			continue
 		}
 		namaID = truncate(namaID, 100)
-		var namaEN *string
-		if ten != "" {
-			namaEN = strPtr(truncate(ten, 100))
+		// nama_en: fallback ke nama_id bila v1 tidak punya terjemahan (jangan pernah kosong)
+		if ten == "" {
+			a.rep.Add("1", "kategori_produk", id, "nama_en_fallback", "nama_en v1 kosong -> pakai nama_id")
 		}
+		namaEN := truncate(firstNonEmpty(ten, namaID), 100)
 		base := slug.String
 		if base == "" {
 			base = slugify(namaID)
@@ -77,9 +79,15 @@ func (a *App) masterKategori() error {
 		if finalSlug != base {
 			a.rep.Add("1", "kategori_produk", id, "slug_diubah", base+" -> "+finalSlug)
 		}
-		if err := a.exec(`INSERT INTO kategori_produk (id, nama_id, nama_en, slug, slug_id, icon_url, is_active, created_at, updated_at, deleted_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING`,
-			id, namaID, namaEN, finalSlug, finalSlug, nullStrPtr(icon), !deletedAt.Valid,
+		// slug_en: selalu dialokasikan (dedup terpisah dari slug_id), jangan pernah kosong
+		baseEN := slugify(namaEN)
+		finalSlugEN := slugsEN.alloc(baseEN, deletedAt.Valid, id)
+		if finalSlugEN != baseEN {
+			a.rep.Add("1", "kategori_produk", id, "slug_en_diubah", baseEN+" -> "+finalSlugEN)
+		}
+		if err := a.exec(`INSERT INTO kategori_produk (id, nama_id, nama_en, slug, slug_id, slug_en, icon_url, is_active, created_at, updated_at, deleted_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING`,
+			id, namaID, namaEN, finalSlug, finalSlug, finalSlugEN, nullStrPtr(icon), !deletedAt.Valid,
 			nullTimePtr(createdAt), nullTimePtr(updatedAt), nullTimePtr(deletedAt)); err != nil {
 			return err
 		}
@@ -108,6 +116,7 @@ func (a *App) masterMerek() error {
 		a.merekKnown[id] = true
 	}
 	slugs := newSlugSpace(a.tgt.MerekSlugs)
+	slugsEN := newSlugSpace(a.tgt.MerekSlugsEN)
 
 	rows, err := a.my.Query(`SELECT id, name, slug, deleted_at, created_at, updated_at
 		FROM product_brands ORDER BY created_at`)
@@ -132,14 +141,20 @@ func (a *App) masterMerek() error {
 			a.rep.Add("1", "merek_produk", id, "skip", "nama kosong (junk)")
 			continue
 		}
+		// v1 tidak punya terjemahan merek -> nama_en = nama_id (dokumen §3.2)
 		base := firstNonEmpty(slug.String, slugify(nama))
 		finalSlug := slugs.alloc(base, deletedAt.Valid, id)
 		if finalSlug != base {
 			a.rep.Add("1", "merek_produk", id, "slug_diubah", base+" -> "+finalSlug)
 		}
-		if err := a.exec(`INSERT INTO merek_produk (id, nama_id, nama_en, slug, slug_id, is_active, created_at, updated_at, deleted_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING`,
-			id, nama, nama, finalSlug, finalSlug, !deletedAt.Valid,
+		// slug_en: dedup terpisah dari slug_id, jangan pernah kosong
+		finalSlugEN := slugsEN.alloc(base, deletedAt.Valid, id)
+		if finalSlugEN != base {
+			a.rep.Add("1", "merek_produk", id, "slug_en_diubah", base+" -> "+finalSlugEN)
+		}
+		if err := a.exec(`INSERT INTO merek_produk (id, nama_id, nama_en, slug, slug_id, slug_en, is_active, created_at, updated_at, deleted_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING`,
+			id, nama, nama, finalSlug, finalSlug, finalSlugEN, !deletedAt.Valid,
 			nullTimePtr(createdAt), nullTimePtr(updatedAt), nullTimePtr(deletedAt)); err != nil {
 			return err
 		}
@@ -153,6 +168,7 @@ func (a *App) masterMerek() error {
 func (a *App) masterKondisi() error {
 	a.condMap = map[string]string{}
 	slugs := newSlugSpace(a.tgt.KondisiSlugs)
+	slugsEN := newSlugSpace(a.tgt.KondisiSlugsEN)
 
 	rows, err := a.my.Query(`SELECT id, title, title_trans, slug, deleted_at, created_at, updated_at
 		FROM product_conditions ORDER BY created_at`)
@@ -185,14 +201,21 @@ func (a *App) masterKondisi() error {
 		}
 		tid, ten := parseTrans(trans)
 		namaID := truncate(firstNonEmpty(tid, title.String), 100)
-		var namaEN *string
-		if ten != "" {
-			namaEN = strPtr(truncate(ten, 100))
+		// nama_en: fallback ke nama_id bila v1 tidak punya terjemahan (jangan pernah kosong)
+		if ten == "" {
+			a.rep.Add("1", "kondisi_produk", id, "nama_en_fallback", "nama_en v1 kosong -> pakai nama_id")
 		}
+		namaEN := truncate(firstNonEmpty(ten, namaID), 100)
 		finalSlug := slugs.alloc(slug.String, deletedAt.Valid, id)
-		if err := a.exec(`INSERT INTO kondisi_produk (id, nama_id, nama_en, slug, slug_id, urutan, is_active, created_at, updated_at, deleted_at)
-			VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING`,
-			id, namaID, namaEN, finalSlug, finalSlug, !deletedAt.Valid,
+		// slug_en: selalu dialokasikan (dedup terpisah dari slug_id), jangan pernah kosong
+		baseEN := slugify(namaEN)
+		finalSlugEN := slugsEN.alloc(baseEN, deletedAt.Valid, id)
+		if finalSlugEN != baseEN {
+			a.rep.Add("1", "kondisi_produk", id, "slug_en_diubah", baseEN+" -> "+finalSlugEN)
+		}
+		if err := a.exec(`INSERT INTO kondisi_produk (id, nama_id, nama_en, slug, slug_id, slug_en, urutan, is_active, created_at, updated_at, deleted_at)
+			VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING`,
+			id, namaID, namaEN, finalSlug, finalSlug, finalSlugEN, !deletedAt.Valid,
 			nullTimePtr(createdAt), nullTimePtr(updatedAt), nullTimePtr(deletedAt)); err != nil {
 			return err
 		}
@@ -206,6 +229,7 @@ func (a *App) masterKondisi() error {
 func (a *App) masterKondisiPaket() error {
 	a.pakMap = map[string]string{}
 	slugs := newSlugSpace(a.tgt.PaketSlugs)
+	slugsEN := newSlugSpace(a.tgt.PaketSlugsEN)
 
 	rows, err := a.my.Query(`SELECT id, status, status_trans, deleted_at, created_at, updated_at
 		FROM status_packages ORDER BY created_at`)
@@ -232,14 +256,21 @@ func (a *App) masterKondisiPaket() error {
 			a.rep.Add("1", "kondisi_paket", id, "skip", "nama kosong (junk)")
 			continue
 		}
-		var namaEN *string
-		if ten != "" {
-			namaEN = strPtr(truncate(ten, 100))
+		// nama_en: fallback ke nama_id bila v1 tidak punya terjemahan (jangan pernah kosong)
+		if ten == "" {
+			a.rep.Add("1", "kondisi_paket", id, "nama_en_fallback", "nama_en v1 kosong -> pakai nama_id")
 		}
+		namaEN := truncate(firstNonEmpty(ten, namaID), 100)
 		finalSlug := slugs.alloc(slugify(namaID), deletedAt.Valid, id)
-		if err := a.exec(`INSERT INTO kondisi_paket (id, nama_id, nama_en, slug, slug_id, urutan, is_active, created_at, updated_at, deleted_at)
-			VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING`,
-			id, namaID, namaEN, finalSlug, finalSlug, !deletedAt.Valid,
+		// slug_en: selalu dialokasikan (dedup terpisah dari slug_id), jangan pernah kosong
+		baseEN := slugify(namaEN)
+		finalSlugEN := slugsEN.alloc(baseEN, deletedAt.Valid, id)
+		if finalSlugEN != baseEN {
+			a.rep.Add("1", "kondisi_paket", id, "slug_en_diubah", baseEN+" -> "+finalSlugEN)
+		}
+		if err := a.exec(`INSERT INTO kondisi_paket (id, nama_id, nama_en, slug, slug_id, slug_en, urutan, is_active, created_at, updated_at, deleted_at)
+			VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING`,
+			id, namaID, namaEN, finalSlug, finalSlug, finalSlugEN, !deletedAt.Valid,
 			nullTimePtr(createdAt), nullTimePtr(updatedAt), nullTimePtr(deletedAt)); err != nil {
 			return err
 		}
@@ -253,8 +284,8 @@ func (a *App) masterKondisiPaket() error {
 func (a *App) masterSumber() error {
 	a.sumMap = map[string]string{}
 	semantik := map[string]string{ // nama v1 -> slug sumber v2
-		"overstock produsen":     "overstock",
-		"failed delivery items":  "retur",
+		"overstock produsen":    "overstock",
+		"failed delivery items": "retur",
 	}
 
 	rows, err := a.my.Query(`SELECT id, status FROM product_statuses`)
@@ -334,20 +365,24 @@ func (a *App) masterWarehouse() error {
 // §3.8 baris fallback untuk FK NOT NULL yang di v1 NULL
 func (a *App) masterFallbackRows() error {
 	kondisiSlugs := newSlugSpace(a.tgt.KondisiSlugs)
+	kondisiSlugsEN := newSlugSpace(a.tgt.KondisiSlugsEN)
 	paketSlugs := newSlugSpace(a.tgt.PaketSlugs)
+	paketSlugsEN := newSlugSpace(a.tgt.PaketSlugsEN)
 	if !a.tgt.KondisiIDs[fallbackKondisiID] {
 		slug := kondisiSlugs.alloc("tidak-diketahui", false, fallbackKondisiID)
-		if err := a.exec(`INSERT INTO kondisi_produk (id, nama_id, nama_en, slug, slug_id, urutan, is_active)
-			VALUES (?, 'Tidak Diketahui', 'Unknown', ?, ?, 99, false) ON CONFLICT (id) DO NOTHING`,
-			fallbackKondisiID, slug, slug); err != nil {
+		slugEN := kondisiSlugsEN.alloc("unknown", false, fallbackKondisiID)
+		if err := a.exec(`INSERT INTO kondisi_produk (id, nama_id, nama_en, slug, slug_id, slug_en, urutan, is_active)
+			VALUES (?, 'Tidak Diketahui', 'Unknown', ?, ?, ?, 99, false) ON CONFLICT (id) DO NOTHING`,
+			fallbackKondisiID, slug, slug, slugEN); err != nil {
 			return err
 		}
 	}
 	if !a.tgt.PaketIDs[fallbackKondisiPaketID] {
 		slug := paketSlugs.alloc("tidak-diketahui", false, fallbackKondisiPaketID)
-		if err := a.exec(`INSERT INTO kondisi_paket (id, nama_id, nama_en, slug, slug_id, urutan, is_active)
-			VALUES (?, 'Tidak Diketahui', 'Unknown', ?, ?, 99, false) ON CONFLICT (id) DO NOTHING`,
-			fallbackKondisiPaketID, slug, slug); err != nil {
+		slugEN := paketSlugsEN.alloc("unknown", false, fallbackKondisiPaketID)
+		if err := a.exec(`INSERT INTO kondisi_paket (id, nama_id, nama_en, slug, slug_id, slug_en, urutan, is_active)
+			VALUES (?, 'Tidak Diketahui', 'Unknown', ?, ?, ?, 99, false) ON CONFLICT (id) DO NOTHING`,
+			fallbackKondisiPaketID, slug, slug, slugEN); err != nil {
 			return err
 		}
 	}

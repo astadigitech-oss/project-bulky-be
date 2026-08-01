@@ -28,14 +28,14 @@ type App struct {
 	tgt *TargetState
 
 	// mapping v1 -> v2 hasil Fase 1
-	kategoriKnown map[string]bool   // id kategori yang valid di v2 (existing + inserted)
-	merekKnown    map[string]bool
-	condMap       map[string]string // product_conditions.id -> kondisi_produk.id
-	pakMap        map[string]string // status_packages.id -> kondisi_paket.id
-	sumMap        map[string]string // product_statuses.id -> sumber_produk.id
-	whMap         map[string]string // warehouses.id -> warehouse.id
-	tipeMap       map[string]string // packaging_type enum -> tipe_produk.id
-	fallbackKategoriID string
+	kategoriKnown       map[string]bool // id kategori yang valid di v2 (existing + inserted)
+	merekKnown          map[string]bool
+	condMap             map[string]string // product_conditions.id -> kondisi_produk.id
+	pakMap              map[string]string // status_packages.id -> kondisi_paket.id
+	sumMap              map[string]string // product_statuses.id -> sumber_produk.id
+	whMap               map[string]string // warehouses.id -> warehouse.id
+	tipeMap             map[string]string // packaging_type enum -> tipe_produk.id
+	fallbackKategoriID  string
 	fallbackWarehouseID string
 
 	// state hasil Fase 2/3 (untuk fase berikutnya)

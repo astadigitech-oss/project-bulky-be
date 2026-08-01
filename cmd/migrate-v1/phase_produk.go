@@ -61,13 +61,13 @@ func (a *App) phaseProduk() error {
 		if finalSlug != base {
 			a.rep.Add("2", "produk", id, "slug_diubah", base+" -> "+finalSlug)
 		}
-		var slugEN *string
-		if namaEN != namaID {
-			if s := slugify(namaEN); s != "" && !slugsEN.used[s] {
-				slugsEN.used[s] = true
-				slugEN = &s
-			}
+		// slug_en: selalu dialokasikan (dedup terpisah dari slug_id), jangan pernah kosong
+		baseEN := slugify(namaEN)
+		finalSlugEN := slugsEN.alloc(baseEN, deleted, id)
+		if finalSlugEN != baseEN {
+			a.rep.Add("2", "produk", id, "slug_en_diubah", baseEN+" -> "+finalSlugEN)
 		}
+		slugEN := &finalSlugEN
 
 		// id_cargo (unik di v2; v1 id_pallet tidak unik)
 		var idCargo *string
