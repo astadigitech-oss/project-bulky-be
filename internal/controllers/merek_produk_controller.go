@@ -49,7 +49,7 @@ func (c *MerekProdukController) Create(ctx *fiber.Ctx) error {
 		// Handle logo upload or URL
 		if file, err := ctx.FormFile("logo"); err == nil {
 			if !utils.IsValidImageType(file) {
-				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file logo tidak didukung", nil)
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file logo tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "product-brands", c.cfg)
 			if err != nil {
@@ -145,7 +145,7 @@ func (c *MerekProdukController) Update(ctx *fiber.Ctx) error {
 		// Handle logo upload or URL
 		if file, err := ctx.FormFile("logo"); err == nil {
 			if !utils.IsValidImageType(file) {
-				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file logo tidak didukung", nil)
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file logo tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "product-brands", c.cfg)
 			if err != nil {

@@ -13,11 +13,12 @@ import (
 	"github.com/google/uuid"
 )
 
+// allowedImageTypes - SVG tidak diizinkan karena berpotensi mengandung
+// script berbahaya (XSS) saat dirender langsung oleh browser.
 var allowedImageTypes = []string{
 	"image/jpeg",
 	"image/png",
 	"image/webp",
-	"image/svg+xml",
 }
 
 // allowedBannerImageTypes - SVG tidak diizinkan untuk banner/hero section
@@ -45,7 +46,8 @@ var allowedVideoExtensions = []string{
 	".m4v",
 }
 
-// IsValidImageType validates if the uploaded file is a valid image type
+// IsValidImageType validates if the uploaded file is a valid image type.
+// SVG is explicitly rejected to prevent XSS via embedded scripts.
 func IsValidImageType(file *multipart.FileHeader) bool {
 	contentType := file.Header.Get("Content-Type")
 	for _, allowed := range allowedImageTypes {
@@ -114,7 +116,7 @@ const MaxImageSize = 5 * 1024 * 1024 // 5MB
 func SaveUploadedFile(file *multipart.FileHeader, directory string, cfg *config.Config) (string, error) {
 	// Validate file type (image, document, or video)
 	if !IsValidImageType(file) && !IsValidDocumentType(file) && !IsValidVideoType(file) {
-		return "", errors.New("tipe file tidak didukung. Hanya jpg, png, webp, svg, pdf, dan video (mp4, mov, m4v) yang diperbolehkan")
+		return "", errors.New("tipe file tidak didukung. Hanya jpg, png, webp, pdf, dan video (mp4, mov, m4v) yang diperbolehkan")
 	}
 
 	// Validate image file size (max 5MB)
@@ -196,7 +198,7 @@ func DeleteFile(filePath string, cfg *config.Config) error {
 func SaveUploadedFileWithCustomName(file *multipart.FileHeader, directory, customName string, cfg *config.Config) (string, error) {
 	// Validate image type
 	if !IsValidImageType(file) {
-		return "", errors.New("tipe file tidak didukung. Hanya jpg, png, webp, dan svg yang diperbolehkan")
+		return "", errors.New("tipe file tidak didukung. Hanya jpg, png, dan webp yang diperbolehkan")
 	}
 
 	// Create directory if not exists (use config upload path)

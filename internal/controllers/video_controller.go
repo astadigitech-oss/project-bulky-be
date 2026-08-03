@@ -141,7 +141,7 @@ func (c *VideoController) Create(ctx *fiber.Ctx) error {
 		if file, err := ctx.FormFile("thumbnail_file"); err == nil {
 			// Manual upload thumbnail
 			if !utils.IsValidImageType(file) {
-				return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file thumbnail tidak didukung", "")
+				return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file thumbnail tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", "")
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "video/thumbnail", c.cfg)
 			if err != nil {
@@ -323,7 +323,7 @@ func (c *VideoController) Update(ctx *fiber.Ctx) error {
 			}
 
 			if !utils.IsValidImageType(file) {
-				return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file thumbnail tidak didukung", "")
+				return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file thumbnail tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", "")
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "video/thumbnail", c.cfg)
 			if err != nil {
@@ -709,7 +709,7 @@ func (c *VideoController) FinalizeChunk(ctx *fiber.Ctx) error {
 	if file, err := ctx.FormFile("thumbnail_file"); err == nil {
 		if !utils.IsValidImageType(file) {
 			os.Remove(finalPath)
-			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file thumbnail tidak didukung", "")
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file thumbnail tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", "")
 		}
 		savedPath, err := utils.SaveUploadedFile(file, "video/thumbnail", c.cfg)
 		if err != nil {
@@ -848,7 +848,7 @@ func (c *VideoController) FinalizeChunkUpdate(ctx *fiber.Ctx) error {
 	if file, err := ctx.FormFile("thumbnail_file"); err == nil {
 		if !utils.IsValidImageType(file) {
 			os.Remove(finalPath)
-			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file thumbnail tidak didukung", "")
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file thumbnail tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", "")
 		}
 		savedPath, err := utils.SaveUploadedFile(file, "video/thumbnail", c.cfg)
 		if err != nil {

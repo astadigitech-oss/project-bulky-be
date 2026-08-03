@@ -63,7 +63,7 @@ func (c *KategoriProdukController) Create(ctx *fiber.Ctx) error {
 		// Handle icon upload or URL
 		if file, err := ctx.FormFile("icon"); err == nil {
 			if !utils.IsValidImageType(file) {
-				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file icon tidak didukung", nil)
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file icon tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "product-categories", c.cfg)
 			if err != nil {
@@ -77,7 +77,7 @@ func (c *KategoriProdukController) Create(ctx *fiber.Ctx) error {
 		// Handle gambar kondisi upload or URL
 		if file, err := ctx.FormFile("gambar_kondisi"); err == nil {
 			if !utils.IsValidImageType(file) {
-				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar kondisi tidak didukung", nil)
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar kondisi tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "product-categories/kondisi", c.cfg)
 			if err != nil {
@@ -187,7 +187,7 @@ func (c *KategoriProdukController) Update(ctx *fiber.Ctx) error {
 		// Handle icon upload or URL
 		if file, err := ctx.FormFile("icon"); err == nil {
 			if !utils.IsValidImageType(file) {
-				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file icon tidak didukung", nil)
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file icon tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "product-categories", c.cfg)
 			if err != nil {
@@ -201,7 +201,7 @@ func (c *KategoriProdukController) Update(ctx *fiber.Ctx) error {
 		// Handle gambar kondisi upload or URL
 		if file, err := ctx.FormFile("gambar_kondisi"); err == nil {
 			if !utils.IsValidImageType(file) {
-				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar kondisi tidak didukung", nil)
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar kondisi tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "product-categories/kondisi", c.cfg)
 			if err != nil {

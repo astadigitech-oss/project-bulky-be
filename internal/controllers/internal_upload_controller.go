@@ -25,7 +25,7 @@ func (ctrl *InternalUploadController) UploadUlasanGambar(c *fiber.Ctx) error {
 	}
 
 	if !utils.IsValidImageType(file) {
-		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "Tipe file tidak didukung. Hanya jpg, png, webp yang diperbolehkan", "")
+		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "Tipe file tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", "")
 	}
 
 	// Max 5MB
@@ -55,7 +55,7 @@ func (ctrl *InternalUploadController) UploadBuyerFoto(c *fiber.Ctx) error {
 	}
 
 	if !utils.IsValidImageType(file) {
-		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "Tipe file tidak didukung. Hanya jpg, jpeg, png, webp yang diperbolehkan", "")
+		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "Tipe file tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", "")
 	}
 
 	// Max 5MB

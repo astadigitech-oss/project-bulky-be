@@ -121,7 +121,7 @@ func (c *BlogController) Create(ctx *fiber.Ctx) error {
 		// Handle featured_image upload (optional)
 		if file, err := ctx.FormFile("featured_image"); err == nil {
 			if !utils.IsValidImageType(file) {
-				return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file featured_image tidak didukung", "")
+				return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file featured_image tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", "")
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "blog", c.cfg)
 			if err != nil {
@@ -246,7 +246,7 @@ func (c *BlogController) Update(ctx *fiber.Ctx) error {
 		// Handle featured_image upload (optional)
 		if file, err := ctx.FormFile("featured_image"); err == nil {
 			if !utils.IsValidImageType(file) {
-				return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file featured_image tidak didukung", "")
+				return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file featured_image tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", "")
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "blog", c.cfg)
 			if err != nil {

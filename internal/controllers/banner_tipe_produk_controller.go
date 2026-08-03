@@ -48,7 +48,7 @@ func (c *BannerTipeProdukController) Create(ctx *fiber.Ctx) error {
 		// Handle file upload
 		if file, err := ctx.FormFile("file"); err == nil {
 			if !utils.IsValidImageType(file) {
-				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file tidak didukung", nil)
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "banners/tipe-produk", c.cfg)
 			if err != nil {
@@ -170,7 +170,7 @@ func (c *BannerTipeProdukController) Update(ctx *fiber.Ctx) error {
 		// Handle file upload (optional)
 		if file, err := ctx.FormFile("file"); err == nil {
 			if !utils.IsValidImageType(file) {
-				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file tidak didukung", nil)
+				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
 			savedPath, err := utils.SaveUploadedFile(file, "banners/tipe-produk", c.cfg)
 			if err != nil {
@@ -292,7 +292,7 @@ func (c *BannerTipeProdukController) ReorderByDirection(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 	}
 
-	return 	utils.SuccessResponse(ctx, "Urutan berhasil diubah", fiber.Map{
+	return utils.SuccessResponse(ctx, "Urutan berhasil diubah", fiber.Map{
 		"item": fiber.Map{
 			"id":     result.ItemID,
 			"urutan": result.ItemUrutan,
