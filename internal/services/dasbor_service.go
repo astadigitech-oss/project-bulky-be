@@ -186,7 +186,7 @@ func (s *dasborService) GetKPI(ctx context.Context, periode string) (*dto.Dasbor
 	if err != nil {
 		return nil, err
 	}
-	sold, err := s.repo.GetKPIPaletboxSold(periode)
+	sold, err := s.repo.GetKPIPaletboxSold()
 	if err != nil {
 		return nil, err
 	}
@@ -196,10 +196,10 @@ func (s *dasborService) GetKPI(ctx context.Context, periode string) (*dto.Dasbor
 	}
 
 	return &dto.DasborKPIResponse{
-		Periode:           periode,
+		Periode:         periode,
 		StokPaletbox:    available,
 		PaletboxTerjual: sold,
-		Revenue:           revenue,
+		Revenue:         revenue,
 	}, nil
 }
 

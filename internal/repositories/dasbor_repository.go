@@ -14,7 +14,7 @@ type DasborRepository interface {
 	GetChartRevenue(periode string) ([]dto.DasborDateAmount, float64, error)
 	GetChartTransaksiPerKategori(periode string) ([]dto.DasborKategoriDateCount, error)
 	GetKPIPaletboxAvailable() (int64, error)
-	GetKPIPaletboxSold(periode string) (int64, error)
+	GetKPIPaletboxSold() (int64, error)
 	GetKPIRevenue(periode string) (float64, error)
 	GetStokPerKategori() ([]dto.DasborKategoriStok, error)
 	GetPenjualanPerBuyer(periode string, limit int) ([]dto.DasborBuyerPenjualan, error)
@@ -166,33 +166,28 @@ func (r *dasborRepository) GetKPIPaletboxAvailable() (int64, error) {
 	return total, err
 }
 
-// GetKPIPaletboxSold returns total qty sold in the given periode.
-func (r *dasborRepository) GetKPIPaletboxSold(periode string) (int64, error) {
-	periodeCond := buildPeriodeWhereClause("p.created_at", periode)
-	query := `
-		SELECT COALESCE(SUM(pi.qty), 0)
+// GetKPIPaletboxSold returns count of distinct palet products sold via PAID & COMPLETED orders.
+func (r *dasborRepository) GetKPIPaletboxSold() (int64, error) {
+	var total int64
+	err := r.db.Raw(`
+		SELECT COUNT(DISTINCT pi.produk_id) AS paletbox_sold
 		FROM pesanan_item pi
 		JOIN pesanan p ON p.id = pi.pesanan_id
-		WHERE p.order_status = 'COMPLETED'
-		  AND p.deleted_at IS NULL`
-	if periodeCond != "" {
-		query += " AND " + periodeCond
-	}
-
-	var total int64
-	if err := r.db.Raw(query).Scan(&total).Error; err != nil {
-		return 0, err
-	}
-	return total, nil
+		WHERE p.payment_status = 'PAID'
+		  AND p.order_status = 'COMPLETED'
+		  AND p.deleted_at IS NULL
+	`).Scan(&total).Error
+	return total, err
 }
 
-// GetKPIRevenue returns total revenue from PAID orders in the given periode.
+// GetKPIRevenue returns total revenue from PAID & COMPLETED orders in the given periode.
 func (r *dasborRepository) GetKPIRevenue(periode string) (float64, error) {
 	periodeCond := buildPeriodeWhereClause("p.paid_at", periode)
 	query := `
 		SELECT COALESCE(SUM(p.total), 0)
 		FROM pesanan p
 		WHERE p.payment_status = 'PAID'
+		  AND p.order_status = 'COMPLETED'
 		  AND p.deleted_at IS NULL
 		  AND p.paid_at IS NOT NULL`
 	if periodeCond != "" {
