@@ -131,6 +131,17 @@ func (r *produkRepository) FindAll(ctx context.Context, params *models.ProdukFil
 	if params.IsActive != nil {
 		query = query.Where("is_active = ?", *params.IsActive)
 	}
+	// Map status filter (all | available | sold out) to is_sold.
+	// Explicit is_sold param takes precedence over status.
+	if params.IsSold == nil {
+		switch params.Status {
+		case "available":
+			query = query.Where("is_sold = ?", false)
+		case "sold out", "sold_out", "soldout":
+			query = query.Where("is_sold = ?", true)
+		}
+		// "all" (or empty) => no filter
+	}
 	if params.IsSold != nil {
 		query = query.Where("is_sold = ?", *params.IsSold)
 	}

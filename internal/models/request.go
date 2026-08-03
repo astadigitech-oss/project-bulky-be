@@ -441,6 +441,7 @@ type ProdukFilterRequest struct {
 	HargaMin       float64 `form:"harga_min"`
 	HargaMax       float64 `form:"harga_max"`
 	IsSold         *bool   `form:"is_sold"`
+	Status         string  `form:"status"` // all | available | sold out
 }
 
 // ========================================
