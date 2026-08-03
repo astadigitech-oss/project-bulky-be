@@ -11,7 +11,7 @@ type ForceUpdateService interface {
 	UpdateForceUpdate(id string, req *models.UpdateForceUpdateRequest) (*models.ForceUpdateApp, error)
 	DeleteForceUpdate(id string) error
 	GetForceUpdateByID(id string) (*models.ForceUpdateApp, error)
-	GetAllForceUpdates(page, limit int) ([]models.ForceUpdateApp, int64, error)
+	GetAllForceUpdates(page, limit int, platform string) ([]models.ForceUpdateApp, int64, error)
 	SetActiveForceUpdate(id string) error
 }
 
@@ -27,10 +27,12 @@ func NewForceUpdateService(repo repositories.ForceUpdateRepository) ForceUpdateS
 
 func (s *forceUpdateService) CreateForceUpdate(req *models.CreateForceUpdateRequest) (*models.ForceUpdateApp, error) {
 	forceUpdate := &models.ForceUpdateApp{
-		KodeVersi:       req.KodeVersi,
-		UpdateType:      models.UpdateType(req.UpdateType),
-		InformasiUpdate: req.InformasiUpdate,
-		IsActive:        req.IsActive,
+		KodeVersi:         req.KodeVersi,
+		UpdateType:        models.UpdateType(req.UpdateType),
+		InformasiUpdate:   req.InformasiUpdate,
+		InformasiUpdateEn: req.InformasiUpdateEn,
+		Platform:          models.ForceUpdatePlatform(req.Platform),
+		IsActive:          req.IsActive,
 	}
 
 	err := s.repo.Create(forceUpdate)
@@ -55,6 +57,12 @@ func (s *forceUpdateService) UpdateForceUpdate(id string, req *models.UpdateForc
 	}
 	if req.InformasiUpdate != nil {
 		forceUpdate.InformasiUpdate = *req.InformasiUpdate
+	}
+	if req.InformasiUpdateEn != nil {
+		forceUpdate.InformasiUpdateEn = *req.InformasiUpdateEn
+	}
+	if req.Platform != nil {
+		forceUpdate.Platform = models.ForceUpdatePlatform(*req.Platform)
 	}
 	if req.IsActive != nil {
 		forceUpdate.IsActive = *req.IsActive
@@ -85,8 +93,8 @@ func (s *forceUpdateService) GetForceUpdateByID(id string) (*models.ForceUpdateA
 	return forceUpdate, nil
 }
 
-func (s *forceUpdateService) GetAllForceUpdates(page, limit int) ([]models.ForceUpdateApp, int64, error) {
-	return s.repo.FindAll(page, limit)
+func (s *forceUpdateService) GetAllForceUpdates(page, limit int, platform string) ([]models.ForceUpdateApp, int64, error) {
+	return s.repo.FindAll(page, limit, platform)
 }
 
 func (s *forceUpdateService) SetActiveForceUpdate(id string) error {

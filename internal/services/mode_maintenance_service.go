@@ -29,8 +29,10 @@ func NewModeMaintenanceService(repo repositories.ModeMaintenanceRepository) Mode
 func (s *modeMaintenanceService) CreateMaintenance(req *models.CreateMaintenanceRequest) (*models.ModeMaintenance, error) {
 	maintenance := &models.ModeMaintenance{
 		Judul:           req.Judul,
+		JudulEn:         req.JudulEn,
 		TipeMaintenance: models.MaintenanceType(req.TipeMaintenance),
 		Deskripsi:       req.Deskripsi,
+		DeskripsiEn:     req.DeskripsiEn,
 		IsActive:        req.IsActive,
 	}
 
@@ -51,11 +53,17 @@ func (s *modeMaintenanceService) UpdateMaintenance(id string, req *models.Update
 	if req.Judul != nil {
 		maintenance.Judul = *req.Judul
 	}
+	if req.JudulEn != nil {
+		maintenance.JudulEn = *req.JudulEn
+	}
 	if req.TipeMaintenance != nil {
 		maintenance.TipeMaintenance = models.MaintenanceType(*req.TipeMaintenance)
 	}
 	if req.Deskripsi != nil {
 		maintenance.Deskripsi = *req.Deskripsi
+	}
+	if req.DeskripsiEn != nil {
+		maintenance.DeskripsiEn = *req.DeskripsiEn
 	}
 	if req.IsActive != nil {
 		maintenance.IsActive = *req.IsActive
