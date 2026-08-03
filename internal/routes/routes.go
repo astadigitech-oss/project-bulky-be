@@ -243,9 +243,9 @@ func SetupRoutes(
 		middleware.AuthMiddleware(),
 		middleware.AdminOnly(),
 	)
-	tipeProdukAdmin.Get("", middleware.RequirePermission("system:read"), tipeProdukController.FindAll)
-	tipeProdukAdmin.Get("/dropdown", middleware.RequirePermission("system:read"), tipeProdukController.Dropdown)
-	tipeProdukAdmin.Get("/with-produk", middleware.RequirePermission("system:read"), tipeProdukController.FindAllWithProduk)
+	tipeProdukAdmin.Get("", middleware.RequirePermission("tipe_produk:read"), tipeProdukController.FindAll)
+	tipeProdukAdmin.Get("/dropdown", middleware.RequirePermission("tipe_produk:read"), tipeProdukController.Dropdown)
+	tipeProdukAdmin.Get("/with-produk", middleware.RequirePermission("tipe_produk:read"), tipeProdukController.FindAllWithProduk)
 
 	// Diskon Kategori - Public
 	diskonKategoriPublic := v1.Group("/diskon-kategori")
@@ -672,6 +672,14 @@ func SetupRoutes(
 	// Import khusus ZIP struktur storage Laravel v1 (storage/app/public/...) —
 	// file dipetakan ulang ke folder storage v2 (lihat ImportAssetsV1).
 	assetMigration.Post("/import-v1", assetMigrationController.ImportAssetsV1)
+	// Chunk upload untuk ZIP v1 >500MB (BodyLimit Fiber). Client mengirim
+	// per bagian via /import-v1/chunk, lalu /import-v1/finalize menggabungkan
+	// dan memprosesnya seperti ImportAssetsV1.
+	assetMigration.Post("/import-v1/chunk", assetMigrationController.UploadV1Chunk)
+	assetMigration.Post("/import-v1/finalize", assetMigrationController.FinalizeV1Chunk)
+	// Hapus file di storage yang tidak direferensikan DB v2 (misal aset
+	// produk LQD yang difilter saat migrasi). Body: {"dry_run": true|false}.
+	assetMigration.Post("/prune-orphans", assetMigrationController.PruneOrphans)
 
 	// Internal upload routes — only accessible via X-Internal-Key header (storefront BE)
 	internalUpload := v1.Group("/internal/upload",

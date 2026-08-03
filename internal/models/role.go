@@ -48,4 +48,6 @@ const (
 	RoleSuperAdmin = "SUPER_ADMIN"
 	RoleAdmin      = "ADMIN"
 	RoleStaff      = "STAFF"
+	RoleFinance    = "FINANCE"
+	RoleMarketing  = "MARKETING"
 )

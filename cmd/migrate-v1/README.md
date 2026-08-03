@@ -72,6 +72,80 @@ Status per file: `imported` | `skipped` (dengan `reason`: `path tidak dikenali`,
 `path traversal ditolak`, `gagal buat folder`, `gagal baca zip`, `gagal buat file`,
 `gagal tulis file`).
 
+### ZIP backup v1 yang besar (>500MB) — chunk upload
+
+Endpoint `/import-v1` (multipart sekali kirim) dibatasi `BodyLimit` Fiber 500MB,
+jadi ZIP backup `storage` v1 yang bisa mencapai beberapa GB **tidak bisa diupload
+sekali jalan**. Gunakan chunk upload (pola sama seperti upload video):
+
+```
+POST /api/panel/assets/import-v1/chunk      (multipart, per bagian)
+  upload_id:     UUID yang sama untuk semua chunk
+  chunk_index:   0-based
+  total_chunks:  jumlah seluruh chunk
+  chunk_data:    file bagian ZIP
+
+POST /api/panel/assets/import-v1/finalize   (multipart)
+  upload_id:     UUID yang sama
+  total_chunks:  jumlah seluruh chunk
+```
+
+Alur di sisi client (FE):
+
+1. Buat `upload_id` (mis. `crypto.randomUUID()`), potong ZIP menjadi N bagian
+   (mis. 100–200MB per bagian agar aman di bawah BodyLimit).
+2. Kirim tiap bagian ke `/import-v1/chunk` dengan `chunk_index` berurutan 0..N-1.
+   Chunk disimpan ke `<UPLOAD_PATH>/chunks/v1-<upload_id>/chunk_XXXXX`.
+3. Setelah semua terkirim, panggil `/import-v1/finalize`. Server menggabungkan
+   chunk menjadi ZIP sementara, lalu memprosesnya **persis seperti** `/import-v1`
+   (mapping tabel di atas). Folder chunk otomatis dihapus sesudahnya.
+
+Respons `finalize` sama persis dengan `/import-v1` (`imported`/`skipped`/
+`unmatched`/`files`). ZIP dibaca streaming dari disk — tidak dimuat penuh ke
+memori, jadi aman untuk ukuran beberapa GB.
+
+### File yatim (tidak direferensikan DB) — pruning
+
+Saat migrasi DB, produk LQD yang tidak pernah terjual di-skip (filter `phase_produk.go`)
+atau di-soft-delete (`cleanup_lqd.sql`). File gambar/PDF milik produk tersebut tetap
+ikut dalam ZIP backup v1 dan akan ikut diekstrak — menjadi **file yatim** yang tidak
+dipanggil aplikasi mana pun. Endpoint pruning menghapus file di storage v2 yang tidak
+direferensikan kolom file DB v2:
+
+```
+POST /api/panel/assets/prune-orphans   (JSON)
+  { "dry_run": true }    // default: hanya laporan, TIDAK menghapus
+  { "dry_run": false }   // benar-benar hapus
+```
+
+Daftar referensi diambil dari `collectFilePaths` (tabel & kolom yang sama dengan
+endpoint `/export`), mencakup `buyer.foto_url` — jadi foto profil buyer aman.
+`logo_value` metode pembayaran berisi kode teks, bukan path file, jadi tidak ikut.
+Folder `chunks/` (temp upload) dilewati.
+
+Respons `dry_run=true`:
+
+```json
+{
+  "success": true,
+  "message": "Pruning selesai",
+  "data": {
+    "dry_run": true,
+    "total_files": 520,
+    "total_size": 4294967296,
+    "deleted": 0,
+    "orphans": [
+      { "path": "product-images/lqd-sample.jpg", "size": 102400 }
+    ]
+  }
+}
+```
+
+**Urutan aman:** migrasi DB → import ZIP v1 → jalankan `prune-orphans` dengan
+`dry_run=true` dulu, tinjau daftar `orphans`, baru eksekusi `dry_run=false`.
+Jangan dijalankan sebelum import aset selesai — file yang belum direferensikan DB
+(hanya ada di ZIP) akan dianggap yatim dan terhapus permanen.
+
 ## Langkah 4: Cleanup produk LQD (wajib bila v2 sudah terisi)
 
 Produk **LQD** ("Mix Product LQDSLE###" / "Palet LQDSLE###") adalah artefak percobaan
