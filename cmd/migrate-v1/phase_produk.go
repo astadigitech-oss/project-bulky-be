@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // phaseProduk memigrasi products -> produk (+gambar, dokumen, pivot merek). Dokumen §4-§5.
@@ -22,7 +23,8 @@ func (a *App) phaseProduk() error {
 			price, price_before_discount, total_quantity, packaging_type, pdf_file, is_active,
 			warehouse_id, product_category_id, product_condition_id, product_status_id, status_package_id,
 			note_discrepancy, length_cm, width_cm, height_cm, weight_kg,
-			deleted_at, created_at, updated_at, sold_out
+			deleted_at, created_at, updated_at, sold_out,
+			EXISTS (SELECT 1 FROM order_items oi WHERE oi.product_id = products.id) AS pernah_diorder
 		FROM products ORDER BY created_at, id`)
 	if err != nil {
 		return err
@@ -36,11 +38,12 @@ func (a *App) phaseProduk() error {
 		var wmsID, price, priceBefore, totalQty, noteDisc, isActive, soldOut sql.NullInt64
 		var length, width, height, weight sql.NullFloat64
 		var deletedAt, createdAt, updatedAt sql.NullTime
+		var pernahDiorder bool
 		if err := rows.Scan(&id, &wmsID, &images, &name, &trans, &slug, &idPallet,
 			&price, &priceBefore, &totalQty, &packagingType, &pdfFile, &isActive,
 			&whID, &catID, &condID, &statusID, &pakID,
 			&noteDisc, &length, &width, &height, &weight,
-			&deletedAt, &createdAt, &updatedAt, &soldOut); err != nil {
+			&deletedAt, &createdAt, &updatedAt, &soldOut, &pernahDiorder); err != nil {
 			return err
 		}
 
@@ -48,10 +51,23 @@ func (a *App) phaseProduk() error {
 			a.rep.Count("produk.sudah_ada_di_v2")
 			continue
 		}
-		deleted := deletedAt.Valid
 
 		// nama (dokumen §4)
 		tid, ten := parseTrans(trans)
+
+		// Skip produk LQD (percobaan sync WMS yang gagal) yang tidak pernah
+		// direferensikan order_items v1. Produk LQD yang pernah diorder tetap
+		// dimigrasi agar FK pesanan_item tetap utuh (lihat SQL cleanup LQD).
+		// Deteksi lewat name/name_trans/id_pallet karena sebagian besar produk
+		// LQD punya name NULL dan hanya nama di name_trans JSON.
+		lqd := strings.Contains(strings.ToUpper(firstNonEmpty(name.String, tid, idPallet.String)), "LQD")
+		if lqd && !pernahDiorder {
+			a.rep.Add("2", "produk", id, "skip_lqd",
+				"produk LQD (sync WMS gagal) tidak pernah diorder -> tidak dimigrasi")
+			continue
+		}
+		deleted := deletedAt.Valid
+
 		namaID := truncate(firstNonEmpty(tid, name.String, "Produk "+id8(id)), 255)
 		namaEN := truncate(firstNonEmpty(ten, namaID), 255)
 

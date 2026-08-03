@@ -253,3 +253,166 @@ func (ctrl *AssetMigrationController) ImportAssets(c *fiber.Ctx) error {
 		"skipped":  skipped,
 	})
 }
+
+// v1AssetPrefixes memetakan folder sumber di ZIP v1 (storage Laravel)
+// ke folder tujuan di storage v2. Path ZIP v1 berbentuk
+// "storage/app/public/<folder>/<file>"; baris kiri adalah folder sumber,
+// baris kanan adalah prefix tujuan relatif terhadap UploadPath.
+var v1AssetPrefixes = []struct{ src, dst string }{
+	{"storage/app/public/products/", "product-images/"},
+	{"storage/app/public/reviews/", "reviews/"},
+	{"storage/app/public/public/profile/", "profile/"},
+	{"storage/app/public/", ""}, // dokumen/PDF v1 diletakkan langsung di storage/app/public/
+}
+
+// ImportAssetsV1 mengimpor ZIP hasil export folder "storage" Laravel v1
+// (storage/app/public/...). Karena path yang tersimpan di DB v2 sudah ditransformasi
+// migrasi (produk -> "product-images/", dokumen -> "product-documents/",
+// ulasan -> "reviews/", foto profil -> "profile/"), file dari ZIP v1 perlu
+// dipetakan ulang ke lokasi yang sesuai, bukan diekstrak apa adanya.
+//
+// Mapping yang didukung (cukup 4 tipe aset publik v1):
+//
+//	storage/app/public/products/<f>        -> <UPLOAD_PATH>/product-images/<f>
+//	storage/app/public/reviews/<f>         -> <UPLOAD_PATH>/reviews/<f>
+//	storage/app/public/public/profile/<f>  -> <UPLOAD_PATH>/profile/<f>
+//	storage/app/public/<f>.pdf             -> <UPLOAD_PATH>/product-documents/<f>
+//
+// File yang tidak cocok mapping mana pun (folder lain dari aplikasi v1) di-skip.
+func (ctrl *AssetMigrationController) ImportAssetsV1(c *fiber.Ctx) error {
+	file, err := c.FormFile("file")
+	if err != nil {
+		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "File zip tidak ditemukan. Kirim dengan field name 'file'", err.Error())
+	}
+
+	if !strings.HasSuffix(strings.ToLower(file.Filename), ".zip") {
+		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "File harus berformat .zip", "")
+	}
+
+	// Simpan ZIP ke file sementara (hindari muat seluruh zip ke memori)
+	tmpZip, err := os.CreateTemp("", "assets-import-v1-*.zip")
+	if err != nil {
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal membuat file sementara", err.Error())
+	}
+	tmpZipPath := tmpZip.Name()
+	defer os.Remove(tmpZipPath)
+
+	src, err := file.Open()
+	if err != nil {
+		tmpZip.Close()
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal membuka file", err.Error())
+	}
+	if _, err := io.Copy(tmpZip, src); err != nil {
+		src.Close()
+		tmpZip.Close()
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan file sementara", err.Error())
+	}
+	src.Close()
+	tmpZip.Close()
+
+	zr, err := zip.OpenReader(tmpZipPath)
+	if err != nil {
+		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "File bukan format zip yang valid", err.Error())
+	}
+	defer zr.Close()
+
+	imported := 0
+	skipped := 0
+	var unmatched []string
+	type fileResult struct {
+		Source string `json:"source"`
+		Dest   string `json:"dest,omitempty"`
+		Status string `json:"status"`
+		Reason string `json:"reason,omitempty"`
+	}
+	var files []fileResult
+
+	for _, f := range zr.File {
+		if f.FileInfo().IsDir() {
+			continue
+		}
+
+		cleanName := filepath.ToSlash(filepath.Clean(f.Name))
+		// Anti path traversal
+		if strings.HasPrefix(cleanName, "../") || strings.Contains(cleanName, "/../") {
+			skipped++
+			files = append(files, fileResult{Source: cleanName, Status: "skipped", Reason: "path traversal ditolak"})
+			continue
+		}
+
+		// Tentukan folder tujuan v2 berdasarkan struktur v1
+		var relPath string
+		mapped := false
+		for _, m := range v1AssetPrefixes {
+			if strings.HasPrefix(cleanName, m.src) {
+				rest := strings.TrimPrefix(cleanName, m.src)
+				if rest == "" {
+					continue
+				}
+				// Dokumen v1 berupa PDF yang diletakkan langsung di storage/app/public/
+				if m.dst == "" {
+					if !strings.EqualFold(filepath.Ext(rest), ".pdf") {
+						continue // bukan PDF, bukan aset yang kita kelola
+					}
+					relPath = "product-documents/" + rest
+				} else {
+					relPath = m.dst + rest
+				}
+				mapped = true
+				break
+			}
+		}
+
+		if !mapped {
+			skipped++
+			if len(unmatched) < 20 {
+				unmatched = append(unmatched, cleanName)
+			}
+			files = append(files, fileResult{Source: cleanName, Status: "skipped", Reason: "path tidak dikenali"})
+			continue
+		}
+
+		destPath := filepath.Join(ctrl.cfg.UploadPath, filepath.FromSlash(relPath))
+		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+			skipped++
+			files = append(files, fileResult{Source: cleanName, Status: "skipped", Reason: "gagal buat folder"})
+			continue
+		}
+
+		rc, err := f.Open()
+		if err != nil {
+			skipped++
+			files = append(files, fileResult{Source: cleanName, Status: "skipped", Reason: "gagal baca zip"})
+			continue
+		}
+
+		dst, err := os.Create(destPath)
+		if err != nil {
+			rc.Close()
+			skipped++
+			files = append(files, fileResult{Source: cleanName, Status: "skipped", Reason: "gagal buat file"})
+			continue
+		}
+
+		if _, err := io.Copy(dst, rc); err != nil {
+			dst.Close()
+			rc.Close()
+			os.Remove(destPath)
+			skipped++
+			files = append(files, fileResult{Source: cleanName, Status: "skipped", Reason: "gagal tulis file"})
+			continue
+		}
+
+		dst.Close()
+		rc.Close()
+		imported++
+		files = append(files, fileResult{Source: cleanName, Dest: relPath, Status: "imported"})
+	}
+
+	return utils.SimpleSuccessResponse(c, http.StatusOK, "Import v1 selesai", fiber.Map{
+		"imported":  imported,
+		"skipped":   skipped,
+		"unmatched": unmatched,
+		"files":     files,
+	})
+}

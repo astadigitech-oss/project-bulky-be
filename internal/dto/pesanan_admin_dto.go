@@ -13,8 +13,8 @@ type PesananAdminQueryParams struct {
 	PerPage       int    `query:"per_page"`
 	Cari          string `query:"cari"`
 	OrderStatus   string `query:"order_status"`
-	PaymentStatus string `query:"payment_status"`
-	DeliveryType  string `query:"delivery_type"`
+	PaymentType   string `query:"payment_type"`
+	Buyer         string `query:"buyer"`
 	TanggalDari   string `query:"tanggal_dari"`
 	TanggalSampai string `query:"tanggal_sampai"`
 	SortBy        string `query:"sort_by"`

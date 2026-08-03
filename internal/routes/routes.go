@@ -669,6 +669,9 @@ func SetupRoutes(
 	)
 	assetMigration.Get("/export", assetMigrationController.ExportAssets)
 	assetMigration.Post("/import", assetMigrationController.ImportAssets)
+	// Import khusus ZIP struktur storage Laravel v1 (storage/app/public/...) —
+	// file dipetakan ulang ke folder storage v2 (lihat ImportAssetsV1).
+	assetMigration.Post("/import-v1", assetMigrationController.ImportAssetsV1)
 
 	// Internal upload routes — only accessible via X-Internal-Key header (storefront BE)
 	internalUpload := v1.Group("/internal/upload",

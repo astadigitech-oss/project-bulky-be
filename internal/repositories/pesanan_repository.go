@@ -69,11 +69,12 @@ func (r *pesananRepository) AdminFindAll(filters map[string]interface{}, page, p
 	if orderStatus, ok := filters["order_status"].(string); ok && orderStatus != "" {
 		query = query.Where("order_status = ?", orderStatus)
 	}
-	if paymentStatus, ok := filters["payment_status"].(string); ok && paymentStatus != "" {
-		query = query.Where("payment_status = ?", paymentStatus)
+	if paymentType, ok := filters["payment_type"].(string); ok && paymentType != "" {
+		query = query.Where("payment_type = ?", paymentType)
 	}
-	if deliveryType, ok := filters["delivery_type"].(string); ok && deliveryType != "" {
-		query = query.Where("delivery_type = ?", deliveryType)
+	if buyer, ok := filters["buyer"].(string); ok && buyer != "" {
+		query = query.Joins("JOIN buyer ON buyer.id = pesanan.buyer_id").
+			Where("buyer.nama ILIKE ?", "%"+buyer+"%")
 	}
 	if cari, ok := filters["cari"].(string); ok && cari != "" {
 		query = query.Joins("JOIN buyer ON buyer.id = pesanan.buyer_id").

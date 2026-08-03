@@ -51,11 +51,11 @@ func (s *pesananAdminService) GetAll(ctx context.Context, params *dto.PesananAdm
 	if params.OrderStatus != "" {
 		filters["order_status"] = params.OrderStatus
 	}
-	if params.PaymentStatus != "" {
-		filters["payment_status"] = params.PaymentStatus
+	if params.PaymentType != "" {
+		filters["payment_type"] = params.PaymentType
 	}
-	if params.DeliveryType != "" {
-		filters["delivery_type"] = params.DeliveryType
+	if params.Buyer != "" {
+		filters["buyer"] = params.Buyer
 	}
 	if params.TanggalDari != "" {
 		tanggal, err := time.Parse("2006-01-02", params.TanggalDari)
