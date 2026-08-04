@@ -679,6 +679,11 @@ func SetupRoutes(
 	assetMigration.Post("/import-v1/finalize", assetMigrationController.FinalizeV1Chunk)
 	// Batalkan chunk upload yang sedang berjalan (hapus sisa chunk di server)
 	assetMigration.Delete("/import-v1/chunk", assetMigrationController.AbortV1Chunk)
+	// Pantau & bersihkan folder chunk v1 yang basi (upload gagal/ditinggal
+	// tanpa abort) — mencegah volume Dokploy diam-diam penuh dari sisa
+	// percobaan migrasi yang gagal berulang kali.
+	assetMigration.Get("/import-v1/pending", assetMigrationController.ListPendingV1Uploads)
+	assetMigration.Post("/import-v1/cleanup", assetMigrationController.CleanupStaleV1Uploads)
 	// Hapus file di storage yang tidak direferensikan DB v2 (misal aset
 	// produk LQD yang difilter saat migrasi). Body: {"dry_run": true|false}.
 	assetMigration.Post("/prune-orphans", assetMigrationController.PruneOrphans)

@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"crypto/sha1"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"project-bulky-be/internal/config"
@@ -27,6 +29,29 @@ type AssetMigrationController struct {
 
 func NewAssetMigrationController(db *gorm.DB, cfg *config.Config) *AssetMigrationController {
 	return &AssetMigrationController{db: db, cfg: cfg}
+}
+
+// tmpDirV1 mengembalikan folder untuk file sementara (ZIP hasil gabungan
+// chunk / upload single-shot) di BAWAH UploadPath — sengaja BUKAN os
+// default temp dir ("" pada os.CreateTemp berarti /tmp di container),
+// karena /tmp biasanya ada di ephemeral storage container yang jauh lebih
+// kecil daripada volume persistent yang di-mount Dokploy (UPLOAD_PATH).
+// ZIP backup v1 bisa beberapa GB — kalau digabung di /tmp yang penuh,
+// proses finalize gagal dengan galat generik yang menyesatkan (seolah
+// masalah jaringan/chunk, padahal disk container penuh).
+func (ctrl *AssetMigrationController) tmpDirV1() (string, error) {
+	dir := filepath.Join(ctrl.cfg.UploadPath, "chunks", "tmp")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return "", err
+	}
+	return dir, nil
+}
+
+// isDiskFullError mendeteksi galat ENOSPC (disk/volume penuh) agar bisa
+// dilaporkan dengan pesan yang jelas ke client, alih-alih pesan generik
+// yang menyesatkan (seolah masalah jaringan terputus, padahal volume penuh).
+func isDiskFullError(err error) bool {
+	return errors.Is(err, syscall.ENOSPC)
 }
 
 // collectFilePaths queries all file paths referenced in DB and returns unique relative paths.
@@ -103,8 +128,13 @@ func (ctrl *AssetMigrationController) ExportAssets(c *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal mengumpulkan daftar file", err.Error())
 	}
 
-	// Write zip to a temp file to allow streaming large files safely
-	tmpFile, err := os.CreateTemp("", "assets-export-*.zip")
+	// Write zip to a temp file DI VOLUME UploadPath (bukan /tmp container)
+	// to allow streaming large files safely without exhausting ephemeral disk.
+	tmpDir, err := ctrl.tmpDirV1()
+	if err != nil {
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal membuat direktori sementara", err.Error())
+	}
+	tmpFile, err := os.CreateTemp(tmpDir, "assets-export-*.zip")
 	if err != nil {
 		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal membuat file sementara", err.Error())
 	}
@@ -177,8 +207,13 @@ func (ctrl *AssetMigrationController) ImportAssets(c *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "File harus berformat .zip", "")
 	}
 
-	// Save uploaded zip to a temp file (avoids loading entire zip into memory)
-	tmpZip, err := os.CreateTemp("", "assets-import-*.zip")
+	// Save uploaded zip to a temp file DI VOLUME UploadPath (avoids loading
+	// entire zip into memory, and avoids ephemeral /tmp container disk).
+	tmpDir, err := ctrl.tmpDirV1()
+	if err != nil {
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal membuat direktori sementara", err.Error())
+	}
+	tmpZip, err := os.CreateTemp(tmpDir, "assets-import-*.zip")
 	if err != nil {
 		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal membuat file sementara", err.Error())
 	}
@@ -193,6 +228,9 @@ func (ctrl *AssetMigrationController) ImportAssets(c *fiber.Ctx) error {
 	if _, err := io.Copy(tmpZip, src); err != nil {
 		src.Close()
 		tmpZip.Close()
+		if isDiskFullError(err) {
+			return utils.SimpleErrorResponse(c, http.StatusInsufficientStorage, "Volume storage penuh — hubungi devops untuk memperbesar volume Dokploy", err.Error())
+		}
 		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan file sementara", err.Error())
 	}
 	src.Close()
@@ -362,6 +400,12 @@ func (ctrl *AssetMigrationController) processV1Zip(zipPath string) (v1ImportResu
 			dst.Close()
 			rc.Close()
 			os.Remove(destPath)
+			// Disk penuh bersifat fatal untuk seluruh ZIP (bukan cuma file ini) —
+			// hentikan proses daripada menandai ratusan file sisanya "skipped"
+			// dengan alasan yang menyesatkan seperti "path tidak dikenali".
+			if isDiskFullError(err) {
+				return res, fmt.Errorf("volume storage penuh saat mengekstrak %q — hubungi devops untuk memperbesar volume Dokploy: %w", cleanName, err)
+			}
 			res.Skipped++
 			res.Files = append(res.Files, map[string]any{"source": cleanName, "status": "skipped", "reason": "gagal tulis file"})
 			continue
@@ -402,8 +446,13 @@ func (ctrl *AssetMigrationController) ImportAssetsV1(c *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "File harus berformat .zip", "")
 	}
 
-	// Simpan ZIP ke file sementara (hindari muat seluruh zip ke memori)
-	tmpZip, err := os.CreateTemp("", "assets-import-v1-*.zip")
+	// Simpan ZIP ke file sementara DI VOLUME UploadPath (bukan /tmp container
+	// yang ephemeral & kecil) — hindari muat seluruh zip ke memori.
+	tmpDir, err := ctrl.tmpDirV1()
+	if err != nil {
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal membuat direktori sementara", err.Error())
+	}
+	tmpZip, err := os.CreateTemp(tmpDir, "assets-import-v1-*.zip")
 	if err != nil {
 		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal membuat file sementara", err.Error())
 	}
@@ -418,6 +467,9 @@ func (ctrl *AssetMigrationController) ImportAssetsV1(c *fiber.Ctx) error {
 	if _, err := io.Copy(tmpZip, src); err != nil {
 		src.Close()
 		tmpZip.Close()
+		if isDiskFullError(err) {
+			return utils.SimpleErrorResponse(c, http.StatusInsufficientStorage, "Volume storage penuh — hubungi devops untuk memperbesar volume Dokploy", err.Error())
+		}
 		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan file sementara", err.Error())
 	}
 	src.Close()
@@ -425,6 +477,9 @@ func (ctrl *AssetMigrationController) ImportAssetsV1(c *fiber.Ctx) error {
 
 	res, err := ctrl.processV1Zip(tmpZipPath)
 	if err != nil {
+		if isDiskFullError(err) {
+			return utils.SimpleErrorResponse(c, http.StatusInsufficientStorage, err.Error(), "")
+		}
 		return utils.SimpleErrorResponse(c, http.StatusBadRequest, err.Error(), "")
 	}
 
@@ -505,6 +560,9 @@ func (ctrl *AssetMigrationController) UploadV1Chunk(c *fiber.Ctx) error {
 	}
 
 	if err := c.SaveFile(file, chunkPath); err != nil {
+		if isDiskFullError(err) {
+			return utils.SimpleErrorResponse(c, http.StatusInsufficientStorage, "Volume storage penuh — hubungi devops untuk memperbesar volume Dokploy", err.Error())
+		}
 		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan chunk", err.Error())
 	}
 
@@ -555,8 +613,16 @@ func (ctrl *AssetMigrationController) FinalizeV1Chunk(c *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "total_chunks tidak valid", "")
 	}
 
-	// Gabungkan chunk menjadi ZIP sementara
-	tmpZip, err := os.CreateTemp("", "assets-import-v1-*.zip")
+	// Gabungkan chunk menjadi ZIP sementara DI VOLUME UploadPath (bukan /tmp
+	// container yang ephemeral & kecil). Ini penting untuk ZIP backup v1
+	// yang bisa beberapa GB — kalau /tmp container penuh, penggabungan
+	// gagal di tengah jalan (gejala: "N bagian gagal" padahal semua chunk
+	// sudah sukses terkirim satu-satu).
+	tmpDir, err := ctrl.tmpDirV1()
+	if err != nil {
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal membuat direktori sementara", err.Error())
+	}
+	tmpZip, err := os.CreateTemp(tmpDir, "assets-import-v1-*.zip")
 	if err != nil {
 		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal membuat file sementara", err.Error())
 	}
@@ -574,6 +640,9 @@ func (ctrl *AssetMigrationController) FinalizeV1Chunk(c *fiber.Ctx) error {
 		chunk.Close()
 		if copyErr != nil {
 			tmpZip.Close()
+			if isDiskFullError(copyErr) {
+				return utils.SimpleErrorResponse(c, http.StatusInsufficientStorage, "Volume storage penuh saat menggabungkan chunk — hubungi devops untuk memperbesar volume Dokploy", copyErr.Error())
+			}
 			return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal menggabungkan chunk", copyErr.Error())
 		}
 	}
@@ -582,6 +651,9 @@ func (ctrl *AssetMigrationController) FinalizeV1Chunk(c *fiber.Ctx) error {
 
 	res, err := ctrl.processV1Zip(tmpZipPath)
 	if err != nil {
+		if isDiskFullError(err) {
+			return utils.SimpleErrorResponse(c, http.StatusInsufficientStorage, err.Error(), "")
+		}
 		return utils.SimpleErrorResponse(c, http.StatusBadRequest, err.Error(), "")
 	}
 
@@ -626,6 +698,178 @@ func (ctrl *AssetMigrationController) AbortV1Chunk(c *fiber.Ctx) error {
 	}
 
 	return utils.SimpleSuccessResponse(c, http.StatusOK, "Upload chunk dibatalkan", nil)
+}
+
+// pendingV1Upload merangkum satu folder chunk upload v1 yang belum di-finalize/abort.
+type pendingV1Upload struct {
+	UploadID     string    `json:"upload_id"`
+	ChunkCount   int       `json:"chunk_count"`
+	TotalSize    int64     `json:"total_size"`
+	LastModified time.Time `json:"last_modified"`
+}
+
+// scanPendingV1Uploads memindai <UPLOAD_PATH>/chunks untuk folder "v1-*"
+// (chunk yang sudah diupload tapi belum di-finalize/abort) dan file
+// sementara "tmp/*" (ZIP gabungan yang tertinggal karena request terputus
+// di tengah proses finalize, misal container di-restart Dokploy).
+// Dipakai ListPendingV1Uploads & CleanupStaleV1Uploads.
+func (ctrl *AssetMigrationController) scanPendingV1Uploads() ([]pendingV1Upload, []string, error) {
+	chunksRoot := filepath.Join(ctrl.cfg.UploadPath, "chunks")
+	entries, err := os.ReadDir(chunksRoot)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil, nil
+		}
+		return nil, nil, err
+	}
+
+	var pending []pendingV1Upload
+	var staleTmpFiles []string
+
+	for _, entry := range entries {
+		name := entry.Name()
+
+		// File ZIP sementara yatim di chunks/tmp/ (harusnya sudah dihapus
+		// oleh defer os.Remove setelah finalize, tapi bisa tertinggal kalau
+		// proses terputus paksa, misal container restart).
+		if name == "tmp" && entry.IsDir() {
+			tmpEntries, err := os.ReadDir(filepath.Join(chunksRoot, "tmp"))
+			if err != nil {
+				continue
+			}
+			for _, tf := range tmpEntries {
+				staleTmpFiles = append(staleTmpFiles, filepath.Join(chunksRoot, "tmp", tf.Name()))
+			}
+			continue
+		}
+
+		if !entry.IsDir() || !strings.HasPrefix(name, "v1-") {
+			continue
+		}
+
+		uploadID := strings.TrimPrefix(name, "v1-")
+		dirPath := filepath.Join(chunksRoot, name)
+		chunkEntries, err := os.ReadDir(dirPath)
+		if err != nil {
+			continue
+		}
+
+		var totalSize int64
+		var lastModified time.Time
+		for _, ce := range chunkEntries {
+			info, err := ce.Info()
+			if err != nil {
+				continue
+			}
+			totalSize += info.Size()
+			if info.ModTime().After(lastModified) {
+				lastModified = info.ModTime()
+			}
+		}
+
+		pending = append(pending, pendingV1Upload{
+			UploadID:     uploadID,
+			ChunkCount:   len(chunkEntries),
+			TotalSize:    totalSize,
+			LastModified: lastModified,
+		})
+	}
+
+	return pending, staleTmpFiles, nil
+}
+
+// ListPendingV1Uploads menampilkan semua upload chunk v1 yang masih
+// tersimpan di volume tapi belum di-finalize/abort — berguna untuk memantau
+// pemakaian disk volume Dokploy tanpa perlu SSH manual, dan mendeteksi
+// chunk basi dari percobaan migrasi yang gagal/ditinggal begitu saja.
+func (ctrl *AssetMigrationController) ListPendingV1Uploads(c *fiber.Ctx) error {
+	pending, staleTmp, err := ctrl.scanPendingV1Uploads()
+	if err != nil {
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal memindai folder chunk", err.Error())
+	}
+
+	var totalSize int64
+	for _, p := range pending {
+		totalSize += p.TotalSize
+	}
+
+	return utils.SimpleSuccessResponse(c, http.StatusOK, "Daftar upload chunk pending", fiber.Map{
+		"pending_uploads":    pending,
+		"stale_tmp_files":    staleTmp,
+		"total_pending_size": totalSize,
+	})
+}
+
+// CleanupStaleV1Uploads menghapus folder chunk v1 (dan file ZIP sementara
+// yatim di chunks/tmp/) yang sudah lebih lama dari `older_than_hours`
+// (default 24 jam) tanpa pernah di-finalize/abort. Ini mencegah volume
+// Dokploy diam-diam penuh oleh sisa percobaan migrasi yang gagal berulang
+// kali — penyebab paling umum error "N bagian gagal" pada upload berikutnya
+// meski setiap chunk individual berhasil terkirim.
+//
+// Request body (JSON, opsional):
+//
+//	{ "older_than_hours": 24, "dry_run": true }  // default: dry_run=true
+func (ctrl *AssetMigrationController) CleanupStaleV1Uploads(c *fiber.Ctx) error {
+	olderThanHours := 24
+	dryRun := true
+	var req struct {
+		OlderThanHours *int  `json:"older_than_hours"`
+		DryRun         *bool `json:"dry_run"`
+	}
+	if len(c.Body()) > 0 {
+		if err := c.BodyParser(&req); err != nil {
+			return utils.SimpleErrorResponse(c, http.StatusBadRequest, "Body tidak valid", err.Error())
+		}
+		if req.OlderThanHours != nil {
+			olderThanHours = *req.OlderThanHours
+		}
+		if req.DryRun != nil {
+			dryRun = *req.DryRun
+		}
+	}
+
+	pending, staleTmp, err := ctrl.scanPendingV1Uploads()
+	if err != nil {
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal memindai folder chunk", err.Error())
+	}
+
+	threshold := time.Now().Add(-time.Duration(olderThanHours) * time.Hour)
+	chunksRoot := filepath.Join(ctrl.cfg.UploadPath, "chunks")
+
+	var deleted []string
+	var freedSize int64
+	for _, p := range pending {
+		if p.LastModified.After(threshold) {
+			continue // masih dalam progres, jangan sentuh
+		}
+		deleted = append(deleted, p.UploadID)
+		freedSize += p.TotalSize
+		if !dryRun {
+			os.RemoveAll(filepath.Join(chunksRoot, "v1-"+p.UploadID))
+		}
+	}
+
+	var deletedTmp []string
+	for _, tf := range staleTmp {
+		info, err := os.Stat(tf)
+		if err != nil || info.ModTime().After(threshold) {
+			continue
+		}
+		deletedTmp = append(deletedTmp, filepath.Base(tf))
+		freedSize += info.Size()
+		if !dryRun {
+			os.Remove(tf)
+		}
+	}
+
+	return utils.SimpleSuccessResponse(c, http.StatusOK, "Pembersihan chunk basi selesai", fiber.Map{
+		"dry_run":           dryRun,
+		"older_than_hours":  olderThanHours,
+		"deleted_uploads":   deleted,
+		"deleted_tmp_files": deletedTmp,
+		"freed_size":        freedSize,
+	})
 }
 
 // PruneOrphans menghapus file di UploadPath yang TIDAK direferensikan
