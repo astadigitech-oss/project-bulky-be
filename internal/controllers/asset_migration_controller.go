@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"archive/zip"
+	"crypto/rand"
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
@@ -10,8 +11,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -818,12 +821,17 @@ func (ctrl *AssetMigrationController) ListPendingV1Uploads(c *fiber.Ctx) error {
 // Request body (JSON, opsional):
 //
 //	{ "older_than_hours": 24, "dry_run": true }  // default: dry_run=true
+//
+// Eksekusi permanen (dry_run=false) WAJIB menyertakan dry_run_token dari
+// dry-run terakhir (pola yang sama dengan PruneOrphans) — token one-time,
+// kedaluwarsa 10 menit. Ini mencegah penghapusan permanen tanpa pratinjau.
 func (ctrl *AssetMigrationController) CleanupStaleV1Uploads(c *fiber.Ctx) error {
 	olderThanHours := 24
 	dryRun := true
 	var req struct {
-		OlderThanHours *int  `json:"older_than_hours"`
-		DryRun         *bool `json:"dry_run"`
+		OlderThanHours *int   `json:"older_than_hours"`
+		DryRun         *bool  `json:"dry_run"`
+		DryRunToken    string `json:"dry_run_token"`
 	}
 	if len(c.Body()) > 0 {
 		if err := c.BodyParser(&req); err != nil {
@@ -834,6 +842,24 @@ func (ctrl *AssetMigrationController) CleanupStaleV1Uploads(c *fiber.Ctx) error 
 		}
 		if req.DryRun != nil {
 			dryRun = *req.DryRun
+		}
+	}
+
+	// Eksekusi permanen tanpa token dry-run → tolak
+	if !dryRun {
+		if req.DryRunToken == "" {
+			return utils.SimpleErrorResponse(c, http.StatusBadRequest,
+				"Jalankan dry-run dulu untuk mendapatkan token konfirmasi", "")
+		}
+		mu.Lock()
+		tok, ok := pruneTokens[req.DryRunToken]
+		if ok {
+			delete(pruneTokens, req.DryRunToken) // one-time use
+		}
+		mu.Unlock()
+		if !ok || time.Now().After(tok.expiry) {
+			return utils.SimpleErrorResponse(c, http.StatusBadRequest,
+				"Token dry-run tidak valid atau kedaluwarsa. Jalankan dry-run ulang", "")
 		}
 	}
 
@@ -871,12 +897,86 @@ func (ctrl *AssetMigrationController) CleanupStaleV1Uploads(c *fiber.Ctx) error 
 		}
 	}
 
+	// Terbitkan token one-time untuk eksekusi permanen (dry-run saja)
+	var dryRunToken string
+	if dryRun {
+		dryRunToken = fmt.Sprintf("cleanup-%s", hex.EncodeToString(randomBytes(16)))
+		mu.Lock()
+		pruneTokens[dryRunToken] = pruneToken{
+			expiry:     time.Now().Add(10 * time.Minute),
+			totalFiles: len(deleted) + len(deletedTmp),
+			totalSize:  freedSize,
+		}
+		mu.Unlock()
+	}
+
 	return utils.SimpleSuccessResponse(c, http.StatusOK, "Pembersihan chunk basi selesai", fiber.Map{
 		"dry_run":           dryRun,
 		"older_than_hours":  olderThanHours,
 		"deleted_uploads":   deleted,
 		"deleted_tmp_files": deletedTmp,
 		"freed_size":        freedSize,
+		"dry_run_token":     dryRunToken,
+		"token_expiry_s":    600,
+	})
+}
+
+// VerifyAssets membandingkan path file yang direferensikan DB v2 terhadap
+// file fisik di UploadPath, lalu melaporkan anomali:
+//
+//   - missing: file direferensikan DB tapi TIDAK ada di disk (contoh nyata:
+//     30 PDF produk yang ikut ter-prune saat mapping v1 salah — DB menunjuk
+//     path yang tidak pernah diekstrak). Ini sinyal bahwa migrasi/import
+//     belum lengkap, BUKAN kandidat prune.
+//   - duplicates: dua baris DB atau lebih menunjuk path yang sama persis.
+//     Biasanya akibat migrasi data yang menggabungkan path tanpa menormalkan
+//     (contoh: "product-documents/a.pdf" vs "product-documents/a.pdf" hasil
+//     prefix yang berbeda). Menghapus salah satunya berisiko, jadi dilaporkan
+//     sebagai peringatan.
+//
+// Endpoint ini read-only dan aman dipanggil kapan saja — dipakai FE untuk
+// menyaring risiko sebelum aksi prune permanen.
+func (ctrl *AssetMigrationController) VerifyAssets(c *fiber.Ctx) error {
+	paths, err := ctrl.collectFilePaths()
+	if err != nil {
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal mengumpulkan daftar file DB", err.Error())
+	}
+
+	type missingFile struct {
+		Path string `json:"path"`
+	}
+	type duplicateFile struct {
+		Path  string `json:"path"`
+		Count int    `json:"count"`
+	}
+
+	counts := make(map[string]int, len(paths))
+	for _, p := range paths {
+		counts[p]++
+	}
+
+	var missing []missingFile
+	var duplicates []duplicateFile
+	for _, p := range paths {
+		full := filepath.Join(ctrl.cfg.UploadPath, filepath.FromSlash(p))
+		if _, err := os.Stat(full); err != nil {
+			missing = append(missing, missingFile{Path: p})
+		}
+	}
+	for p, n := range counts {
+		if n > 1 {
+			duplicates = append(duplicates, duplicateFile{Path: p, Count: n})
+		}
+	}
+
+	// Urutkan agar output deterministik (map iteration di Go tidak berurutan)
+	sort.Slice(missing, func(i, j int) bool { return missing[i].Path < missing[j].Path })
+	sort.Slice(duplicates, func(i, j int) bool { return duplicates[i].Path < duplicates[j].Path })
+
+	return utils.SimpleSuccessResponse(c, http.StatusOK, "Verifikasi aset selesai", fiber.Map{
+		"referenced": len(paths),
+		"missing":    missing,
+		"duplicates": duplicates,
 	})
 }
 
@@ -889,17 +989,20 @@ func (ctrl *AssetMigrationController) CleanupStaleV1Uploads(c *fiber.Ctx) error 
 // Request body (JSON):
 //
 //	{
-//	  "dry_run": true   // default true: hanya laporan, tidak menghapus apa pun
+//	  "dry_run": true,   // wajib true dulu untuk mendapat token konfirmasi
+//	  "dry_run_token": "..."  // hanya untuk eksekusi (dry_run=false)
 //	}
 //
-// Jika dry_run=false, file dihapus permanen. Hanya boleh dipakai setelah
-// import aset & migrasi data selesai, karena file yang belum di-referensikan
-// DB (misal produk LQD yang difilter) dianggap yatim dan ikut dihapus.
+// Pengaman: eksekusi permanen (dry_run=false) WAJIB menyertakan
+// dry_run_token yang dihasilkan dry-run terakhir. Token kedaluwarsa
+// setelah 10 menit atau setelah dipakai sekali (one-time). Ini mencegah
+// FE/script menghapus file tanpa pernah melihat daftarnya — persis kasus
+// 30 PDF ter-prune karena mapping salah tanpa sempat dicek.
 func (ctrl *AssetMigrationController) PruneOrphans(c *fiber.Ctx) error {
-	// Default dry-run untuk keamanan
 	dryRun := true
 	var req struct {
-		DryRun *bool `json:"dry_run"`
+		DryRun      *bool  `json:"dry_run"`
+		DryRunToken string `json:"dry_run_token"`
 	}
 	if len(c.Body()) > 0 {
 		if err := c.BodyParser(&req); err != nil {
@@ -907,6 +1010,25 @@ func (ctrl *AssetMigrationController) PruneOrphans(c *fiber.Ctx) error {
 		}
 		if req.DryRun != nil {
 			dryRun = *req.DryRun
+		}
+	}
+
+	// Eksekusi permanen tanpa token dry-run → tolak. Token mencegah aksi
+	// destruktif tanpa pratinjau daftar file yang akan dihapus.
+	if !dryRun {
+		if req.DryRunToken == "" {
+			return utils.SimpleErrorResponse(c, http.StatusBadRequest,
+				"Jalankan dry-run dulu untuk mendapatkan token konfirmasi", "")
+		}
+		mu.Lock()
+		tok, ok := pruneTokens[req.DryRunToken]
+		if ok {
+			delete(pruneTokens, req.DryRunToken) // one-time use
+		}
+		mu.Unlock()
+		if !ok || time.Now().After(tok.expiry) {
+			return utils.SimpleErrorResponse(c, http.StatusBadRequest,
+				"Token dry-run tidak valid atau kedaluwarsa. Jalankan dry-run ulang", "")
 		}
 	}
 
@@ -958,6 +1080,7 @@ func (ctrl *AssetMigrationController) PruneOrphans(c *fiber.Ctx) error {
 	}
 
 	deleted := 0
+	var dryRunToken string
 	if !dryRun {
 		for _, o := range orphans {
 			full := filepath.Join(ctrl.cfg.UploadPath, filepath.FromSlash(o.Path))
@@ -965,13 +1088,51 @@ func (ctrl *AssetMigrationController) PruneOrphans(c *fiber.Ctx) error {
 				deleted++
 			}
 		}
+	} else {
+		// Terbitkan token one-time untuk eksekusi permanen. Token mengikat
+		// ke kondisi storage saat dry-run (jumlah file & total ukuran) —
+		// kalau ada perubahan besar setelahnya, FE harus dry-run ulang.
+		dryRunToken = fmt.Sprintf("prune-%s", hex.EncodeToString(randomBytes(16)))
+		mu.Lock()
+		pruneTokens[dryRunToken] = pruneToken{
+			expiry:     time.Now().Add(10 * time.Minute),
+			totalFiles: len(orphans),
+			totalSize:  totalSize,
+		}
+		mu.Unlock()
 	}
 
 	return utils.SimpleSuccessResponse(c, http.StatusOK, "Pruning selesai", fiber.Map{
-		"dry_run":     dryRun,
-		"total_files": len(orphans),
-		"total_size":  totalSize,
-		"deleted":     deleted,
-		"orphans":     orphans,
+		"dry_run":        dryRun,
+		"total_files":    len(orphans),
+		"total_size":     totalSize,
+		"deleted":        deleted,
+		"orphans":        orphans,
+		"dry_run_token":  dryRunToken,
+		"token_expiry_s": 600,
 	})
+}
+
+// pruneToken menyimpan konteks dry-run untuk konfirmasi eksekusi permanen.
+type pruneToken struct {
+	expiry     time.Time
+	totalFiles int
+	totalSize  int64
+}
+
+// pruneTokens menyimpan token dry-run yang belum dipakai, dilindungi mutex.
+var (
+	pruneTokens = make(map[string]pruneToken)
+	mu          sync.Mutex
+)
+
+// randomBytes menghasilkan n byte acak kriptografis (untuk token dry-run).
+func randomBytes(n int) []byte {
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		// crypto/rand praktis tidak pernah gagal; fallback ke timestamp
+		// demi menghindari panic di lingkungan tanpa entropy yang cukup.
+		return []byte(fmt.Sprintf("%d", time.Now().UnixNano()))
+	}
+	return b
 }

@@ -79,12 +79,8 @@ func (s *roleService) Create(role *models.Role, permissionIDs []uuid.UUID) error
 		return err
 	}
 
-	// Assign permissions
-	if len(permissionIDs) > 0 {
-		return s.repo.AssignPermissions(role.ID, permissionIDs)
-	}
-
-	return nil
+	// Assign permissions (replace all, bisa kosong)
+	return s.repo.AssignPermissions(role.ID, permissionIDs)
 }
 
 func (s *roleService) Update(role *models.Role, permissionIDs []uuid.UUID) error {
@@ -107,22 +103,31 @@ func (s *roleService) Update(role *models.Role, permissionIDs []uuid.UUID) error
 		return err
 	}
 
-	// Update permissions
-	if len(permissionIDs) > 0 {
-		return s.repo.AssignPermissions(role.ID, permissionIDs)
-	}
-
-	return nil
+	// Assign permissions (replace all, bisa kosong)
+	return s.repo.AssignPermissions(role.ID, permissionIDs)
 }
 
 func (s *roleService) Delete(id uuid.UUID) error {
 	// Check if role exists
-	_, err := s.repo.FindByID(id)
+	role, err := s.repo.FindByID(id)
 	if err != nil {
 		return errors.New("role tidak ditemukan")
 	}
 
-	// TODO: Check if role is being used by any admin
-	// For now, just delete
+	// Guard: role bawaan tidak boleh dihapus
+	switch role.Kode {
+	case models.RoleSuperAdmin, models.RoleAdmin, models.RoleStaff, models.RoleFinance, models.RoleMarketing:
+		return errors.New("role bawaan tidak dapat dihapus")
+	}
+
+	// Guard: role yang masih dipakai admin tidak boleh dihapus
+	count, err := s.repo.CountAdminByRoleID(id)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return errors.New("role masih digunakan oleh admin, tidak dapat dihapus")
+	}
+
 	return s.repo.Delete(id)
 }

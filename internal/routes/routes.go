@@ -684,8 +684,11 @@ func SetupRoutes(
 	// percobaan migrasi yang gagal berulang kali.
 	assetMigration.Get("/import-v1/pending", assetMigrationController.ListPendingV1Uploads)
 	assetMigration.Post("/import-v1/cleanup", assetMigrationController.CleanupStaleV1Uploads)
+	// Verifikasi konsistensi DB ↔ file fisik sebelum aksi berbahaya (read-only)
+	assetMigration.Get("/verify", assetMigrationController.VerifyAssets)
 	// Hapus file di storage yang tidak direferensikan DB v2 (misal aset
 	// produk LQD yang difilter saat migrasi). Body: {"dry_run": true|false}.
+	// Eksekusi permanen butuh dry_run_token dari dry-run sebelumnya.
 	assetMigration.Post("/prune-orphans", assetMigrationController.PruneOrphans)
 
 	// Internal upload routes — only accessible via X-Internal-Key header (storefront BE)
