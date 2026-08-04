@@ -498,6 +498,11 @@ func (ctrl *AssetMigrationController) FinalizeV1Chunk(c *fiber.Ctx) error {
 	uploadID := c.FormValue("upload_id")
 	totalChunksStr := c.FormValue("total_chunks")
 
+	tempDir := ctrl.chunksDirV1(uploadID)
+	// Bersihkan folder chunk di awal — validasi error di bawah juga
+	// menghapus sisa chunk (mencegah folder chunks/ menumpuk).
+	defer os.RemoveAll(tempDir)
+
 	if uploadID == "" {
 		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "upload_id wajib diisi", "")
 	}
@@ -505,9 +510,6 @@ func (ctrl *AssetMigrationController) FinalizeV1Chunk(c *fiber.Ctx) error {
 	if err != nil || totalChunks <= 0 {
 		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "total_chunks tidak valid", "")
 	}
-
-	tempDir := ctrl.chunksDirV1(uploadID)
-	defer os.RemoveAll(tempDir)
 
 	// Gabungkan chunk menjadi ZIP sementara
 	tmpZip, err := os.CreateTemp("", "assets-import-v1-*.zip")
@@ -545,6 +547,23 @@ func (ctrl *AssetMigrationController) FinalizeV1Chunk(c *fiber.Ctx) error {
 		"unmatched": res.Unmatched,
 		"files":     res.Files,
 	})
+}
+
+// AbortV1Chunk membatalkan chunk upload yang sedang berjalan: menghapus
+// folder <UPLOAD_PATH>/chunks/v1-<upload_id> beserta semua chunk yang
+// sudah terlanjur tersimpan. Dipakai FE saat migrasi dibatalkan/gagal.
+// Idempotent — jika folder tidak ada, tetap mengembalikan sukses.
+func (ctrl *AssetMigrationController) AbortV1Chunk(c *fiber.Ctx) error {
+	uploadID := c.FormValue("upload_id")
+	if uploadID == "" {
+		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "upload_id wajib diisi", "")
+	}
+
+	if err := os.RemoveAll(ctrl.chunksDirV1(uploadID)); err != nil {
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal membersihkan chunk", err.Error())
+	}
+
+	return utils.SimpleSuccessResponse(c, http.StatusOK, "Upload chunk dibatalkan", nil)
 }
 
 // PruneOrphans menghapus file di UploadPath yang TIDAK direferensikan

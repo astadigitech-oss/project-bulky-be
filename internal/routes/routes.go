@@ -677,6 +677,8 @@ func SetupRoutes(
 	// dan memprosesnya seperti ImportAssetsV1.
 	assetMigration.Post("/import-v1/chunk", assetMigrationController.UploadV1Chunk)
 	assetMigration.Post("/import-v1/finalize", assetMigrationController.FinalizeV1Chunk)
+	// Batalkan chunk upload yang sedang berjalan (hapus sisa chunk di server)
+	assetMigration.Delete("/import-v1/chunk", assetMigrationController.AbortV1Chunk)
 	// Hapus file di storage yang tidak direferensikan DB v2 (misal aset
 	// produk LQD yang difilter saat migrasi). Body: {"dry_run": true|false}.
 	assetMigration.Post("/prune-orphans", assetMigrationController.PruneOrphans)
