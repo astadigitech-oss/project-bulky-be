@@ -300,7 +300,14 @@ func (ctrl *AssetMigrationController) ImportAssets(c *fiber.Ctx) error {
 // ke folder tujuan di storage v2. Path ZIP v1 berbentuk
 // "storage/app/public/<folder>/<file>"; baris kiri adalah folder sumber,
 // baris kanan adalah prefix tujuan relatif terhadap UploadPath.
+//
+// Urutan PENTING: rule yang lebih spesifik harus lebih dulu. Sebagian PDF
+// v1 disimpan di subfolder "products/pdf/" (lihat CreateProduct.php v1:
+// Storage::disk('public')->put('products/pdf/...')), dan rule
+// "storage/app/public/products/" TIDAK BOLEH menangkapnya — kalau iya, PDF
+// salah masuk ke product-images/ lalu dianggap orphan dan ter-prune.
 var v1AssetPrefixes = []struct{ src, dst string }{
+	{"storage/app/public/products/pdf/", "product-documents/"},
 	{"storage/app/public/products/", "product-images/"},
 	{"storage/app/public/reviews/", "reviews/"},
 	{"storage/app/public/public/profile/", "profile/"},
@@ -426,8 +433,9 @@ func (ctrl *AssetMigrationController) processV1Zip(zipPath string) (v1ImportResu
 // ulasan -> "reviews/", foto profil -> "profile/"), file dari ZIP v1 perlu
 // dipetakan ulang ke lokasi yang sesuai, bukan diekstrak apa adanya.
 //
-// Mapping yang didukung (cukup 4 tipe aset publik v1):
+// Mapping yang didukung (cukup 5 tipe aset publik v1):
 //
+//	storage/app/public/products/pdf/<f>    -> <UPLOAD_PATH>/product-documents/<f>
 //	storage/app/public/products/<f>        -> <UPLOAD_PATH>/product-images/<f>
 //	storage/app/public/reviews/<f>         -> <UPLOAD_PATH>/reviews/<f>
 //	storage/app/public/public/profile/<f>  -> <UPLOAD_PATH>/profile/<f>

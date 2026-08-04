@@ -1,0 +1,30 @@
+# Dependencies
+vendor/
+
+# Build output
+bulky-api
+*.exe
+
+# Local files
+.env
+.env.*
+!.env.example
+!.env.staging.example
+
+# Logs & temp
+logs/
+tmp/
+
+# Uploads (harus persistent volume, bukan dibundel ke image)
+uploads/
+
+# Git
+.git/
+.gitignore
+
+# OS
+.DS_Store
+
+# Dokumen internal yang tidak dibutuhkan di image
+docs/
+postman hasil tes API/

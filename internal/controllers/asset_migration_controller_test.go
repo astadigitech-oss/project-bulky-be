@@ -25,6 +25,7 @@ func TestProcessV1ZipMapping(t *testing.T) {
 	}
 	zw := zip.NewWriter(zf)
 	entries := []struct{ name, content string }{
+		{"storage/app/public/products/pdf/produk-b.pdf", "pdf-bersarang"},
 		{"storage/app/public/products/produk-a.jpg", "image-a"},
 		{"storage/app/public/reviews/review-1.jpg", "review-1"},
 		{"storage/app/public/public/profile/user-1.png", "profile-1"},
@@ -53,8 +54,8 @@ func TestProcessV1ZipMapping(t *testing.T) {
 		t.Fatalf("processV1Zip error: %v", err)
 	}
 
-	if res.Imported != 4 {
-		t.Errorf("imported = %d, want 4", res.Imported)
+	if res.Imported != 5 {
+		t.Errorf("imported = %d, want 5", res.Imported)
 	}
 	if res.Skipped != 3 {
 		t.Errorf("skipped = %d, want 3", res.Skipped)
@@ -66,6 +67,9 @@ func TestProcessV1ZipMapping(t *testing.T) {
 		"reviews/review-1.jpg":        true,
 		"profile/user-1.png":          true,
 		"product-documents/br001.pdf": true,
+		// PDF v1 yang disimpan di subfolder products/pdf/ harus masuk
+		// product-documents/, BUKAN product-images/pdf/.
+		"product-documents/produk-b.pdf": true,
 	}
 	for rel := range want {
 		if _, err := os.Stat(filepath.Join(uploadDir, filepath.FromSlash(rel))); err != nil {
@@ -76,5 +80,9 @@ func TestProcessV1ZipMapping(t *testing.T) {
 	// File non-PDF di root harus di-skip
 	if _, err := os.Stat(filepath.Join(uploadDir, "product-documents/br001.jpg")); err == nil {
 		t.Error("file jpg di root seharusnya di-skip, tapi ada di hasil")
+	}
+	// PDF bersarang TIDAK boleh masuk ke product-images/ (bug lama)
+	if _, err := os.Stat(filepath.Join(uploadDir, "product-images/pdf/produk-b.pdf")); err == nil {
+		t.Error("PDF bersarang seharusnya TIDAK masuk product-images/, tapi ada di hasil")
 	}
 }

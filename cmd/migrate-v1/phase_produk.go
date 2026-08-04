@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"path"
 	"strconv"
 	"strings"
 )
@@ -211,9 +212,15 @@ func (a *App) phaseProduk() error {
 
 		// dokumen PDF (dokumen §5.2)
 		if f := firstNonEmpty(pdfFile.String); f != "" {
+			// Sebagian pdf_file v1 disimpan dengan prefix folder
+			// ("products/pdf/<file>.pdf"). Di v2 semua PDF dipindah ke folder
+			// product-documents/, jadi prefix di-strip agar file_url konsisten
+			// (sama seperti parseImages yang men-strip prefix "products/" dari
+			// nama gambar).
+			pdfName := path.Base(strings.ReplaceAll(f, "\\", "/"))
 			if err := a.exec(`INSERT INTO produk_dokumen (produk_id, nama_dokumen, file_url, tipe_file, created_at)
 				VALUES (?, ?, ?, 'pdf', COALESCE(?, NOW()))`,
-				id, truncate(namaID, 255), "product-documents/"+f, nullTimePtr(createdAt)); err != nil {
+				id, truncate(namaID, 255), "product-documents/"+pdfName, nullTimePtr(createdAt)); err != nil {
 				return err
 			}
 			a.rep.Count("produk_dokumen.insert")

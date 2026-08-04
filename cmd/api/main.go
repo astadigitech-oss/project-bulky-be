@@ -4,6 +4,8 @@ import (
 	"context"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/controllers"
@@ -231,8 +233,25 @@ func main() {
 		port = "8080"
 	}
 
-	log.Printf("Server is running on port %s", port)
-	if err := router.Listen(":" + port); err != nil {
-		log.Fatal("Failed to start server:", err)
+	// Jalankan server di goroutine agar sinyal shutdown bisa ditangkap.
+	// Catatan: saat Shutdown dipanggil, fasthttp mengembalikan nil dari Serve,
+	// sehingga hanya error selain shutdown yang dianggap fatal.
+	go func() {
+		log.Printf("Server is running on port %s", port)
+		if err := router.Listen(":" + port); err != nil {
+			log.Fatalf("Failed to start server: %v", err)
+		}
+	}()
+
+	// Graceful shutdown: tunggu sinyal SIGTERM/SIGINT, lalu stop server
+	// setelah request yang sedang berjalan (termasuk upload video) selesai
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
+
+	log.Println("Shutting down server gracefully...")
+	if err := router.ShutdownWithContext(context.Background()); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
 	}
+	log.Println("Server exited")
 }
