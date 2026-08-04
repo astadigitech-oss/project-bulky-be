@@ -31,6 +31,10 @@ type DasborTabelTransaksiQuery struct {
 	Periode    string `query:"periode"`
 	Halaman    int    `query:"halaman"`
 	PerHalaman int    `query:"per_halaman"`
+	// Status filter opsional: daftar order_status yang ingin ditampilkan,
+	// dipisahkan koma (misal "COMPLETED,SHIPPED"). Kosong = default
+	// menampilkan semua transaksi kecuali CANCELLED.
+	Status string `query:"status"`
 }
 
 func (q *DasborTabelTransaksiQuery) SetDefaults() {
@@ -52,9 +56,9 @@ func (q *DasborTabelTransaksiQuery) SetDefaults() {
 
 // DasborChartTransaksiResponse for GET /chart-transaksi
 type DasborChartTransaksiResponse struct {
-	Periode string                           `json:"periode"`
-	Labels  []string                         `json:"labels"`
-	Series  DasborChartTransaksiSeriesData   `json:"series"`
+	Periode string                         `json:"periode"`
+	Labels  []string                       `json:"labels"`
+	Series  DasborChartTransaksiSeriesData `json:"series"`
 }
 
 type DasborChartTransaksiSeriesData struct {
@@ -64,10 +68,10 @@ type DasborChartTransaksiSeriesData struct {
 
 // DasborChartRevenueResponse for GET /chart-revenue
 type DasborChartRevenueResponse struct {
-	Periode         string                         `json:"periode"`
-	Labels          []string                       `json:"labels"`
-	Series          DasborChartRevenueSeries       `json:"series"`
-	TotalKeseluruhan float64                       `json:"total_keseluruhan"`
+	Periode          string                   `json:"periode"`
+	Labels           []string                 `json:"labels"`
+	Series           DasborChartRevenueSeries `json:"series"`
+	TotalKeseluruhan float64                  `json:"total_keseluruhan"`
 }
 
 type DasborChartRevenueSeries struct {
@@ -76,9 +80,9 @@ type DasborChartRevenueSeries struct {
 
 // DasborChartKategoriResponse for GET /chart-transaksi-per-kategori
 type DasborChartKategoriResponse struct {
-	Periode string                        `json:"periode"`
-	Labels  []string                      `json:"labels"`
-	Series  []DasborChartKategoriSerie    `json:"series"`
+	Periode string                     `json:"periode"`
+	Labels  []string                   `json:"labels"`
+	Series  []DasborChartKategoriSerie `json:"series"`
 }
 
 type DasborChartKategoriSerie struct {
@@ -89,16 +93,16 @@ type DasborChartKategoriSerie struct {
 
 // DasborKPIResponse for GET /kpi
 type DasborKPIResponse struct {
-	Periode           string  `json:"periode"`
-	StokPaletbox   int64   `json:"stok_paletbox"`
+	Periode         string  `json:"periode"`
+	StokPaletbox    int64   `json:"stok_paletbox"`
 	PaletboxTerjual int64   `json:"paletbox_terjual"`
-	Revenue           float64 `json:"revenue"`
+	Revenue         float64 `json:"revenue"`
 }
 
 // DasborStokPerKategoriResponse for GET /stok-per-kategori
 type DasborStokPerKategoriResponse struct {
-	Labels []string                      `json:"labels"`
-	Series DasborStokPerKategoriSeries   `json:"series"`
+	Labels []string                    `json:"labels"`
+	Series DasborStokPerKategoriSeries `json:"series"`
 }
 
 type DasborStokPerKategoriSeries struct {
@@ -107,10 +111,10 @@ type DasborStokPerKategoriSeries struct {
 
 // DasborPenjualanPerBuyerResponse for GET /penjualan-per-buyer
 type DasborPenjualanPerBuyerResponse struct {
-	Periode string                         `json:"periode"`
-	Labels  []string                       `json:"labels"`
-	Series  DasborPenjualanPerBuyerSeries  `json:"series"`
-	Buyers  []DasborBuyerDetail            `json:"buyers"`
+	Periode string                        `json:"periode"`
+	Labels  []string                      `json:"labels"`
+	Series  DasborPenjualanPerBuyerSeries `json:"series"`
+	Buyers  []DasborBuyerDetail           `json:"buyers"`
 }
 
 type DasborPenjualanPerBuyerSeries struct {
@@ -125,20 +129,21 @@ type DasborBuyerDetail struct {
 
 // DasborTabelTransaksiItem single row in tabel-transaksi
 type DasborTabelTransaksiItem struct {
-	PesananID      string   `json:"pesanan_id"`
-	Kode           string   `json:"kode"`
-	NamaPembeli    string   `json:"nama_pembeli"`
-	Palet          string   `json:"palet"`
-	Kategori       string   `json:"kategori"`
-	Harga          float64  `json:"harga"`
-	OngkosKirim    float64  `json:"ongkos_kirim"`
-	Diskon         float64  `json:"diskon"`
-	Total          float64  `json:"total"`
-	TanggalPesanan string   `json:"tanggal_pesanan"`
-	DeliveryType   string   `json:"delivery_type"`
-	PaymentType    string   `json:"payment_type"`
-	OrderStatus    string   `json:"order_status"`
+	PesananID       string   `json:"pesanan_id"`
+	Kode            string   `json:"kode"`
+	NamaPembeli     string   `json:"nama_pembeli"`
+	Palet           string   `json:"palet"`
+	Kategori        string   `json:"kategori"`
+	Harga           float64  `json:"harga"`
+	OngkosKirim     float64  `json:"ongkos_kirim"`
+	Diskon          float64  `json:"diskon"`
+	Total           float64  `json:"total"`
+	TanggalPesanan  string   `json:"tanggal_pesanan"`
+	DeliveryType    string   `json:"delivery_type"`
+	PaymentType     string   `json:"payment_type"`
+	OrderStatus     string   `json:"order_status"`
 	JenisPembayaran []string `json:"jenis_pembayaran"`
+	BiayaPPN        float64  `json:"biaya_ppn"`
 }
 
 // DasborTabelTransaksiMeta pagination meta for tabel-transaksi
@@ -202,17 +207,17 @@ type DasborUserTransaksiRaw struct {
 
 // DasborTabelRow raw row from tabel transaksi query
 type DasborTabelRow struct {
-	PesananID   string  `gorm:"column:pesanan_id"`
-	Kode        string  `gorm:"column:kode"`
-	NamaPembeli string  `gorm:"column:nama_pembeli"`
-	BiayaProduk float64 `gorm:"column:biaya_produk"`
-	OngkosKirim float64 `gorm:"column:ongkos_kirim"`
-	BiayaPPN    float64 `gorm:"column:biaya_ppn"`
-	Total       float64 `gorm:"column:total"`
-	CreatedAt   string  `gorm:"column:tanggal_pesanan"`
-	DeliveryType string `gorm:"column:delivery_type"`
-	PaymentType string  `gorm:"column:payment_type"`
-	OrderStatus string  `gorm:"column:order_status"`
+	PesananID    string  `gorm:"column:pesanan_id"`
+	Kode         string  `gorm:"column:kode"`
+	NamaPembeli  string  `gorm:"column:nama_pembeli"`
+	BiayaProduk  float64 `gorm:"column:biaya_produk"`
+	OngkosKirim  float64 `gorm:"column:ongkos_kirim"`
+	BiayaPPN     float64 `gorm:"column:biaya_ppn"`
+	Total        float64 `gorm:"column:total"`
+	CreatedAt    string  `gorm:"column:tanggal_pesanan"`
+	DeliveryType string  `gorm:"column:delivery_type"`
+	PaymentType  string  `gorm:"column:payment_type"`
+	OrderStatus  string  `gorm:"column:order_status"`
 }
 
 // DasborTabelItemRow raw item row for a pesanan
@@ -228,6 +233,6 @@ type DasborTabelItemRow struct {
 
 // DasborTabelPembayaranRow raw payment row for a pesanan
 type DasborTabelPembayaranRow struct {
-	PesananID    string `gorm:"column:pesanan_id"`
-	NamaMetode   string `gorm:"column:nama_metode"`
+	PesananID  string `gorm:"column:pesanan_id"`
+	NamaMetode string `gorm:"column:nama_metode"`
 }
