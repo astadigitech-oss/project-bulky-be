@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"archive/zip"
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -447,6 +449,9 @@ func (ctrl *AssetMigrationController) chunksDirV1(uploadID string) string {
 //	chunk_index:   0-based
 //	total_chunks:  total seluruh chunk
 //	chunk_data:    file bagian ZIP
+//	chunk_sha1:    (opsional) SHA-1 hex dari isi chunk — dipakai untuk verifikasi
+//	               & resume: kalau chunk sudah tersimpan dengan sha1 sama,
+//	               server langsung balas sukses tanpa menerima body lagi.
 //
 // Setiap chunk disimpan ke <UPLOAD_PATH>/chunks/v1-<upload_id>/chunk_XXXXX.
 // Karena setiap request hanya membawa satu chunk (ukuran ≤ BodyLimit),
@@ -455,6 +460,7 @@ func (ctrl *AssetMigrationController) UploadV1Chunk(c *fiber.Ctx) error {
 	uploadID := c.FormValue("upload_id")
 	chunkIndexStr := c.FormValue("chunk_index")
 	totalChunksStr := c.FormValue("total_chunks")
+	clientSHA1 := strings.ToLower(c.FormValue("chunk_sha1"))
 
 	if uploadID == "" {
 		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "upload_id wajib diisi", "")
@@ -468,26 +474,64 @@ func (ctrl *AssetMigrationController) UploadV1Chunk(c *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "total_chunks tidak valid", "")
 	}
 
+	tempDir := ctrl.chunksDirV1(uploadID)
+	chunkPath := filepath.Join(tempDir, fmt.Sprintf("chunk_%05d", chunkIndex))
+
+	// Resume/duplicate detection: kalau chunk sudah tersimpan & checksum cocok,
+	// anggap sudah terkirim — hemat bandwidth (pola resumable upload Google Drive).
+	if clientSHA1 != "" {
+		if existing, err := os.ReadFile(chunkPath); err == nil {
+			if sumSHA1(existing) == clientSHA1 {
+				return utils.SimpleSuccessResponse(c, http.StatusOK, "Chunk sudah tersimpan", fiber.Map{
+					"upload_id":     uploadID,
+					"chunk_index":   chunkIndex,
+					"total_chunks":  totalChunks,
+					"chunk_sha1":    clientSHA1,
+					"already_exist": true,
+				})
+			}
+			// sha1 beda → file lama korup/tidak lengkap → timpa (retry penuh)
+			os.Remove(chunkPath)
+		}
+	}
+
 	file, err := c.FormFile("chunk_data")
 	if err != nil {
 		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "chunk_data wajib diisi", err.Error())
 	}
 
-	tempDir := ctrl.chunksDirV1(uploadID)
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal membuat direktori temp", err.Error())
 	}
 
-	chunkPath := filepath.Join(tempDir, fmt.Sprintf("chunk_%05d", chunkIndex))
 	if err := c.SaveFile(file, chunkPath); err != nil {
 		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan chunk", err.Error())
 	}
 
+	// Verifikasi checksum hasil simpan — deteksi data korup sejak dini.
+	saved, err := os.ReadFile(chunkPath)
+	if err != nil {
+		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal membaca chunk tersimpan", err.Error())
+	}
+	savedSHA1 := sumSHA1(saved)
+	if clientSHA1 != "" && savedSHA1 != clientSHA1 {
+		os.Remove(chunkPath)
+		return utils.SimpleErrorResponse(c, http.StatusUnprocessableEntity, "Chunk rusak (checksum tidak cocok)", "")
+	}
+
 	return utils.SimpleSuccessResponse(c, http.StatusOK, "Chunk berhasil disimpan", fiber.Map{
-		"upload_id":    uploadID,
-		"chunk_index":  chunkIndex,
-		"total_chunks": totalChunks,
+		"upload_id":     uploadID,
+		"chunk_index":   chunkIndex,
+		"total_chunks":  totalChunks,
+		"chunk_sha1":    savedSHA1,
+		"already_exist": false,
 	})
+}
+
+// sumSHA1 menghitung SHA-1 hex dari data (untuk verifikasi integritas chunk).
+func sumSHA1(data []byte) string {
+	h := sha1.Sum(data)
+	return hex.EncodeToString(h[:])
 }
 
 // FinalizeV1Chunk menggabungkan semua chunk ZIP v1 menjadi satu file,
@@ -553,13 +597,31 @@ func (ctrl *AssetMigrationController) FinalizeV1Chunk(c *fiber.Ctx) error {
 // folder <UPLOAD_PATH>/chunks/v1-<upload_id> beserta semua chunk yang
 // sudah terlanjur tersimpan. Dipakai FE saat migrasi dibatalkan/gagal.
 // Idempotent — jika folder tidak ada, tetap mengembalikan sukses.
+//
+// Opsional: jika field chunk_index dikirim (dengan chunk_sha1), hanya chunk
+// itu yang dihapus — dipakai FE untuk reset chunk yang checksum-nya gagal.
 func (ctrl *AssetMigrationController) AbortV1Chunk(c *fiber.Ctx) error {
 	uploadID := c.FormValue("upload_id")
 	if uploadID == "" {
 		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "upload_id wajib diisi", "")
 	}
 
-	if err := os.RemoveAll(ctrl.chunksDirV1(uploadID)); err != nil {
+	tempDir := ctrl.chunksDirV1(uploadID)
+
+	// Hapus satu chunk saja (reset per-chunk)
+	if idxStr := c.FormValue("chunk_index"); idxStr != "" {
+		idx, err := strconv.Atoi(idxStr)
+		if err != nil || idx < 0 {
+			return utils.SimpleErrorResponse(c, http.StatusBadRequest, "chunk_index tidak valid", "")
+		}
+		chunkPath := filepath.Join(tempDir, fmt.Sprintf("chunk_%05d", idx))
+		if err := os.Remove(chunkPath); err != nil && !os.IsNotExist(err) {
+			return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal menghapus chunk", err.Error())
+		}
+		return utils.SimpleSuccessResponse(c, http.StatusOK, "Chunk dihapus", nil)
+	}
+
+	if err := os.RemoveAll(tempDir); err != nil {
 		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal membersihkan chunk", err.Error())
 	}
 
