@@ -509,6 +509,7 @@ type UpdateAdminRequest struct {
 	Nama     *string `json:"nama" binding:"omitempty,min=2,max=100"`
 	Email    *string `json:"email" binding:"omitempty,email,max=255"`
 	IsActive *bool   `json:"is_active"`
+	RoleID   *string `json:"role_id" binding:"omitempty,uuid"`
 }
 
 type UpdateProfileRequest struct {

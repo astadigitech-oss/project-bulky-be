@@ -28,6 +28,8 @@ type AuthV2Service interface {
 type LoginResultSimplified struct {
 	User        interface{} `json:"user"`
 	AccessToken string      `json:"access_token"`
+	Permissions []string    `json:"permissions,omitempty"`
+	RoleKode    string      `json:"role_kode,omitempty"`
 }
 
 type authV2Service struct {
@@ -114,6 +116,8 @@ func (s *authV2Service) AdminLogin(ctx context.Context, email, password, ipAddre
 			"email": admin.Email,
 		},
 		AccessToken: accessToken,
+		Permissions: permissions,
+		RoleKode:    admin.Role.Kode,
 	}
 
 	return result, nil

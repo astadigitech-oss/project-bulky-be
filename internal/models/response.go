@@ -526,6 +526,7 @@ type AdminResponse struct {
 	ID          string     `json:"id"`
 	Nama        string     `json:"nama"`
 	Email       string     `json:"email"`
+	RoleID      string     `json:"role_id"`
 	IsActive    bool       `json:"is_active"`
 	LastLoginAt *time.Time `json:"last_login_at"`
 	CreatedAt   time.Time  `json:"created_at"`

@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"project-bulky-be/internal/config"
@@ -104,7 +105,7 @@ func main() {
 	produkDokumenService := services.NewProdukDokumenService(produkDokumenRepo, cfg)
 	produkService := services.NewProdukService(produkRepo, produkGambarRepo, produkDokumenRepo, warehouseRepo, tipeProdukRepo, cfg, db)
 	authService := services.NewAuthService(adminRepo, adminSessionRepo)
-	adminService := services.NewAdminService(adminRepo, adminSessionRepo)
+	adminService := services.NewAdminService(adminRepo, adminSessionRepo, roleRepo)
 	masterService := services.NewMasterService(kategoriRepo, merekRepo, kondisiRepo, kondisiPaketRepo, sumberRepo)
 	buyerService := services.NewBuyerService(buyerRepo, alamatBuyerRepo)
 	alamatBuyerService := services.NewAlamatBuyerService(alamatBuyerRepo, buyerRepo)
@@ -192,7 +193,13 @@ func main() {
 	router := fiber.New(fiber.Config{
 		BodyLimit: 500 * 1024 * 1024, // 500MB untuk upload file video
 	})
-	router.Use(logger.New())
+	router.Use(logger.New(logger.Config{
+		// Jangan log request health check agar log sistem tidak tenggelam
+		// oleh ping berkala dari orchestrator (Docker HEALTHCHECK / Dokploy).
+		Next: func(c *fiber.Ctx) bool {
+			return strings.HasPrefix(c.Path(), "/api/health")
+		},
+	}))
 	router.Use(middleware.CORSMiddleware())
 
 	routes.SetupRoutes(
