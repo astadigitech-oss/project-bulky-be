@@ -458,6 +458,7 @@ type ProdukPanelListResponse struct {
 	NamaEN      string  `json:"nama_en"`
 	IDCargo     *string `json:"id_cargo"`
 	Status      bool    `json:"status"`       // is_active
+	IsSold      bool    `json:"is_sold"`      // sold out status
 	GambarUtama *string `json:"gambar_utama"` // Primary image URL
 	FilePDF     *string `json:"file_pdf"`     // First PDF document URL
 }
@@ -525,6 +526,7 @@ type AdminResponse struct {
 	ID          string     `json:"id"`
 	Nama        string     `json:"nama"`
 	Email       string     `json:"email"`
+	RoleID      string     `json:"role_id"`
 	IsActive    bool       `json:"is_active"`
 	LastLoginAt *time.Time `json:"last_login_at"`
 	CreatedAt   time.Time  `json:"created_at"`

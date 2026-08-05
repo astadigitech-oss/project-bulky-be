@@ -16,8 +16,8 @@ type DasborService interface {
 	GetKPI(ctx context.Context, periode string) (*dto.DasborKPIResponse, error)
 	GetStokPerKategori(ctx context.Context) (*dto.DasborStokPerKategoriResponse, error)
 	GetPenjualanPerBuyer(ctx context.Context, periode string, limit int) (*dto.DasborPenjualanPerBuyerResponse, error)
-	GetTabelTransaksi(ctx context.Context, periode string, page, perPage int) ([]dto.DasborTabelTransaksiItem, *dto.DasborTabelTransaksiMeta, error)
-	GetAllTransaksiForExport(ctx context.Context, periode string) ([]dto.DasborTabelTransaksiItem, error)
+	GetTabelTransaksi(ctx context.Context, periode string, page, perPage int, statusFilter []string) ([]dto.DasborTabelTransaksiItem, *dto.DasborTabelTransaksiMeta, error)
+	GetAllTransaksiForExport(ctx context.Context, periode string, statusFilter []string) ([]dto.DasborTabelTransaksiItem, error)
 	GetUserTransaction(ctx context.Context, periode string) ([]dto.DasborUserTransaksiItem, error)
 }
 
@@ -196,10 +196,10 @@ func (s *dasborService) GetKPI(ctx context.Context, periode string) (*dto.Dasbor
 	}
 
 	return &dto.DasborKPIResponse{
-		Periode:           periode,
+		Periode:         periode,
 		StokPaletbox:    available,
 		PaletboxTerjual: sold,
-		Revenue:           revenue,
+		Revenue:         revenue,
 	}, nil
 }
 
@@ -249,8 +249,8 @@ func (s *dasborService) GetPenjualanPerBuyer(ctx context.Context, periode string
 	}, nil
 }
 
-func (s *dasborService) GetTabelTransaksi(ctx context.Context, periode string, page, perPage int) ([]dto.DasborTabelTransaksiItem, *dto.DasborTabelTransaksiMeta, error) {
-	rows, total, err := s.repo.GetTabelTransaksi(periode, page, perPage)
+func (s *dasborService) GetTabelTransaksi(ctx context.Context, periode string, page, perPage int, statusFilter []string) ([]dto.DasborTabelTransaksiItem, *dto.DasborTabelTransaksiMeta, error) {
+	rows, total, err := s.repo.GetTabelTransaksi(periode, page, perPage, statusFilter)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -274,8 +274,8 @@ func (s *dasborService) GetTabelTransaksi(ctx context.Context, periode string, p
 	return items, meta, nil
 }
 
-func (s *dasborService) GetAllTransaksiForExport(ctx context.Context, periode string) ([]dto.DasborTabelTransaksiItem, error) {
-	rows, err := s.repo.GetAllTransaksi(periode)
+func (s *dasborService) GetAllTransaksiForExport(ctx context.Context, periode string, statusFilter []string) ([]dto.DasborTabelTransaksiItem, error) {
+	rows, err := s.repo.GetAllTransaksi(periode, statusFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -383,6 +383,7 @@ func (s *dasborService) enrichTabelRows(rows []dto.DasborTabelRow) ([]dto.Dasbor
 			PaymentType:     r.PaymentType,
 			OrderStatus:     r.OrderStatus,
 			JenisPembayaran: jenisPembayaran,
+			BiayaPPN:        r.BiayaPPN,
 		}
 	}
 	return items, nil

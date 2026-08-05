@@ -27,13 +27,15 @@ type AdminService interface {
 type adminService struct {
 	repo        repositories.AdminRepository
 	sessionRepo repositories.AdminSessionRepository
+	roleRepo    repositories.RoleRepository
 	cfg         *config.Config
 }
 
-func NewAdminService(repo repositories.AdminRepository, sessionRepo repositories.AdminSessionRepository) AdminService {
+func NewAdminService(repo repositories.AdminRepository, sessionRepo repositories.AdminSessionRepository, roleRepo repositories.RoleRepository) AdminService {
 	return &adminService{
 		repo:        repo,
 		sessionRepo: sessionRepo,
+		roleRepo:    roleRepo,
 		cfg:         config.LoadConfig(),
 	}
 }
@@ -135,6 +137,25 @@ func (s *adminService) Update(ctx context.Context, id string, req *models.Update
 		admin.IsActive = *req.IsActive
 	}
 
+	// Update role jika role_id dikirim
+	if req.RoleID != nil {
+		roleID, err := uuid.Parse(*req.RoleID)
+		if err != nil {
+			return nil, errors.New("role_id tidak valid")
+		}
+
+		// Validasi role ada & aktif
+		role, err := s.roleRepo.FindByID(roleID)
+		if err != nil || role == nil {
+			return nil, errors.New("role tidak ditemukan")
+		}
+		if !role.IsActive {
+			return nil, errors.New("role tidak aktif")
+		}
+
+		admin.RoleID = roleID
+	}
+
 	if err := s.repo.Update(ctx, admin); err != nil {
 		return nil, err
 	}
@@ -218,6 +239,7 @@ func (s *adminService) toResponse(a *models.Admin) *models.AdminResponse {
 		ID:          a.ID.String(),
 		Nama:        a.Nama,
 		Email:       a.Email,
+		RoleID:      a.RoleID.String(),
 		IsActive:    a.IsActive,
 		LastLoginAt: a.LastLoginAt,
 		CreatedAt:   a.CreatedAt,

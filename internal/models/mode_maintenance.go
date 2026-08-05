@@ -19,8 +19,10 @@ const (
 type ModeMaintenance struct {
 	ID              uuid.UUID       `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
 	Judul           string          `gorm:"type:varchar(100);not null" json:"judul"`
+	JudulEn         string          `gorm:"column:judul_en;type:varchar(100);not null" json:"judul_en"`
 	TipeMaintenance MaintenanceType `gorm:"type:maintenance_type;not null" json:"tipe_maintenance"`
 	Deskripsi       string          `gorm:"type:text;not null" json:"deskripsi"`
+	DeskripsiEn     string          `gorm:"column:deskripsi_en;type:text;not null" json:"deskripsi_en"`
 	IsActive        bool            `gorm:"default:false" json:"is_active"`
 	CreatedAt       time.Time       `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
 	UpdatedAt       time.Time       `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`

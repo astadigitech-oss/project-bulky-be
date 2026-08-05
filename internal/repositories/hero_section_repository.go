@@ -18,6 +18,8 @@ type HeroSectionRepository interface {
 	GetVisibleHero(ctx context.Context) (*models.HeroSection, error)
 	CheckDateRangeOverlap(ctx context.Context, tanggalMulai, tanggalSelesai *time.Time, excludeID *string) (bool, error)
 	GetSchedules(ctx context.Context) ([]models.HeroSection, error)
+	UnsetAllDefaultExcept(ctx context.Context, excludeID string) error
+	ExpireOutdatedScheduled(ctx context.Context) error
 }
 
 type heroSectionRepository struct {
@@ -84,14 +86,15 @@ func (r *heroSectionRepository) GetVisibleHero(ctx context.Context) (*models.Her
 	now := time.Now()
 
 	// Priority: Scheduled hero (dalam rentang tanggal) > Default hero
+	// is_default = true hanya berlaku jika tanggal_selesai belum lewat (atau tidak punya tanggal)
 	err := r.db.WithContext(ctx).
 		Where("deleted_at IS NULL").
 		Where(`
-			is_default = true
+			(is_default = true AND tanggal_mulai IS NULL AND tanggal_selesai IS NULL)
 			OR (
-				tanggal_mulai IS NOT NULL 
+				tanggal_mulai IS NOT NULL
 				AND tanggal_selesai IS NOT NULL
-				AND tanggal_mulai <= ? 
+				AND tanggal_mulai <= ?
 				AND tanggal_selesai >= ?
 			)
 		`, now, now).
@@ -99,6 +102,14 @@ func (r *heroSectionRepository) GetVisibleHero(ctx context.Context) (*models.Her
 		First(&hero).Error
 
 	return &hero, err
+}
+
+func (r *heroSectionRepository) ExpireOutdatedScheduled(ctx context.Context) error {
+	now := time.Now()
+	// Set is_default = false untuk banner scheduled yang tanggal_selesai-nya sudah lewat
+	return r.db.WithContext(ctx).Model(&models.HeroSection{}).
+		Where("is_default = true AND tanggal_selesai IS NOT NULL AND tanggal_selesai < ? AND deleted_at IS NULL", now).
+		Updates(map[string]any{"is_default": false}).Error
 }
 
 func (r *heroSectionRepository) CheckDateRangeOverlap(ctx context.Context, tanggalMulai, tanggalSelesai *time.Time, excludeID *string) (bool, error) {
@@ -129,6 +140,13 @@ func (r *heroSectionRepository) CheckDateRangeOverlap(ctx context.Context, tangg
 	}
 
 	return count > 0, nil
+}
+
+func (r *heroSectionRepository) UnsetAllDefaultExcept(ctx context.Context, excludeID string) error {
+	// Hanya unset permanent defaults (tanpa tanggal), tidak menyentuh scheduled banners
+	return r.db.WithContext(ctx).Model(&models.HeroSection{}).
+		Where("id != ? AND is_default = true AND tanggal_mulai IS NULL AND tanggal_selesai IS NULL AND deleted_at IS NULL", excludeID).
+		Updates(map[string]interface{}{"is_default": false}).Error
 }
 
 // GetSchedules returns all hero sections that have both tanggal_mulai and tanggal_selesai

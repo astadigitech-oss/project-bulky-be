@@ -13,8 +13,8 @@ type PesananAdminQueryParams struct {
 	PerPage       int    `query:"per_page"`
 	Cari          string `query:"cari"`
 	OrderStatus   string `query:"order_status"`
-	PaymentStatus string `query:"payment_status"`
-	DeliveryType  string `query:"delivery_type"`
+	PaymentType   string `query:"payment_type"`
+	Buyer         string `query:"buyer"`
 	TanggalDari   string `query:"tanggal_dari"`
 	TanggalSampai string `query:"tanggal_sampai"`
 	SortBy        string `query:"sort_by"`
@@ -59,6 +59,7 @@ type PesananAdminDetailResponse struct {
 	Buyer            PesananAdminBuyerDetailResponse     `json:"buyer"`
 	AlamatPengiriman *PesananAdminAlamatResponse         `json:"alamat_pengiriman"`
 	DeliveryType     string                              `json:"delivery_type"`
+	ShippingInfo     PesananShippingInfo                 `json:"shipping_info"`
 	PaymentType      string                              `json:"payment_type"`
 	PaymentStatus    string                              `json:"payment_status"`
 	OrderStatus      string                              `json:"order_status"`
@@ -68,12 +69,30 @@ type PesananAdminDetailResponse struct {
 	BiayaProduk      decimal.Decimal                     `json:"biaya_produk"`
 	BiayaPengiriman  decimal.Decimal                     `json:"biaya_pengiriman"`
 	BiayaPPN         decimal.Decimal                     `json:"biaya_ppn"`
+	BiayaLainnya     decimal.Decimal                     `json:"biaya_lainnya"`
 	PotonganKupon    decimal.Decimal                     `json:"potongan_kupon"`
 	TotalBayar       decimal.Decimal                     `json:"total_bayar"`
 	CatatanBuyer     *string                             `json:"catatan_buyer"`
 	CatatanAdmin     *string                             `json:"catatan_admin"`
 	CreatedAt        time.Time                           `json:"created_at"`
 	UpdatedAt        time.Time                           `json:"updated_at"`
+}
+
+// PesananShippingInfo shipping booking info
+type PesananShippingInfo struct {
+	DeliveryType  string  `json:"delivery_type"`
+	BookingID     *string `json:"booking_id"`
+	TrackingNo    *string `json:"tracking_no"`
+	BookingStatus string  `json:"booking_status"`
+	BookingError  *string `json:"booking_error"`
+}
+
+// RetryBookingResponse response for retry-booking endpoint
+type RetryBookingResponse struct {
+	PesananID    string  `json:"pesanan_id"`
+	DeliveryType string  `json:"delivery_type"`
+	BookingID    *string `json:"booking_id"`
+	TrackingNo   *string `json:"tracking_no"`
 }
 
 // PesananAdminBuyerResponse buyer info for list
@@ -92,14 +111,17 @@ type PesananAdminBuyerDetailResponse struct {
 
 // PesananAdminAlamatResponse alamat info
 type PesananAdminAlamatResponse struct {
-	ID            uuid.UUID `json:"id"`
-	Label         string    `json:"label"`
-	NamaPenerima  string    `json:"nama_penerima"`
-	Telepon       string    `json:"telepon"`
-	AlamatLengkap string    `json:"alamat_lengkap"`
-	Kota          string    `json:"kota"`
-	Provinsi      string    `json:"provinsi"`
-	KodePos       string    `json:"kode_pos"`
+	// ID bernilai null untuk alamat hasil snapshot (mis. pesanan migrasi v1)
+	// yang tidak punya relasi ke tabel alamat_buyer.
+	ID            *uuid.UUID `json:"id"`
+	Label         string     `json:"label"`
+	NamaPenerima  string     `json:"nama_penerima"`
+	Telepon       string     `json:"telepon"`
+	AlamatLengkap string     `json:"alamat_lengkap"`
+	Kota          string     `json:"kota"`
+	Provinsi      string     `json:"provinsi"`
+	KodePos       string     `json:"kode_pos"`
+	IsSnapshot    bool       `json:"is_snapshot"`
 }
 
 // PesananAdminItemResponse pesanan item info
@@ -163,6 +185,23 @@ type UpdatePesananStatusResponse struct {
 	PreviousStatus string    `json:"previous_status"`
 	UpdatedAt      time.Time `json:"updated_at"`
 	UpdatedBy      uuid.UUID `json:"updated_by"`
+}
+
+// CancelPesananRequest request body untuk cancel order
+type CancelPesananRequest struct {
+	Reason *string `json:"reason" validate:"omitempty,max=500"`
+}
+
+// CancelPesananResponse response setelah cancel order
+type CancelPesananResponse struct {
+	ID              uuid.UUID `json:"id"`
+	Kode            string    `json:"kode"`
+	PreviousStatus  string    `json:"previous_status"`
+	OrderStatus     string    `json:"order_status"`
+	CancelledReason *string   `json:"cancelled_reason"`
+	RestoredProduk  int       `json:"restored_produk_count"`
+	CancelledAt     time.Time `json:"cancelled_at"`
+	CancelledBy     uuid.UUID `json:"cancelled_by"`
 }
 
 // PesananStatisticsResponse response for pesanan statistics

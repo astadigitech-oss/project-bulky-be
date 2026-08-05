@@ -34,8 +34,10 @@ func (c *ModeMaintenanceController) CreateMaintenance(ctx *fiber.Ctx) error {
 	response := models.MaintenanceDetailResponse{
 		ID:              maintenance.ID.String(),
 		Judul:           maintenance.Judul,
+		JudulEn:         maintenance.JudulEn,
 		TipeMaintenance: string(maintenance.TipeMaintenance),
 		Deskripsi:       maintenance.Deskripsi,
+		DeskripsiEn:     maintenance.DeskripsiEn,
 		IsActive:        maintenance.IsActive,
 		CreatedAt:       maintenance.CreatedAt,
 		UpdatedAt:       maintenance.UpdatedAt,
@@ -66,8 +68,10 @@ func (c *ModeMaintenanceController) UpdateMaintenance(ctx *fiber.Ctx) error {
 	response := models.MaintenanceDetailResponse{
 		ID:              maintenance.ID.String(),
 		Judul:           maintenance.Judul,
+		JudulEn:         maintenance.JudulEn,
 		TipeMaintenance: string(maintenance.TipeMaintenance),
 		Deskripsi:       maintenance.Deskripsi,
+		DeskripsiEn:     maintenance.DeskripsiEn,
 		IsActive:        maintenance.IsActive,
 		CreatedAt:       maintenance.CreatedAt,
 		UpdatedAt:       maintenance.UpdatedAt,
@@ -110,8 +114,10 @@ func (c *ModeMaintenanceController) GetMaintenanceByID(ctx *fiber.Ctx) error {
 	response := models.MaintenanceDetailResponse{
 		ID:              maintenance.ID.String(),
 		Judul:           maintenance.Judul,
+		JudulEn:         maintenance.JudulEn,
 		TipeMaintenance: string(maintenance.TipeMaintenance),
 		Deskripsi:       maintenance.Deskripsi,
+		DeskripsiEn:     maintenance.DeskripsiEn,
 		IsActive:        maintenance.IsActive,
 		CreatedAt:       maintenance.CreatedAt,
 		UpdatedAt:       maintenance.UpdatedAt,
@@ -142,6 +148,7 @@ func (c *ModeMaintenanceController) GetAllMaintenances(ctx *fiber.Ctx) error {
 		response = append(response, models.MaintenanceListResponse{
 			ID:              m.ID.String(),
 			Judul:           m.Judul,
+			JudulEn:         m.JudulEn,
 			TipeMaintenance: string(m.TipeMaintenance),
 			IsActive:        m.IsActive,
 			CreatedAt:       m.CreatedAt,

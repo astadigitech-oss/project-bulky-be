@@ -4,7 +4,6 @@ import (
 	"errors"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
-	"project-bulky-be/pkg/utils"
 )
 
 type ForceUpdateService interface {
@@ -12,31 +11,28 @@ type ForceUpdateService interface {
 	UpdateForceUpdate(id string, req *models.UpdateForceUpdateRequest) (*models.ForceUpdateApp, error)
 	DeleteForceUpdate(id string) error
 	GetForceUpdateByID(id string) (*models.ForceUpdateApp, error)
-	GetAllForceUpdates(page, limit int) ([]models.ForceUpdateApp, int64, error)
+	GetAllForceUpdates(page, limit int, platform string) ([]models.ForceUpdateApp, int64, error)
 	SetActiveForceUpdate(id string) error
-	CheckVersion(currentVersion string) (*models.CheckVersionResponse, error)
 }
 
 type forceUpdateService struct {
-	repo         repositories.ForceUpdateRepository
-	playStoreURL string
-	appStoreURL  string
+	repo repositories.ForceUpdateRepository
 }
 
-func NewForceUpdateService(repo repositories.ForceUpdateRepository, playStoreURL, appStoreURL string) ForceUpdateService {
+func NewForceUpdateService(repo repositories.ForceUpdateRepository) ForceUpdateService {
 	return &forceUpdateService{
-		repo:         repo,
-		playStoreURL: playStoreURL,
-		appStoreURL:  appStoreURL,
+		repo: repo,
 	}
 }
 
 func (s *forceUpdateService) CreateForceUpdate(req *models.CreateForceUpdateRequest) (*models.ForceUpdateApp, error) {
 	forceUpdate := &models.ForceUpdateApp{
-		KodeVersi:       req.KodeVersi,
-		UpdateType:      models.UpdateType(req.UpdateType),
-		InformasiUpdate: req.InformasiUpdate,
-		IsActive:        req.IsActive,
+		KodeVersi:         req.KodeVersi,
+		UpdateType:        models.UpdateType(req.UpdateType),
+		InformasiUpdate:   req.InformasiUpdate,
+		InformasiUpdateEn: req.InformasiUpdateEn,
+		Platform:          models.ForceUpdatePlatform(req.Platform),
+		IsActive:          req.IsActive,
 	}
 
 	err := s.repo.Create(forceUpdate)
@@ -61,6 +57,12 @@ func (s *forceUpdateService) UpdateForceUpdate(id string, req *models.UpdateForc
 	}
 	if req.InformasiUpdate != nil {
 		forceUpdate.InformasiUpdate = *req.InformasiUpdate
+	}
+	if req.InformasiUpdateEn != nil {
+		forceUpdate.InformasiUpdateEn = *req.InformasiUpdateEn
+	}
+	if req.Platform != nil {
+		forceUpdate.Platform = models.ForceUpdatePlatform(*req.Platform)
 	}
 	if req.IsActive != nil {
 		forceUpdate.IsActive = *req.IsActive
@@ -91,8 +93,8 @@ func (s *forceUpdateService) GetForceUpdateByID(id string) (*models.ForceUpdateA
 	return forceUpdate, nil
 }
 
-func (s *forceUpdateService) GetAllForceUpdates(page, limit int) ([]models.ForceUpdateApp, int64, error) {
-	return s.repo.FindAll(page, limit)
+func (s *forceUpdateService) GetAllForceUpdates(page, limit int, platform string) ([]models.ForceUpdateApp, int64, error) {
+	return s.repo.FindAll(page, limit, platform)
 }
 
 func (s *forceUpdateService) SetActiveForceUpdate(id string) error {
@@ -102,37 +104,4 @@ func (s *forceUpdateService) SetActiveForceUpdate(id string) error {
 	}
 
 	return s.repo.SetActive(id)
-}
-
-func (s *forceUpdateService) CheckVersion(currentVersion string) (*models.CheckVersionResponse, error) {
-	activeUpdate, err := s.repo.FindActive()
-	if err != nil {
-		return nil, err
-	}
-
-	// No active force update configured
-	if activeUpdate == nil {
-		return &models.CheckVersionResponse{
-			ShouldUpdate:    false,
-			UpdateType:      nil,
-			LatestVersion:   nil,
-			CurrentVersion:  currentVersion,
-			InformasiUpdate: nil,
-			StoreURL:        nil,
-		}, nil
-	}
-
-	needsUpdate := utils.NeedsUpdate(currentVersion, activeUpdate.KodeVersi)
-	updateTypeStr := string(activeUpdate.UpdateType)
-
-	response := &models.CheckVersionResponse{
-		ShouldUpdate:    needsUpdate,
-		CurrentVersion:  currentVersion,
-		LatestVersion:   &activeUpdate.KodeVersi,
-		UpdateType:      &updateTypeStr,
-		InformasiUpdate: &activeUpdate.InformasiUpdate,
-		StoreURL:        &s.playStoreURL,
-	}
-
-	return response, nil
 }

@@ -17,11 +17,11 @@ type CreateRoleRequest struct {
 
 // UpdateRoleRequest DTO untuk update role
 type UpdateRoleRequest struct {
-	Nama          string   `json:"nama" binding:"omitempty,min=3,max=100"`
-	Kode          string   `json:"kode" binding:"omitempty,min=3,max=50,uppercase_snake"`
-	Deskripsi     *string  `json:"deskripsi" binding:"omitempty,max=500"`
-	IsActive      *bool    `json:"is_active"`
-	PermissionIDs []string `json:"permission_ids" binding:"omitempty,dive,uuid"`
+	Nama          string    `json:"nama" binding:"omitempty,min=3,max=100"`
+	Kode          string    `json:"kode" binding:"omitempty,min=3,max=50,uppercase_snake"`
+	Deskripsi     *string   `json:"deskripsi" binding:"omitempty,max=500"`
+	IsActive      *bool     `json:"is_active"`
+	PermissionIDs *[]string `json:"permission_ids" binding:"omitempty,dive,uuid"`
 }
 
 // RoleQueryParams untuk query parameter list role

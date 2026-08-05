@@ -36,11 +36,11 @@ func SetupRoutes(
 	pesananAdminController *controllers.PesananAdminController,
 	forceUpdateController *controllers.ForceUpdateController,
 	modeMaintenanceController *controllers.ModeMaintenanceController,
-	appStatusController *controllers.AppStatusController,
 	ppnController *controllers.PPNController,
 	metodePembayaranController *controllers.MetodePembayaranController,
 	dokumenKebijakanController *controllers.DokumenKebijakanController,
 	disclaimerController *controllers.DisclaimerController,
+	disclaimerConsentController *controllers.BuyerDisclaimerConsentController,
 	formulirPartaiBesarController *controllers.FormulirPartaiBesarController,
 	whatsappHandlerController *controllers.WhatsAppHandlerController,
 	faqController *controllers.FAQController,
@@ -243,9 +243,9 @@ func SetupRoutes(
 		middleware.AuthMiddleware(),
 		middleware.AdminOnly(),
 	)
-	tipeProdukAdmin.Get("", middleware.RequirePermission("system:read"), tipeProdukController.FindAll)
-	tipeProdukAdmin.Get("/dropdown", middleware.RequirePermission("system:read"), tipeProdukController.Dropdown)
-	tipeProdukAdmin.Get("/with-produk", middleware.RequirePermission("system:read"), tipeProdukController.FindAllWithProduk)
+	tipeProdukAdmin.Get("", middleware.RequirePermission("tipe_produk:read"), tipeProdukController.FindAll)
+	tipeProdukAdmin.Get("/dropdown", middleware.RequirePermission("tipe_produk:read"), tipeProdukController.Dropdown)
+	tipeProdukAdmin.Get("/with-produk", middleware.RequirePermission("tipe_produk:read"), tipeProdukController.FindAllWithProduk)
 
 	// Diskon Kategori - Public
 	diskonKategoriPublic := v1.Group("/diskon-kategori")
@@ -380,7 +380,12 @@ func SetupRoutes(
 	pesananAdmin.Get("/statistics", middleware.RequirePermission("pesanan:read"), pesananAdminController.GetStatistics)
 	pesananAdmin.Get("/:id", middleware.RequirePermission("pesanan:read"), pesananAdminController.GetByID)
 	pesananAdmin.Patch("/:id/update-status", middleware.RequirePermission("pesanan:update_status"), pesananAdminController.UpdateStatus)
+	pesananAdmin.Post("/:id/retry-booking", middleware.RequirePermission("pesanan:update_status"), pesananAdminController.RetryBooking)
+	pesananAdmin.Get("/:id/tracking", middleware.RequirePermission("pesanan:read"), pesananAdminController.TrackDelivery)
+	pesananAdmin.Get("/:id/deliveree-detail", middleware.RequirePermission("pesanan:read"), pesananAdminController.GetDelivereeDetail)
+	pesananAdmin.Get("/:id/invoice", middleware.RequirePermission("pesanan:read"), pesananAdminController.GetForwarderInvoice)
 	pesananAdmin.Delete("/:id", middleware.RequirePermission("pesanan:delete"), pesananAdminController.Delete)
+	pesananAdmin.Post("/:id/cancel", middleware.StagingOnly(cfg.AppEnv), middleware.RequirePermission("pesanan:update_status"), pesananAdminController.CancelOrder)
 
 	// Ulasan - Buyer
 	ulasanBuyer := v1.Group("/buyer/ulasan",
@@ -420,12 +425,6 @@ func SetupRoutes(
 	modeMaintenanceAdmin.Delete("/:id", modeMaintenanceController.DeleteMaintenance)
 	modeMaintenanceAdmin.Post("/:id/activate", modeMaintenanceController.ActivateMaintenance)
 	modeMaintenanceAdmin.Post("/:id/deactivate", modeMaintenanceController.DeactivateMaintenance)
-
-	// App Status - Public
-	appStatus := v1.Group("/public")
-	appStatus.Get("/check-version", appStatusController.CheckVersion)
-	appStatus.Get("/check-maintenance", appStatusController.CheckMaintenance)
-	appStatus.Get("/app-status", appStatusController.AppStatus)
 
 	// PPN - Admin
 	ppnAdmin := v1.Group("/panel/ppn",
@@ -495,6 +494,14 @@ func SetupRoutes(
 
 	// Disclaimer - Public
 	v1.Get("/public/disclaimer", disclaimerController.GetActive)
+
+	// Disclaimer Consent - Admin (audit log)
+	disclaimerConsentAdmin := v1.Group("/panel/disclaimer-consent",
+		middleware.AuthMiddleware(),
+		middleware.AdminOnly(),
+	)
+	disclaimerConsentAdmin.Get("", middleware.RequirePermission("system:read"), disclaimerConsentController.GetAllConsents)
+	disclaimerConsentAdmin.Get("/:id", middleware.RequirePermission("system:read"), disclaimerConsentController.GetConsentByPesanan)
 
 	// Formulir Partai Besar - Config (Admin)
 	formulirConfigAdmin := v1.Group("/panel/formulir-partai-besar/config",
@@ -625,6 +632,7 @@ func SetupRoutes(
 	videoAdmin.Post("", middleware.RequirePermission("marketing:manage"), videoController.Create)
 	videoAdmin.Post("/upload-chunk", middleware.RequirePermission("marketing:manage"), videoController.UploadChunk)
 	videoAdmin.Post("/finalize-chunk", middleware.RequirePermission("marketing:manage"), videoController.FinalizeChunk)
+	videoAdmin.Post("/:id/finalize-chunk", middleware.RequirePermission("marketing:manage"), videoController.FinalizeChunkUpdate)
 	videoAdmin.Put("/:id", middleware.RequirePermission("marketing:manage"), videoController.Update)
 	videoAdmin.Delete("/:id", middleware.RequirePermission("marketing:manage"), videoController.Delete)
 	videoAdmin.Patch("/:id/toggle-status", middleware.RequirePermission("marketing:manage"), videoController.ToggleStatus)
@@ -661,12 +669,34 @@ func SetupRoutes(
 	)
 	assetMigration.Get("/export", assetMigrationController.ExportAssets)
 	assetMigration.Post("/import", assetMigrationController.ImportAssets)
+	// Import khusus ZIP struktur storage Laravel v1 (storage/app/public/...) —
+	// file dipetakan ulang ke folder storage v2 (lihat ImportAssetsV1).
+	assetMigration.Post("/import-v1", assetMigrationController.ImportAssetsV1)
+	// Chunk upload untuk ZIP v1 >500MB (BodyLimit Fiber). Client mengirim
+	// per bagian via /import-v1/chunk, lalu /import-v1/finalize menggabungkan
+	// dan memprosesnya seperti ImportAssetsV1.
+	assetMigration.Post("/import-v1/chunk", assetMigrationController.UploadV1Chunk)
+	assetMigration.Post("/import-v1/finalize", assetMigrationController.FinalizeV1Chunk)
+	// Batalkan chunk upload yang sedang berjalan (hapus sisa chunk di server)
+	assetMigration.Delete("/import-v1/chunk", assetMigrationController.AbortV1Chunk)
+	// Pantau & bersihkan folder chunk v1 yang basi (upload gagal/ditinggal
+	// tanpa abort) — mencegah volume Dokploy diam-diam penuh dari sisa
+	// percobaan migrasi yang gagal berulang kali.
+	assetMigration.Get("/import-v1/pending", assetMigrationController.ListPendingV1Uploads)
+	assetMigration.Post("/import-v1/cleanup", assetMigrationController.CleanupStaleV1Uploads)
+	// Verifikasi konsistensi DB ↔ file fisik sebelum aksi berbahaya (read-only)
+	assetMigration.Get("/verify", assetMigrationController.VerifyAssets)
+	// Hapus file di storage yang tidak direferensikan DB v2 (misal aset
+	// produk LQD yang difilter saat migrasi). Body: {"dry_run": true|false}.
+	// Eksekusi permanen butuh dry_run_token dari dry-run sebelumnya.
+	assetMigration.Post("/prune-orphans", assetMigrationController.PruneOrphans)
 
 	// Internal upload routes — only accessible via X-Internal-Key header (storefront BE)
 	internalUpload := v1.Group("/internal/upload",
 		middleware.InternalKeyMiddleware(cfg.InternalAPIKey),
 	)
 	internalUpload.Post("/ulasan", internalUploadController.UploadUlasanGambar)
+	internalUpload.Post("/buyer-foto", internalUploadController.UploadBuyerFoto)
 
 	// Routes list endpoint
 	router.Get("/api/routes", func(c *fiber.Ctx) error {

@@ -4,6 +4,9 @@ import (
 	"context"
 	"log"
 	"os"
+	"os/signal"
+	"strings"
+	"syscall"
 
 	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/controllers"
@@ -79,6 +82,7 @@ func main() {
 	kategoriVideoRepo := repositories.NewKategoriVideoRepository(db)
 	kuponRepo := repositories.NewKuponRepository(db)
 	dasborRepo := repositories.NewDasborRepository(db)
+	disclaimerConsentRepo := repositories.NewBuyerDisclaimerConsentRepository(db)
 
 	// Auth V2 repositories
 	authRepo := repositories.NewAuthRepository(db)
@@ -101,7 +105,7 @@ func main() {
 	produkDokumenService := services.NewProdukDokumenService(produkDokumenRepo, cfg)
 	produkService := services.NewProdukService(produkRepo, produkGambarRepo, produkDokumenRepo, warehouseRepo, tipeProdukRepo, cfg, db)
 	authService := services.NewAuthService(adminRepo, adminSessionRepo)
-	adminService := services.NewAdminService(adminRepo, adminSessionRepo)
+	adminService := services.NewAdminService(adminRepo, adminSessionRepo, roleRepo)
 	masterService := services.NewMasterService(kategoriRepo, merekRepo, kondisiRepo, kondisiPaketRepo, sumberRepo)
 	buyerService := services.NewBuyerService(buyerRepo, alamatBuyerRepo)
 	alamatBuyerService := services.NewAlamatBuyerService(alamatBuyerRepo, buyerRepo)
@@ -109,13 +113,15 @@ func main() {
 	bannerEventPromoService := services.NewBannerEventPromoService(bannerEventPromoRepo, reorderService, kategoriService, cfg)
 	ulasanService := services.NewUlasanService(ulasanRepo, pesananItemRepo, pesananRepo, cfg.UploadPath, cfg.BaseURL)
 	ulasanAdminService := services.NewUlasanAdminService(ulasanRepo)
-	pesananAdminService := services.NewPesananAdminService(pesananRepo, db)
-	forceUpdateService := services.NewForceUpdateService(forceUpdateRepo, cfg.PlayStoreURL, cfg.AppStoreURL)
+	shippingService := services.NewShippingService(db)
+	pesananAdminService := services.NewPesananAdminService(pesananRepo, shippingService, db)
+	forceUpdateService := services.NewForceUpdateService(forceUpdateRepo)
 	modeMaintenanceService := services.NewModeMaintenanceService(modeMaintenanceRepo)
 	ppnService := services.NewPPNService(ppnRepo)
 	metodePembayaranService := services.NewMetodePembayaranService(metodePembayaranRepo, metodePembayaranGroupRepo)
 	dokumenKebijakanService := services.NewDokumenKebijakanService(dokumenKebijakanRepo)
 	disclaimerService := services.NewDisclaimerService(disclaimerRepo)
+	disclaimerConsentService := services.NewBuyerDisclaimerConsentService(disclaimerConsentRepo)
 	emailService := services.NewEmailService()
 	formulirPartaiBesarService := services.NewFormulirPartaiBesarService(formulirPartaiBesarRepo, kategoriRepo, reorderService, emailService)
 	whatsappHandlerService := services.NewWhatsAppHandlerService(whatsappHandlerRepo)
@@ -160,11 +166,11 @@ func main() {
 	pesananAdminController := controllers.NewPesananAdminController(pesananAdminService, activityLogService)
 	forceUpdateController := controllers.NewForceUpdateController(forceUpdateService, activityLogService)
 	modeMaintenanceController := controllers.NewModeMaintenanceController(modeMaintenanceService, activityLogService)
-	appStatusController := controllers.NewAppStatusController(forceUpdateService, modeMaintenanceService)
 	ppnController := controllers.NewPPNController(ppnService, activityLogService)
 	metodePembayaranController := controllers.NewMetodePembayaranController(metodePembayaranService, reorderService, activityLogService)
 	dokumenKebijakanController := controllers.NewDokumenKebijakanController(dokumenKebijakanService, activityLogService)
 	disclaimerController := controllers.NewDisclaimerController(disclaimerService, activityLogService)
+	disclaimerConsentController := controllers.NewBuyerDisclaimerConsentController(disclaimerConsentService)
 	formulirPartaiBesarController := controllers.NewFormulirPartaiBesarController(formulirPartaiBesarService, reorderService, activityLogService)
 	whatsappHandlerController := controllers.NewWhatsAppHandlerController(whatsappHandlerService)
 	faqController := controllers.NewFAQController(faqService, activityLogService)
@@ -187,7 +193,13 @@ func main() {
 	router := fiber.New(fiber.Config{
 		BodyLimit: 500 * 1024 * 1024, // 500MB untuk upload file video
 	})
-	router.Use(logger.New())
+	router.Use(logger.New(logger.Config{
+		// Jangan log request health check agar log sistem tidak tenggelam
+		// oleh ping berkala dari orchestrator (Docker HEALTHCHECK / Dokploy).
+		Next: func(c *fiber.Ctx) bool {
+			return strings.HasPrefix(c.Path(), "/api/health")
+		},
+	}))
 	router.Use(middleware.CORSMiddleware())
 
 	routes.SetupRoutes(
@@ -201,10 +213,10 @@ func main() {
 		heroSectionController, bannerEventPromoController,
 		ulasanController,
 		ulasanAdminController, pesananAdminController,
-		forceUpdateController, modeMaintenanceController, appStatusController,
+		forceUpdateController, modeMaintenanceController,
 		ppnController,
 		metodePembayaranController,
-		dokumenKebijakanController, disclaimerController,
+		dokumenKebijakanController, disclaimerController, disclaimerConsentController,
 		formulirPartaiBesarController, whatsappHandlerController,
 		faqController,
 		blogController, kategoriBlogController, labelBlogController,
@@ -228,8 +240,25 @@ func main() {
 		port = "8080"
 	}
 
-	log.Printf("Server is running on port %s", port)
-	if err := router.Listen(":" + port); err != nil {
-		log.Fatal("Failed to start server:", err)
+	// Jalankan server di goroutine agar sinyal shutdown bisa ditangkap.
+	// Catatan: saat Shutdown dipanggil, fasthttp mengembalikan nil dari Serve,
+	// sehingga hanya error selain shutdown yang dianggap fatal.
+	go func() {
+		log.Printf("Server is running on port %s", port)
+		if err := router.Listen(":" + port); err != nil {
+			log.Fatalf("Failed to start server: %v", err)
+		}
+	}()
+
+	// Graceful shutdown: tunggu sinyal SIGTERM/SIGINT, lalu stop server
+	// setelah request yang sedang berjalan (termasuk upload video) selesai
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
+
+	log.Println("Shutting down server gracefully...")
+	if err := router.ShutdownWithContext(context.Background()); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
 	}
+	log.Println("Server exited")
 }

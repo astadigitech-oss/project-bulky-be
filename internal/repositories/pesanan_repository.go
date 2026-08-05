@@ -18,9 +18,14 @@ type PesananRepository interface {
 	AdminFindAll(filters map[string]interface{}, page, perPage int, sortBy, sortOrder string) ([]models.Pesanan, int64, error)
 	AdminFindByID(id uuid.UUID) (*models.Pesanan, error)
 	UpdateStatus(id uuid.UUID, orderStatus models.OrderStatus, note *string, adminID uuid.UUID) error
+	UpdateBookingResult(id uuid.UUID, delivereeBookingID *string, forwarderTrackingNo *string, bookingError *string) error
+	ClearBookingResult(id uuid.UUID) error
 	Delete(id uuid.UUID) error
 	GetStatistics(tanggalDari, tanggalSampai *time.Time) (map[string]interface{}, error)
 	GetChartData(dari, sampai *time.Time, groupBy string) ([]models.ChartRawPoint, error)
+
+	// Cancel order & restore produk
+	CancelOrder(id uuid.UUID, reason *string, adminID uuid.UUID) error
 }
 
 type pesananRepository struct {
@@ -64,11 +69,12 @@ func (r *pesananRepository) AdminFindAll(filters map[string]interface{}, page, p
 	if orderStatus, ok := filters["order_status"].(string); ok && orderStatus != "" {
 		query = query.Where("order_status = ?", orderStatus)
 	}
-	if paymentStatus, ok := filters["payment_status"].(string); ok && paymentStatus != "" {
-		query = query.Where("payment_status = ?", paymentStatus)
+	if paymentType, ok := filters["payment_type"].(string); ok && paymentType != "" {
+		query = query.Where("payment_type = ?", paymentType)
 	}
-	if deliveryType, ok := filters["delivery_type"].(string); ok && deliveryType != "" {
-		query = query.Where("delivery_type = ?", deliveryType)
+	if buyer, ok := filters["buyer"].(string); ok && buyer != "" {
+		query = query.Joins("JOIN buyer ON buyer.id = pesanan.buyer_id").
+			Where("buyer.nama ILIKE ?", "%"+buyer+"%")
 	}
 	if cari, ok := filters["cari"].(string); ok && cari != "" {
 		query = query.Joins("JOIN buyer ON buyer.id = pesanan.buyer_id").
@@ -160,12 +166,14 @@ func (r *pesananRepository) UpdateStatus(id uuid.UUID, orderStatus models.OrderS
 			}
 		}
 
+		// Capture statusFrom BEFORE update — GORM mutates the struct in memory after Updates()
+		statusFrom := string(pesanan.OrderStatus)
+
 		if err := tx.Model(&pesanan).Where("id = ?", id).Updates(updates).Error; err != nil {
 			return err
 		}
 
 		// Create status history
-		statusFrom := string(pesanan.OrderStatus)
 		history := models.PesananStatusHistory{
 			PesananID:  id,
 			StatusFrom: &statusFrom,
@@ -181,6 +189,86 @@ func (r *pesananRepository) UpdateStatus(id uuid.UUID, orderStatus models.OrderS
 
 		return nil
 	})
+}
+
+// CancelOrder sets order status to CANCELLED, records history, and restores is_sold on all produk items.
+func (r *pesananRepository) CancelOrder(id uuid.UUID, reason *string, adminID uuid.UUID) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// 1. Load pesanan
+		var pesanan models.Pesanan
+		if err := tx.Preload("Items").First(&pesanan, "id = ?", id).Error; err != nil {
+			return err
+		}
+
+		// 2. Validate: only non-terminal statuses can be cancelled
+		if pesanan.OrderStatus == models.OrderStatusCompleted {
+			return fmt.Errorf("pesanan dengan status COMPLETED tidak dapat dibatalkan")
+		}
+		if pesanan.OrderStatus == models.OrderStatusCancelled {
+			return fmt.Errorf("pesanan sudah berstatus CANCELLED")
+		}
+
+		// 3. Update pesanan → CANCELLED
+		now := time.Now()
+		updates := map[string]interface{}{
+			"order_status": models.OrderStatusCancelled,
+			"cancelled_at": now,
+		}
+		if reason != nil && *reason != "" {
+			updates["cancelled_reason"] = *reason
+		}
+		statusFrom := string(pesanan.OrderStatus)
+		if err := tx.Model(&pesanan).Where("id = ?", id).Updates(updates).Error; err != nil {
+			return err
+		}
+
+		// 4. Record status history
+		history := models.PesananStatusHistory{
+			PesananID:  id,
+			StatusFrom: &statusFrom,
+			StatusTo:   string(models.OrderStatusCancelled),
+			StatusType: models.StatusHistoryTypeOrder,
+			ChangedBy:  &adminID,
+			Note:       reason,
+		}
+		if err := tx.Create(&history).Error; err != nil {
+			return err
+		}
+
+		// 5. Restore is_sold = false for all produk in this order
+		produkIDs := make([]uuid.UUID, 0, len(pesanan.Items))
+		for _, item := range pesanan.Items {
+			produkIDs = append(produkIDs, item.ProdukID)
+		}
+		if len(produkIDs) > 0 {
+			if err := tx.Model(&models.Produk{}).Where("id IN ?", produkIDs).Update("is_sold", false).Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+}
+
+func (r *pesananRepository) ClearBookingResult(id uuid.UUID) error {
+	return r.db.Model(&models.Pesanan{}).Where("id = ?", id).UpdateColumns(map[string]interface{}{
+		"deliveree_booking_id":  nil,
+		"forwarder_tracking_no": nil,
+		"booking_error":         nil,
+	}).Error
+}
+
+func (r *pesananRepository) UpdateBookingResult(id uuid.UUID, delivereeBookingID *string, forwarderTrackingNo *string, bookingError *string) error {
+	updates := map[string]interface{}{
+		"booking_error": bookingError,
+	}
+	if delivereeBookingID != nil {
+		updates["deliveree_booking_id"] = *delivereeBookingID
+	}
+	if forwarderTrackingNo != nil {
+		updates["forwarder_tracking_no"] = *forwarderTrackingNo
+	}
+	return r.db.Model(&models.Pesanan{}).Where("id = ?", id).UpdateColumns(updates).Error
 }
 
 func (r *pesananRepository) Delete(id uuid.UUID) error {
@@ -289,7 +377,7 @@ func (r *pesananRepository) GetChartData(dari, sampai *time.Time, groupBy string
 
 	var results []models.ChartRawPoint
 	q := r.db.Model(&models.Pesanan{}).
-		Select("TO_CHAR(created_at, '" + format + "') as period, COUNT(*) as total_pesanan").
+		Select("TO_CHAR(created_at AT TIME ZONE 'Asia/Jakarta', '" + format + "') as period, COUNT(*) as total_pesanan").
 		Group("period").
 		Order("period ASC")
 
@@ -319,6 +407,7 @@ func isValidStatusTransition(from, to models.OrderStatus) bool {
 		},
 		models.OrderStatusReady: {
 			models.OrderStatusShipped,
+			models.OrderStatusCompleted, // PICKUP: langsung READY → COMPLETED tanpa SHIPPED
 			models.OrderStatusCancelled,
 		},
 		models.OrderStatusShipped: {

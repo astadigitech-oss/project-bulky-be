@@ -14,9 +14,10 @@ type PaymentStatus string
 type OrderStatus string
 
 const (
-	DeliveryTypePickup    DeliveryType = "PICKUP"
-	DeliveryTypeDeliveree DeliveryType = "DELIVEREE"
-	DeliveryTypeForwarder DeliveryType = "FORWARDER"
+	DeliveryTypePickup       DeliveryType = "PICKUP"
+	DeliveryTypeDeliveree    DeliveryType = "DELIVEREE"
+	DeliveryTypeForwarder    DeliveryType = "FORWARDER"
+	DeliveryTypeForwarderLCL DeliveryType = "FORWARDER_LCL"
 
 	PaymentTypeRegular PaymentType = "REGULAR"
 	PaymentTypeSplit   PaymentType = "SPLIT"
@@ -42,6 +43,11 @@ type Pesanan struct {
 	BuyerID             uuid.UUID       `gorm:"type:uuid;not null" json:"buyer_id"`
 	DeliveryType        DeliveryType    `gorm:"type:delivery_type;not null" json:"delivery_type"`
 	AlamatBuyerID       *uuid.UUID      `gorm:"type:uuid" json:"alamat_buyer_id"`
+	AlamatSnapshot      *string         `gorm:"type:text" json:"alamat_snapshot"`
+	NamaPenerimaSnap    *string         `gorm:"column:nama_penerima_snapshot;type:varchar(100)" json:"nama_penerima_snapshot"`
+	TeleponPenerimaSnap *string         `gorm:"column:telepon_penerima_snapshot;type:varchar(20)" json:"telepon_penerima_snapshot"`
+	LatitudeSnapshot    *float64        `gorm:"column:latitude_snapshot;type:decimal(10,8)" json:"latitude_snapshot"`
+	LongitudeSnapshot   *float64        `gorm:"column:longitude_snapshot;type:decimal(11,8)" json:"longitude_snapshot"`
 	PaymentType         PaymentType     `gorm:"type:payment_type;not null;default:'REGULAR'" json:"payment_type"`
 	PaymentStatus       PaymentStatus   `gorm:"type:payment_status;not null;default:'PENDING'" json:"payment_status"`
 	OrderStatus         OrderStatus     `gorm:"type:order_status;not null;default:'PENDING'" json:"order_status"`
@@ -62,6 +68,7 @@ type Pesanan struct {
 	CancelledReason     *string         `gorm:"type:text" json:"cancelled_reason"`
 	DelivereeBookingID  *string         `gorm:"type:varchar(100)" json:"deliveree_booking_id"`
 	ForwarderTrackingNo *string         `gorm:"type:varchar(100)" json:"forwarder_tracking_no"`
+	BookingError        *string         `gorm:"type:text" json:"booking_error"`
 	CreatedAt           time.Time       `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
 	UpdatedAt           time.Time       `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
 	DeletedAt           gorm.DeletedAt  `gorm:"type:timestamptz;index" json:"-"`
@@ -80,7 +87,7 @@ func (Pesanan) TableName() string {
 // Request DTOs
 type CreatePesananRequest struct {
 	BuyerID         string                     `json:"buyer_id" binding:"required,uuid"`
-	DeliveryType    string                     `json:"delivery_type" binding:"required,oneof=PICKUP DELIVEREE FORWARDER"`
+	DeliveryType    string                     `json:"delivery_type" binding:"required,oneof=PICKUP DELIVEREE FORWARDER FORWARDER_LCL"`
 	AlamatBuyerID   *string                    `json:"alamat_buyer_id" binding:"omitempty,uuid"`
 	PaymentType     string                     `json:"payment_type" binding:"required,oneof=REGULAR SPLIT"`
 	Items           []CreatePesananItemRequest `json:"items" binding:"required,min=1,dive"`
@@ -104,6 +111,9 @@ type PesananResponse struct {
 	BuyerID             string                      `json:"buyer_id"`
 	DeliveryType        string                      `json:"delivery_type"`
 	AlamatBuyerID       *string                     `json:"alamat_buyer_id"`
+	AlamatSnapshot      *string                     `json:"alamat_snapshot,omitempty"`
+	NamaPenerimaSnap    *string                     `json:"nama_penerima_snapshot,omitempty"`
+	TeleponPenerimaSnap *string                     `json:"telepon_penerima_snapshot,omitempty"`
 	PaymentType         string                      `json:"payment_type"`
 	PaymentStatus       string                      `json:"payment_status"`
 	OrderStatus         string                      `json:"order_status"`

@@ -11,8 +11,9 @@ type ForceUpdateRepository interface {
 	Update(forceUpdate *models.ForceUpdateApp) error
 	Delete(id string) error
 	FindByID(id string) (*models.ForceUpdateApp, error)
-	FindAll(page, limit int) ([]models.ForceUpdateApp, int64, error)
+	FindAll(page, limit int, platform string) ([]models.ForceUpdateApp, int64, error)
 	FindActive() (*models.ForceUpdateApp, error)
+	FindActiveByPlatform(platform string) (*models.ForceUpdateApp, error)
 	SetActive(id string) error
 }
 
@@ -45,17 +46,22 @@ func (r *forceUpdateRepository) FindByID(id string) (*models.ForceUpdateApp, err
 	return &forceUpdate, nil
 }
 
-func (r *forceUpdateRepository) FindAll(page, limit int) ([]models.ForceUpdateApp, int64, error) {
+func (r *forceUpdateRepository) FindAll(page, limit int, platform string) ([]models.ForceUpdateApp, int64, error) {
 	var forceUpdates []models.ForceUpdateApp
 	var total int64
 
 	offset := (page - 1) * limit
 
-	if err := r.db.Model(&models.ForceUpdateApp{}).Count(&total).Error; err != nil {
+	query := r.db.Model(&models.ForceUpdateApp{})
+	if platform != "" {
+		query = query.Where("platform = ?", platform)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	err := r.db.Offset(offset).Limit(limit).Order("created_at DESC").Find(&forceUpdates).Error
+	err := query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&forceUpdates).Error
 	return forceUpdates, total, err
 }
 
@@ -71,10 +77,32 @@ func (r *forceUpdateRepository) FindActive() (*models.ForceUpdateApp, error) {
 	return &forceUpdate, nil
 }
 
+func (r *forceUpdateRepository) FindActiveByPlatform(platform string) (*models.ForceUpdateApp, error) {
+	var forceUpdate models.ForceUpdateApp
+	err := r.db.Where("is_active = ? AND (platform = ? OR platform = ?)", true, platform, models.ForceUpdatePlatformAll).
+		Order("CASE WHEN platform = 'ALL' THEN 1 ELSE 0 END").
+		First(&forceUpdate).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &forceUpdate, nil
+}
+
 func (r *forceUpdateRepository) SetActive(id string) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		// Deactivate all records
-		if err := tx.Model(&models.ForceUpdateApp{}).Where("is_active = ?", true).Update("is_active", false).Error; err != nil {
+		// Find target record first to know its platform
+		var target models.ForceUpdateApp
+		if err := tx.Where("id = ?", id).First(&target).Error; err != nil {
+			return err
+		}
+
+		// Deactivate other records with the same platform only
+		if err := tx.Model(&models.ForceUpdateApp{}).
+			Where("platform = ? AND is_active = ? AND id != ?", target.Platform, true, id).
+			Update("is_active", false).Error; err != nil {
 			return err
 		}
 

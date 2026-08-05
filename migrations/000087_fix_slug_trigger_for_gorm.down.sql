@@ -1,6 +1,6 @@
 -- Rollback ke versi trigger sebelumnya
 CREATE OR REPLACE FUNCTION rewrite_slug_on_delete()
-RETURNS TRIGGER AS $
+RETURNS TRIGGER AS $$
 DECLARE
     new_slug TEXT;
     counter INTEGER := 0;
@@ -50,4 +50,4 @@ BEGIN
     
     RETURN NEW;
 END;
-$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;

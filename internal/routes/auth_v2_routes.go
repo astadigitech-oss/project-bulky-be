@@ -42,7 +42,10 @@ func SetupAuthV2Routes(
 		middleware.RequirePermission("role:manage"),
 	)
 	roleAdmin.Get("", roleController.GetAll)
+	roleAdmin.Post("", roleController.Create)
 	roleAdmin.Get("/:id", roleController.GetByID)
+	roleAdmin.Put("/:id", roleController.Update)
+	roleAdmin.Delete("/:id", roleController.Delete)
 
 	// Permission Routes (Admin Only)
 	permissionAdmin := api.Group("/panel/permission",

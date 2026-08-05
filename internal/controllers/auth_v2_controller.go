@@ -1,8 +1,10 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/models"
@@ -546,6 +548,131 @@ func (c *RoleController) GetByID(ctx *fiber.Ctx) error {
 		"success": true,
 		"data":    role,
 	})
+}
+
+// POST /api/panel/role
+func (c *RoleController) Create(ctx *fiber.Ctx) error {
+	var req dto.CreateRoleRequest
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", nil)
+	}
+
+	if req.Nama == "" || req.Kode == "" {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Nama dan kode wajib diisi", nil)
+	}
+	if err := utils.Validator.Var(req.Kode, "uppercase_snake"); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Kode harus dalam format UPPERCASE_SNAKE_CASE", nil)
+	}
+
+	permissionIDs, err := parsePermissionIDs(req.PermissionIDs)
+	if err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
+	}
+
+	role := &models.Role{
+		Nama:     req.Nama,
+		Kode:     req.Kode,
+		IsActive: true,
+	}
+	if req.Deskripsi != "" {
+		role.Deskripsi = &req.Deskripsi
+	}
+	if req.IsActive != nil {
+		role.IsActive = *req.IsActive
+	}
+
+	if err := c.service.Create(role, permissionIDs); err != nil {
+		if strings.Contains(err.Error(), "kode role sudah digunakan") {
+			return utils.ErrorResponse(ctx, http.StatusConflict, err.Error(), nil)
+		}
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	return utils.CreatedResponse(ctx, "Role berhasil dibuat", role)
+}
+
+// PUT /api/panel/role/:id
+func (c *RoleController) Update(ctx *fiber.Ctx) error {
+	id, err := uuid.Parse(ctx.Params("id"))
+	if err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", nil)
+	}
+
+	var req dto.UpdateRoleRequest
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", nil)
+	}
+
+	existing, err := c.service.GetByID(id)
+	if err != nil {
+		return utils.ErrorResponse(ctx, http.StatusNotFound, "Role tidak ditemukan", nil)
+	}
+
+	if req.Nama != "" {
+		existing.Nama = req.Nama
+	}
+	if req.Kode != "" {
+		existing.Kode = req.Kode
+	}
+	if req.Deskripsi != nil {
+		existing.Deskripsi = req.Deskripsi
+	}
+	if req.IsActive != nil {
+		existing.IsActive = *req.IsActive
+	}
+
+	// permission_ids tidak dikirim → pertahankan permissions existing
+	var permissionIDs []uuid.UUID
+	if req.PermissionIDs != nil {
+		permissionIDs, err = parsePermissionIDs(*req.PermissionIDs)
+		if err != nil {
+			return utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
+		}
+	}
+
+	if err := c.service.Update(existing, permissionIDs); err != nil {
+		if strings.Contains(err.Error(), "kode role sudah digunakan") {
+			return utils.ErrorResponse(ctx, http.StatusConflict, err.Error(), nil)
+		}
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	return utils.SuccessResponse(ctx, "Role berhasil diupdate", existing)
+}
+
+// DELETE /api/panel/role/:id
+func (c *RoleController) Delete(ctx *fiber.Ctx) error {
+	id, err := uuid.Parse(ctx.Params("id"))
+	if err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", nil)
+	}
+
+	if err := c.service.Delete(id); err != nil {
+		msg := err.Error()
+		switch {
+		case strings.Contains(msg, "tidak ditemukan"):
+			return utils.ErrorResponse(ctx, http.StatusNotFound, msg, nil)
+		case strings.Contains(msg, "bawaan"), strings.Contains(msg, "masih digunakan"):
+			return utils.ErrorResponse(ctx, http.StatusConflict, msg, nil)
+		default:
+			return utils.ErrorResponse(ctx, http.StatusInternalServerError, msg, nil)
+		}
+	}
+
+	return utils.SuccessResponse(ctx, "Role berhasil dihapus", nil)
+}
+
+// parsePermissionIDs mengubah list string ID menjadi []uuid.UUID
+func parsePermissionIDs(ids []string) ([]uuid.UUID, error) {
+	result := make([]uuid.UUID, 0, len(ids))
+	for _, s := range ids {
+		id, err := uuid.Parse(s)
+		if err != nil {
+			return nil, fmt.Errorf("permission ID '%s' tidak valid", s)
+		}
+		result = append(result, id)
+	}
+	return result, nil
 }
 
 type PermissionController struct {

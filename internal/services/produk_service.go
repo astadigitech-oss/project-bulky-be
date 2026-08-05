@@ -618,6 +618,7 @@ func (s *produkService) toPanelListResponse(p *models.Produk) *models.ProdukPane
 		NamaEN:  p.NamaEN,
 		IDCargo: p.IDCargo,
 		Status:  p.IsActive,
+		IsSold:  p.IsSold,
 	}
 
 	// Get primary/first image - prioritize is_primary, fallback to first by urutan

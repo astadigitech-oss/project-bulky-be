@@ -21,6 +21,8 @@ type VideoService interface {
 	CreateDraft(ctx context.Context, req *dto.CreateVideoRequest) (*models.Video, error)
 	MarkReady(ctx context.Context, id uuid.UUID, videoURL string, durasiDetik int) error
 	MarkFailed(ctx context.Context, id uuid.UUID, errMsg string) error
+	MarkProcessing(ctx context.Context, id uuid.UUID, rawVideoURL string) error
+	GetVideoFilePath(ctx context.Context, id uuid.UUID) (string, error)
 	RecoverStuckJobs(ctx context.Context)
 	GetTranscodeStatus(ctx context.Context, id uuid.UUID) (*dto.VideoTranscodeStatusResponse, error)
 	Update(ctx context.Context, id uuid.UUID, req *dto.UpdateVideoRequest) (*dto.VideoResponse, error)
@@ -185,6 +187,7 @@ func (s *videoService) Update(ctx context.Context, id uuid.UUID, req *dto.Update
 	}
 	if req.KategoriID != nil {
 		video.KategoriID = *req.KategoriID
+		video.Kategori = nil // clear preloaded association agar GORM tidak override FK dengan data lama
 	}
 	// Meta SEO: gunakan nilai eksplisit jika ada, auto-generate jika source berubah
 	if req.MetaTitleID != nil {
@@ -437,6 +440,22 @@ func (s *videoService) MarkFailed(ctx context.Context, id uuid.UUID, errMsg stri
 	return s.videoRepo.UpdateFields(ctx, id, map[string]interface{}{
 		"transcode_status": "failed",
 		"transcode_error":  errMsg,
+	})
+}
+
+func (s *videoService) GetVideoFilePath(ctx context.Context, id uuid.UUID) (string, error) {
+	video, err := s.videoRepo.FindByID(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	return video.VideoURL, nil
+}
+
+func (s *videoService) MarkProcessing(ctx context.Context, id uuid.UUID, rawVideoURL string) error {
+	return s.videoRepo.UpdateFields(ctx, id, map[string]interface{}{
+		"video_url":        rawVideoURL,
+		"transcode_status": "processing",
+		"transcode_error":  gorm.Expr("NULL"),
 	})
 }
 

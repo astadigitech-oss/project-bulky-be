@@ -40,7 +40,7 @@ func (r *videoRepository) Create(ctx context.Context, video *models.Video) error
 }
 
 func (r *videoRepository) Update(ctx context.Context, video *models.Video) error {
-	return r.db.WithContext(ctx).Save(video).Error
+	return r.db.WithContext(ctx).Session(&gorm.Session{FullSaveAssociations: false}).Save(video).Error
 }
 
 func (r *videoRepository) UpdateFields(ctx context.Context, id uuid.UUID, fields map[string]interface{}) error {

@@ -33,13 +33,15 @@ func (c *ForceUpdateController) CreateForceUpdate(ctx *fiber.Ctx) error {
 	}
 
 	response := models.ForceUpdateDetailResponse{
-		ID:              forceUpdate.ID.String(),
-		KodeVersi:       forceUpdate.KodeVersi,
-		UpdateType:      string(forceUpdate.UpdateType),
-		InformasiUpdate: forceUpdate.InformasiUpdate,
-		IsActive:        forceUpdate.IsActive,
-		CreatedAt:       forceUpdate.CreatedAt,
-		UpdatedAt:       forceUpdate.UpdatedAt,
+		ID:                forceUpdate.ID.String(),
+		KodeVersi:         forceUpdate.KodeVersi,
+		UpdateType:        string(forceUpdate.UpdateType),
+		InformasiUpdate:   forceUpdate.InformasiUpdate,
+		InformasiUpdateEn: forceUpdate.InformasiUpdateEn,
+		Platform:          string(forceUpdate.Platform),
+		IsActive:          forceUpdate.IsActive,
+		CreatedAt:         forceUpdate.CreatedAt,
+		UpdatedAt:         forceUpdate.UpdatedAt,
 	}
 
 	c.activityLog.Log(ctx, models.ActionCreate, "force_update", "Konfigurasi force update berhasil dibuat")
@@ -65,13 +67,15 @@ func (c *ForceUpdateController) UpdateForceUpdate(ctx *fiber.Ctx) error {
 	}
 
 	response := models.ForceUpdateDetailResponse{
-		ID:              forceUpdate.ID.String(),
-		KodeVersi:       forceUpdate.KodeVersi,
-		UpdateType:      string(forceUpdate.UpdateType),
-		InformasiUpdate: forceUpdate.InformasiUpdate,
-		IsActive:        forceUpdate.IsActive,
-		CreatedAt:       forceUpdate.CreatedAt,
-		UpdatedAt:       forceUpdate.UpdatedAt,
+		ID:                forceUpdate.ID.String(),
+		KodeVersi:         forceUpdate.KodeVersi,
+		UpdateType:        string(forceUpdate.UpdateType),
+		InformasiUpdate:   forceUpdate.InformasiUpdate,
+		InformasiUpdateEn: forceUpdate.InformasiUpdateEn,
+		Platform:          string(forceUpdate.Platform),
+		IsActive:          forceUpdate.IsActive,
+		CreatedAt:         forceUpdate.CreatedAt,
+		UpdatedAt:         forceUpdate.UpdatedAt,
 	}
 
 	c.activityLog.Log(ctx, models.ActionUpdate, "force_update", "Konfigurasi force update berhasil diperbarui")
@@ -109,13 +113,15 @@ func (c *ForceUpdateController) GetForceUpdateByID(ctx *fiber.Ctx) error {
 	}
 
 	response := models.ForceUpdateDetailResponse{
-		ID:              forceUpdate.ID.String(),
-		KodeVersi:       forceUpdate.KodeVersi,
-		UpdateType:      string(forceUpdate.UpdateType),
-		InformasiUpdate: forceUpdate.InformasiUpdate,
-		IsActive:        forceUpdate.IsActive,
-		CreatedAt:       forceUpdate.CreatedAt,
-		UpdatedAt:       forceUpdate.UpdatedAt,
+		ID:                forceUpdate.ID.String(),
+		KodeVersi:         forceUpdate.KodeVersi,
+		UpdateType:        string(forceUpdate.UpdateType),
+		InformasiUpdate:   forceUpdate.InformasiUpdate,
+		InformasiUpdateEn: forceUpdate.InformasiUpdateEn,
+		Platform:          string(forceUpdate.Platform),
+		IsActive:          forceUpdate.IsActive,
+		CreatedAt:         forceUpdate.CreatedAt,
+		UpdatedAt:         forceUpdate.UpdatedAt,
 	}
 
 	return utils.SuccessResponse(ctx, "Data force update berhasil diambil", response)
@@ -125,6 +131,7 @@ func (c *ForceUpdateController) GetForceUpdateByID(ctx *fiber.Ctx) error {
 func (c *ForceUpdateController) GetAllForceUpdates(ctx *fiber.Ctx) error {
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	limit, _ := strconv.Atoi(ctx.Query("limit", "10"))
+	platform := ctx.Query("platform", "")
 
 	if page < 1 {
 		page = 1
@@ -133,7 +140,7 @@ func (c *ForceUpdateController) GetAllForceUpdates(ctx *fiber.Ctx) error {
 		limit = 10
 	}
 
-	forceUpdates, total, err := c.service.GetAllForceUpdates(page, limit)
+	forceUpdates, total, err := c.service.GetAllForceUpdates(page, limit, platform)
 	if err != nil {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data force update", err.Error())
 	}
@@ -144,6 +151,7 @@ func (c *ForceUpdateController) GetAllForceUpdates(ctx *fiber.Ctx) error {
 			ID:         fu.ID.String(),
 			KodeVersi:  fu.KodeVersi,
 			UpdateType: string(fu.UpdateType),
+			Platform:   string(fu.Platform),
 			IsActive:   fu.IsActive,
 			CreatedAt:  fu.CreatedAt,
 		})

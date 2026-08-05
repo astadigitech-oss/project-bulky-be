@@ -7,6 +7,7 @@ import (
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -100,6 +101,43 @@ func (c *PesananAdminController) UpdateStatus(ctx *fiber.Ctx) error {
 	return utils.SuccessResponse(ctx, "Status pesanan berhasil diupdate", result)
 }
 
+// CancelOrder membatalkan pesanan dan me-restore is_sold produk (staging/debug only)
+func (c *PesananAdminController) CancelOrder(ctx *fiber.Ctx) error {
+	idParam := ctx.Params("id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
+	}
+
+	var req dto.CancelPesananRequest
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
+	}
+
+	adminIDStr := localsString(ctx, "admin_id")
+	adminID, err := uuid.Parse(adminIDStr)
+	if err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusUnauthorized, "Admin tidak valid", err.Error())
+	}
+
+	result, err := c.pesananService.CancelOrder(ctx.UserContext(), id, &req, adminID)
+	if err != nil {
+		switch err.Error() {
+		case "pesanan tidak ditemukan":
+			return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Pesanan tidak ditemukan", "")
+		case "pesanan dengan status COMPLETED tidak dapat dibatalkan":
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Pesanan sudah selesai dan tidak dapat dibatalkan", "")
+		case "pesanan sudah berstatus CANCELLED":
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Pesanan sudah berstatus CANCELLED", "")
+		default:
+			return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal membatalkan pesanan", err.Error())
+		}
+	}
+
+	c.activityLog.Log(ctx, models.ActionUpdate, "pesanan", "Pesanan dibatalkan dan produk di-restore")
+	return utils.SuccessResponse(ctx, "Pesanan berhasil dibatalkan dan produk tersedia kembali", result)
+}
+
 // Delete deletes a pesanan (soft delete)
 func (c *PesananAdminController) Delete(ctx *fiber.Ctx) error {
 	idParam := ctx.Params("id")
@@ -120,6 +158,132 @@ func (c *PesananAdminController) Delete(ctx *fiber.Ctx) error {
 
 	c.activityLog.Log(ctx, models.ActionDelete, "pesanan", "Pesanan berhasil dihapus")
 	return utils.SuccessResponse(ctx, "Pesanan berhasil dihapus", nil)
+}
+
+// RetryBooking retries failed shipping booking for a pesanan
+func (c *PesananAdminController) RetryBooking(ctx *fiber.Ctx) error {
+	idParam := ctx.Params("id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
+	}
+
+	result, err := c.pesananService.RetryBooking(ctx.UserContext(), id)
+	if err != nil {
+		msg := err.Error()
+		switch {
+		case strings.HasPrefix(msg, "retry:bad_request:"):
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest,
+				"Retry tidak diperlukan. Booking sudah berhasil atau pesanan bukan tipe delivery.", "")
+		case strings.HasPrefix(msg, "retry:already_booked:"):
+			bookingRef := strings.TrimPrefix(msg, "retry:already_booked:")
+			return ctx.Status(http.StatusOK).JSON(fiber.Map{
+				"success": false,
+				"message": "Booking sudah ada, tidak perlu retry",
+				"data":    fiber.Map{"booking_id": bookingRef},
+			})
+		case strings.HasPrefix(msg, "retry:city_not_mapped:"):
+			return ctx.Status(http.StatusUnprocessableEntity).JSON(fiber.Map{
+				"success": false,
+				"message": strings.TrimPrefix(msg, "retry:city_not_mapped:"),
+				"data":    fiber.Map{},
+			})
+		case strings.HasPrefix(msg, "retry:provider_error:"):
+			parts := strings.SplitN(strings.TrimPrefix(msg, "retry:provider_error:"), ":", 2)
+			provider := ""
+			errDetail := strings.TrimPrefix(msg, "retry:provider_error:")
+			if len(parts) == 2 {
+				provider = parts[0]
+				errDetail = parts[1]
+			}
+			return ctx.Status(http.StatusBadGateway).JSON(fiber.Map{
+				"success": false,
+				"message": "Gagal menghubungi layanan pengiriman. Silakan coba beberapa saat lagi.",
+				"data":    fiber.Map{"provider": provider, "error": errDetail},
+			})
+		case msg == "pesanan tidak ditemukan":
+			return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Pesanan tidak ditemukan", "")
+		default:
+			return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal melakukan retry booking", msg)
+		}
+	}
+
+	return utils.SuccessResponse(ctx, "Booking pengiriman berhasil dibuat", result)
+}
+
+// TrackDelivery retrieves live tracking info from shipping provider
+func (c *PesananAdminController) TrackDelivery(ctx *fiber.Ctx) error {
+	idParam := ctx.Params("id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
+	}
+
+	result, err := c.pesananService.TrackDelivery(ctx.UserContext(), id)
+	if err != nil {
+		msg := err.Error()
+		switch {
+		case msg == "pesanan tidak ditemukan":
+			return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Pesanan tidak ditemukan", "")
+		case len(msg) > 20 && msg[:20] == "tracking:not_applicable":
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, msg[23:], "")
+		case strings.Contains(msg, "belum memiliki"):
+			return utils.SimpleErrorResponse(ctx, http.StatusConflict, msg, "")
+		default:
+			return utils.SimpleErrorResponse(ctx, http.StatusBadGateway, "Gagal mengambil data tracking", msg)
+		}
+	}
+
+	return utils.SuccessResponse(ctx, "Data tracking berhasil diambil", result)
+}
+
+// GetDelivereeDetail retrieves full delivery detail from Deliveree API
+func (c *PesananAdminController) GetDelivereeDetail(ctx *fiber.Ctx) error {
+	idParam := ctx.Params("id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
+	}
+
+	result, err := c.pesananService.GetDelivereeDetail(ctx.UserContext(), id)
+	if err != nil {
+		msg := err.Error()
+		switch {
+		case msg == "pesanan tidak ditemukan":
+			return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Pesanan tidak ditemukan", "")
+		case strings.HasPrefix(msg, "deliveree:not_applicable:"):
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, msg[25:], "")
+		case strings.Contains(msg, "belum memiliki"):
+			return utils.SimpleErrorResponse(ctx, http.StatusConflict, msg, "")
+		default:
+			return utils.SimpleErrorResponse(ctx, http.StatusBadGateway, "Gagal mengambil detail Deliveree", msg)
+		}
+	}
+
+	return utils.SuccessResponse(ctx, "Detail Deliveree berhasil diambil", result)
+}
+
+func (c *PesananAdminController) GetForwarderInvoice(ctx *fiber.Ctx) error {
+	idParam := ctx.Params("id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "ID tidak valid", err.Error())
+	}
+
+	result, err := c.pesananService.GetForwarderInvoice(ctx.UserContext(), id)
+	if err != nil {
+		msg := err.Error()
+		switch {
+		case msg == "pesanan tidak ditemukan":
+			return utils.SimpleErrorResponse(ctx, http.StatusNotFound, "Pesanan tidak ditemukan", "")
+		case strings.HasPrefix(msg, "invoice:not_applicable:"):
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, msg[23:], "")
+		default:
+			return utils.SimpleErrorResponse(ctx, http.StatusBadGateway, "Gagal mengambil invoice Forwarder", msg)
+		}
+	}
+
+	return utils.SuccessResponse(ctx, "Invoice berhasil diambil", result)
 }
 
 // GetStatistics retrieves pesanan statistics

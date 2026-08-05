@@ -113,7 +113,7 @@ func (c *DasborController) GetTabelTransaksi(ctx *fiber.Ctx) error {
 	}
 	q.SetDefaults()
 
-	items, meta, err := c.svc.GetTabelTransaksi(ctx.UserContext(), q.Periode, q.Halaman, q.PerHalaman)
+	items, meta, err := c.svc.GetTabelTransaksi(ctx.UserContext(), q.Periode, q.Halaman, q.PerHalaman, parseStatusFilter(q.Status))
 	if err != nil {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data tabel transaksi", err.Error())
 	}
@@ -128,13 +128,13 @@ func (c *DasborController) GetTabelTransaksi(ctx *fiber.Ctx) error {
 
 // EksporTransaksi handles GET /api/panel/dasbor/ekspor-transaksi
 func (c *DasborController) EksporTransaksi(ctx *fiber.Ctx) error {
-	var q dto.DasborPeriodeQuery
+	var q dto.DasborTabelTransaksiQuery
 	if err := ctx.QueryParser(&q); err != nil {
 		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", err.Error())
 	}
-	q.SetDefault()
+	q.SetDefaults()
 
-	items, err := c.svc.GetAllTransaksiForExport(ctx.UserContext(), q.Periode)
+	items, err := c.svc.GetAllTransaksiForExport(ctx.UserContext(), q.Periode, parseStatusFilter(q.Status))
 	if err != nil {
 		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data ekspor transaksi", err.Error())
 	}
@@ -157,7 +157,7 @@ func (c *DasborController) EksporTransaksi(ctx *fiber.Ctx) error {
 
 	for i, item := range items {
 		row := i + 2
-		ppn := item.Total - item.Harga - item.OngkosKirim + item.Diskon
+		ppn := item.BiayaPPN
 		f.SetCellValue(sheet, cellName(1, row), i+1)
 		f.SetCellValue(sheet, cellName(2, row), item.Kode)
 		f.SetCellValue(sheet, cellName(3, row), item.NamaPembeli)
@@ -205,4 +205,22 @@ func (c *DasborController) GetUserTransaction(ctx *fiber.Ctx) error {
 func cellName(col, row int) string {
 	name, _ := excelize.CoordinatesToCellName(col, row)
 	return name
+}
+
+// parseStatusFilter mengubah query param status (CSV) menjadi slice order_status.
+// Nilai kosong dikembalikan sebagai nil → repository memakai default (exclude CANCELLED).
+func parseStatusFilter(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	result := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.ToUpper(strings.TrimSpace(p))
+		if p != "" {
+			result = append(result, p)
+		}
+	}
+	return result
 }

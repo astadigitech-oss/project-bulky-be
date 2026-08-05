@@ -441,6 +441,7 @@ type ProdukFilterRequest struct {
 	HargaMin       float64 `form:"harga_min"`
 	HargaMax       float64 `form:"harga_max"`
 	IsSold         *bool   `form:"is_sold"`
+	Status         string  `form:"status"` // all | available | sold out
 }
 
 // ========================================
@@ -508,6 +509,7 @@ type UpdateAdminRequest struct {
 	Nama     *string `json:"nama" binding:"omitempty,min=2,max=100"`
 	Email    *string `json:"email" binding:"omitempty,email,max=255"`
 	IsActive *bool   `json:"is_active"`
+	RoleID   *string `json:"role_id" binding:"omitempty,uuid"`
 }
 
 type UpdateProfileRequest struct {
@@ -612,6 +614,7 @@ type UpdateHeroSectionRequest struct {
 	Nama           *string `json:"nama" binding:"omitempty,min=1,max=100"`
 	GambarID       *string `json:"gambar_id" binding:"omitempty,max=500"`
 	GambarEN       *string `json:"gambar_en" binding:"omitempty,max=500"`
+	IsDefault      *bool   `json:"is_default"`
 	TanggalMulai   *string `json:"tanggal_mulai"`
 	TanggalSelesai *string `json:"tanggal_selesai"`
 }

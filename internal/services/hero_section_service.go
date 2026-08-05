@@ -202,16 +202,26 @@ func (s *heroSectionService) Update(ctx context.Context, id string, req *models.
 	if req.GambarEN != nil {
 		hero.GambarURLEN = req.GambarEN
 	}
-	// is_default is NOT updated here - only via toggle endpoint
-	if req.TanggalMulai != nil {
-		hero.TanggalMulai = tanggalMulai
+	if req.IsDefault != nil {
+		hero.IsDefault = *req.IsDefault
+		if hero.IsDefault {
+			// Menjadi permanent default: hapus tanggal banner ini
+			hero.TanggalMulai = nil
+			hero.TanggalSelesai = nil
+			// Unset permanent defaults lain (tidak menyentuh scheduled banners)
+			if err := s.repo.UnsetAllDefaultExcept(ctx, hero.ID.String()); err != nil {
+				return nil, err
+			}
+		}
 	}
-	if req.TanggalSelesai != nil {
-		hero.TanggalSelesai = tanggalSelesai
+	if !hero.IsDefault {
+		if req.TanggalMulai != nil {
+			hero.TanggalMulai = tanggalMulai
+		}
+		if req.TanggalSelesai != nil {
+			hero.TanggalSelesai = tanggalSelesai
+		}
 	}
-
-	// Note: Database trigger fn_hero_section_auto_sync_insert() only runs on INSERT.
-	// For UPDATE, is_default can ONLY be changed via ToggleDefault endpoint.
 
 	if err := s.repo.Update(ctx, hero); err != nil {
 		return nil, err
@@ -238,9 +248,16 @@ func (s *heroSectionService) ToggleStatus(ctx context.Context, id string) (*mode
 
 	hero.IsDefault = !hero.IsDefault
 
-	// Note: Database trigger fn_hero_section_auto_sync() will handle:
-	// - Clear tanggal_mulai & tanggal_selesai when is_default = true
-	// - Unset is_default from other records
+	if hero.IsDefault {
+		// Menjadi permanent default: hapus tanggal banner ini
+		hero.TanggalMulai = nil
+		hero.TanggalSelesai = nil
+
+		// Unset permanent defaults lain (tidak menyentuh scheduled banners)
+		if err := s.repo.UnsetAllDefaultExcept(ctx, hero.ID.String()); err != nil {
+			return nil, err
+		}
+	}
 
 	if err := s.repo.Update(ctx, hero); err != nil {
 		return nil, err
@@ -253,6 +270,9 @@ func (s *heroSectionService) ToggleStatus(ctx context.Context, id string) (*mode
 }
 
 func (s *heroSectionService) GetVisibleHero(ctx context.Context) (*models.HeroSectionPublicResponse, error) {
+	// Auto-expire banner scheduled yang tanggal_selesai-nya sudah lewat
+	_ = s.repo.ExpireOutdatedScheduled(ctx)
+
 	hero, err := s.repo.GetVisibleHero(ctx)
 	if err != nil {
 		return nil, nil // Return nil if no visible hero

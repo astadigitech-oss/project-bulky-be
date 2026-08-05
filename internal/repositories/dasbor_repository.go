@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"fmt"
+	"project-bulky-be/internal/constants"
 	"project-bulky-be/internal/dto"
 	"strings"
 
@@ -18,10 +19,10 @@ type DasborRepository interface {
 	GetKPIRevenue(periode string) (float64, error)
 	GetStokPerKategori() ([]dto.DasborKategoriStok, error)
 	GetPenjualanPerBuyer(periode string, limit int) ([]dto.DasborBuyerPenjualan, error)
-	GetTabelTransaksi(periode string, page, perPage int) ([]dto.DasborTabelRow, int64, error)
+	GetTabelTransaksi(periode string, page, perPage int, statusFilter []string) ([]dto.DasborTabelRow, int64, error)
 	GetTabelTransaksiItems(pesananIDs []string) ([]dto.DasborTabelItemRow, error)
 	GetTabelTransaksiPembayaran(pesananIDs []string) ([]dto.DasborTabelPembayaranRow, error)
-	GetAllTransaksi(periode string) ([]dto.DasborTabelRow, error)
+	GetAllTransaksi(periode string, statusFilter []string) ([]dto.DasborTabelRow, error)
 	GetUserTransaction(periode string) ([]dto.DasborUserTransaksiRaw, error)
 }
 
@@ -166,15 +167,17 @@ func (r *dasborRepository) GetKPIPaletboxAvailable() (int64, error) {
 	return total, err
 }
 
-// GetKPIPaletboxSold returns total qty sold in the given periode.
+// GetKPIPaletboxSold returns count of distinct palet products sold via PAID & non-cancelled orders in the given periode.
 func (r *dasborRepository) GetKPIPaletboxSold(periode string) (int64, error) {
-	periodeCond := buildPeriodeWhereClause("p.created_at", periode)
+	periodeCond := buildPeriodeWhereClause("p.paid_at", periode)
 	query := `
-		SELECT COALESCE(SUM(pi.qty), 0)
+		SELECT COUNT(DISTINCT pi.produk_id) AS paletbox_sold
 		FROM pesanan_item pi
 		JOIN pesanan p ON p.id = pi.pesanan_id
-		WHERE p.order_status = 'COMPLETED'
-		  AND p.deleted_at IS NULL`
+		WHERE p.payment_status = '` + constants.TransaksiPaidPaymentStatus + `'
+		  AND p.order_status != '` + constants.TransaksiExcludedOrderStatus + `'
+		  AND p.deleted_at IS NULL
+		  AND p.paid_at IS NOT NULL`
 	if periodeCond != "" {
 		query += " AND " + periodeCond
 	}
@@ -186,13 +189,14 @@ func (r *dasborRepository) GetKPIPaletboxSold(periode string) (int64, error) {
 	return total, nil
 }
 
-// GetKPIRevenue returns total revenue from PAID orders in the given periode.
+// GetKPIRevenue returns total revenue from PAID & non-cancelled orders in the given periode.
 func (r *dasborRepository) GetKPIRevenue(periode string) (float64, error) {
 	periodeCond := buildPeriodeWhereClause("p.paid_at", periode)
 	query := `
 		SELECT COALESCE(SUM(p.total), 0)
 		FROM pesanan p
-		WHERE p.payment_status = 'PAID'
+		WHERE p.payment_status = '` + constants.TransaksiPaidPaymentStatus + `'
+		  AND p.order_status != '` + constants.TransaksiExcludedOrderStatus + `'
 		  AND p.deleted_at IS NULL
 		  AND p.paid_at IS NOT NULL`
 	if periodeCond != "" {
@@ -225,7 +229,7 @@ func (r *dasborRepository) GetStokPerKategori() ([]dto.DasborKategoriStok, error
 	return rows, err
 }
 
-// GetPenjualanPerBuyer returns top N buyers by total revenue.
+// GetPenjualanPerBuyer returns top N buyers by total revenue from completed & paid orders.
 func (r *dasborRepository) GetPenjualanPerBuyer(periode string, limit int) ([]dto.DasborBuyerPenjualan, error) {
 	periodeCond := buildPeriodeWhereClause("p.paid_at", periode)
 	query := `
@@ -235,7 +239,8 @@ func (r *dasborRepository) GetPenjualanPerBuyer(periode string, limit int) ([]dt
 			SUM(p.total) AS total_pembelian
 		FROM pesanan p
 		JOIN buyer b ON b.id = p.buyer_id
-		WHERE p.payment_status = 'PAID'
+		WHERE p.payment_status = '` + constants.TransaksiPaidPaymentStatus + `'
+		  AND p.order_status = '` + constants.TransaksiCompletedOrderStatus + `'
 		  AND p.deleted_at IS NULL
 		  AND p.paid_at IS NOT NULL
 		  AND b.deleted_at IS NULL`
@@ -252,11 +257,23 @@ func (r *dasborRepository) GetPenjualanPerBuyer(periode string, limit int) ([]dt
 }
 
 // GetTabelTransaksi returns paginated transaction rows.
-func (r *dasborRepository) GetTabelTransaksi(periode string, page, perPage int) ([]dto.DasborTabelRow, int64, error) {
+func (r *dasborRepository) GetTabelTransaksi(periode string, page, perPage int, statusFilter []string) ([]dto.DasborTabelRow, int64, error) {
 	periodeCond := buildPeriodeWhereClause("p.created_at", periode)
 	whereClause := "p.deleted_at IS NULL"
 	if periodeCond != "" {
 		whereClause += " AND " + periodeCond
+	}
+
+	// Default: hanya tampilkan transaksi yang tidak dibatalkan.
+	if len(statusFilter) == 0 {
+		statusFilter = []string{constants.TransaksiExcludedOrderStatus}
+		whereClause += " AND p.order_status != '" + constants.TransaksiExcludedOrderStatus + "'"
+	} else {
+		quoted := make([]string, len(statusFilter))
+		for i, s := range statusFilter {
+			quoted[i] = "'" + s + "'"
+		}
+		whereClause += " AND p.order_status IN (" + strings.Join(quoted, ",") + ")"
 	}
 
 	var total int64
@@ -359,11 +376,22 @@ func (r *dasborRepository) GetTabelTransaksiPembayaran(pesananIDs []string) ([]d
 }
 
 // GetAllTransaksi returns all transactions for export (no pagination).
-func (r *dasborRepository) GetAllTransaksi(periode string) ([]dto.DasborTabelRow, error) {
+func (r *dasborRepository) GetAllTransaksi(periode string, statusFilter []string) ([]dto.DasborTabelRow, error) {
 	periodeCond := buildPeriodeWhereClause("p.created_at", periode)
 	whereClause := "p.deleted_at IS NULL"
 	if periodeCond != "" {
 		whereClause += " AND " + periodeCond
+	}
+
+	// Default: hanya ekspor transaksi yang tidak dibatalkan.
+	if len(statusFilter) == 0 {
+		whereClause += " AND p.order_status != '" + constants.TransaksiExcludedOrderStatus + "'"
+	} else {
+		quoted := make([]string, len(statusFilter))
+		for i, s := range statusFilter {
+			quoted[i] = "'" + s + "'"
+		}
+		whereClause += " AND p.order_status IN (" + strings.Join(quoted, ",") + ")"
 	}
 
 	dataQuery := fmt.Sprintf(`
@@ -392,10 +420,12 @@ func (r *dasborRepository) GetAllTransaksi(periode string) ([]dto.DasborTabelRow
 	return rows, nil
 }
 
-// GetUserTransaction returns buyer ranking by total transactions.
+// GetUserTransaction returns buyer ranking by completed & paid transactions.
 func (r *dasborRepository) GetUserTransaction(periode string) ([]dto.DasborUserTransaksiRaw, error) {
 	periodeCond := buildPeriodeWhereClause("p.created_at", periode)
-	joinCond := "p.deleted_at IS NULL AND p.order_status != 'CANCELLED'"
+	joinCond := "p.deleted_at IS NULL" +
+		" AND p.order_status = '" + constants.TransaksiCompletedOrderStatus + "'" +
+		" AND p.payment_status = '" + constants.TransaksiPaidPaymentStatus + "'"
 	if periodeCond != "" {
 		joinCond += " AND " + periodeCond
 	}
