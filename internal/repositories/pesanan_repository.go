@@ -125,6 +125,7 @@ func (r *pesananRepository) AdminFindByID(id uuid.UUID) (*models.Pesanan, error)
 		Preload("Items.Produk.Gambar", "is_primary = true").
 		Preload("Pembayaran").
 		Preload("Pembayaran.MetodePembayaran").
+		Preload("Pembayaran.Buyer").
 		First(&pesanan, "id = ?", id).Error
 
 	if err != nil {
