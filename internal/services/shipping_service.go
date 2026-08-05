@@ -16,6 +16,7 @@ import (
 	"project-bulky-be/internal/models"
 	"project-bulky-be/pkg/utils"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -108,6 +109,11 @@ type ShippingService interface {
 	TriggerBookingAsync(pesanan *models.Pesanan)
 	// BookDelivery runs the booking synchronously and returns the result.
 	BookDelivery(ctx context.Context, pesanan *models.Pesanan) (delivereeBookingID *string, forwarderTrackingNo *string, err error)
+	// ClaimBooking atomically reserves the pesanan for booking.
+	// Returns true only if the caller won the right to book (no existing booking
+	// and no other process currently claiming). Prevents double booking when
+	// TriggerBookingAsync and RetryBooking run concurrently.
+	ClaimBooking(pesananID uuid.UUID) (bool, error)
 	// TrackDelivery retrieves live tracking info from the shipping provider.
 	TrackDelivery(ctx context.Context, pesanan *models.Pesanan) (*TrackingResult, error)
 	// GetDelivereeDetail retrieves full delivery detail from Deliveree API.
@@ -283,11 +289,37 @@ func isInDelivereeProvince(provinsi string) bool {
 	return delivereeProvinsi[strings.ToLower(strings.TrimSpace(provinsi))]
 }
 
+// bookingStatusInProgress dipakai sebagai flag claim sementara saat proses booking
+// berjalan. Kolom booking_status di tabel pesanan (migration 000169) hanya dipakai
+// webhook Deliveree untuk menyimpan status provider; untuk pesanan FORWARDER kolom
+// ini tidak dipakai webhook sehingga aman dijadikan lock anti double-booking.
+const bookingStatusInProgress = "IN_PROGRESS"
+
+// ClaimBooking secara atomik mengunci pesanan untuk proses booking.
+// Hanya satu pemanggil (goroutine trigger atau request retry) yang berhasil;
+// pemanggil lain mendapat false dan harus berhenti tanpa memanggil API provider.
+func (s *shippingService) ClaimBooking(pesananID uuid.UUID) (bool, error) {
+	res := s.db.Model(&models.Pesanan{}).
+		Where("id = ? AND deliveree_booking_id IS NULL AND forwarder_tracking_no IS NULL AND (booking_status IS NULL OR booking_status <> ?)",
+			pesananID, bookingStatusInProgress).
+		Update("booking_status", bookingStatusInProgress)
+	if res.Error != nil {
+		return false, res.Error
+	}
+	return res.RowsAffected > 0, nil
+}
+
 func (s *shippingService) TriggerBookingAsync(pesanan *models.Pesanan) {
 	go func(p *models.Pesanan) {
-		// Skip jika booking sudah ada — cegah double-booking jika status READY dipanggil ulang
-		if p.DelivereeBookingID != nil || p.ForwarderTrackingNo != nil {
-			log.Printf("[shipping] skip booking async: pesanan=%s sudah punya booking_id/tracking_no", p.Kode)
+		// Claim atomik: cegah double-booking jika trigger dipanggil ulang atau
+		// bertabrakan dengan RetryBooking. Hanya satu goroutine yang menang.
+		claimed, err := s.ClaimBooking(p.ID)
+		if err != nil {
+			log.Printf("[shipping] booking claim error: pesanan=%s err=%v", p.Kode, err)
+			return
+		}
+		if !claimed {
+			log.Printf("[shipping] skip booking async: pesanan=%s sudah di-booking/sedang diproses proses lain", p.Kode)
 			return
 		}
 
@@ -311,6 +343,8 @@ func (s *shippingService) TriggerBookingAsync(pesanan *models.Pesanan) {
 				updates["forwarder_tracking_no"] = *trackingNo
 			}
 		}
+		// Release claim — reset booking_status agar retry/trigger ulang bisa jalan.
+		updates["booking_status"] = nil
 		s.db.Model(&models.Pesanan{}).Where("id = ?", p.ID).UpdateColumns(updates)
 	}(pesanan)
 }
