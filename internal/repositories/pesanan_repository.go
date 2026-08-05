@@ -259,7 +259,7 @@ func (r *pesananRepository) ClearBookingResult(id uuid.UUID) error {
 		"deliveree_booking_id":  nil,
 		"forwarder_tracking_no": nil,
 		"booking_error":         nil,
-		"booking_status":        nil,
+		"booking_lock_at":       nil,
 	}).Error
 }
 
@@ -334,8 +334,8 @@ func ptrString(s string) *string {
 
 func (r *pesananRepository) UpdateBookingResult(id uuid.UUID, delivereeBookingID *string, forwarderTrackingNo *string, bookingError *string) error {
 	updates := map[string]interface{}{
-		"booking_error":  bookingError,
-		"booking_status": nil, // release claim setelah booking selesai (sukses/gagal)
+		"booking_error":   bookingError,
+		"booking_lock_at": nil, // release claim setelah booking selesai (sukses/gagal)
 	}
 	if delivereeBookingID != nil {
 		updates["deliveree_booking_id"] = *delivereeBookingID

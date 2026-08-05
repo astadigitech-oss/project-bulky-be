@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"log"
 
@@ -289,20 +290,19 @@ func isInDelivereeProvince(provinsi string) bool {
 	return delivereeProvinsi[strings.ToLower(strings.TrimSpace(provinsi))]
 }
 
-// bookingStatusInProgress dipakai sebagai flag claim sementara saat proses booking
-// berjalan. Kolom booking_status di tabel pesanan (migration 000169) hanya dipakai
-// webhook Deliveree untuk menyimpan status provider; untuk pesanan FORWARDER kolom
-// ini tidak dipakai webhook sehingga aman dijadikan lock anti double-booking.
-const bookingStatusInProgress = "IN_PROGRESS"
-
 // ClaimBooking secara atomik mengunci pesanan untuk proses booking.
+// Lock memakai kolom khusus booking_lock_at (migration 000170) yang TIDAK pernah
+// disentuh webhook provider — kolom booking_status murni milik webhook Deliveree
+// (locating_driver, delivery_in_progress, dsb.) sehingga tidak akan tertimpa
+// maupun salah dibaca sebagai lock.
 // Hanya satu pemanggil (goroutine trigger atau request retry) yang berhasil;
 // pemanggil lain mendapat false dan harus berhenti tanpa memanggil API provider.
 func (s *shippingService) ClaimBooking(pesananID uuid.UUID) (bool, error) {
+	now := time.Now().UTC()
 	res := s.db.Model(&models.Pesanan{}).
-		Where("id = ? AND deliveree_booking_id IS NULL AND forwarder_tracking_no IS NULL AND (booking_status IS NULL OR booking_status <> ?)",
-			pesananID, bookingStatusInProgress).
-		Update("booking_status", bookingStatusInProgress)
+		Where("id = ? AND deliveree_booking_id IS NULL AND forwarder_tracking_no IS NULL AND booking_lock_at IS NULL",
+			pesananID).
+		Update("booking_lock_at", now)
 	if res.Error != nil {
 		return false, res.Error
 	}
@@ -343,8 +343,9 @@ func (s *shippingService) TriggerBookingAsync(pesanan *models.Pesanan) {
 				updates["forwarder_tracking_no"] = *trackingNo
 			}
 		}
-		// Release claim — reset booking_status agar retry/trigger ulang bisa jalan.
-		updates["booking_status"] = nil
+		// Release claim — reset booking_lock_at agar retry/trigger ulang bisa jalan.
+		// booking_status TIDAK disentuh di sini: kolom itu milik webhook provider.
+		updates["booking_lock_at"] = nil
 		s.db.Model(&models.Pesanan{}).Where("id = ?", p.ID).UpdateColumns(updates)
 	}(pesanan)
 }

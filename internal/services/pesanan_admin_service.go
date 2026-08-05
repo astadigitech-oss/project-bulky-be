@@ -201,7 +201,7 @@ func (s *pesananAdminService) RetryBooking(ctx context.Context, id uuid.UUID) (*
 	}
 
 	// Deliveree: allow retry even if booking_id exists (e.g. cancelled by provider)
-	// Clear old booking data so booking_status resets to PENDING during retry
+	// Clear old booking data so booking can be re-created during retry
 	if pesanan.DeliveryType == models.DeliveryTypeDeliveree && pesanan.DelivereeBookingID != nil {
 		if err := s.pesananRepo.ClearBookingResult(id); err != nil {
 			return nil, err

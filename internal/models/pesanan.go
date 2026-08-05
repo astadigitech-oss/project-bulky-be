@@ -70,6 +70,7 @@ type Pesanan struct {
 	ForwarderTrackingNo *string         `gorm:"type:varchar(100)" json:"forwarder_tracking_no"`
 	BookingError        *string         `gorm:"type:text" json:"booking_error"`
 	BookingStatus       *string         `gorm:"type:varchar(50)" json:"booking_status"`
+	BookingLockAt       *time.Time      `gorm:"type:timestamptz" json:"booking_lock_at,omitempty"`
 	TrackingURL         *string         `gorm:"type:text" json:"tracking_url"`
 	CreatedAt           time.Time       `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
 	UpdatedAt           time.Time       `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
