@@ -68,9 +68,9 @@ func (s *delivereeWebhookService) Handle(ctx context.Context, req *dto.Deliveree
 	}
 
 	// Cari pesanan berdasarkan deliveree_booking_id
-	bookingID := req.ID
+	bookingID := string(req.ID)
 	if bookingID == "" {
-		bookingID = req.NoBooking
+		bookingID = string(req.NoBooking)
 	}
 	if bookingID == "" {
 		return false, errors.New("id/no_booking wajib diisi")

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"log"
 	"net/http"
 
 	"project-bulky-be/internal/dto"
@@ -55,6 +56,7 @@ func (c *DelivereeWebhookController) Handle(ctx *fiber.Ctx) error {
 
 	var req dto.DelivereeWebhookRequest
 	if err := BindJSON(ctx, &req); err != nil {
+		log.Printf("[deliveree-webhook] parse body gagal: err=%v raw=%s", err, string(ctx.Body()))
 		return utils.ErrorResponse(ctx, http.StatusUnprocessableEntity, "Validasi gagal", parseValidationErrors(err))
 	}
 
