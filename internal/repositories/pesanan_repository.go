@@ -20,6 +20,10 @@ type PesananRepository interface {
 	UpdateStatus(id uuid.UUID, orderStatus models.OrderStatus, note *string, adminID uuid.UUID) error
 	UpdateBookingResult(id uuid.UUID, delivereeBookingID *string, forwarderTrackingNo *string, bookingError *string) error
 	ClearBookingResult(id uuid.UUID) error
+	// UpdateFromWebhook memperbarui status pesanan dari event webhook provider
+	// (Deliveree/Forwarder). Tidak memvalidasi transisi status karena event
+	// webhook bisa datang kapan saja dan berulang (idempotent).
+	UpdateFromWebhook(id uuid.UUID, orderStatus models.OrderStatus, extraUpdates map[string]interface{}) error
 	Delete(id uuid.UUID) error
 	GetStatistics(tanggalDari, tanggalSampai *time.Time) (map[string]interface{}, error)
 	GetChartData(dari, sampai *time.Time, groupBy string) ([]models.ChartRawPoint, error)
@@ -256,6 +260,75 @@ func (r *pesananRepository) ClearBookingResult(id uuid.UUID) error {
 		"forwarder_tracking_no": nil,
 		"booking_error":         nil,
 	}).Error
+}
+
+// UpdateFromWebhook memperbarui status pesanan dari event webhook provider.
+//
+// Berbeda dari UpdateStatus (yang memvalidasi transisi status dan butuh adminID),
+// method ini langsung mengubah status ke nilai yang diberikan oleh provider karena:
+// 1. Event webhook bisa datang di luar urutan transisi normal (mis. timeout → in_progress).
+// 2. Deliveree bisa mengirim ulang event yang sama (retry) — method ini idempotent.
+//
+// extraUpdates dipakai untuk kolom pendukung seperti booking_status/tracking_url
+// yang dikirim provider bersama event.
+func (r *pesananRepository) UpdateFromWebhook(id uuid.UUID, orderStatus models.OrderStatus, extraUpdates map[string]interface{}) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		var pesanan models.Pesanan
+		if err := tx.First(&pesanan, "id = ?", id).Error; err != nil {
+			return err
+		}
+
+		// Idempotent: jika status sudah sama, hanya update kolom pendukung.
+		if pesanan.OrderStatus == orderStatus {
+			if len(extraUpdates) > 0 {
+				return tx.Model(&models.Pesanan{}).Where("id = ?", id).UpdateColumns(extraUpdates).Error
+			}
+			return nil
+		}
+
+		updates := map[string]interface{}{
+			"order_status": orderStatus,
+		}
+		for k, v := range extraUpdates {
+			updates[k] = v
+		}
+
+		// Set timestamp berdasarkan status
+		now := time.Now()
+		switch orderStatus {
+		case models.OrderStatusProcessing:
+			updates["processed_at"] = now
+		case models.OrderStatusShipped:
+			updates["shipped_at"] = now
+		case models.OrderStatusCompleted:
+			updates["completed_at"] = now
+		case models.OrderStatusCancelled:
+			updates["cancelled_at"] = now
+		}
+
+		statusFrom := string(pesanan.OrderStatus)
+		if err := tx.Model(&pesanan).Where("id = ?", id).Updates(updates).Error; err != nil {
+			return err
+		}
+
+		// Catat riwayat status — ChangedBy nil karena bukan aksi admin
+		history := models.PesananStatusHistory{
+			PesananID:  id,
+			StatusFrom: &statusFrom,
+			StatusTo:   string(orderStatus),
+			StatusType: models.StatusHistoryTypeOrder,
+			Note:       ptrString("Update otomatis dari webhook provider"),
+		}
+		if err := tx.Create(&history).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+func ptrString(s string) *string {
+	return &s
 }
 
 func (r *pesananRepository) UpdateBookingResult(id uuid.UUID, delivereeBookingID *string, forwarderTrackingNo *string, bookingError *string) error {
