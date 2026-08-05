@@ -1,8 +1,10 @@
-# migrate-v1 — Migrasi Data Bulky v1 → v2 (Produk & Buyer)
+# migrate-v1 — Migrasi Data Bulky v1 → v2 (Master, Transaksi & Buyer)
 
-Tool sekali-jalan (idempotent, aman diulang) untuk memindahkan data master **produk** dan **buyer** dari database Bulky v1 (Laravel/MySQL) ke database v2 (Postgres). Migrasi ini **hanya additive** — re-run menambah data yang belum ada, tidak menimpa yang sudah ada (lihat Catatan penting). Setelah migrasi, ada satu langkah pembersihan terpisah (cleanup produk LQD, lihat "Langkah 4").
+Tool sekali-jalan (idempotent, aman diulang) untuk memindahkan data dari database Bulky v1 (Laravel/MySQL) ke database v2 (Postgres): master produk & referensi, buyer & admin, alamat, lalu **transaksi** (pesanan, pembayaran, kupon, ulasan, consent, keranjang). Migrasi ini **hanya additive** — re-run menambah data yang belum ada, tidak menimpa yang sudah ada (lihat Catatan penting). Setelah migrasi, ada satu langkah pembersihan terpisah (cleanup produk LQD, lihat "Langkah 4").
 
-Acuan lengkap mapping & keputusan: [docs/old DB/migrasi-data-v1-produk-buyer.md](../../docs/old%20DB/migrasi-data-v1-produk-buyer.md).
+Acuan lengkap mapping & keputusan:
+- Tahap 1 (master produk & buyer): [docs/old DB/migrasi-data-v1-produk-buyer.md](../../docs/old%20DB/migrasi-data-v1-produk-buyer.md) — keputusan #1–#12
+- Tahap 2 (transaksi): [docs/old DB/migrasi-data-v1-transaksi.md](../../docs/old%20DB/migrasi-data-v1-transaksi.md) — keputusan #13–#24
 
 ## Prasyarat
 
@@ -31,9 +33,9 @@ go run ./cmd/migrate-v1 -execute
 # opsi: -report <path>  (default migrate-v1-report.json)
 ```
 
-Urutan fase: (1) master referensi → (2) produk + gambar + dokumen + pivot merek → (3) buyer + admin → (4) alamat buyer → (6) validasi. Tiap fase satu transaksi; gagal di tengah = rollback fase itu.
+Urutan fase (lihat `main.go`): (1) master referensi → (2) produk + gambar + dokumen + pivot merek → (3) buyer + admin → (4) alamat buyer → (5) master transaksi (disclaimer, metode bayar, settings) → (6) pesanan + item → (7) pembayaran (invoices) → (8) kupon, ulasan, consent → (9) keranjang → validasi. Tiap fase satu transaksi; gagal di tengah = rollback fase itu.
 
-**Fase 5 (file fisik)** tidak ditangani tool ini: file gambar/PDF/foto profil menyusul dari file export server prod v1 (jendela maintenance). Zip folder `storage` Laravel v1, lalu upload lewat endpoint admin:
+**File fisik (gambar/PDF/foto profil)** tidak ditangani tool ini: file menyusul dari file export server prod v1 (jendela maintenance). Zip folder `storage` Laravel v1, lalu upload lewat endpoint admin:
 
 ```
 POST /api/panel/assets/import-v1   (Super Admin, multipart field "file")
@@ -179,12 +181,6 @@ guard) dan menampilkan laporan sebelum/sesudah di dalam transaksi.
 - `LoadTargetState` membaca `produk` tanpa filter `deleted_at`, jadi produk yang
   sudah di-soft-delete tetap "dikenal" dan tidak dimigrasi ulang (aman terhadap
   cleanup LQD).
-- **Dump per 2026-07-19 hanya untuk latihan/dry-run.** Eksekusi final harus memakai dump segar yang diambil pada jendela maintenance yang sama dengan file storage (lihat dokumen §5.3).
-- UUID v1 dipertahankan; baris yang sudah ada di target di-skip, sehingga tool aman dijalankan berulang.
-- Admin hasil migrasi (`users.is_admin=1` + tabel `admins` v1) diberi role `ADMIN`; yang tanpa password ditandai di report dan perlu reset password manual.
-
-## Catatan penting
-
 - **Dump per 2026-07-19 hanya untuk latihan/dry-run.** Eksekusi final harus memakai dump segar yang diambil pada jendela maintenance yang sama dengan file storage (lihat dokumen §5.3).
 - UUID v1 dipertahankan; baris yang sudah ada di target di-skip, sehingga tool aman dijalankan berulang.
 - Admin hasil migrasi (`users.is_admin=1` + tabel `admins` v1) diberi role `ADMIN`; yang tanpa password ditandai di report dan perlu reset password manual.
