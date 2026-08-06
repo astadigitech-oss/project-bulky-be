@@ -1,5 +1,4 @@
 package dto
-package dto
 
 import (
 	"encoding/json"

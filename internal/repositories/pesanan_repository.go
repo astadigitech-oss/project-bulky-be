@@ -144,7 +144,7 @@ func (r *pesananRepository) UpdateStatus(id uuid.UUID, orderStatus models.OrderS
 		}
 
 		// Validate status transition
-		if !isValidStatusTransition(pesanan.OrderStatus, orderStatus) {
+		if !isValidStatusTransition(pesanan.DeliveryType, pesanan.OrderStatus, orderStatus) {
 			return fmt.Errorf("tidak dapat mengubah status dari %s ke %s", pesanan.OrderStatus, orderStatus)
 		}
 
@@ -282,6 +282,19 @@ func (r *pesananRepository) UpdateFromWebhook(id uuid.UUID, orderStatus models.O
 
 		// Idempotent: jika status sudah sama, hanya update kolom pendukung.
 		if pesanan.OrderStatus == orderStatus {
+			if len(extraUpdates) > 0 {
+				return tx.Model(&models.Pesanan{}).Where("id = ?", id).UpdateColumns(extraUpdates).Error
+			}
+			return nil
+		}
+
+		// Anti-regresi: event provider bisa datang terlambat / di luar urutan.
+		// Status terminal (COMPLETED) dan status yang sudah melewati tahap
+		// pengiriman (SHIPPED) tidak boleh diturunkan oleh webhook.
+		// Webhook tetap meng-update kolom pendukung (booking_status, tracking_url)
+		// tapi order_status dibiarkan apa adanya.
+		if pesanan.OrderStatus == models.OrderStatusCompleted ||
+			pesanan.OrderStatus == models.OrderStatusShipped {
 			if len(extraUpdates) > 0 {
 				return tx.Model(&models.Pesanan{}).Where("id = ?", id).UpdateColumns(extraUpdates).Error
 			}
@@ -470,8 +483,11 @@ func (r *pesananRepository) GetChartData(dari, sampai *time.Time, groupBy string
 	return results, nil
 }
 
-// Helper function to validate status transitions
-func isValidStatusTransition(from, to models.OrderStatus) bool {
+// Helper function to validate status transitions.
+// READY → COMPLETED hanya diizinkan untuk tipe PICKUP (barang diambil sendiri
+// buyer, tanpa tahap SHIPPED). Untuk tipe kirim (DELIVEREE/FORWARDER/…),
+// READY harus lanjut ke SHIPPED dulu sebelum COMPLETED.
+func isValidStatusTransition(deliveryType models.DeliveryType, from, to models.OrderStatus) bool {
 	validTransitions := map[models.OrderStatus][]models.OrderStatus{
 		models.OrderStatusPending: {
 			models.OrderStatusProcessing,
@@ -483,7 +499,6 @@ func isValidStatusTransition(from, to models.OrderStatus) bool {
 		},
 		models.OrderStatusReady: {
 			models.OrderStatusShipped,
-			models.OrderStatusCompleted, // PICKUP: langsung READY → COMPLETED tanpa SHIPPED
 			models.OrderStatusCancelled,
 		},
 		models.OrderStatusShipped: {
@@ -492,6 +507,14 @@ func isValidStatusTransition(from, to models.OrderStatus) bool {
 		},
 		models.OrderStatusCompleted: {},
 		models.OrderStatusCancelled: {},
+	}
+
+	// PICKUP: langsung READY → COMPLETED tanpa SHIPPED (buyer ambil sendiri)
+	if deliveryType == models.DeliveryTypePickup {
+		validTransitions[models.OrderStatusReady] = append(
+			validTransitions[models.OrderStatusReady],
+			models.OrderStatusCompleted,
+		)
 	}
 
 	allowedTransitions, ok := validTransitions[from]

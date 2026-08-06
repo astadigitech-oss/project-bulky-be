@@ -9,31 +9,31 @@ import (
 	"gorm.io/gorm"
 )
 
-// DelivereeWebhookService menangani event webhook dari Deliveree dan
+// ForwarderWebhookService menangani event webhook dari Forwarder dan
 // memperbarui status pesanan yang bersangkutan.
 //
 // Logika pemrosesan dipusatkan di ProviderWebhookHandler (lihat
 // webhook_provider_service.go) karena Deliveree & Forwarder berbagi platform
 // on-demand yang sama — format status identik, hanya endpoint dan kolom
 // identifikasi pesanan yang berbeda.
-type DelivereeWebhookService interface {
+type ForwarderWebhookService interface {
 	// Handle memproses payload webhook dan mengembalikan true jika ada pesanan
 	// yang cocok & diperbarui.
-	Handle(ctx context.Context, req *dto.DelivereeWebhookRequest) (bool, error)
+	Handle(ctx context.Context, req *dto.ForwarderWebhookRequest) (bool, error)
 }
 
-type delivereeWebhookService struct {
+type forwarderWebhookService struct {
 	handler *ProviderWebhookHandler
 }
 
-func NewDelivereeWebhookService(pesananRepo repositories.PesananRepository, db *gorm.DB) DelivereeWebhookService {
-	return &delivereeWebhookService{
-		handler: NewProviderWebhookHandler(pesananRepo, db, delivereeWebhookConfig()),
+func NewForwarderWebhookService(pesananRepo repositories.PesananRepository, db *gorm.DB) ForwarderWebhookService {
+	return &forwarderWebhookService{
+		handler: NewProviderWebhookHandler(pesananRepo, db, forwarderWebhookConfig()),
 	}
 }
 
-func (s *delivereeWebhookService) Handle(ctx context.Context, req *dto.DelivereeWebhookRequest) (bool, error) {
-	// Cari pesanan berdasarkan deliveree_booking_id
+func (s *forwarderWebhookService) Handle(ctx context.Context, req *dto.ForwarderWebhookRequest) (bool, error) {
+	// Cari pesanan berdasarkan forwarder_tracking_no
 	identifier := string(req.ID)
 	if identifier == "" {
 		identifier = string(req.NoBooking)

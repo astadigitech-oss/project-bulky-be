@@ -21,6 +21,7 @@ type Config struct {
 	BaseURL                       string
 	InternalAPIKey                string
 	DelivereeWebhookAuthorization string
+	ForwarderWebhookAuthorization string
 }
 
 func LoadConfig() *Config {
@@ -45,6 +46,7 @@ func LoadConfig() *Config {
 		BaseURL:                       getEnv("BASE_URL", "http://localhost:8080"),
 		InternalAPIKey:                getEnv("INTERNAL_API_KEY", ""),
 		DelivereeWebhookAuthorization: getEnv("DELIVEREE_WEBHOOK_AUTHORIZATION", ""),
+		ForwarderWebhookAuthorization: getEnv("FORWARDER_WEBHOOK_AUTHORIZATION", ""),
 	}
 }
 
