@@ -385,7 +385,7 @@ func (s *warehouseService) UpdateJadwal(ctx context.Context, req *dto.UpdateJadw
 
 // Helper functions
 func (s *warehouseService) isOpenNow(jadwal []models.JadwalGudang) bool {
-	now := time.Now()
+	now := waktuWIB()
 	currentDay := int(now.Weekday())
 	currentTime := now.Format("15:04")
 
@@ -402,7 +402,7 @@ func (s *warehouseService) isOpenNow(jadwal []models.JadwalGudang) bool {
 }
 
 func (s *warehouseService) getStatusText(jadwal []models.JadwalGudang) string {
-	now := time.Now()
+	now := waktuWIB()
 	currentDay := int(now.Weekday())
 	currentTime := now.Format("15:04")
 
@@ -426,7 +426,7 @@ func (s *warehouseService) getStatusText(jadwal []models.JadwalGudang) string {
 }
 
 func (s *warehouseService) getJadwalHariIni(jadwal []models.JadwalGudang) *dto.JadwalGudangResponse {
-	now := time.Now()
+	now := waktuWIB()
 	currentDay := int(now.Weekday())
 
 	for _, j := range jadwal {
@@ -441,4 +441,16 @@ func (s *warehouseService) getJadwalHariIni(jadwal []models.JadwalGudang) *dto.J
 		}
 	}
 	return nil
+}
+
+// waktuWIB mengembalikan waktu saat ini dalam zona Asia/Jakarta.
+// Jam operasional gudang disimpan dalam jam WIB, jadi perbandingan hari/jam
+// harus eksplisit memakai zona WIB — bukan TZ process (yang kini TZ=UTC di
+// container agar timestamp DB konsisten UTC).
+func waktuWIB() time.Time {
+	loc, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		return time.Now()
+	}
+	return time.Now().In(loc)
 }
