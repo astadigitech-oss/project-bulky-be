@@ -52,6 +52,8 @@ func SetupRoutes(
 	kuponController *controllers.KuponController,
 	internalUploadController *controllers.InternalUploadController,
 	assetMigrationController *controllers.AssetMigrationController,
+	delivereeWebhookController *controllers.DelivereeWebhookController,
+	forwarderWebhookController *controllers.ForwarderWebhookController,
 ) {
 	// Health check
 	router.Get("/api/health", func(c *fiber.Ctx) error {
@@ -697,6 +699,16 @@ func SetupRoutes(
 	)
 	internalUpload.Post("/ulasan", internalUploadController.UploadUlasanGambar)
 	internalUpload.Post("/buyer-foto", internalUploadController.UploadBuyerFoto)
+
+	// Webhook Deliveree — dipanggil provider (inbound), verifikasi via
+	// Authorization header vs DELIVEREE_WEBHOOK_AUTHORIZATION di controller.
+	webhook := v1.Group("/webhook")
+	webhook.Post("/deliveree", delivereeWebhookController.Handle)
+
+	// Webhook Forwarder — dipanggil provider (inbound), verifikasi via
+	// Authorization header vs FORWARDER_WEBHOOK_AUTHORIZATION di controller.
+	// Format payload sama dengan Deliveree (platform on-demand yang sama).
+	webhook.Post("/forwarder", forwarderWebhookController.Handle)
 
 	// Routes list endpoint
 	router.Get("/api/routes", func(c *fiber.Ctx) error {

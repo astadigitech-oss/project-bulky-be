@@ -7,19 +7,21 @@ import (
 )
 
 type Config struct {
-	AppEnv            string
-	AppPort           string
-	DBHost            string
-	DBPort            string
-	DBUser            string
-	DBPassword        string
-	DBName            string
-	JWTSecret         string
-	JWTAccessDuration time.Duration
-	BcryptCost        int
-	UploadPath        string
-	BaseURL           string
-	InternalAPIKey    string
+	AppEnv                        string
+	AppPort                       string
+	DBHost                        string
+	DBPort                        string
+	DBUser                        string
+	DBPassword                    string
+	DBName                        string
+	JWTSecret                     string
+	JWTAccessDuration             time.Duration
+	BcryptCost                    int
+	UploadPath                    string
+	BaseURL                       string
+	InternalAPIKey                string
+	DelivereeWebhookAuthorization string
+	ForwarderWebhookAuthorization string
 }
 
 func LoadConfig() *Config {
@@ -30,19 +32,21 @@ func LoadConfig() *Config {
 	bcryptCost := getBcryptCost(getEnv("APP_ENV", "development"))
 
 	return &Config{
-		AppEnv:            getEnv("APP_ENV", "development"),
-		AppPort:           getEnv("APP_PORT", "8080"),
-		DBHost:            getEnv("DB_HOST", "localhost"),
-		DBPort:            getEnv("DB_PORT", "5432"),
-		DBUser:            getEnv("DB_USER", "postgres"),
-		DBPassword:        getEnv("DB_PASSWORD", ""),
-		DBName:            getEnv("DB_NAME", "bulky_db"),
-		JWTSecret:         getEnv("JWT_SECRET", "your-secret-key-minimum-32-characters-long"),
-		JWTAccessDuration: accessDuration,
-		BcryptCost:        bcryptCost,
-		UploadPath:        getEnv("UPLOAD_PATH", "./uploads"),
-		BaseURL:           getEnv("BASE_URL", "http://localhost:8080"),
-		InternalAPIKey:    getEnv("INTERNAL_API_KEY", ""),
+		AppEnv:                        getEnv("APP_ENV", "development"),
+		AppPort:                       getEnv("APP_PORT", "8080"),
+		DBHost:                        getEnv("DB_HOST", "localhost"),
+		DBPort:                        getEnv("DB_PORT", "5432"),
+		DBUser:                        getEnv("DB_USER", "postgres"),
+		DBPassword:                    getEnv("DB_PASSWORD", ""),
+		DBName:                        getEnv("DB_NAME", "bulky_db"),
+		JWTSecret:                     getEnv("JWT_SECRET", "your-secret-key-minimum-32-characters-long"),
+		JWTAccessDuration:             accessDuration,
+		BcryptCost:                    bcryptCost,
+		UploadPath:                    getEnv("UPLOAD_PATH", "./uploads"),
+		BaseURL:                       getEnv("BASE_URL", "http://localhost:8080"),
+		InternalAPIKey:                getEnv("INTERNAL_API_KEY", ""),
+		DelivereeWebhookAuthorization: getEnv("DELIVEREE_WEBHOOK_AUTHORIZATION", ""),
+		ForwarderWebhookAuthorization: getEnv("FORWARDER_WEBHOOK_AUTHORIZATION", ""),
 	}
 }
 

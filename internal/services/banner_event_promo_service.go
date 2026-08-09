@@ -286,10 +286,15 @@ func (s *bannerEventPromoService) toSimpleResponse(b *models.BannerEventPromo) *
 
 // parseFlexibleDate parses date string in multiple formats
 // Supports: "2026-01-10" (date only) or "2026-01-10T00:00:00Z" (RFC3339)
+// Semua hasil dikonversi ke UTC sebelum ditulis ke DB, sehingga nilai yang
+// tersimpan selalu wall-clock UTC (konsisten dengan NowFunc time.Now().UTC()).
+//   - date only / datetime tanpa timezone: diinterpretasi sebagai Asia/Jakarta
+//     (input admin panel WIB), lalu di-shift ke UTC.
+//   - RFC3339: offset timezone sudah eksplisit, tinggal dinormalisasi ke UTC.
 func parseFlexibleDate(dateStr string) (time.Time, error) {
 	// Try RFC3339 first (full datetime with timezone)
 	if t, err := time.Parse(time.RFC3339, dateStr); err == nil {
-		return t, nil
+		return t.UTC(), nil
 	}
 
 	// Try date only format (yyyy-mm-dd) — interpret as Asia/Jakarta midnight
@@ -298,12 +303,12 @@ func parseFlexibleDate(dateStr string) (time.Time, error) {
 		jakartaLoc = time.UTC
 	}
 	if t, err := time.ParseInLocation("2006-01-02", dateStr, jakartaLoc); err == nil {
-		return t, nil
+		return t.UTC(), nil
 	}
 
 	// Try datetime without timezone — interpret as Asia/Jakarta
 	if t, err := time.ParseInLocation("2006-01-02T15:04:05", dateStr, jakartaLoc); err == nil {
-		return t, nil
+		return t.UTC(), nil
 	}
 
 	return time.Time{}, errors.New("format tanggal tidak valid, gunakan yyyy-mm-dd atau RFC3339")

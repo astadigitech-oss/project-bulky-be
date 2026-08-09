@@ -201,11 +201,21 @@ func (s *pesananAdminService) RetryBooking(ctx context.Context, id uuid.UUID) (*
 	}
 
 	// Deliveree: allow retry even if booking_id exists (e.g. cancelled by provider)
-	// Clear old booking data so booking_status resets to PENDING during retry
+	// Clear old booking data so booking can be re-created during retry
 	if pesanan.DeliveryType == models.DeliveryTypeDeliveree && pesanan.DelivereeBookingID != nil {
 		if err := s.pesananRepo.ClearBookingResult(id); err != nil {
 			return nil, err
 		}
+	}
+
+	// Atomic claim: cegah tabrakan dengan TriggerBookingAsync (READY) yang masih
+	// berjalan. Hanya satu proses yang boleh memanggil API provider untuk pesanan ini.
+	claimed, err := s.shippingService.ClaimBooking(id)
+	if err != nil {
+		return nil, errors.New("retry:internal_error:" + err.Error())
+	}
+	if !claimed {
+		return nil, errors.New("retry:in_progress:Booking sedang diproses oleh proses lain. Silakan coba lagi beberapa saat lagi.")
 	}
 
 	// Run synchronous booking

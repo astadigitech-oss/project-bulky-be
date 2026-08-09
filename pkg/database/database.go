@@ -21,8 +21,13 @@ func InitDB(cfg *config.Config) {
 	// khusus (spasi, tanda sama dengan, dll). Tanpa quote, DSN keyword/value
 	// bisa salah parsing dan mengabaikan parameter setelahnya (mis. dbname),
 	// sehingga koneksi jatuh ke database default alih-alih cfg.DBName.
+	// default_query_exec_mode=describe_exec: mencegah error "cached plan must not
+	// change result type (0A000)" saat tabel di-ALTER (mis. migrasi menambah kolom)
+	// sementara app masih berjalan. Mode ini membuat pgx selalu Describe + Execute
+	// tanpa meng-cache prepared statement di server, jadi plan basi tidak pernah
+	// dipakai ulang.
 	dsn := fmt.Sprintf(
-		"host=%s user=%s password='%s' dbname=%s port=%s sslmode=disable TimeZone=UTC",
+		"host=%s user=%s password='%s' dbname=%s port=%s sslmode=disable TimeZone=UTC default_query_exec_mode=describe_exec",
 		cfg.DBHost,
 		cfg.DBUser,
 		cfg.DBPassword,

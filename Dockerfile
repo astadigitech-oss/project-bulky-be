@@ -30,7 +30,7 @@ RUN apk add --no-cache \
     curl \
     postgresql-client
 
-ENV TZ=Asia/Jakarta
+ENV TZ=UTC
 ENV APP_PORT=8080
 
 COPY --from=builder /app/bulky-api /app/bulky-api

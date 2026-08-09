@@ -183,6 +183,10 @@ func main() {
 	dasborController := controllers.NewDasborController(dasborService)
 	internalUploadController := controllers.NewInternalUploadController(cfg)
 	assetMigrationController := controllers.NewAssetMigrationController(db, cfg)
+	delivereeWebhookService := services.NewDelivereeWebhookService(pesananRepo, db)
+	delivereeWebhookController := controllers.NewDelivereeWebhookController(delivereeWebhookService, cfg.DelivereeWebhookAuthorization)
+	forwarderWebhookService := services.NewForwarderWebhookService(pesananRepo, db)
+	forwarderWebhookController := controllers.NewForwarderWebhookController(forwarderWebhookService, cfg.ForwarderWebhookAuthorization)
 
 	// Auth V2 controllers
 	authV2Controller := controllers.NewAuthV2Controller(authV2Service, adminService, buyerService)
@@ -224,6 +228,8 @@ func main() {
 		kuponController,
 		internalUploadController,
 		assetMigrationController,
+		delivereeWebhookController,
+		forwarderWebhookController,
 	)
 
 	// Setup Auth V2 routes (new authentication system with roles & permissions)
