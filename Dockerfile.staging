@@ -22,4 +22,4 @@ HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=5 \
   CMD curl -f http://localhost:8080/api/health || exit 1
 
 # Menjalankan aplikasi langsung dari source code
-CMD ["go", "run", "main.go"]
+CMD ["go", "run", "cmd/api/main.go"]
