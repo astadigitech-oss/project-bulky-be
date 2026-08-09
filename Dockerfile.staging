@@ -1,0 +1,25 @@
+FROM golang:1.26-alpine
+
+WORKDIR /app
+
+# Install utility dasar untuk terminal & network check
+RUN apk add --no-cache bash curl git ca-certificates tzdata
+
+ENV TZ=UTC
+ENV APP_PORT=8080
+ENV APP_ENV=staging
+
+# Cache dependency Go
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=5 \
+  CMD curl -f http://localhost:8080/api/health || exit 1
+
+# Menjalankan aplikasi langsung dari source code
+CMD ["go", "run", "main.go"]
