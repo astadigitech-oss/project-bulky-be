@@ -420,12 +420,15 @@ func (r *dasborRepository) GetAllTransaksi(periode string, statusFilter []string
 	return rows, nil
 }
 
-// GetUserTransaction returns buyer ranking by completed & paid transactions.
+// GetUserTransaction returns buyer ranking by paid (non-cancelled) transactions.
+// Filter disamakan dengan GetKPIRevenue (PAID, bukan CANCELLED, paid_at terisi,
+// basis periode paid_at) agar total belanja konsisten dengan angka KPI revenue.
 func (r *dasborRepository) GetUserTransaction(periode string) ([]dto.DasborUserTransaksiRaw, error) {
-	periodeCond := buildPeriodeWhereClause("p.created_at", periode)
+	periodeCond := buildPeriodeWhereClause("p.paid_at", periode)
 	joinCond := "p.deleted_at IS NULL" +
-		" AND p.order_status = '" + constants.TransaksiCompletedOrderStatus + "'" +
-		" AND p.payment_status = '" + constants.TransaksiPaidPaymentStatus + "'"
+		" AND p.order_status != '" + constants.TransaksiExcludedOrderStatus + "'" +
+		" AND p.payment_status = '" + constants.TransaksiPaidPaymentStatus + "'" +
+		" AND p.paid_at IS NOT NULL"
 	if periodeCond != "" {
 		joinCond += " AND " + periodeCond
 	}
