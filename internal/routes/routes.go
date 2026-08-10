@@ -54,6 +54,7 @@ func SetupRoutes(
 	assetMigrationController *controllers.AssetMigrationController,
 	delivereeWebhookController *controllers.DelivereeWebhookController,
 	forwarderWebhookController *controllers.ForwarderWebhookController,
+	delivereeVehicleTypeController *controllers.DelivereeVehicleTypeController,
 ) {
 	// Health check
 	router.Get("/api/health", func(c *fiber.Ctx) error {
@@ -709,6 +710,16 @@ func SetupRoutes(
 	// Authorization header vs FORWARDER_WEBHOOK_AUTHORIZATION di controller.
 	// Format payload sama dengan Deliveree (platform on-demand yang sama).
 	webhook.Post("/forwarder", forwarderWebhookController.Handle)
+
+	// Deliveree Vehicle Type - Admin (Super Admin only via permission grant)
+	delivereeVehicleAdmin := v1.Group("/panel/deliveree-vehicle",
+		middleware.AuthMiddleware(),
+		middleware.AdminOnly(),
+	)
+	delivereeVehicleAdmin.Get("", middleware.RequirePermission("deliveree_vehicle:read"), delivereeVehicleTypeController.FindAll)
+	delivereeVehicleAdmin.Get("/:id", middleware.RequirePermission("deliveree_vehicle:read"), delivereeVehicleTypeController.FindByID)
+	delivereeVehicleAdmin.Put("/:id", middleware.RequirePermission("deliveree_vehicle:manage"), delivereeVehicleTypeController.Update)
+	delivereeVehicleAdmin.Post("/sync", middleware.RequirePermission("deliveree_vehicle:manage"), delivereeVehicleTypeController.Sync)
 
 	// Routes list endpoint
 	router.Get("/api/routes", func(c *fiber.Ctx) error {

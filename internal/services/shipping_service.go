@@ -124,11 +124,12 @@ type ShippingService interface {
 }
 
 type shippingService struct {
-	db *gorm.DB
+	db                   *gorm.DB
+	delivereeVehicleType DelivereeVehicleTypeService
 }
 
-func NewShippingService(db *gorm.DB) ShippingService {
-	return &shippingService{db: db}
+func NewShippingService(db *gorm.DB, delivereeVehicleType DelivereeVehicleTypeService) ShippingService {
+	return &shippingService{db: db, delivereeVehicleType: delivereeVehicleType}
 }
 
 // forwarderLTLProvinsi adalah daftar provinsi (lowercase) yang dilayani forwarder
@@ -468,24 +469,65 @@ func (s *shippingService) bookDeliveree(ctx context.Context, pesanan *models.Pes
 		return nil, fmt.Errorf("konfigurasi Deliveree tidak lengkap")
 	}
 
+	// AlamatBuyer is required
+	if pesanan.AlamatBuyer == nil {
+		return nil, fmt.Errorf("pesanan tidak memiliki alamat pengiriman")
+	}
+
+	// Vehicle type dipilih berdasarkan total kubikasi & berat barang (master data
+	// deliveree_vehicle_type), menggantikan logic lama yang berbasis jumlah qty/palet.
+	environment := "production"
+	if strings.Contains(baseURL, "sandbox") {
+		environment = "sandbox"
+	}
+	totalKubikasi := 0.0
+	totalBerat := 0.0
+	for _, item := range pesanan.Items {
+		p := item.Produk
+		// Dimensi produk dalam cm → konversi ke m3 (panjang x lebar x tinggi / 1_000_000).
+		totalKubikasi += (p.Panjang * p.Lebar * p.Tinggi / 1_000_000) * float64(item.Qty)
+		totalBerat += p.Berat * float64(item.Qty)
+	}
+
+	var vehicleTypeID int
+	vehicle, err := s.delivereeVehicleType.SelectVehicle(ctx, environment, totalKubikasi, totalBerat)
+	if err != nil {
+		// Fallback ke logic lama berbasis qty jika master data belum di-sync/tidak
+		// ditemukan kendaraan yang cukup, agar proses booking tidak buntu total.
+		log.Printf("[deliveree] SelectVehicle gagal pesanan=%s environment=%s totalKubikasi=%.3f totalBerat=%.2f err=%v — fallback ke logic qty", pesanan.Kode, environment, totalKubikasi, totalBerat, err)
+		totalQty := 0
+		for _, item := range pesanan.Items {
+			totalQty += item.Qty
+		}
+		vehicleTypeID = delivereeVehicleTypeID(totalQty, baseURL)
+	} else {
+		vehicleTypeID = vehicle.IDDeliveree
+	}
+
+	bookingID, bookErr := s.bookDelivereeWithVehicle(ctx, pesanan, baseURL, apiKey, vehicleTypeID)
+	if bookErr != nil && vehicle != nil {
+		// Retry sekali dengan kendaraan satu tingkat lebih besar jika booking gagal
+		// (mis. tidak ada driver tersedia untuk kendaraan yang dipilih).
+		nextVehicle, nextErr := s.delivereeVehicleType.NextLargerVehicle(ctx, environment, vehicle.IDDeliveree)
+		if nextErr == nil && nextVehicle != nil {
+			log.Printf("[deliveree] retry pesanan=%s vehicle_type_id=%d gagal (%v), coba kendaraan lebih besar id=%d", pesanan.Kode, vehicleTypeID, bookErr, nextVehicle.IDDeliveree)
+			return s.bookDelivereeWithVehicle(ctx, pesanan, baseURL, apiKey, nextVehicle.IDDeliveree)
+		}
+	}
+	return bookingID, bookErr
+}
+
+func (s *shippingService) bookDelivereeWithVehicle(ctx context.Context, pesanan *models.Pesanan, baseURL, apiKey string, vehicleTypeID int) (*string, error) {
 	// Get first active warehouse
 	warehouse, err := s.getActiveWarehouse()
 	if err != nil {
 		return nil, fmt.Errorf("gagal mendapatkan data warehouse: %w", err)
 	}
 
-	// AlamatBuyer is required
-	if pesanan.AlamatBuyer == nil {
+	alamat := pesanan.AlamatBuyer
+	if alamat == nil {
 		return nil, fmt.Errorf("pesanan tidak memiliki alamat pengiriman")
 	}
-	alamat := pesanan.AlamatBuyer
-
-	// Vehicle type based on total qty
-	totalQty := 0
-	for _, item := range pesanan.Items {
-		totalQty += item.Qty
-	}
-	vehicleTypeID := delivereeVehicleTypeID(totalQty, baseURL)
 
 	warehouseAlamat := ""
 	if warehouse.Alamat != nil {
