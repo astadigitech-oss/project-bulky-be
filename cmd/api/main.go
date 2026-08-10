@@ -83,6 +83,7 @@ func main() {
 	kuponRepo := repositories.NewKuponRepository(db)
 	dasborRepo := repositories.NewDasborRepository(db)
 	disclaimerConsentRepo := repositories.NewBuyerDisclaimerConsentRepository(db)
+	delivereeVehicleTypeRepo := repositories.NewDelivereeVehicleTypeRepository(db)
 
 	// Auth V2 repositories
 	authRepo := repositories.NewAuthRepository(db)
@@ -113,7 +114,9 @@ func main() {
 	bannerEventPromoService := services.NewBannerEventPromoService(bannerEventPromoRepo, reorderService, kategoriService, cfg)
 	ulasanService := services.NewUlasanService(ulasanRepo, pesananItemRepo, pesananRepo, cfg.UploadPath, cfg.BaseURL)
 	ulasanAdminService := services.NewUlasanAdminService(ulasanRepo)
-	shippingService := services.NewShippingService(db)
+	activityLogService := services.NewActivityLogService(activityLogRepo)
+	delivereeVehicleTypeService := services.NewDelivereeVehicleTypeService(delivereeVehicleTypeRepo, warehouseRepo, activityLogService)
+	shippingService := services.NewShippingService(db, delivereeVehicleTypeService)
 	pesananAdminService := services.NewPesananAdminService(pesananRepo, shippingService, db)
 	forceUpdateService := services.NewForceUpdateService(forceUpdateRepo)
 	modeMaintenanceService := services.NewModeMaintenanceService(modeMaintenanceRepo)
@@ -139,7 +142,6 @@ func main() {
 
 	// Auth V2 services
 	authV2Service := services.NewAuthV2Service(authRepo, activityLogRepo)
-	activityLogService := services.NewActivityLogService(activityLogRepo)
 	roleService := services.NewRoleService(roleRepo)
 	permissionService := services.NewPermissionService(permissionRepo)
 
@@ -187,6 +189,7 @@ func main() {
 	delivereeWebhookController := controllers.NewDelivereeWebhookController(delivereeWebhookService, cfg.DelivereeWebhookAuthorization)
 	forwarderWebhookService := services.NewForwarderWebhookService(pesananRepo, db)
 	forwarderWebhookController := controllers.NewForwarderWebhookController(forwarderWebhookService, cfg.ForwarderWebhookAuthorization)
+	delivereeVehicleTypeController := controllers.NewDelivereeVehicleTypeController(delivereeVehicleTypeService, activityLogService)
 
 	// Auth V2 controllers
 	authV2Controller := controllers.NewAuthV2Controller(authV2Service, adminService, buyerService)
@@ -230,6 +233,7 @@ func main() {
 		assetMigrationController,
 		delivereeWebhookController,
 		forwarderWebhookController,
+		delivereeVehicleTypeController,
 	)
 
 	// Setup Auth V2 routes (new authentication system with roles & permissions)
