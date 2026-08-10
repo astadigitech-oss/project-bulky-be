@@ -85,21 +85,21 @@ func (c *BlogController) Create(ctx *fiber.Ctx) error {
 		}
 
 		// Parse meta fields
-		// if metaTitleID := ctx.FormValue("meta_title_id"); metaTitleID != "" {
-		// 	req.MetaTitleID = &metaTitleID
-		// }
-		// if metaTitleEN := ctx.FormValue("meta_title_en"); metaTitleEN != "" {
-		// 	req.MetaTitleEN = &metaTitleEN
-		// }
-		// if metaDescID := ctx.FormValue("meta_description_id"); metaDescID != "" {
-		// 	req.MetaDescriptionID = &metaDescID
-		// }
-		// if metaDescEN := ctx.FormValue("meta_description_en"); metaDescEN != "" {
-		// 	req.MetaDescriptionEN = &metaDescEN
-		// }
-		// if metaKeywords := ctx.FormValue("meta_keywords"); metaKeywords != "" {
-		// 	req.MetaKeywords = &metaKeywords
-		// }
+		if metaTitleID := ctx.FormValue("meta_title_id"); metaTitleID != "" {
+			req.MetaTitleID = &metaTitleID
+		}
+		if metaTitleEN := ctx.FormValue("meta_title_en"); metaTitleEN != "" {
+			req.MetaTitleEN = &metaTitleEN
+		}
+		if metaDescID := ctx.FormValue("meta_description_id"); metaDescID != "" {
+			req.MetaDescriptionID = &metaDescID
+		}
+		if metaDescEN := ctx.FormValue("meta_description_en"); metaDescEN != "" {
+			req.MetaDescriptionEN = &metaDescEN
+		}
+		if metaKeywords := ctx.FormValue("meta_keywords"); metaKeywords != "" {
+			req.MetaKeywords = &metaKeywords
+		}
 		if highlightID := ctx.FormValue("highlight_id"); highlightID != "" {
 			req.HighlightID = &highlightID
 		}
@@ -215,21 +215,21 @@ func (c *BlogController) Update(ctx *fiber.Ctx) error {
 		}
 
 		// Parse meta fields
-		// if metaTitleID := ctx.FormValue("meta_title_id"); metaTitleID != "" {
-		// 	req.MetaTitleID = &metaTitleID
-		// }
-		// if metaTitleEN := ctx.FormValue("meta_title_en"); metaTitleEN != "" {
-		// 	req.MetaTitleEN = &metaTitleEN
-		// }
-		// if metaDescID := ctx.FormValue("meta_description_id"); metaDescID != "" {
-		// 	req.MetaDescriptionID = &metaDescID
-		// }
-		// if metaDescEN := ctx.FormValue("meta_description_en"); metaDescEN != "" {
-		// 	req.MetaDescriptionEN = &metaDescEN
-		// }
-		// if metaKeywords := ctx.FormValue("meta_keywords"); metaKeywords != "" {
-		// 	req.MetaKeywords = &metaKeywords
-		// }
+		if metaTitleID := ctx.FormValue("meta_title_id"); metaTitleID != "" {
+			req.MetaTitleID = &metaTitleID
+		}
+		if metaTitleEN := ctx.FormValue("meta_title_en"); metaTitleEN != "" {
+			req.MetaTitleEN = &metaTitleEN
+		}
+		if metaDescID := ctx.FormValue("meta_description_id"); metaDescID != "" {
+			req.MetaDescriptionID = &metaDescID
+		}
+		if metaDescEN := ctx.FormValue("meta_description_en"); metaDescEN != "" {
+			req.MetaDescriptionEN = &metaDescEN
+		}
+		if metaKeywords := ctx.FormValue("meta_keywords"); metaKeywords != "" {
+			req.MetaKeywords = &metaKeywords
+		}
 		if highlightID := ctx.FormValue("highlight_id"); highlightID != "" {
 			req.HighlightID = &highlightID
 		}
