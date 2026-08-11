@@ -27,6 +27,9 @@ type DelivereeVehicleType struct {
 	BeratMax          float64        `gorm:"column:berat_max;type:decimal(10,2);not null;default:0" json:"berat_max"`
 	ThresholdKubikasi float64        `gorm:"column:threshold_kubikasi;type:decimal(10,3);not null;default:0" json:"threshold_kubikasi"`
 	ThresholdBerat    float64        `gorm:"column:threshold_berat;type:decimal(10,2);not null;default:0" json:"threshold_berat"`
+	// ThresholdIsManual menandai threshold diisi manual oleh ops (bukan hasil
+	// recompute otomatis Sync), sehingga Sync tidak menimpanya.
+	ThresholdIsManual bool           `gorm:"column:threshold_is_manual;not null;default:false" json:"threshold_is_manual"`
 	CargoLength       *float64       `gorm:"column:cargo_length;type:decimal(10,2)" json:"cargo_length"`
 	CargoWidth        *float64       `gorm:"column:cargo_width;type:decimal(10,2)" json:"cargo_width"`
 	CargoHeight       *float64       `gorm:"column:cargo_height;type:decimal(10,2)" json:"cargo_height"`
@@ -51,6 +54,10 @@ type UpdateDelivereeVehicleTypeRequest struct {
 	ThresholdKubikasi *float64 `json:"threshold_kubikasi" binding:"omitempty,min=0"`
 	ThresholdBerat    *float64 `json:"threshold_berat" binding:"omitempty,min=0"`
 	IsActive          *bool    `json:"is_active"`
+	// ResetThreshold jika true → kembalikan threshold ke kapasitas penuh
+	// (kubikasi_max/berat_max) dan tandai bukan manual, agar Sync bisa mengelolanya
+	// kembali. Tidak diubah jika nil.
+	ResetThreshold *bool `json:"reset_threshold"`
 }
 
 type DelivereeVehicleTypeFilterRequest struct {
@@ -71,6 +78,7 @@ type DelivereeVehicleTypeResponse struct {
 	BeratMax          float64    `json:"berat_max"`
 	ThresholdKubikasi float64    `json:"threshold_kubikasi"`
 	ThresholdBerat    float64    `json:"threshold_berat"`
+	ThresholdIsManual bool       `json:"threshold_is_manual"`
 	CargoLength       *float64   `json:"cargo_length"`
 	CargoWidth        *float64   `json:"cargo_width"`
 	CargoHeight       *float64   `json:"cargo_height"`
