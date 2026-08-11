@@ -490,18 +490,39 @@ func (s *shippingService) bookDeliveree(ctx context.Context, pesanan *models.Pes
 	}
 
 	var vehicleTypeID int
-	vehicle, err := s.delivereeVehicleType.SelectVehicle(ctx, environment, totalKubikasi, totalBerat)
-	if err != nil {
-		// Fallback ke logic lama berbasis qty jika master data belum di-sync/tidak
-		// ditemukan kendaraan yang cukup, agar proses booking tidak buntu total.
-		log.Printf("[deliveree] SelectVehicle gagal pesanan=%s environment=%s totalKubikasi=%.3f totalBerat=%.2f err=%v — fallback ke logic qty", pesanan.Kode, environment, totalKubikasi, totalBerat, err)
-		totalQty := 0
-		for _, item := range pesanan.Items {
-			totalQty += item.Qty
+	var vehicle *models.DelivereeVehicleType
+
+	// 1. Prioritas: pakai kendaraan hasil quote yang disimpan storefront saat
+	// checkout (deliveree_vehicle_type_id), jika masih aktif di environment ini.
+	// Ini menjamin ongkir yang ditagih ke buyer saat checkout konsisten dengan
+	// kendaraan yang benar-benar dipakai saat create booking.
+	if pesanan.DelivereeVehicleTypeID != nil && *pesanan.DelivereeVehicleTypeID > 0 {
+		if v, vErr := s.delivereeVehicleType.FindActiveByIDDeliveree(ctx, *pesanan.DelivereeVehicleTypeID, environment); vErr == nil && v != nil {
+			vehicle = v
+			vehicleTypeID = v.IDDeliveree
+			log.Printf("[deliveree] pakai vehicle_type_id dari checkout pesanan=%s id=%d", pesanan.Kode, vehicleTypeID)
+		} else {
+			log.Printf("[deliveree] vehicle_type_id checkout pesanan=%s id=%d tidak aktif/tidak ditemukan — fallback ke SelectVehicle", pesanan.Kode, *pesanan.DelivereeVehicleTypeID)
 		}
-		vehicleTypeID = delivereeVehicleTypeID(totalQty, baseURL)
-	} else {
-		vehicleTypeID = vehicle.IDDeliveree
+	}
+
+	// 2. Jika tidak ada nilai dari checkout (order lama) atau nilainya invalid,
+	// seleksi normal berbasis total kubikasi & berat (master data).
+	if vehicleTypeID == 0 {
+		var err error
+		vehicle, err = s.delivereeVehicleType.SelectVehicle(ctx, environment, totalKubikasi, totalBerat)
+		if err != nil {
+			// Fallback ke logic lama berbasis qty jika master data belum di-sync/tidak
+			// ditemukan kendaraan yang cukup, agar proses booking tidak buntu total.
+			log.Printf("[deliveree] SelectVehicle gagal pesanan=%s environment=%s totalKubikasi=%.3f totalBerat=%.2f err=%v — fallback ke logic qty", pesanan.Kode, environment, totalKubikasi, totalBerat, err)
+			totalQty := 0
+			for _, item := range pesanan.Items {
+				totalQty += item.Qty
+			}
+			vehicleTypeID = delivereeVehicleTypeID(totalQty, baseURL)
+		} else {
+			vehicleTypeID = vehicle.IDDeliveree
+		}
 	}
 
 	bookingID, bookErr := s.bookDelivereeWithVehicle(ctx, pesanan, baseURL, apiKey, vehicleTypeID)

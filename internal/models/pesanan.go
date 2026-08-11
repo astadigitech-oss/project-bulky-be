@@ -67,14 +67,18 @@ type Pesanan struct {
 	CancelledAt         *time.Time      `gorm:"type:timestamptz" json:"cancelled_at"`
 	CancelledReason     *string         `gorm:"type:text" json:"cancelled_reason"`
 	DelivereeBookingID  *string         `gorm:"type:varchar(100)" json:"deliveree_booking_id"`
-	ForwarderTrackingNo *string         `gorm:"type:varchar(100)" json:"forwarder_tracking_no"`
-	BookingError        *string         `gorm:"type:text" json:"booking_error"`
-	BookingStatus       *string         `gorm:"type:varchar(50)" json:"booking_status"`
-	BookingLockAt       *time.Time      `gorm:"type:timestamptz" json:"booking_lock_at,omitempty"`
-	TrackingURL         *string         `gorm:"type:text" json:"tracking_url"`
-	CreatedAt           time.Time       `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
-	UpdatedAt           time.Time       `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
-	DeletedAt           gorm.DeletedAt  `gorm:"type:timestamptz;index" json:"-"`
+	// DelivereeVehicleTypeID menyimpan id_deliveree kendaraan hasil quote/checkout
+	// (dari storefront). Saat create booking, BE memakai nilai ini jika terisi &
+	// masih aktif, dengan fallback ke seleksi kubikasi/berat (SelectVehicle).
+	DelivereeVehicleTypeID *int           `gorm:"column:deliveree_vehicle_type_id" json:"deliveree_vehicle_type_id,omitempty"`
+	ForwarderTrackingNo    *string        `gorm:"type:varchar(100)" json:"forwarder_tracking_no"`
+	BookingError           *string        `gorm:"type:text" json:"booking_error"`
+	BookingStatus          *string        `gorm:"type:varchar(50)" json:"booking_status"`
+	BookingLockAt          *time.Time     `gorm:"type:timestamptz" json:"booking_lock_at,omitempty"`
+	TrackingURL            *string        `gorm:"type:text" json:"tracking_url"`
+	CreatedAt              time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt              time.Time      `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
+	DeletedAt              gorm.DeletedAt `gorm:"type:timestamptz;index" json:"-"`
 
 	// Relations
 	Buyer       Buyer               `gorm:"foreignKey:BuyerID" json:"buyer,omitempty"`

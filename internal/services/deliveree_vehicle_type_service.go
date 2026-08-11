@@ -25,6 +25,9 @@ type DelivereeVehicleTypeService interface {
 	FindByID(ctx context.Context, id string) (*models.DelivereeVehicleTypeResponse, error)
 	FindAll(ctx context.Context, params *models.DelivereeVehicleTypeFilterRequest) ([]models.DelivereeVehicleTypeResponse, *models.PaginationMeta, error)
 	Update(ctx context.Context, id string, req *models.UpdateDelivereeVehicleTypeRequest) (*models.DelivereeVehicleTypeResponse, error)
+	// BulkUpdateStatus mengaktifkan/menonaktifkan banyak kendaraan sekaligus
+	// (multi-select dari panel admin). Return jumlah kendaraan yang diupdate.
+	BulkUpdateStatus(ctx context.Context, ids []string, isActive bool) (int64, error)
 	// Sync menarik data terbaru dari GET /public_api/v10/vehicle_types memakai
 	// DELIVEREE_BASE_URL/DELIVEREE_API_KEY yang sedang aktif (mengikuti environment
 	// deployment saat ini — sandbox atau production, tanpa perlu credential ganda),
@@ -35,6 +38,10 @@ type DelivereeVehicleTypeService interface {
 	// kapasitasnya (kubikasi_max & berat_max) mencukupi totalKubikasi & totalBerat.
 	// Mengembalikan error jika tidak ada kendaraan yang cukup besar.
 	SelectVehicle(ctx context.Context, environment string, totalKubikasi, totalBerat float64) (*models.DelivereeVehicleType, error)
+	// FindActiveByIDDeliveree mencari satu kendaraan AKTIF berdasarkan id_deliveree+environment.
+	// Dipakai saat create booking untuk memakai deliveree_vehicle_type_id yang disimpan
+	// storefront saat checkout; return nil jika tidak ada (kendaraan dinonaktifkan).
+	FindActiveByIDDeliveree(ctx context.Context, idDeliveree int, environment string) (*models.DelivereeVehicleType, error)
 	// NextLargerVehicle mengembalikan kendaraan aktif dengan kubikasi_max satu tingkat
 	// di atas currentIDDeliveree pada environment yang sama. Dipakai untuk retry otomatis
 	// saat booking ke kendaraan yang dipilih gagal (mis. tidak ada driver tersedia).
@@ -61,6 +68,7 @@ func toDelivereeVehicleTypeResponse(v *models.DelivereeVehicleType) models.Deliv
 		BeratMax:          v.BeratMax,
 		ThresholdKubikasi: v.ThresholdKubikasi,
 		ThresholdBerat:    v.ThresholdBerat,
+		ThresholdIsManual: v.ThresholdIsManual,
 		CargoLength:       v.CargoLength,
 		CargoWidth:        v.CargoWidth,
 		CargoHeight:       v.CargoHeight,
@@ -101,12 +109,30 @@ func (s *delivereeVehicleTypeService) Update(ctx context.Context, id string, req
 		return nil, err
 	}
 
+	// Reset threshold → kembalikan ke kapasitas penuh & tandai non-manual,
+	// sehingga Sync bisa mengelolanya kembali secara otomatis.
+	if req.ResetThreshold != nil && *req.ResetThreshold {
+		vehicle.ThresholdKubikasi = vehicle.KubikasiMax
+		vehicle.ThresholdBerat = vehicle.BeratMax
+		vehicle.ThresholdIsManual = false
+	}
+
+	// Set threshold manual (dengan validasi tidak melebihi kapasitas).
 	if req.ThresholdKubikasi != nil {
+		if *req.ThresholdKubikasi > vehicle.KubikasiMax {
+			return nil, fmt.Errorf("threshold_kubikasi (%.3f) tidak boleh melebihi kubikasi_max (%.3f)", *req.ThresholdKubikasi, vehicle.KubikasiMax)
+		}
 		vehicle.ThresholdKubikasi = *req.ThresholdKubikasi
+		vehicle.ThresholdIsManual = true
 	}
 	if req.ThresholdBerat != nil {
+		if *req.ThresholdBerat > vehicle.BeratMax {
+			return nil, fmt.Errorf("threshold_berat (%.2f) tidak boleh melebihi berat_max (%.2f)", *req.ThresholdBerat, vehicle.BeratMax)
+		}
 		vehicle.ThresholdBerat = *req.ThresholdBerat
+		vehicle.ThresholdIsManual = true
 	}
+
 	if req.IsActive != nil {
 		vehicle.IsActive = *req.IsActive
 	}
@@ -117,6 +143,13 @@ func (s *delivereeVehicleTypeService) Update(ctx context.Context, id string, req
 
 	resp := toDelivereeVehicleTypeResponse(vehicle)
 	return &resp, nil
+}
+
+func (s *delivereeVehicleTypeService) BulkUpdateStatus(ctx context.Context, ids []string, isActive bool) (int64, error) {
+	if len(ids) == 0 {
+		return 0, fmt.Errorf("tidak ada kendaraan yang dipilih")
+	}
+	return s.repo.BulkSetActive(ctx, ids, isActive)
 }
 
 func (s *delivereeVehicleTypeService) Sync(ctx context.Context) (*models.SyncDelivereeVehicleTypeResponse, error) {
@@ -213,8 +246,10 @@ func (s *delivereeVehicleTypeService) Sync(ctx context.Context) (*models.SyncDel
 		if findErr == nil && existing != nil {
 			vehicle.ID = existing.ID
 			// threshold tidak disentuh di sini, direcompute setelah semua vehicle di-upsert
+			// (recompute melewati kendaraan yang ThresholdIsManual=true).
 			vehicle.ThresholdKubikasi = existing.ThresholdKubikasi
 			vehicle.ThresholdBerat = existing.ThresholdBerat
+			vehicle.ThresholdIsManual = existing.ThresholdIsManual
 			updated++
 		} else {
 			vehicle.ID = uuid.New()
@@ -245,27 +280,25 @@ func (s *delivereeVehicleTypeService) Sync(ctx context.Context) (*models.SyncDel
 	}, nil
 }
 
-// recomputeThresholds mengurutkan kendaraan aktif berdasarkan kubikasi_max ascending,
-// lalu men-set threshold masing-masing = kapasitas kendaraan satu tingkat di bawahnya
-// (0 untuk kendaraan terkecil). Ini memberi buffer/slack sebelum sistem "naik kelas"
-// ke kendaraan yang lebih besar.
+// recomputeThresholds meng-set threshold default = kapasitas penuh (kubikasi_max &
+// berat_max) untuk setiap kendaraan yang threshold-nya BELUM di-set manual oleh ops.
+// Kendaraan dengan ThresholdIsManual=true dilewati agar nilai manual tidak tertimpa
+// saat Sync. Dengan default kapasitas penuh, perilaku pemilihan kendaraan tetap sama
+// seperti sebelumnya (kendaraan terkecil yang muat) sampai ops mengisi threshold manual
+// sebagai batas aman operasional (barang hampir mentok → naik ke kendaraan level atas).
 func (s *delivereeVehicleTypeService) recomputeThresholds(ctx context.Context, environment string) error {
 	vehicles, err := s.repo.FindActiveByEnvironment(ctx, environment)
 	if err != nil {
 		return err
 	}
 
-	sort.Slice(vehicles, func(i, j int) bool {
-		return vehicles[i].KubikasiMax < vehicles[j].KubikasiMax
-	})
-
-	prevKubikasi, prevBerat := 0.0, 0.0
 	for i := range vehicles {
-		if err := s.repo.UpdateThresholds(ctx, vehicles[i].ID, prevKubikasi, prevBerat); err != nil {
+		if vehicles[i].ThresholdIsManual {
+			continue
+		}
+		if err := s.repo.UpdateThresholds(ctx, vehicles[i].ID, vehicles[i].KubikasiMax, vehicles[i].BeratMax); err != nil {
 			return err
 		}
-		prevKubikasi = vehicles[i].KubikasiMax
-		prevBerat = vehicles[i].BeratMax
 	}
 	return nil
 }
@@ -280,13 +313,33 @@ func (s *delivereeVehicleTypeService) SelectVehicle(ctx context.Context, environ
 		return vehicles[i].KubikasiMax < vehicles[j].KubikasiMax
 	})
 
+	// Pass 1: kendaraan terkecil yang MUAT secara fisik DAN masih dalam batas aman
+	// (total <= threshold). Threshold dipakai sebagai batas aman operasional: barang
+	// yang hampir mentok kapasitas (melebihi threshold) otomatis naik ke kendaraan
+	// level atas, sesuai pengaturan manual tim ops.
 	for i := range vehicles {
-		if vehicles[i].KubikasiMax >= totalKubikasi && vehicles[i].BeratMax >= totalBerat {
-			return &vehicles[i], nil
+		v := &vehicles[i]
+		if v.KubikasiMax >= totalKubikasi && v.BeratMax >= totalBerat &&
+			totalKubikasi <= v.ThresholdKubikasi && totalBerat <= v.ThresholdBerat {
+			return v, nil
+		}
+	}
+
+	// Pass 2 (fallback): kendaraan terkecil yang muat fisik, abaikan threshold —
+	// agar booking tidak buntu jika muatan melebihi threshold semua kendaraan yang
+	// muat (mis. ops set threshold terlalu rendah / belum diisi).
+	for i := range vehicles {
+		v := &vehicles[i]
+		if v.KubikasiMax >= totalKubikasi && v.BeratMax >= totalBerat {
+			return v, nil
 		}
 	}
 
 	return nil, fmt.Errorf("tidak ada kendaraan Deliveree (%s) yang cukup untuk kubikasi %.3f m3 / berat %.2f kg", environment, totalKubikasi, totalBerat)
+}
+
+func (s *delivereeVehicleTypeService) FindActiveByIDDeliveree(ctx context.Context, idDeliveree int, environment string) (*models.DelivereeVehicleType, error) {
+	return s.repo.FindActiveByIDDeliveree(ctx, idDeliveree, environment)
 }
 
 func (s *delivereeVehicleTypeService) NextLargerVehicle(ctx context.Context, environment string, currentIDDeliveree int) (*models.DelivereeVehicleType, error) {

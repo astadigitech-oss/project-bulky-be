@@ -16,7 +16,14 @@ type DelivereeVehicleTypeRepository interface {
 	// FindByIDDeliveree mencari satu kendaraan berdasarkan id_deliveree+environment
 	// (termasuk yang is_active=false), dipakai saat Sync untuk membedakan created/updated.
 	FindByIDDeliveree(ctx context.Context, idDeliveree int, environment string) (*models.DelivereeVehicleType, error)
+	// FindActiveByIDDeliveree mencari satu kendaraan AKTIF berdasarkan id_deliveree+environment.
+	// Dipakai saat create booking untuk memvalidasi deliveree_vehicle_type_id yang disimpan
+	// storefront saat checkout; return nil jika tidak ada (kendaraan dinonaktifkan).
+	FindActiveByIDDeliveree(ctx context.Context, idDeliveree int, environment string) (*models.DelivereeVehicleType, error)
 	Update(ctx context.Context, vehicle *models.DelivereeVehicleType) error
+	// BulkSetActive mengaktifkan/menonaktifkan banyak kendaraan sekaligus
+	// (multi-select dari panel admin). Return jumlah baris yang terupdate.
+	BulkSetActive(ctx context.Context, ids []string, isActive bool) (int64, error)
 	// Upsert menyimpan/update kendaraan hasil Sync berdasarkan (id_deliveree, environment).
 	Upsert(ctx context.Context, vehicle *models.DelivereeVehicleType) error
 	// FindActiveByEnvironment mengambil semua kendaraan aktif pada environment tertentu,
@@ -101,9 +108,32 @@ func (r *delivereeVehicleTypeRepository) FindByIDDeliveree(ctx context.Context, 
 	return &vehicle, nil
 }
 
+func (r *delivereeVehicleTypeRepository) FindActiveByIDDeliveree(ctx context.Context, idDeliveree int, environment string) (*models.DelivereeVehicleType, error) {
+	var vehicle models.DelivereeVehicleType
+	err := r.db.WithContext(ctx).
+		Where("id_deliveree = ? AND environment = ? AND is_active = true", idDeliveree, environment).
+		First(&vehicle).Error
+	if err != nil {
+		return nil, err
+	}
+	return &vehicle, nil
+}
+
 func (r *delivereeVehicleTypeRepository) Update(ctx context.Context, vehicle *models.DelivereeVehicleType) error {
 	return r.db.WithContext(ctx).Save(vehicle).Error
 }
+
+func (r *delivereeVehicleTypeRepository) BulkSetActive(ctx context.Context, ids []string, isActive bool) (int64, error) {
+	result := r.db.WithContext(ctx).
+		Model(&models.DelivereeVehicleType{}).
+		Where("id IN ?", ids).
+		Update("is_active", isActive)
+	if result.Error != nil {
+		return 0, result.Error
+	}
+	return result.RowsAffected, nil
+}
+
 
 func (r *delivereeVehicleTypeRepository) Upsert(ctx context.Context, vehicle *models.DelivereeVehicleType) error {
 	return r.db.WithContext(ctx).Clauses(clause.OnConflict{
