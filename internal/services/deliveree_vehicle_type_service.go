@@ -35,6 +35,10 @@ type DelivereeVehicleTypeService interface {
 	// kapasitasnya (kubikasi_max & berat_max) mencukupi totalKubikasi & totalBerat.
 	// Mengembalikan error jika tidak ada kendaraan yang cukup besar.
 	SelectVehicle(ctx context.Context, environment string, totalKubikasi, totalBerat float64) (*models.DelivereeVehicleType, error)
+	// FindActiveByIDDeliveree mencari satu kendaraan AKTIF berdasarkan id_deliveree+environment.
+	// Dipakai saat create booking untuk memakai deliveree_vehicle_type_id yang disimpan
+	// storefront saat checkout; return nil jika tidak ada (kendaraan dinonaktifkan).
+	FindActiveByIDDeliveree(ctx context.Context, idDeliveree int, environment string) (*models.DelivereeVehicleType, error)
 	// NextLargerVehicle mengembalikan kendaraan aktif dengan kubikasi_max satu tingkat
 	// di atas currentIDDeliveree pada environment yang sama. Dipakai untuk retry otomatis
 	// saat booking ke kendaraan yang dipilih gagal (mis. tidak ada driver tersedia).
@@ -287,6 +291,10 @@ func (s *delivereeVehicleTypeService) SelectVehicle(ctx context.Context, environ
 	}
 
 	return nil, fmt.Errorf("tidak ada kendaraan Deliveree (%s) yang cukup untuk kubikasi %.3f m3 / berat %.2f kg", environment, totalKubikasi, totalBerat)
+}
+
+func (s *delivereeVehicleTypeService) FindActiveByIDDeliveree(ctx context.Context, idDeliveree int, environment string) (*models.DelivereeVehicleType, error) {
+	return s.repo.FindActiveByIDDeliveree(ctx, idDeliveree, environment)
 }
 
 func (s *delivereeVehicleTypeService) NextLargerVehicle(ctx context.Context, environment string, currentIDDeliveree int) (*models.DelivereeVehicleType, error) {
