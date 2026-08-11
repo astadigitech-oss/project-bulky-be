@@ -719,6 +719,7 @@ func SetupRoutes(
 	delivereeVehicleAdmin.Get("", middleware.RequirePermission("deliveree_vehicle:read"), delivereeVehicleTypeController.FindAll)
 	delivereeVehicleAdmin.Get("/:id", middleware.RequirePermission("deliveree_vehicle:read"), delivereeVehicleTypeController.FindByID)
 	delivereeVehicleAdmin.Put("/:id", middleware.RequirePermission("deliveree_vehicle:manage"), delivereeVehicleTypeController.Update)
+	delivereeVehicleAdmin.Post("/bulk-status", middleware.RequirePermission("deliveree_vehicle:manage"), delivereeVehicleTypeController.BulkUpdateStatus)
 	delivereeVehicleAdmin.Post("/sync", middleware.RequirePermission("deliveree_vehicle:manage"), delivereeVehicleTypeController.Sync)
 
 	// Routes list endpoint

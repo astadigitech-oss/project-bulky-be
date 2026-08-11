@@ -66,6 +66,31 @@ func (c *DelivereeVehicleTypeController) Update(ctx *fiber.Ctx) error {
 	return utils.SuccessResponse(ctx, "Kendaraan Deliveree berhasil diupdate", result)
 }
 
+// BulkUpdateStatus mengaktifkan/menonaktifkan banyak kendaraan sekaligus
+// (multi-select dari panel admin). Hanya bisa diakses Super Admin.
+func (c *DelivereeVehicleTypeController) BulkUpdateStatus(ctx *fiber.Ctx) error {
+	var req models.BulkUpdateDelivereeVehicleStatusRequest
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
+	}
+
+	affected, err := c.service.BulkUpdateStatus(ctx.UserContext(), req.IDs, req.IsActive)
+	if err != nil {
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	state := "dinonaktifkan"
+	if req.IsActive {
+		state = "diaktifkan"
+	}
+	c.activityLog.Log(ctx, models.ActionUpdate, "deliveree_vehicle_type",
+		fmt.Sprintf("%d kendaraan Deliveree berhasil %s (bulk)", affected, state))
+	return utils.SuccessResponse(ctx, fmt.Sprintf("%d kendaraan Deliveree berhasil %s", affected, state), map[string]any{
+		"affected": affected,
+		"is_active": req.IsActive,
+	})
+}
+
 // Sync menarik data terbaru dari API Deliveree (mengikuti DELIVEREE_BASE_URL/
 // DELIVEREE_API_KEY yang aktif di environment deployment saat ini) dan
 // menyimpannya sebagai master data. Hanya bisa diakses Super Admin.

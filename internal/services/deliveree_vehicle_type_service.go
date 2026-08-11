@@ -25,6 +25,9 @@ type DelivereeVehicleTypeService interface {
 	FindByID(ctx context.Context, id string) (*models.DelivereeVehicleTypeResponse, error)
 	FindAll(ctx context.Context, params *models.DelivereeVehicleTypeFilterRequest) ([]models.DelivereeVehicleTypeResponse, *models.PaginationMeta, error)
 	Update(ctx context.Context, id string, req *models.UpdateDelivereeVehicleTypeRequest) (*models.DelivereeVehicleTypeResponse, error)
+	// BulkUpdateStatus mengaktifkan/menonaktifkan banyak kendaraan sekaligus
+	// (multi-select dari panel admin). Return jumlah kendaraan yang diupdate.
+	BulkUpdateStatus(ctx context.Context, ids []string, isActive bool) (int64, error)
 	// Sync menarik data terbaru dari GET /public_api/v10/vehicle_types memakai
 	// DELIVEREE_BASE_URL/DELIVEREE_API_KEY yang sedang aktif (mengikuti environment
 	// deployment saat ini — sandbox atau production, tanpa perlu credential ganda),
@@ -140,6 +143,13 @@ func (s *delivereeVehicleTypeService) Update(ctx context.Context, id string, req
 
 	resp := toDelivereeVehicleTypeResponse(vehicle)
 	return &resp, nil
+}
+
+func (s *delivereeVehicleTypeService) BulkUpdateStatus(ctx context.Context, ids []string, isActive bool) (int64, error) {
+	if len(ids) == 0 {
+		return 0, fmt.Errorf("tidak ada kendaraan yang dipilih")
+	}
+	return s.repo.BulkSetActive(ctx, ids, isActive)
 }
 
 func (s *delivereeVehicleTypeService) Sync(ctx context.Context) (*models.SyncDelivereeVehicleTypeResponse, error) {

@@ -60,6 +60,13 @@ type UpdateDelivereeVehicleTypeRequest struct {
 	ResetThreshold *bool `json:"reset_threshold"`
 }
 
+// BulkUpdateDelivereeVehicleStatusRequest dipakai untuk mengaktifkan/menonaktifkan
+// banyak kendaraan sekaligus dari panel admin (multi-select).
+type BulkUpdateDelivereeVehicleStatusRequest struct {
+	IDs      []string `json:"ids" binding:"required,min=1,dive,required"`
+	IsActive bool     `json:"is_active"`
+}
+
 type DelivereeVehicleTypeFilterRequest struct {
 	PaginationRequest
 	Environment *string `query:"environment"`
