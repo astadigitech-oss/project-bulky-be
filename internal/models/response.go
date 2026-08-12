@@ -79,6 +79,13 @@ type ToggleStatusResponse struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+// ToggleSaleResponse - Response for produk SALE ribbon toggle
+type ToggleSaleResponse struct {
+	ID        string    `json:"id"`
+	IsSale    bool      `json:"is_sale"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 type ToggleDefaultResponse struct {
 	ID        string `json:"id"`
 	IsDefault bool   `json:"is_default"`
@@ -447,6 +454,7 @@ type ProdukListResponse struct {
 	Berat              float64   `json:"berat"` // kg
 	GambarUtama        *string   `json:"gambar_utama"`
 	IsActive           bool      `json:"is_active"`
+	IsSale             bool      `json:"is_sale"`
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
 }
@@ -459,6 +467,7 @@ type ProdukPanelListResponse struct {
 	IDCargo     *string `json:"id_cargo"`
 	Status      bool    `json:"status"`       // is_active
 	IsSold      bool    `json:"is_sold"`      // sold out status
+	IsSale      bool    `json:"is_sale"`      // SALE ribbon flag
 	GambarUtama *string `json:"gambar_utama"` // Primary image URL
 	FilePDF     *string `json:"file_pdf"`     // First PDF document URL
 }
@@ -496,6 +505,7 @@ type ProdukDetailResponse struct {
 	Gambar             []ProdukGambarResponse     `json:"gambar"`
 	Dokumen            []ProdukDokumenResponse    `json:"dokumen"`
 	IsActive           bool                       `json:"is_active"`
+	IsSale             bool                       `json:"is_sale"`
 	CreatedAt          time.Time                  `json:"created_at"`
 	UpdatedAt          time.Time                  `json:"updated_at"`
 }

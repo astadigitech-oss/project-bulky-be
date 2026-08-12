@@ -209,6 +209,18 @@ func (c *ProdukController) ToggleStatus(ctx *fiber.Ctx) error {
 	return utils.SuccessResponse(ctx, "Status produk berhasil diubah", result)
 }
 
+func (c *ProdukController) ToggleSale(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
+
+	result, err := c.service.ToggleSale(ctx.UserContext(), id)
+	if err != nil {
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
+	}
+
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "produk", "Status SALE produk berhasil diubah")
+	return utils.SuccessResponse(ctx, "Status SALE produk berhasil diubah", result)
+}
+
 // ========================================
 // Produk Gambar Handlers
 // ========================================
