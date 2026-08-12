@@ -33,6 +33,7 @@ type Produk struct {
 	Tinggi                float64        `gorm:"type:decimal(10,2);not null;default:0" json:"tinggi"`  // cm
 	Berat                 float64        `gorm:"type:decimal(10,2);not null;default:0" json:"berat"`   // kg
 	IsActive              bool           `gorm:"not null" json:"is_active"`
+	IsSale                bool           `gorm:"not null;default:false;column:is_sale" json:"is_sale"`
 	CreatedAt             time.Time      `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
 	UpdatedAt             time.Time      `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
 	DeletedAt             gorm.DeletedAt `gorm:"type:timestamptz;index" json:"-"`
@@ -79,6 +80,7 @@ type ProdukResponse struct {
 	Berat              float64   `json:"berat"`            // kg
 	BeratVolumetrik    float64   `json:"berat_volumetrik"` // kg (calculated)
 	IsActive           bool      `json:"is_active"`
+	IsSale             bool      `json:"is_sale"`
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
 }

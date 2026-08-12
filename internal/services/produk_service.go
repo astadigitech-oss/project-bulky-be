@@ -29,6 +29,7 @@ type ProdukService interface {
 	UpdateWithFiles(ctx context.Context, id string, req *models.UpdateProdukRequest, dokumenFiles []*multipart.FileHeader, dokumenNama []string) (*models.ProdukDetailResponse, error)
 	Delete(ctx context.Context, id string) error
 	ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error)
+	ToggleSale(ctx context.Context, id string) (*models.ToggleSaleResponse, error)
 }
 
 type produkService struct {
@@ -540,6 +541,24 @@ func (s *produkService) ToggleStatus(ctx context.Context, id string) (*models.To
 	}, nil
 }
 
+func (s *produkService) ToggleSale(ctx context.Context, id string) (*models.ToggleSaleResponse, error) {
+	produk, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, errors.New("produk tidak ditemukan")
+	}
+
+	produk.IsSale = !produk.IsSale
+	if err := s.repo.Update(ctx, produk); err != nil {
+		return nil, err
+	}
+
+	return &models.ToggleSaleResponse{
+		ID:        produk.ID.String(),
+		IsSale:    produk.IsSale,
+		UpdatedAt: produk.UpdatedAt,
+	}, nil
+}
+
 func (s *produkService) toListResponse(p *models.Produk) *models.ProdukListResponse {
 	resp := &models.ProdukListResponse{
 		ID:     p.ID.String(),
@@ -579,6 +598,7 @@ func (s *produkService) toListResponse(p *models.Produk) *models.ProdukListRespo
 		IsSold:             p.IsSold,
 		Berat:              p.Berat,
 		IsActive:           p.IsActive,
+		IsSale:             p.IsSale,
 		CreatedAt:          p.CreatedAt,
 		UpdatedAt:          p.UpdatedAt,
 	}
@@ -619,6 +639,7 @@ func (s *produkService) toPanelListResponse(p *models.Produk) *models.ProdukPane
 		IDCargo: p.IDCargo,
 		Status:  p.IsActive,
 		IsSold:  p.IsSold,
+		IsSale:  p.IsSale,
 	}
 
 	// Get primary/first image - prioritize is_primary, fallback to first by urutan
@@ -697,6 +718,7 @@ func (s *produkService) toDetailResponse(p *models.Produk) *models.ProdukDetailR
 		Berat:              p.Berat,
 		BeratVolumetrik:    s.calculateBeratVolumetrik(p.Panjang, p.Lebar, p.Tinggi),
 		IsActive:           p.IsActive,
+		IsSale:             p.IsSale,
 		CreatedAt:          p.CreatedAt,
 		UpdatedAt:          p.UpdatedAt,
 	}
