@@ -55,6 +55,7 @@ func SetupRoutes(
 	delivereeWebhookController *controllers.DelivereeWebhookController,
 	forwarderWebhookController *controllers.ForwarderWebhookController,
 	delivereeVehicleTypeController *controllers.DelivereeVehicleTypeController,
+	forwarderMappingController *controllers.ForwarderMappingController,
 ) {
 	// Health check
 	router.Get("/api/health", func(c *fiber.Ctx) error {
@@ -320,6 +321,7 @@ func SetupRoutes(
 	produkAdmin.Put("/:id", middleware.RequirePermission("produk:update"), produkController.Update)
 	produkAdmin.Patch("/:id/toggle-status", middleware.RequirePermission("produk:update"), produkController.ToggleStatus)
 	produkAdmin.Patch("/:id/toggle-sale", middleware.RequirePermission("produk:update"), produkController.ToggleSale)
+	produkAdmin.Patch("/:id/toggle-qc-pass", middleware.RequirePermission("produk:update"), produkController.ToggleQcPass)
 	produkAdmin.Delete("/:id", middleware.RequirePermission("produk:delete"), produkController.Delete)
 	produkAdmin.Post("/:id/gambar", middleware.RequirePermission("produk:update"), produkController.AddGambar)
 	produkAdmin.Delete("/:id/gambar/:gambar_id", middleware.RequirePermission("produk:update"), produkController.DeleteGambar)
@@ -722,6 +724,15 @@ func SetupRoutes(
 	delivereeVehicleAdmin.Put("/:id", middleware.RequirePermission("deliveree_vehicle:manage"), delivereeVehicleTypeController.Update)
 	delivereeVehicleAdmin.Post("/bulk-status", middleware.RequirePermission("deliveree_vehicle:manage"), delivereeVehicleTypeController.BulkUpdateStatus)
 	delivereeVehicleAdmin.Post("/sync", middleware.RequirePermission("deliveree_vehicle:manage"), delivereeVehicleTypeController.Sync)
+
+	// Forwarder Mapping - Admin (master data kota & kecamatan Forwarder, sync dari API)
+	forwarderMappingAdmin := v1.Group("/panel/forwarder-mapping",
+		middleware.AuthMiddleware(),
+		middleware.AdminOnly(),
+	)
+	forwarderMappingAdmin.Get("/cities", middleware.RequirePermission("forwarder_mapping:read"), forwarderMappingController.FindCities)
+	forwarderMappingAdmin.Get("/subdistricts", middleware.RequirePermission("forwarder_mapping:read"), forwarderMappingController.FindSubdistricts)
+	forwarderMappingAdmin.Post("/sync", middleware.RequirePermission("forwarder_mapping:manage"), forwarderMappingController.Sync)
 
 	// Routes list endpoint
 	router.Get("/api/routes", func(c *fiber.Ctx) error {
