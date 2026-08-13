@@ -86,6 +86,13 @@ type ToggleSaleResponse struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+// ToggleQcPassResponse - Response for produk QC PASS toggle
+type ToggleQcPassResponse struct {
+	ID        string    `json:"id"`
+	IsQcPass  bool      `json:"is_qc_pass"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 type ToggleDefaultResponse struct {
 	ID        string `json:"id"`
 	IsDefault bool   `json:"is_default"`
@@ -455,6 +462,7 @@ type ProdukListResponse struct {
 	GambarUtama        *string   `json:"gambar_utama"`
 	IsActive           bool      `json:"is_active"`
 	IsSale             bool      `json:"is_sale"`
+	IsQcPass           bool      `json:"is_qc_pass"`
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
 }
@@ -468,6 +476,7 @@ type ProdukPanelListResponse struct {
 	Status      bool    `json:"status"`       // is_active
 	IsSold      bool    `json:"is_sold"`      // sold out status
 	IsSale      bool    `json:"is_sale"`      // SALE ribbon flag
+	IsQcPass    bool    `json:"is_qc_pass"`   // QC PASS flag
 	GambarUtama *string `json:"gambar_utama"` // Primary image URL
 	FilePDF     *string `json:"file_pdf"`     // First PDF document URL
 }
@@ -506,6 +515,7 @@ type ProdukDetailResponse struct {
 	Dokumen            []ProdukDokumenResponse    `json:"dokumen"`
 	IsActive           bool                       `json:"is_active"`
 	IsSale             bool                       `json:"is_sale"`
+	IsQcPass           bool                       `json:"is_qc_pass"`
 	CreatedAt          time.Time                  `json:"created_at"`
 	UpdatedAt          time.Time                  `json:"updated_at"`
 }

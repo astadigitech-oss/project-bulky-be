@@ -221,6 +221,18 @@ func (c *ProdukController) ToggleSale(ctx *fiber.Ctx) error {
 	return utils.SuccessResponse(ctx, "Status SALE produk berhasil diubah", result)
 }
 
+func (c *ProdukController) ToggleQcPass(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
+
+	result, err := c.service.ToggleQcPass(ctx.UserContext(), id)
+	if err != nil {
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
+	}
+
+	c.activityLog.Log(ctx, models.ActionToggleStatus, "produk", "Status QC PASS produk berhasil diubah")
+	return utils.SuccessResponse(ctx, "Status QC PASS produk berhasil diubah", result)
+}
+
 // ========================================
 // Produk Gambar Handlers
 // ========================================

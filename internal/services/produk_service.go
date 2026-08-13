@@ -30,6 +30,7 @@ type ProdukService interface {
 	Delete(ctx context.Context, id string) error
 	ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error)
 	ToggleSale(ctx context.Context, id string) (*models.ToggleSaleResponse, error)
+	ToggleQcPass(ctx context.Context, id string) (*models.ToggleQcPassResponse, error)
 }
 
 type produkService struct {
@@ -559,6 +560,24 @@ func (s *produkService) ToggleSale(ctx context.Context, id string) (*models.Togg
 	}, nil
 }
 
+func (s *produkService) ToggleQcPass(ctx context.Context, id string) (*models.ToggleQcPassResponse, error) {
+	produk, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, errors.New("produk tidak ditemukan")
+	}
+
+	produk.IsQcPass = !produk.IsQcPass
+	if err := s.repo.Update(ctx, produk); err != nil {
+		return nil, err
+	}
+
+	return &models.ToggleQcPassResponse{
+		ID:        produk.ID.String(),
+		IsQcPass:  produk.IsQcPass,
+		UpdatedAt: produk.UpdatedAt,
+	}, nil
+}
+
 func (s *produkService) toListResponse(p *models.Produk) *models.ProdukListResponse {
 	resp := &models.ProdukListResponse{
 		ID:     p.ID.String(),
@@ -599,6 +618,7 @@ func (s *produkService) toListResponse(p *models.Produk) *models.ProdukListRespo
 		Berat:              p.Berat,
 		IsActive:           p.IsActive,
 		IsSale:             p.IsSale,
+		IsQcPass:           p.IsQcPass,
 		CreatedAt:          p.CreatedAt,
 		UpdatedAt:          p.UpdatedAt,
 	}
@@ -633,13 +653,14 @@ func (s *produkService) toListResponse(p *models.Produk) *models.ProdukListRespo
 // toPanelListResponse converts Produk to simplified ProdukPanelListResponse for admin panel
 func (s *produkService) toPanelListResponse(p *models.Produk) *models.ProdukPanelListResponse {
 	resp := &models.ProdukPanelListResponse{
-		ID:      p.ID.String(),
-		NamaID:  p.NamaID,
-		NamaEN:  p.NamaEN,
-		IDCargo: p.IDCargo,
-		Status:  p.IsActive,
-		IsSold:  p.IsSold,
-		IsSale:  p.IsSale,
+		ID:       p.ID.String(),
+		NamaID:   p.NamaID,
+		NamaEN:   p.NamaEN,
+		IDCargo:  p.IDCargo,
+		Status:   p.IsActive,
+		IsSold:   p.IsSold,
+		IsSale:   p.IsSale,
+		IsQcPass: p.IsQcPass,
 	}
 
 	// Get primary/first image - prioritize is_primary, fallback to first by urutan
@@ -719,6 +740,7 @@ func (s *produkService) toDetailResponse(p *models.Produk) *models.ProdukDetailR
 		BeratVolumetrik:    s.calculateBeratVolumetrik(p.Panjang, p.Lebar, p.Tinggi),
 		IsActive:           p.IsActive,
 		IsSale:             p.IsSale,
+		IsQcPass:           p.IsQcPass,
 		CreatedAt:          p.CreatedAt,
 		UpdatedAt:          p.UpdatedAt,
 	}

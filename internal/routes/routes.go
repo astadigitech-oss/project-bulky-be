@@ -320,6 +320,7 @@ func SetupRoutes(
 	produkAdmin.Put("/:id", middleware.RequirePermission("produk:update"), produkController.Update)
 	produkAdmin.Patch("/:id/toggle-status", middleware.RequirePermission("produk:update"), produkController.ToggleStatus)
 	produkAdmin.Patch("/:id/toggle-sale", middleware.RequirePermission("produk:update"), produkController.ToggleSale)
+	produkAdmin.Patch("/:id/toggle-qc-pass", middleware.RequirePermission("produk:update"), produkController.ToggleQcPass)
 	produkAdmin.Delete("/:id", middleware.RequirePermission("produk:delete"), produkController.Delete)
 	produkAdmin.Post("/:id/gambar", middleware.RequirePermission("produk:update"), produkController.AddGambar)
 	produkAdmin.Delete("/:id/gambar/:gambar_id", middleware.RequirePermission("produk:update"), produkController.DeleteGambar)
