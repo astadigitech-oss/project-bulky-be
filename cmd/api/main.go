@@ -84,6 +84,7 @@ func main() {
 	dasborRepo := repositories.NewDasborRepository(db)
 	disclaimerConsentRepo := repositories.NewBuyerDisclaimerConsentRepository(db)
 	delivereeVehicleTypeRepo := repositories.NewDelivereeVehicleTypeRepository(db)
+	forwarderMappingRepo := repositories.NewForwarderMappingRepository(db)
 
 	// Auth V2 repositories
 	authRepo := repositories.NewAuthRepository(db)
@@ -116,6 +117,7 @@ func main() {
 	ulasanAdminService := services.NewUlasanAdminService(ulasanRepo)
 	activityLogService := services.NewActivityLogService(activityLogRepo)
 	delivereeVehicleTypeService := services.NewDelivereeVehicleTypeService(delivereeVehicleTypeRepo, warehouseRepo, activityLogService)
+	forwarderMappingService := services.NewForwarderMappingService(forwarderMappingRepo)
 	shippingService := services.NewShippingService(db, delivereeVehicleTypeService)
 	pesananAdminService := services.NewPesananAdminService(pesananRepo, shippingService, db)
 	forceUpdateService := services.NewForceUpdateService(forceUpdateRepo)
@@ -190,6 +192,7 @@ func main() {
 	forwarderWebhookService := services.NewForwarderWebhookService(pesananRepo, db)
 	forwarderWebhookController := controllers.NewForwarderWebhookController(forwarderWebhookService, cfg.ForwarderWebhookAuthorization)
 	delivereeVehicleTypeController := controllers.NewDelivereeVehicleTypeController(delivereeVehicleTypeService, activityLogService)
+	forwarderMappingController := controllers.NewForwarderMappingController(forwarderMappingService, activityLogService)
 
 	// Auth V2 controllers
 	authV2Controller := controllers.NewAuthV2Controller(authV2Service, adminService, buyerService)
@@ -234,6 +237,7 @@ func main() {
 		delivereeWebhookController,
 		forwarderWebhookController,
 		delivereeVehicleTypeController,
+		forwarderMappingController,
 	)
 
 	// Setup Auth V2 routes (new authentication system with roles & permissions)
