@@ -503,6 +503,42 @@ Ini akan membuat 2 file:
 - `000XXX_create_new_table.up.sql` - Migration untuk apply
 - `000XXX_create_new_table.down.sql` - Migration untuk rollback
 
+#### Migrasi di Production (Dokploy / Docker-only DB)
+
+Jika database production **tidak di-expose ke publik** dan hanya bisa diakses dari dalam Docker network, jalankan migrasi dari dalam container aplikasi. Image runtime sudah menyertakan binary `migrate` (dari `migrate/migrate`) dan folder `migrations/`:
+
+```sh
+# Masuk ke container (SSH ke server Dokploy atau fitur Terminal di UI Dokploy)
+docker exec -it <nama-container-app> sh
+
+# Jalankan migrasi (pakai env DB_* yang sudah di-set di Dokploy)
+migrate -path /app/migrations \
+  -database "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable" \
+  up
+```
+
+Command pendukung dari dalam container:
+
+```sh
+# Cek versi migrasi saat ini
+migrate -path /app/migrations \
+  -database "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable" \
+  version
+
+# Rollback 1 step
+migrate -path /app/migrations \
+  -database "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable" \
+  down 1
+```
+
+**Otomasi (opsional):** di Dokploy → Application → **Advanced → PostDeployCommand**, isi command migrasi di atas (tanpa `docker exec`) agar migrasi berjalan otomatis setiap deploy:
+
+```sh
+migrate -path /app/migrations -database "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable" up
+```
+
+> Catatan: state migrasi (`schema_migrations`) tersimpan di database, bukan di container — aman walau container di-redeploy.
+
 ## Seeder Scripts
 
 Project ini memiliki beberapa one-time seeder script yang dijalankan manual setelah migration.
