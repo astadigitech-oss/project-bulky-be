@@ -20,6 +20,8 @@ type ProdukRepository interface {
 	ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error)
 	ExistsByIDCargo(ctx context.Context, idCargo string, excludeID *string) (bool, error)
 	UpdateIsSoldBatch(ctx context.Context, ids []uuid.UUID, isSold bool) error
+	FindSoldProdukToArchive(ctx context.Context, threshold time.Time) ([]models.Produk, error)
+	ArchiveProduk(ctx context.Context, id uuid.UUID) error
 }
 
 type produkRepository struct {
@@ -239,4 +241,32 @@ func (r *produkRepository) UpdateIsSoldBatch(ctx context.Context, ids []uuid.UUI
 		return nil
 	}
 	return r.db.WithContext(ctx).Model(&models.Produk{}).Where("id IN ?", ids).Update("is_sold", isSold).Error
+}
+
+// FindSoldProdukToArchive mengembalikan produk yang sudah terjual (is_sold=true, is_active=true)
+// dari order yang statusnya SHIPPED atau COMPLETED, dan sudah melewati threshold waktu yang
+// dihitung dari COALESCE(shipped_at, completed_at) milik order tersebut.
+//
+// Catatan: order dengan delivery_type=PICKUP tidak pernah memiliki status SHIPPED (langsung
+// READY -> COMPLETED), sehingga COALESCE(shipped_at, completed_at) otomatis jatuh ke completed_at
+// untuk kasus tersebut tanpa perlu pengecekan delivery_type terpisah.
+func (r *produkRepository) FindSoldProdukToArchive(ctx context.Context, threshold time.Time) ([]models.Produk, error) {
+	var produk []models.Produk
+	query := `
+		SELECT DISTINCT p.*
+		FROM produk p
+		JOIN pesanan_item pi ON pi.produk_id = p.id
+		JOIN pesanan pe ON pe.id = pi.pesanan_id
+		WHERE p.is_sold = true
+		  AND p.is_active = true
+		  AND pe.order_status IN ('SHIPPED', 'COMPLETED')
+		  AND COALESCE(pe.shipped_at, pe.completed_at) <= ?
+	`
+	err := r.db.WithContext(ctx).Raw(query, threshold).Scan(&produk).Error
+	return produk, err
+}
+
+// ArchiveProduk men-set is_active=false untuk satu produk (dipakai oleh auto-archive job).
+func (r *produkRepository) ArchiveProduk(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Model(&models.Produk{}).Where("id = ?", id).Update("is_active", false).Error
 }

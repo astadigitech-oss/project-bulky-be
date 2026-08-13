@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/controllers"
@@ -142,6 +143,10 @@ func main() {
 	kuponService := services.NewKuponService(kuponRepo, kategoriRepo, db)
 	dasborService := services.NewDasborService(dasborRepo)
 
+	// Auto-archive produk yang sudah terjual (is_sold=true) lebih dari 1 hari,
+	// dihitung sejak order-nya mencapai status SHIPPED atau COMPLETED.
+	produkAutoArchiveService := services.NewProdukAutoArchiveService(produkRepo, activityLogRepo, 24*time.Hour)
+
 	// Auth V2 services
 	authV2Service := services.NewAuthV2Service(authRepo, activityLogRepo)
 	roleService := services.NewRoleService(roleRepo)
@@ -264,6 +269,10 @@ func main() {
 		}
 	}()
 
+	// Jalankan scheduler auto-archive produk terjual setiap 1 jam sampai server shutdown.
+	autoArchiveCtx, stopAutoArchive := context.WithCancel(context.Background())
+	go produkAutoArchiveService.StartScheduler(autoArchiveCtx, 1*time.Hour)
+
 	// Graceful shutdown: tunggu sinyal SIGTERM/SIGINT, lalu stop server
 	// setelah request yang sedang berjalan (termasuk upload video) selesai
 	quit := make(chan os.Signal, 1)
@@ -271,6 +280,7 @@ func main() {
 	<-quit
 
 	log.Println("Shutting down server gracefully...")
+	stopAutoArchive()
 	if err := router.ShutdownWithContext(context.Background()); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}

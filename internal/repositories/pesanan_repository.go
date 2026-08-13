@@ -240,13 +240,18 @@ func (r *pesananRepository) CancelOrder(id uuid.UUID, reason *string, adminID uu
 			return err
 		}
 
-		// 5. Restore is_sold = false for all produk in this order
+		// 5. Restore is_sold = false dan is_active = true untuk semua produk di order ini.
+		// is_active juga direstore karena produk yang sudah SHIPPED/COMPLETED bisa saja
+		// sempat diarsipkan otomatis (auto-archive job) sebelum order ini dibatalkan.
 		produkIDs := make([]uuid.UUID, 0, len(pesanan.Items))
 		for _, item := range pesanan.Items {
 			produkIDs = append(produkIDs, item.ProdukID)
 		}
 		if len(produkIDs) > 0 {
-			if err := tx.Model(&models.Produk{}).Where("id IN ?", produkIDs).Update("is_sold", false).Error; err != nil {
+			if err := tx.Model(&models.Produk{}).Where("id IN ?", produkIDs).Updates(map[string]interface{}{
+				"is_sold":   false,
+				"is_active": true,
+			}).Error; err != nil {
 				return err
 			}
 		}
