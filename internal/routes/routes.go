@@ -56,6 +56,7 @@ func SetupRoutes(
 	forwarderWebhookController *controllers.ForwarderWebhookController,
 	delivereeVehicleTypeController *controllers.DelivereeVehicleTypeController,
 	forwarderMappingController *controllers.ForwarderMappingController,
+	wmsController *controllers.WMSController,
 ) {
 	// Health check
 	router.Get("/api/health", func(c *fiber.Ctx) error {
@@ -743,6 +744,14 @@ func SetupRoutes(
 	forwarderMappingAdmin.Get("/cities", middleware.RequirePermission("forwarder_mapping:read"), forwarderMappingController.FindCities)
 	forwarderMappingAdmin.Get("/subdistricts", middleware.RequirePermission("forwarder_mapping:read"), forwarderMappingController.FindSubdistricts)
 	forwarderMappingAdmin.Post("/sync", middleware.RequirePermission("forwarder_mapping:manage"), forwarderMappingController.Sync)
+
+	// WMS Integration - Admin (OAuth token exchange + cek koneksi, fondasi sync
+	// produk palet dari inventory WMS jadi cargo online)
+	wmsAdmin := v1.Group("/panel/wms",
+		middleware.AuthMiddleware(),
+		middleware.AdminOnly(),
+	)
+	wmsAdmin.Post("/test-connection", middleware.RequirePermission("wms_integration:manage"), wmsController.TestConnection)
 
 	// Routes list endpoint
 	router.Get("/api/routes", func(c *fiber.Ctx) error {
