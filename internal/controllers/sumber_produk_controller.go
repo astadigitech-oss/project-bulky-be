@@ -138,3 +138,28 @@ func (c *SumberProdukController) Dropdown(ctx *fiber.Ctx) error {
 
 	return utils.SuccessResponse(ctx, "Data dropdown sumber produk berhasil diambil", response)
 }
+
+func (c *SumberProdukController) ListActive(ctx *fiber.Ctx) error {
+	var params models.SumberProdukFilterRequest
+	params.Page = 1
+	params.PerPage = 1000
+	isActive := true
+	params.IsActive = &isActive
+	params.SortBy = "updated_at"
+	params.Order = "asc"
+
+	sumberList, _, err := c.service.FindAll(ctx.UserContext(), &params)
+	if err != nil {
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data sumber", nil)
+	}
+
+	response := make([]map[string]interface{}, len(sumberList))
+	for i, s := range sumberList {
+		response[i] = map[string]interface{}{
+			"id":   s.ID,
+			"nama": s.Nama.ID,
+		}
+	}
+
+	return utils.SuccessResponse(ctx, "Data sumber produk berhasil diambil", response)
+}

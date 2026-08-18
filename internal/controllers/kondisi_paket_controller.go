@@ -178,3 +178,12 @@ func (c *KondisiPaketController) Dropdown(ctx *fiber.Ctx) error {
 
 	return utils.SuccessResponse(ctx, "Data dropdown kondisi paket berhasil diambil", response)
 }
+
+func (c *KondisiPaketController) ListActive(ctx *fiber.Ctx) error {
+	response, err := c.service.GetAllForDropdown(ctx.UserContext())
+	if err != nil {
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data kondisi paket", nil)
+	}
+
+	return utils.SuccessResponse(ctx, "Data kondisi paket berhasil diambil", response)
+}

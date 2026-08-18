@@ -279,3 +279,20 @@ func (c *KategoriProdukController) Dropdown(ctx *fiber.Ctx) error {
 
 	return utils.SuccessResponse(ctx, "Data dropdown kategori produk berhasil diambil", response)
 }
+
+func (c *KategoriProdukController) ListActive(ctx *fiber.Ctx) error {
+	kategoriList, err := c.service.FindAllActiveForDropdown(ctx.UserContext())
+	if err != nil {
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data kategori", nil)
+	}
+
+	response := make([]map[string]interface{}, len(kategoriList))
+	for i, k := range kategoriList {
+		response[i] = map[string]interface{}{
+			"id":   k.ID.String(),
+			"nama": k.NamaID,
+		}
+	}
+
+	return utils.SuccessResponse(ctx, "Data kategori produk berhasil diambil", response)
+}
