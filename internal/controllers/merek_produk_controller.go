@@ -214,3 +214,12 @@ func (c *MerekProdukController) Dropdown(ctx *fiber.Ctx) error {
 
 	return utils.SuccessResponse(ctx, "Data dropdown merek produk berhasil diambil", merekList)
 }
+
+func (c *MerekProdukController) ListActive(ctx *fiber.Ctx) error {
+	merekList, err := c.service.GetAllForDropdown(ctx.UserContext())
+	if err != nil {
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil data merek", nil)
+	}
+
+	return utils.SuccessResponse(ctx, "Data merek produk berhasil diambil", merekList)
+}

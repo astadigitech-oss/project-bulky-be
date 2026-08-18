@@ -20,6 +20,7 @@ type Config struct {
 	UploadPath                    string
 	BaseURL                       string
 	InternalAPIKey                string
+	WMSAPIKey                     string
 	DelivereeWebhookAuthorization string
 	ForwarderWebhookAuthorization string
 }
@@ -45,6 +46,7 @@ func LoadConfig() *Config {
 		UploadPath:                    getEnv("UPLOAD_PATH", "./uploads"),
 		BaseURL:                       getEnv("BASE_URL", "http://localhost:8080"),
 		InternalAPIKey:                getEnv("INTERNAL_API_KEY", ""),
+		WMSAPIKey:                     getEnv("WMS_API_KEY", ""),
 		DelivereeWebhookAuthorization: getEnv("DELIVEREE_WEBHOOK_AUTHORIZATION", ""),
 		ForwarderWebhookAuthorization: getEnv("FORWARDER_WEBHOOK_AUTHORIZATION", ""),
 	}

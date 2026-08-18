@@ -704,6 +704,16 @@ func SetupRoutes(
 	internalUpload.Post("/ulasan", internalUploadController.UploadUlasanGambar)
 	internalUpload.Post("/buyer-foto", internalUploadController.UploadBuyerFoto)
 
+	// Internal WMS master-data routes — only accessible via X-Internal-Key header (WMS sync produk palet)
+	internalMaster := v1.Group("/internal/master",
+		middleware.InternalKeyMiddleware(cfg.WMSAPIKey),
+	)
+	internalMaster.Get("/kategori-produk", kategoriController.ListActive)
+	internalMaster.Get("/merek-produk", merekController.ListActive)
+	internalMaster.Get("/kondisi-produk", kondisiController.ListActive)
+	internalMaster.Get("/kondisi-paket", kondisiPaketController.ListActive)
+	internalMaster.Get("/sumber-produk", sumberController.ListActive)
+
 	// Webhook Deliveree — dipanggil provider (inbound), verifikasi via
 	// Authorization header vs DELIVEREE_WEBHOOK_AUTHORIZATION di controller.
 	webhook := v1.Group("/webhook")
