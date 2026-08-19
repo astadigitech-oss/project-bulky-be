@@ -193,6 +193,50 @@ func DeleteFile(filePath string, cfg *config.Config) error {
 	return nil
 }
 
+// CopyStoredFile menyalin file yang sudah ada di storage lokal (mis. hasil
+// download dari WMS di uploads/wms-cargo/<cargo_id>/pricing.pdf) ke direktori
+// lain dengan nama baru (UUID + ekstensi asal). Dipakai untuk auto-attach PDF
+// harga WMS jadi dokumen produk saat create/edit produk. Mengembalikan path
+// relatif hasil salinan (tanpa prefix UploadPath), untuk disimpan ke DB.
+func CopyStoredFile(sourceRelativePath, destDirectory string, cfg *config.Config) (string, error) {
+	if sourceRelativePath == "" {
+		return "", errors.New("path sumber file kosong")
+	}
+
+	sourceFullPath := filepath.Join(cfg.UploadPath, filepath.FromSlash(sourceRelativePath))
+	src, err := os.Open(sourceFullPath)
+	if err != nil {
+		return "", fmt.Errorf("gagal membuka file sumber: %w", err)
+	}
+	defer src.Close()
+
+	uploadPath := filepath.Join(cfg.UploadPath, destDirectory)
+	if err := os.MkdirAll(uploadPath, 0755); err != nil {
+		return "", fmt.Errorf("gagal membuat direktori upload: %w", err)
+	}
+
+	ext := filepath.Ext(sourceRelativePath)
+	filename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
+	fullPath := filepath.Join(uploadPath, filename)
+
+	dst, err := os.Create(fullPath)
+	if err != nil {
+		return "", fmt.Errorf("gagal membuat file salinan: %w", err)
+	}
+	defer dst.Close()
+
+	if _, err := dst.ReadFrom(src); err != nil {
+		return "", fmt.Errorf("gagal menyalin file: %w", err)
+	}
+	if err := dst.Sync(); err != nil {
+		return "", fmt.Errorf("gagal sync file: %w", err)
+	}
+
+	relativePath := filepath.Join(destDirectory, filename)
+	relativePath = strings.ReplaceAll(relativePath, "\\", "/")
+	return relativePath, nil
+}
+
 // SaveUploadedFileWithCustomName saves an uploaded file with a custom filename
 // Returns the relative path for URL generation (e.g., "product-categories/custom-name.png")
 func SaveUploadedFileWithCustomName(file *multipart.FileHeader, directory, customName string, cfg *config.Config) (string, error) {

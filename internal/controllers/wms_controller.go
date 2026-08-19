@@ -75,3 +75,38 @@ func (c *WMSController) SetCargoPrice(ctx *fiber.Ctx) error {
 
 	return utils.SuccessResponse(ctx, "Harga cargo berhasil ditetapkan", result)
 }
+
+// ListAlreadyPricedCargos mengembalikan cache lokal cargo WMS yang sudah
+// diberi harga tapi belum dipakai di produk manapun — sumber dropdown
+// "ID Cargo" saat create/edit produk. Hanya bisa diakses role dengan
+// permission wms_integration:manage.
+func (c *WMSController) ListAlreadyPricedCargos(ctx *fiber.Ctx) error {
+	search := ctx.Query("search")
+
+	items, err := c.service.ListAlreadyPricedCargos(ctx.UserContext(), search)
+	if err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadGateway, err.Error(), nil)
+	}
+
+	return utils.SuccessResponse(ctx, "Daftar cargo sudah diberi harga berhasil diambil", items)
+}
+
+// MarkCargoSynced menandai cargo sudah dikonfirmasi sinkron (is_sync = true)
+// di WMS setelah produk lokal berhasil dibuat/diperbarui dari cargo terkait.
+// Idempotent — aman dipanggil berkali-kali. Query param produk_id opsional,
+// dipakai untuk menandai cache lokal sebagai sudah terpakai di produk mana.
+// Hanya bisa diakses role dengan permission wms_integration:manage.
+func (c *WMSController) MarkCargoSynced(ctx *fiber.Ctx) error {
+	cargoID := ctx.Params("id")
+	if cargoID == "" {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "ID cargo tidak boleh kosong", nil)
+	}
+	produkID := ctx.Query("produk_id")
+
+	result, err := c.service.MarkCargoSynced(ctx.UserContext(), cargoID, produkID)
+	if err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadGateway, err.Error(), nil)
+	}
+
+	return utils.SuccessResponse(ctx, "Cargo berhasil ditandai sinkron", result)
+}

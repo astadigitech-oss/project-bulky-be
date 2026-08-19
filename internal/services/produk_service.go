@@ -39,8 +39,11 @@ type produkService struct {
 	dokumenRepo    repositories.ProdukDokumenRepository
 	warehouseRepo  repositories.WarehouseRepository
 	tipeProdukRepo repositories.TipeProdukRepository
-	cfg            *config.Config
-	db             *gorm.DB
+	// cargoRepo opsional (bisa nil) — kalau nil, auto-attach PDF harga WMS
+	// di-skip tanpa error (lihat attachWmsCargoPricingPDF).
+	cargoRepo repositories.WMSCargoPricedRepository
+	cfg       *config.Config
+	db        *gorm.DB
 }
 
 func NewProdukService(
@@ -49,6 +52,7 @@ func NewProdukService(
 	dokumenRepo repositories.ProdukDokumenRepository,
 	warehouseRepo repositories.WarehouseRepository,
 	tipeProdukRepo repositories.TipeProdukRepository,
+	cargoRepo repositories.WMSCargoPricedRepository,
 	cfg *config.Config,
 	db *gorm.DB,
 ) ProdukService {
@@ -58,6 +62,7 @@ func NewProdukService(
 		dokumenRepo:    dokumenRepo,
 		warehouseRepo:  warehouseRepo,
 		tipeProdukRepo: tipeProdukRepo,
+		cargoRepo:      cargoRepo,
 		cfg:            cfg,
 		db:             db,
 	}
@@ -245,6 +250,13 @@ func (s *produkService) CreateWithFiles(
 		}
 	}
 
+	// 5. Auto-attach PDF harga dari WMS (kalau id_cargo cocok dengan cache
+	// wms_cargo_priced yang sudah punya PDF ter-download). Kegagalan di
+	// langkah ini TIDAK menggagalkan pembuatan produk — hanya di-skip.
+	if err := s.attachWmsCargoPricingPDF(ctx, tx, produk.ID, req.IDCargo); err != nil {
+		fmt.Printf("Warning: gagal auto-attach PDF harga WMS: %v\n", err)
+	}
+
 	// Commit transaction
 	if err := tx.Commit().Error; err != nil {
 		return nil, err
@@ -252,6 +264,45 @@ func (s *produkService) CreateWithFiles(
 
 	// Reload with relations
 	return s.FindByID(ctx, produk.ID.String())
+}
+
+// attachWmsCargoPricingPDF menyalin PDF harga cargo WMS (kalau id_cargo
+// produk cocok dengan code di cache wms_cargo_priced yang sudah punya PDF
+// ter-download) jadi dokumen produk baru. Dipanggil di dalam transaksi
+// create/update produk — no-op kalau idCargo kosong atau cache tidak
+// ditemukan/tidak punya PDF (bukan error, karena produk boleh dibuat tanpa
+// terhubung ke WMS sama sekali).
+func (s *produkService) attachWmsCargoPricingPDF(ctx context.Context, tx *gorm.DB, produkID uuid.UUID, idCargo *string) error {
+	if s.cargoRepo == nil || idCargo == nil || *idCargo == "" {
+		return nil
+	}
+
+	cargo, err := s.cargoRepo.FindByCode(ctx, *idCargo)
+	if err != nil {
+		return nil // cache tidak ditemukan — bukan error, produk tetap boleh dibuat
+	}
+	if cargo.PricingPDFPath == nil || *cargo.PricingPDFPath == "" {
+		return nil
+	}
+
+	dokumenDir := fmt.Sprintf("documents/%s", produkID.String())
+	relativePath, err := utils.CopyStoredFile(*cargo.PricingPDFPath, dokumenDir, s.cfg)
+	if err != nil {
+		return fmt.Errorf("gagal menyalin PDF harga WMS: %w", err)
+	}
+
+	dokumen := &models.ProdukDokumen{
+		ProdukID:    produkID,
+		NamaDokumen: fmt.Sprintf("Rincian Harga WMS - %s.pdf", cargo.Code),
+		FileURL:     relativePath,
+		TipeFile:    "pdf",
+	}
+	if err := tx.Create(dokumen).Error; err != nil {
+		utils.DeleteFile(relativePath, s.cfg)
+		return fmt.Errorf("gagal menyimpan dokumen PDF harga WMS: %w", err)
+	}
+
+	return nil
 }
 
 func (s *produkService) FindByID(ctx context.Context, id string) (*models.ProdukDetailResponse, error) {
@@ -441,8 +492,24 @@ func (s *produkService) UpdateWithFiles(ctx context.Context, id string, req *mod
 		return nil, err
 	}
 
-	// If no new dokumen files, return the result as-is
+	// If no new dokumen files, hanya coba auto-attach PDF harga WMS (kalau
+	// id_cargo baru saja diisi/diubah ke cargo yang belum pernah di-attach),
+	// lalu return hasil update field biasa.
 	if len(dokumenFiles) == 0 {
+		if produkUUID, parseErr := uuid.Parse(id); parseErr == nil {
+			txAttach := s.db.Begin()
+			if attachErr := s.attachWmsCargoPricingPDF(ctx, txAttach, produkUUID, req.IDCargo); attachErr != nil {
+				txAttach.Rollback()
+				fmt.Printf("Warning: gagal auto-attach PDF harga WMS: %v\n", attachErr)
+			} else if commitErr := txAttach.Commit().Error; commitErr != nil {
+				fmt.Printf("Warning: gagal commit auto-attach PDF harga WMS: %v\n", commitErr)
+			} else {
+				result, err = s.FindByID(ctx, id)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
 		return result, nil
 	}
 
@@ -507,6 +574,12 @@ func (s *produkService) UpdateWithFiles(ctx context.Context, id string, req *mod
 			utils.DeleteFile(relativePath, s.cfg)
 			return nil, err
 		}
+	}
+
+	// Auto-attach PDF harga WMS (kalau id_cargo cocok cache yang punya PDF),
+	// sebagai dokumen tambahan di luar dokumenFiles yang diupload manual.
+	if err := s.attachWmsCargoPricingPDF(ctx, tx, produkUUID, req.IDCargo); err != nil {
+		fmt.Printf("Warning: gagal auto-attach PDF harga WMS: %v\n", err)
 	}
 
 	if err := tx.Commit().Error; err != nil {

@@ -86,6 +86,7 @@ func main() {
 	disclaimerConsentRepo := repositories.NewBuyerDisclaimerConsentRepository(db)
 	delivereeVehicleTypeRepo := repositories.NewDelivereeVehicleTypeRepository(db)
 	forwarderMappingRepo := repositories.NewForwarderMappingRepository(db)
+	wmsCargoPricedRepo := repositories.NewWMSCargoPricedRepository(db)
 
 	// Auth V2 repositories
 	authRepo := repositories.NewAuthRepository(db)
@@ -106,7 +107,7 @@ func main() {
 	bannerTipeProdukService := services.NewBannerTipeProdukService(bannerTipeProdukRepo, tipeProdukRepo, reorderService, cfg)
 	produkGambarService := services.NewProdukGambarService(produkGambarRepo, cfg)
 	produkDokumenService := services.NewProdukDokumenService(produkDokumenRepo, cfg)
-	produkService := services.NewProdukService(produkRepo, produkGambarRepo, produkDokumenRepo, warehouseRepo, tipeProdukRepo, cfg, db)
+	produkService := services.NewProdukService(produkRepo, produkGambarRepo, produkDokumenRepo, warehouseRepo, tipeProdukRepo, wmsCargoPricedRepo, cfg, db)
 	authService := services.NewAuthService(adminRepo, adminSessionRepo)
 	adminService := services.NewAdminService(adminRepo, adminSessionRepo, roleRepo)
 	masterService := services.NewMasterService(kategoriRepo, merekRepo, kondisiRepo, kondisiPaketRepo, sumberRepo)
@@ -119,7 +120,7 @@ func main() {
 	activityLogService := services.NewActivityLogService(activityLogRepo)
 	delivereeVehicleTypeService := services.NewDelivereeVehicleTypeService(delivereeVehicleTypeRepo, warehouseRepo, activityLogService)
 	forwarderMappingService := services.NewForwarderMappingService(forwarderMappingRepo)
-	wmsService := services.NewWMSService(cfg.WMSBaseURL, cfg.WMSClientID, cfg.WMSClientSecret)
+	wmsService := services.NewWMSService(cfg.WMSBaseURL, cfg.WMSClientID, cfg.WMSClientSecret, cfg, wmsCargoPricedRepo)
 	shippingService := services.NewShippingService(db, delivereeVehicleTypeService)
 	pesananAdminService := services.NewPesananAdminService(pesananRepo, shippingService, db)
 	forceUpdateService := services.NewForceUpdateService(forceUpdateRepo)
