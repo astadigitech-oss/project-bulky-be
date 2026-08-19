@@ -752,6 +752,8 @@ func SetupRoutes(
 		middleware.AdminOnly(),
 	)
 	wmsAdmin.Post("/test-connection", middleware.RequirePermission("wms_integration:manage"), wmsController.TestConnection)
+	wmsAdmin.Get("/cargos/ready-to-price", middleware.RequirePermission("wms_integration:manage"), wmsController.ListReadyToPriceCargos)
+	wmsAdmin.Post("/cargos/:id/price", middleware.RequirePermission("wms_integration:manage"), wmsController.SetCargoPrice)
 
 	// Routes list endpoint
 	router.Get("/api/routes", func(c *fiber.Ctx) error {

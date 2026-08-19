@@ -8,6 +8,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -35,6 +37,14 @@ type WMSService interface {
 	// kredensial WMS aktif & terkoneksi. Dipanggil setelah dapat token, sebelum
 	// mencoba endpoint bisnis lain.
 	TestConnection(ctx context.Context) (*models.WMSConnectionInfo, error)
+	// ListReadyToPriceCargos memanggil GET /api/integration/cargos/ready-to-price
+	// untuk mendapatkan daftar cargo (ukuran fisik lengkap, belum pernah
+	// dihargai, belum disinkronkan) yang siap ditetapkan harga jualnya.
+	ListReadyToPriceCargos(ctx context.Context, params *models.WMSCargoListFilterRequest) ([]models.WMSCargoPricingResponse, *models.WMSPaginationMetaRaw, error)
+	// SetCargoPrice memanggil POST /api/integration/cargos/{id}/price untuk
+	// menetapkan harga jual cargo (diskon persentase atau potongan rupiah
+	// fix dari total_price/harga inventory).
+	SetCargoPrice(ctx context.Context, cargoID string, req *models.SetWMSCargoPriceRequest) (*models.WMSCargoPriceResponse, error)
 }
 
 type wmsService struct {
@@ -183,4 +193,124 @@ func (s *wmsService) TestConnection(ctx context.Context) (*models.WMSConnectionI
 	}
 
 	return &result, nil
+}
+
+// ListReadyToPriceCargos memanggil GET /api/integration/cargos/ready-to-price
+// dengan Bearer token untuk mendapatkan daftar cargo yang siap ditetapkan
+// harga jualnya (ukuran fisik lengkap, belum pernah dihargai, belum
+// disinkronkan).
+func (s *wmsService) ListReadyToPriceCargos(ctx context.Context, params *models.WMSCargoListFilterRequest) ([]models.WMSCargoPricingResponse, *models.WMSPaginationMetaRaw, error) {
+	token, err := s.GetAccessToken(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if params == nil {
+		params = &models.WMSCargoListFilterRequest{}
+	}
+	params.SetDefaults()
+
+	query := url.Values{}
+	query.Set("page", strconv.Itoa(params.Page))
+	query.Set("limit", strconv.Itoa(params.Limit))
+	if params.Search != "" {
+		query.Set("search", params.Search)
+	}
+
+	reqURL := s.baseURL + "/api/integration/cargos/ready-to-price?" + query.Encode()
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	httpReq.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		return nil, nil, fmt.Errorf("connection timeout saat ambil daftar cargo siap harga WMS: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	log.Printf("[wms] <-- GET /api/integration/cargos/ready-to-price status=%d body=%s", resp.StatusCode, string(respBody))
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		s.mu.Lock()
+		s.cachedToken = ""
+		s.mu.Unlock()
+		return nil, nil, fmt.Errorf("token WMS tidak ada / salah / kedaluwarsa / kredensial dicabut")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, nil, fmt.Errorf("WMS API error saat ambil daftar cargo siap harga (status %d): %s", resp.StatusCode, string(respBody))
+	}
+
+	var envelope models.WMSCargoListEnvelope
+	if err := json.Unmarshal(respBody, &envelope); err != nil {
+		return nil, nil, fmt.Errorf("gagal parse response daftar cargo siap harga WMS: %w", err)
+	}
+	if !envelope.Success {
+		return nil, nil, fmt.Errorf("WMS API mengembalikan gagal: %s", envelope.Message)
+	}
+
+	return envelope.Data, &envelope.Meta, nil
+}
+
+// SetCargoPrice memanggil POST /api/integration/cargos/{id}/price dengan
+// Bearer token untuk menetapkan harga jual cargo (diskon persentase atau
+// potongan rupiah fix dari total_price).
+func (s *wmsService) SetCargoPrice(ctx context.Context, cargoID string, req *models.SetWMSCargoPriceRequest) (*models.WMSCargoPriceResponse, error) {
+	token, err := s.GetAccessToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("gagal encode request harga cargo: %w", err)
+	}
+
+	reqURL := s.baseURL + "/api/integration/cargos/" + url.PathEscape(cargoID) + "/price"
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, reqURL, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("connection timeout saat menetapkan harga cargo WMS: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	log.Printf("[wms] <-- POST /api/integration/cargos/%s/price status=%d body=%s", cargoID, resp.StatusCode, string(respBody))
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		s.mu.Lock()
+		s.cachedToken = ""
+		s.mu.Unlock()
+		return nil, fmt.Errorf("token WMS tidak ada / salah / kedaluwarsa / kredensial dicabut")
+	}
+	if resp.StatusCode == http.StatusBadRequest || resp.StatusCode == http.StatusNotFound {
+		var errEnvelope models.WMSErrorEnvelope
+		if err := json.Unmarshal(respBody, &errEnvelope); err == nil && errEnvelope.Message != "" {
+			return nil, fmt.Errorf("WMS API error saat menetapkan harga cargo (status %d): %s", resp.StatusCode, errEnvelope.Message)
+		}
+		return nil, fmt.Errorf("WMS API error saat menetapkan harga cargo (status %d): %s", resp.StatusCode, string(respBody))
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("WMS API error saat menetapkan harga cargo (status %d): %s", resp.StatusCode, string(respBody))
+	}
+
+	var envelope models.WMSCargoPriceEnvelope
+	if err := json.Unmarshal(respBody, &envelope); err != nil {
+		return nil, fmt.Errorf("gagal parse response harga cargo WMS: %w", err)
+	}
+	if !envelope.Success {
+		return nil, fmt.Errorf("WMS API mengembalikan gagal: %s", envelope.Message)
+	}
+
+	return &envelope.Data, nil
 }
