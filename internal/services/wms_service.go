@@ -55,9 +55,12 @@ type WMSService interface {
 	// cache cargo di tabel wms_cargo_priced di-upsert supaya siap dipilih di
 	// dropdown "ID Cargo" saat create/edit produk.
 	SetCargoPrice(ctx context.Context, cargoID string, req *models.SetWMSCargoPriceRequest) (*models.WMSCargoPriceResponse, error)
-	// ListAlreadyPricedCargos mengembalikan cache lokal cargo yang sudah
-	// diberi harga tapi belum dipakai di produk manapun (tabel
-	// wms_cargo_priced), dipakai sebagai sumber dropdown "ID Cargo".
+	// ListAlreadyPricedCargos memanggil GET /api/integration/cargos/already-priced
+	// untuk mendapatkan daftar cargo yang sudah diberi harga di WMS tapi belum
+	// dikonfirmasi sinkron. Cargo yang sudah dipakai di produk lokal (cache
+	// wms_cargo_priced.is_used_in_produk = true) difilter keluar. PDF harga
+	// yang belum ter-cache lokal langsung di-download saat itu juga. Dipakai
+	// sebagai sumber dropdown "ID Cargo" saat create/edit produk.
 	ListAlreadyPricedCargos(ctx context.Context, search string) ([]models.WMSCargoPricedListResponse, error)
 	// MarkCargoSynced memanggil POST /api/integration/cargos/{id}/status untuk
 	// menandai cargo sudah dikonfirmasi sinkron (is_sync = true) di WMS, lalu
@@ -423,43 +426,141 @@ func (s *wmsService) downloadAndSavePricingPDF(ctx context.Context, token, cargo
 	return relativePath, nil
 }
 
-// ListAlreadyPricedCargos mengembalikan cache lokal cargo yang sudah diberi
-// harga tapi belum dipakai di produk manapun (tabel wms_cargo_priced).
+// ListAlreadyPricedCargos memanggil GET /api/integration/cargos/already-priced
+// dengan Bearer token untuk mendapatkan daftar cargo yang sudah diberi harga
+// di WMS tapi belum dikonfirmasi sinkron — ini SUMBER DATA UTAMA (bukan cache
+// lokal), supaya dropdown "ID Cargo" selalu merepresentasikan kondisi WMS
+// terkini (termasuk cargo yang di-price dari luar modal sync kita). Cache
+// lokal (wms_cargo_priced) hanya dipakai untuk: (1) menyembunyikan cargo yang
+// sudah dipakai di produk lokal (is_used_in_produk), (2) menyimpan path PDF
+// lokal — kalau belum ada di cache, PDF langsung didownload & di-upsert saat
+// itu juga supaya dropdown berikutnya tidak perlu download ulang.
 func (s *wmsService) ListAlreadyPricedCargos(ctx context.Context, search string) ([]models.WMSCargoPricedListResponse, error) {
-	if s.cargoRepo == nil {
-		return nil, fmt.Errorf("cargo repository tidak tersedia")
-	}
-
-	items, err := s.cargoRepo.ListUnused(ctx, search)
+	token, err := s.GetAccessToken(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("gagal mengambil daftar cargo sudah diberi harga: %w", err)
+		return nil, err
 	}
 
-	result := make([]models.WMSCargoPricedListResponse, 0, len(items))
-	for _, item := range items {
-		salePrice := 0.0
-		if item.SalePrice != nil {
-			salePrice = *item.SalePrice
+	query := url.Values{}
+	if search != "" {
+		query.Set("search", search)
+	}
+	query.Set("limit", "100")
+
+	reqURL := s.baseURL + "/api/integration/cargos/already-priced?" + query.Encode()
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("connection timeout saat ambil daftar cargo sudah diberi harga: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	log.Printf("[wms] <-- GET /api/integration/cargos/already-priced status=%d body=%s", resp.StatusCode, string(respBody))
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		s.mu.Lock()
+		s.cachedToken = ""
+		s.mu.Unlock()
+		return nil, fmt.Errorf("token WMS tidak ada / salah / kedaluwarsa / kredensial dicabut")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("WMS API error saat ambil daftar cargo sudah diberi harga (status %d): %s", resp.StatusCode, string(respBody))
+	}
+
+	var envelope models.WMSCargoPricedListEnvelope
+	if err := json.Unmarshal(respBody, &envelope); err != nil {
+		return nil, fmt.Errorf("gagal parse response daftar cargo sudah diberi harga: %w", err)
+	}
+	if !envelope.Success {
+		return nil, fmt.Errorf("WMS API mengembalikan gagal: %s", envelope.Message)
+	}
+
+	result := make([]models.WMSCargoPricedListResponse, 0, len(envelope.Data))
+	for _, item := range envelope.Data {
+		// Cargo yang sudah kepakai di produk lokal disembunyikan dari dropdown,
+		// meski masih muncul di WMS (belum di-mark-sync, mis. produknya gagal
+		// dibuat setelah PDF di-attach — kasus tepi, jarang terjadi).
+		if s.cargoRepo != nil {
+			if cached, cacheErr := s.cargoRepo.FindByCargoID(ctx, item.ID); cacheErr == nil && cached.IsUsedInProduk {
+				continue
+			}
 		}
-		var pdfURL *string
-		if item.PricingPDFPath != nil && *item.PricingPDFPath != "" {
-			full := utils.GetFileURL(*item.PricingPDFPath, s.cfg)
-			pdfURL = &full
+
+		pdfURL, pdfPath := s.resolveCachedPricingPDF(ctx, token, item.ID, item.PricingPDFURL)
+
+		if s.cargoRepo != nil {
+			pricingType := item.PricingType
+			pricingValue := item.PricingValue
+			salePrice := item.SalePrice
+			pricedAt := item.PricedAt
+			cargoUUID, parseErr := uuid.Parse(item.ID)
+			if parseErr == nil {
+				cache := &models.WMSCargoPriced{
+					CargoID:      cargoUUID,
+					Code:         item.Code,
+					LengthCM:     item.LengthCM,
+					WidthCM:      item.WidthCM,
+					HeightCM:     item.HeightCM,
+					WeightKG:     item.WeightKG,
+					TotalPrice:   item.TotalPrice,
+					PricingType:  &pricingType,
+					PricingValue: &pricingValue,
+					SalePrice:    &salePrice,
+					PricedAt:     &pricedAt,
+				}
+				if pdfPath != "" {
+					cache.PricingPDFPath = &pdfPath
+				}
+				if upsertErr := s.cargoRepo.Upsert(ctx, cache); upsertErr != nil {
+					log.Printf("[wms] WARNING: gagal upsert cache cargo %s: %v", item.ID, upsertErr)
+				}
+			}
 		}
+
 		result = append(result, models.WMSCargoPricedListResponse{
-			CargoID:        item.CargoID.String(),
+			CargoID:        item.ID,
 			Code:           item.Code,
 			LengthCM:       item.LengthCM,
 			WidthCM:        item.WidthCM,
 			HeightCM:       item.HeightCM,
 			WeightKG:       item.WeightKG,
 			TotalPrice:     item.TotalPrice,
-			SalePrice:      salePrice,
+			SalePrice:      item.SalePrice,
 			PricingPDFURL:  pdfURL,
-			IsUsedInProduk: item.IsUsedInProduk,
+			IsUsedInProduk: false,
 		})
 	}
 	return result, nil
+}
+
+// resolveCachedPricingPDF mengembalikan URL publik PDF harga cargo. Kalau
+// sudah ada di cache lokal, langsung pakai path itu (tanpa download ulang).
+// Kalau belum ada, download & simpan sekarang juga lewat downloadAndSavePricingPDF
+// supaya cache lengkap untuk request berikutnya. Kegagalan download TIDAK
+// menggagalkan pemanggil — cukup return url nil, path kosong.
+func (s *wmsService) resolveCachedPricingPDF(ctx context.Context, token, cargoID, pdfURLHint string) (*string, string) {
+	if s.cargoRepo != nil {
+		if cached, err := s.cargoRepo.FindByCargoID(ctx, cargoID); err == nil && cached.PricingPDFPath != nil && *cached.PricingPDFPath != "" {
+			full := utils.GetFileURL(*cached.PricingPDFPath, s.cfg)
+			return &full, *cached.PricingPDFPath
+		}
+	}
+
+	pdfPath, err := s.downloadAndSavePricingPDF(ctx, token, cargoID, pdfURLHint)
+	if err != nil {
+		log.Printf("[wms] WARNING: gagal download/simpan PDF harga cargo %s: %v", cargoID, err)
+		return nil, ""
+	}
+
+	full := utils.GetFileURL(pdfPath, s.cfg)
+	return &full, pdfPath
 }
 
 // MarkCargoSynced memanggil POST /api/integration/cargos/{id}/status untuk

@@ -17,7 +17,6 @@ type WMSCargoPricedRepository interface {
 	// "004/08/2026") — dipakai untuk auto-attach PDF harga saat create/edit
 	// produk, karena field Produk.IDCargo menyimpan code, bukan cargo_id (UUID WMS).
 	FindByCode(ctx context.Context, code string) (*models.WMSCargoPriced, error)
-	ListUnused(ctx context.Context, search string) ([]models.WMSCargoPriced, error)
 	MarkUsed(ctx context.Context, cargoID string, produkID string) error
 }
 
@@ -51,20 +50,6 @@ func (r *wmsCargoPricedRepository) FindByCode(ctx context.Context, code string) 
 		return nil, err
 	}
 	return &cargo, nil
-}
-
-// ListUnused daftar cargo yang belum dipakai di produk manapun (untuk
-// dropdown "ID Cargo" saat create/edit produk).
-func (r *wmsCargoPricedRepository) ListUnused(ctx context.Context, search string) ([]models.WMSCargoPriced, error) {
-	var items []models.WMSCargoPriced
-	q := r.db.WithContext(ctx).Where("is_used_in_produk = false")
-	if search != "" {
-		q = q.Where("code ILIKE ?", "%"+search+"%")
-	}
-	if err := q.Order("created_at DESC").Find(&items).Error; err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 func (r *wmsCargoPricedRepository) MarkUsed(ctx context.Context, cargoID string, produkID string) error {
