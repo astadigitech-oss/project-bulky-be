@@ -26,6 +26,7 @@ type PesananAdminService interface {
 	GetForwarderInvoice(ctx context.Context, id uuid.UUID) ([]ForwarderInvoice, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 	GetStatistics(ctx context.Context, params *dto.StatisticsQueryParams) (*dto.PesananStatisticsResponse, error)
+	CountPaidNotProcessed(ctx context.Context) (int64, error)
 }
 
 type pesananAdminService struct {
@@ -413,6 +414,10 @@ func (s *pesananAdminService) GetStatistics(ctx context.Context, params *dto.Sta
 		PerPaymentStatus: stats["per_payment_status"].(map[string]int64),
 		ChartData:        buildChartData(rawPoints, chartDari, chartSampai, groupBy, isWeekFilter),
 	}, nil
+}
+
+func (s *pesananAdminService) CountPaidNotProcessed(ctx context.Context) (int64, error) {
+	return s.pesananRepo.CountPaidNotProcessed()
 }
 
 // derefString mengembalikan nilai string dari pointer, atau string kosong bila nil.
