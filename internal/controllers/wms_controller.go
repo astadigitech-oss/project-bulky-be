@@ -54,9 +54,9 @@ func (c *WMSController) ListReadyToPriceCargos(ctx *fiber.Ctx) error {
 }
 
 // SetCargoPrice memanggil POST /api/integration/cargos/{id}/price di WMS
-// untuk menetapkan harga jual cargo (diskon persentase atau potongan rupiah
-// fix dari total_price). Hanya bisa diakses role dengan permission
-// wms_integration:manage.
+// untuk menetapkan harga jual cargo — tipe "discount" (persentase dari
+// total_price) atau "fix" (harga jual/sale_price akhir secara langsung).
+// Hanya bisa diakses role dengan permission wms_integration:manage.
 func (c *WMSController) SetCargoPrice(ctx *fiber.Ctx) error {
 	cargoID := ctx.Params("id")
 	if cargoID == "" {
@@ -76,10 +76,9 @@ func (c *WMSController) SetCargoPrice(ctx *fiber.Ctx) error {
 	return utils.SuccessResponse(ctx, "Harga cargo berhasil ditetapkan", result)
 }
 
-// ListAlreadyPricedCargos mengembalikan cache lokal cargo WMS yang sudah
-// diberi harga tapi belum dipakai di produk manapun — sumber dropdown
-// "ID Cargo" saat create/edit produk. Hanya bisa diakses role dengan
-// permission wms_integration:manage.
+// ListAlreadyPricedCargos memanggil GET /api/integration/cargos/already-priced
+// di WMS untuk mendapatkan daftar cargo yang sudah diberi harga tapi belum
+// dikonfirmasi sinkron — sumber dropdown "ID Cargo" saat create produk.
 func (c *WMSController) ListAlreadyPricedCargos(ctx *fiber.Ctx) error {
 	search := ctx.Query("search")
 
@@ -91,19 +90,34 @@ func (c *WMSController) ListAlreadyPricedCargos(ctx *fiber.Ctx) error {
 	return utils.SuccessResponse(ctx, "Daftar cargo sudah diberi harga berhasil diambil", items)
 }
 
+// DownloadCargoPricingPDF meneruskan (proxy) PDF harga cargo dari WMS ke
+// client sebagai response application/pdf mentah — FE mengunduhnya lalu
+// mengunggahnya kembali sebagai dokumen produk seolah file diupload manual.
+func (c *WMSController) DownloadCargoPricingPDF(ctx *fiber.Ctx) error {
+	cargoID := ctx.Params("id")
+	if cargoID == "" {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "ID cargo tidak boleh kosong", nil)
+	}
+
+	data, err := c.service.DownloadCargoPricingPDF(ctx.UserContext(), cargoID)
+	if err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadGateway, err.Error(), nil)
+	}
+
+	ctx.Set("Content-Type", "application/pdf")
+	return ctx.Send(data)
+}
+
 // MarkCargoSynced menandai cargo sudah dikonfirmasi sinkron (is_sync = true)
-// di WMS setelah produk lokal berhasil dibuat/diperbarui dari cargo terkait.
-// Idempotent — aman dipanggil berkali-kali. Query param produk_id opsional,
-// dipakai untuk menandai cache lokal sebagai sudah terpakai di produk mana.
-// Hanya bisa diakses role dengan permission wms_integration:manage.
+// di WMS setelah produk lokal berhasil dibuat dari cargo terkait. Idempotent
+// — aman dipanggil berkali-kali.
 func (c *WMSController) MarkCargoSynced(ctx *fiber.Ctx) error {
 	cargoID := ctx.Params("id")
 	if cargoID == "" {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, "ID cargo tidak boleh kosong", nil)
 	}
-	produkID := ctx.Query("produk_id")
 
-	result, err := c.service.MarkCargoSynced(ctx.UserContext(), cargoID, produkID)
+	result, err := c.service.MarkCargoSynced(ctx.UserContext(), cargoID)
 	if err != nil {
 		return utils.ErrorResponse(ctx, http.StatusBadGateway, err.Error(), nil)
 	}

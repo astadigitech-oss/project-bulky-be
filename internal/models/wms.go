@@ -1,10 +1,7 @@
 package models
 
 import (
-	"encoding/json"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // WMSConnectionInfo hasil cek koneksi/identitas client dari WMS
@@ -87,11 +84,14 @@ type WMSPaginationMetaRaw struct {
 }
 
 // ========================================
-// Tetapkan Harga Cargo (discount % atau fix rupiah)
+// Tetapkan Harga Cargo (discount % dari total_price, atau fix = harga jual
+// akhir langsung)
 // ========================================
 
 // SetWMSCargoPriceRequest body untuk POST /api/integration/cargos/{id}/price
-// di sisi WMS.
+// di sisi WMS. Type "discount": Value = persentase potongan dari total_price.
+// Type "fix": Value = harga jual (sale_price) akhir secara langsung, BUKAN
+// nominal potongan.
 type SetWMSCargoPriceRequest struct {
 	Type  string  `json:"type" binding:"required,oneof=discount fix"`
 	Value float64 `json:"value" binding:"required,gt=0"`
@@ -181,56 +181,4 @@ type WMSCargoSyncStatusEnvelope struct {
 	Success bool                       `json:"success"`
 	Message string                     `json:"message"`
 	Data    WMSCargoSyncStatusResponse `json:"data"`
-}
-
-// ========================================
-// Cache Lokal Cargo WMS Sudah Diberi Harga (wms_cargo_priced)
-// ========================================
-
-// WMSCargoPriced cache lokal 1 cargo WMS yang sudah diberi harga jual —
-// jembatan antara WMS dan produk lokal. Diisi otomatis saat admin menekan
-// "Simpan Harga Jual" di modal sync (termasuk PDF harga yang sudah
-// di-download & disimpan ke storage lokal). Dropdown "ID Cargo" saat
-// create/edit produk membaca dari tabel ini.
-type WMSCargoPriced struct {
-	CargoID               uuid.UUID       `gorm:"type:uuid;primary_key;column:cargo_id" json:"cargo_id"`
-	Code                  string          `gorm:"type:varchar(100);not null" json:"code"`
-	LengthCM              float64         `gorm:"type:decimal(10,2);not null;default:0" json:"length_cm"`
-	WidthCM               float64         `gorm:"type:decimal(10,2);not null;default:0" json:"width_cm"`
-	HeightCM              float64         `gorm:"type:decimal(10,2);not null;default:0" json:"height_cm"`
-	WeightKG              float64         `gorm:"type:decimal(10,2);not null;default:0" json:"weight_kg"`
-	TotalPrice            float64         `gorm:"type:decimal(15,2);not null;default:0" json:"total_price"`
-	PricingType           *string         `gorm:"type:varchar(20)" json:"pricing_type"`
-	PricingValue          *float64        `gorm:"type:decimal(15,2)" json:"pricing_value"`
-	SalePrice             *float64        `gorm:"type:decimal(15,2)" json:"sale_price"`
-	PricedAt              *time.Time      `gorm:"type:timestamptz" json:"priced_at"`
-	PricingPDFPath        *string         `gorm:"type:varchar(255);column:pricing_pdf_path" json:"pricing_pdf_path"`
-	BulkyCategory         json.RawMessage `gorm:"type:jsonb" json:"bulky_category,omitempty"`
-	BulkyProductCondition json.RawMessage `gorm:"type:jsonb" json:"bulky_product_condition,omitempty"`
-	BulkyPackageCondition json.RawMessage `gorm:"type:jsonb" json:"bulky_package_condition,omitempty"`
-	BulkyProductSource    json.RawMessage `gorm:"type:jsonb" json:"bulky_product_source,omitempty"`
-	BulkyBrands           json.RawMessage `gorm:"type:jsonb" json:"bulky_brands,omitempty"`
-	IsUsedInProduk        bool            `gorm:"not null;default:false;column:is_used_in_produk" json:"is_used_in_produk"`
-	ProdukID              *uuid.UUID      `gorm:"type:uuid;column:produk_id" json:"produk_id"`
-	CreatedAt             time.Time       `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
-	UpdatedAt             time.Time       `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
-}
-
-func (WMSCargoPriced) TableName() string {
-	return "wms_cargo_priced"
-}
-
-// WMSCargoPricedListResponse 1 item cargo WMS yang sudah di-price, siap
-// dipilih di dropdown "ID Cargo" saat create/edit produk lokal.
-type WMSCargoPricedListResponse struct {
-	CargoID        string  `json:"cargo_id"`
-	Code           string  `json:"code"`
-	LengthCM       float64 `json:"length_cm"`
-	WidthCM        float64 `json:"width_cm"`
-	HeightCM       float64 `json:"height_cm"`
-	WeightKG       float64 `json:"weight_kg"`
-	TotalPrice     float64 `json:"total_price"`
-	SalePrice      float64 `json:"sale_price"`
-	PricingPDFURL  *string `json:"pricing_pdf_url"`
-	IsUsedInProduk bool    `json:"is_used_in_produk"`
 }

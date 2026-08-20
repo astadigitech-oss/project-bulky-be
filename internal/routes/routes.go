@@ -754,10 +754,11 @@ func SetupRoutes(
 	wmsAdmin.Post("/test-connection", middleware.RequirePermission("wms_integration:manage"), wmsController.TestConnection)
 	wmsAdmin.Get("/cargos/ready-to-price", middleware.RequirePermission("wms_integration:manage"), wmsController.ListReadyToPriceCargos)
 	wmsAdmin.Post("/cargos/:id/price", middleware.RequirePermission("wms_integration:manage"), wmsController.SetCargoPrice)
-	// Dropdown "ID Cargo" & konfirmasi sinkron dipakai dari form create/edit
-	// produk, jadi diizinkan juga untuk admin dengan permission produk:create/update
-	// (bukan hanya wms_integration:manage).
+	// Dropdown "ID Cargo", download PDF harga, & konfirmasi sinkron dipakai
+	// dari form create produk, jadi diizinkan juga untuk admin dengan
+	// permission produk:create/update (bukan hanya wms_integration:manage).
 	wmsAdmin.Get("/cargos/already-priced", middleware.RequireAnyPermission("wms_integration:manage", "produk:create", "produk:update"), wmsController.ListAlreadyPricedCargos)
+	wmsAdmin.Get("/cargos/:id/pricing-pdf", middleware.RequireAnyPermission("wms_integration:manage", "produk:create", "produk:update"), wmsController.DownloadCargoPricingPDF)
 	wmsAdmin.Post("/cargos/:id/status", middleware.RequireAnyPermission("wms_integration:manage", "produk:create", "produk:update"), wmsController.MarkCargoSynced)
 
 	// Routes list endpoint
