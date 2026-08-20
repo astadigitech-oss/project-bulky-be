@@ -385,6 +385,7 @@ func SetupRoutes(
 	)
 	pesananAdmin.Get("", middleware.RequirePermission("pesanan:read"), pesananAdminController.GetAll)
 	pesananAdmin.Get("/statistics", middleware.RequirePermission("pesanan:read"), pesananAdminController.GetStatistics)
+	pesananAdmin.Get("/count-paid-not-processed", middleware.RequirePermission("pesanan:read"), pesananAdminController.CountPaidNotProcessed)
 	pesananAdmin.Get("/:id", middleware.RequirePermission("pesanan:read"), pesananAdminController.GetByID)
 	pesananAdmin.Patch("/:id/update-status", middleware.RequirePermission("pesanan:update_status"), pesananAdminController.UpdateStatus)
 	pesananAdmin.Post("/:id/retry-booking", middleware.RequirePermission("pesanan:update_status"), pesananAdminController.RetryBooking)
@@ -753,6 +754,7 @@ func SetupRoutes(
 	)
 	wmsAdmin.Post("/test-connection", middleware.RequirePermission("wms_integration:manage"), wmsController.TestConnection)
 	wmsAdmin.Get("/cargos/ready-to-price", middleware.RequirePermission("wms_integration:manage"), wmsController.ListReadyToPriceCargos)
+	wmsAdmin.Get("/cargos/ready-to-price/count", middleware.RequirePermission("wms_integration:manage"), wmsController.CountReadyToPriceCargos)
 	wmsAdmin.Post("/cargos/:id/price", middleware.RequirePermission("wms_integration:manage"), wmsController.SetCargoPrice)
 	// Dropdown "ID Cargo", download PDF harga, & konfirmasi sinkron dipakai
 	// dari form create produk, jadi diizinkan juga untuk admin dengan

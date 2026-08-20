@@ -53,6 +53,19 @@ func (c *WMSController) ListReadyToPriceCargos(ctx *fiber.Ctx) error {
 	return utils.PaginatedSuccessResponse(ctx, "Daftar cargo siap harga WMS berhasil diambil", items, paginationMeta)
 }
 
+// CountReadyToPriceCargos memanggil GET /api/integration/cargos/ready-to-price/count
+// di WMS untuk mendapatkan jumlah cargo yang siap ditetapkan harga jualnya,
+// tanpa menarik seluruh isi daftar — dipakai untuk badge notifikasi.
+// Hanya bisa diakses role dengan permission wms_integration:manage.
+func (c *WMSController) CountReadyToPriceCargos(ctx *fiber.Ctx) error {
+	ready, err := c.service.CountReadyToPriceCargos(ctx.UserContext())
+	if err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadGateway, err.Error(), nil)
+	}
+
+	return utils.SuccessResponse(ctx, "Jumlah cargo siap harga WMS berhasil diambil", fiber.Map{"ready": ready})
+}
+
 // SetCargoPrice memanggil POST /api/integration/cargos/{id}/price di WMS
 // untuk menetapkan harga jual cargo — tipe "discount" (persentase dari
 // total_price) atau "fix" (harga jual/sale_price akhir secara langsung).

@@ -83,6 +83,22 @@ type WMSPaginationMetaRaw struct {
 	TotalPage  int   `json:"total_page"`
 }
 
+// WMSCargoReadyToPriceCountResponse jumlah cargo yang siap diberi harga
+// (GET /api/integration/cargos/ready-to-price/count di sisi WMS) — dipakai
+// untuk badge notifikasi tanpa menarik seluruh isi daftar.
+type WMSCargoReadyToPriceCountResponse struct {
+	Ready int `json:"ready"`
+}
+
+// wmsCargoReadyToPriceCountEnvelope bentuk respons mentah dari WMS untuk
+// GET /api/integration/cargos/ready-to-price/count:
+// {"success":true,"data":{"ready":2}}
+type WMSCargoReadyToPriceCountEnvelope struct {
+	Success bool                              `json:"success"`
+	Message string                            `json:"message"`
+	Data    WMSCargoReadyToPriceCountResponse `json:"data"`
+}
+
 // ========================================
 // Tetapkan Harga Cargo (discount % dari total_price, atau fix = harga jual
 // akhir langsung)

@@ -41,6 +41,10 @@ type WMSService interface {
 	// untuk mendapatkan daftar cargo (ukuran fisik lengkap, belum pernah
 	// dihargai, belum disinkronkan) yang siap ditetapkan harga jualnya.
 	ListReadyToPriceCargos(ctx context.Context, params *models.WMSCargoListFilterRequest) ([]models.WMSCargoPricingResponse, *models.WMSPaginationMetaRaw, error)
+	// CountReadyToPriceCargos memanggil GET /api/integration/cargos/ready-to-price/count
+	// untuk mendapatkan jumlah cargo yang siap diberi harga — ringkas, tanpa
+	// menarik seluruh isi daftar. Dipakai untuk badge notifikasi.
+	CountReadyToPriceCargos(ctx context.Context) (int, error)
 	// SetCargoPrice memanggil POST /api/integration/cargos/{id}/price untuk
 	// menetapkan harga jual cargo — tipe "discount" (persentase dari
 	// total_price) atau "fix" (nilai adalah harga jual/sale_price akhir
@@ -266,6 +270,53 @@ func (s *wmsService) ListReadyToPriceCargos(ctx context.Context, params *models.
 	}
 
 	return envelope.Data, &envelope.Meta, nil
+}
+
+// CountReadyToPriceCargos memanggil GET /api/integration/cargos/ready-to-price/count
+// dengan Bearer token untuk mendapatkan jumlah cargo yang siap ditetapkan
+// harga jualnya, tanpa menarik seluruh isi daftar.
+func (s *wmsService) CountReadyToPriceCargos(ctx context.Context) (int, error) {
+	token, err := s.GetAccessToken(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	reqURL := s.baseURL + "/api/integration/cargos/ready-to-price/count"
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	if err != nil {
+		return 0, err
+	}
+	httpReq.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		return 0, fmt.Errorf("connection timeout saat ambil jumlah cargo siap harga WMS: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	log.Printf("[wms] <-- GET /api/integration/cargos/ready-to-price/count status=%d body=%s", resp.StatusCode, string(respBody))
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		s.mu.Lock()
+		s.cachedToken = ""
+		s.mu.Unlock()
+		return 0, fmt.Errorf("token WMS tidak ada / salah / kedaluwarsa / kredensial dicabut")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("WMS API error saat ambil jumlah cargo siap harga (status %d): %s", resp.StatusCode, string(respBody))
+	}
+
+	var envelope models.WMSCargoReadyToPriceCountEnvelope
+	if err := json.Unmarshal(respBody, &envelope); err != nil {
+		return 0, fmt.Errorf("gagal parse response jumlah cargo siap harga WMS: %w", err)
+	}
+	if !envelope.Success {
+		return 0, fmt.Errorf("WMS API mengembalikan gagal: %s", envelope.Message)
+	}
+
+	return envelope.Data.Ready, nil
 }
 
 // SetCargoPrice memanggil POST /api/integration/cargos/{id}/price dengan
