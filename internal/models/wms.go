@@ -38,10 +38,13 @@ func (p *WMSCargoListFilterRequest) SetDefaults() {
 }
 
 // WMSCargoRef referensi ringkas (id + nama) dari master data WMS, mis. kategori,
-// kondisi, sumber, brand. Nullable di sisi WMS.
+// kondisi, sumber, brand. Nullable di sisi WMS. ID adalah ID milik WMS sendiri,
+// BEDA dari BulkyID yang match ke ID master data lokal Bulky (dipakai untuk
+// auto-fill kategori_id/kondisi_id/dst di form produk).
 type WMSCargoRef struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	BulkyID string `json:"bulky_id"`
 }
 
 // WMSCargoPricingResponse 1 item cargo siap diberi harga (ukuran fisik lengkap,

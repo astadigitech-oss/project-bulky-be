@@ -95,12 +95,13 @@ func (c *WMSController) SetCargoPrice(ctx *fiber.Ctx) error {
 func (c *WMSController) ListAlreadyPricedCargos(ctx *fiber.Ctx) error {
 	search := ctx.Query("search")
 
-	items, err := c.service.ListAlreadyPricedCargos(ctx.UserContext(), search)
+	items, meta, err := c.service.ListAlreadyPricedCargos(ctx.UserContext(), search)
 	if err != nil {
 		return utils.ErrorResponse(ctx, http.StatusBadGateway, err.Error(), nil)
 	}
 
-	return utils.SuccessResponse(ctx, "Daftar cargo sudah diberi harga berhasil diambil", items)
+	paginationMeta := models.NewPaginationMeta(meta.Page, meta.Limit, meta.TotalItems)
+	return utils.PaginatedSuccessResponse(ctx, "Daftar cargo sudah diberi harga berhasil diambil", items, paginationMeta)
 }
 
 // DownloadCargoPricingPDF meneruskan (proxy) PDF harga cargo dari WMS ke

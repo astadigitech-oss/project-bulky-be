@@ -53,7 +53,7 @@ type WMSService interface {
 	// ListAlreadyPricedCargos memanggil GET /api/integration/cargos/already-priced
 	// untuk mendapatkan daftar cargo yang sudah diberi harga di WMS tapi belum
 	// dikonfirmasi sinkron — sumber dropdown "ID Cargo" saat create produk.
-	ListAlreadyPricedCargos(ctx context.Context, search string) ([]models.WMSCargoPricedResponse, error)
+	ListAlreadyPricedCargos(ctx context.Context, search string) ([]models.WMSCargoPricedResponse, *models.WMSPaginationMetaRaw, error)
 	// DownloadCargoPricingPDF memanggil GET /api/integration/cargos/{id}/pricing-pdf
 	// dan mengembalikan isi PDF mentah (bukan disimpan ke storage lokal) — FE
 	// yang menyimpannya sebagai file dokumen produk seolah diupload manual.
@@ -385,10 +385,10 @@ func (s *wmsService) SetCargoPrice(ctx context.Context, cargoID string, req *mod
 // di WMS tapi belum dikonfirmasi sinkron — sumber dropdown "ID Cargo" saat
 // create produk. Pure passthrough, tidak ada cache/filter lokal — WMS sendiri
 // yang menentukan cargo mana yang masih tersedia (is_sync belum true).
-func (s *wmsService) ListAlreadyPricedCargos(ctx context.Context, search string) ([]models.WMSCargoPricedResponse, error) {
+func (s *wmsService) ListAlreadyPricedCargos(ctx context.Context, search string) ([]models.WMSCargoPricedResponse, *models.WMSPaginationMetaRaw, error) {
 	token, err := s.GetAccessToken(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	query := url.Values{}
@@ -401,13 +401,13 @@ func (s *wmsService) ListAlreadyPricedCargos(ctx context.Context, search string)
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	httpReq.Header.Set("Authorization", "Bearer "+token)
 
 	resp, err := http.DefaultClient.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("connection timeout saat ambil daftar cargo sudah diberi harga: %w", err)
+		return nil, nil, fmt.Errorf("connection timeout saat ambil daftar cargo sudah diberi harga: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -418,21 +418,21 @@ func (s *wmsService) ListAlreadyPricedCargos(ctx context.Context, search string)
 		s.mu.Lock()
 		s.cachedToken = ""
 		s.mu.Unlock()
-		return nil, fmt.Errorf("token WMS tidak ada / salah / kedaluwarsa / kredensial dicabut")
+		return nil, nil, fmt.Errorf("token WMS tidak ada / salah / kedaluwarsa / kredensial dicabut")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("WMS API error saat ambil daftar cargo sudah diberi harga (status %d): %s", resp.StatusCode, string(respBody))
+		return nil, nil, fmt.Errorf("WMS API error saat ambil daftar cargo sudah diberi harga (status %d): %s", resp.StatusCode, string(respBody))
 	}
 
 	var envelope models.WMSCargoPricedListEnvelope
 	if err := json.Unmarshal(respBody, &envelope); err != nil {
-		return nil, fmt.Errorf("gagal parse response daftar cargo sudah diberi harga: %w", err)
+		return nil, nil, fmt.Errorf("gagal parse response daftar cargo sudah diberi harga: %w", err)
 	}
 	if !envelope.Success {
-		return nil, fmt.Errorf("WMS API mengembalikan gagal: %s", envelope.Message)
+		return nil, nil, fmt.Errorf("WMS API mengembalikan gagal: %s", envelope.Message)
 	}
 
-	return envelope.Data, nil
+	return envelope.Data, &envelope.Meta, nil
 }
 
 // DownloadCargoPricingPDF memanggil GET /api/integration/cargos/{id}/pricing-pdf
