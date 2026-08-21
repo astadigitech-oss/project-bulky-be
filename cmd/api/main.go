@@ -121,7 +121,7 @@ func main() {
 	forwarderMappingService := services.NewForwarderMappingService(forwarderMappingRepo)
 	wmsService := services.NewWMSService(cfg.WMSBaseURL, cfg.WMSClientID, cfg.WMSClientSecret)
 	shippingService := services.NewShippingService(db, delivereeVehicleTypeService)
-	pesananAdminService := services.NewPesananAdminService(pesananRepo, shippingService, db)
+	pesananAdminService := services.NewPesananAdminService(pesananRepo, shippingService, db, cfg)
 	forceUpdateService := services.NewForceUpdateService(forceUpdateRepo)
 	modeMaintenanceService := services.NewModeMaintenanceService(modeMaintenanceRepo)
 	ppnService := services.NewPPNService(ppnRepo)

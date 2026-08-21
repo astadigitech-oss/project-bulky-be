@@ -26,6 +26,7 @@ type Config struct {
 	WMSBaseURL                    string
 	WMSClientID                   string
 	WMSClientSecret               string
+	StorefrontBaseURL             string
 }
 
 func LoadConfig() *Config {
@@ -55,6 +56,7 @@ func LoadConfig() *Config {
 		WMSBaseURL:                    getEnv("WMS_BASE_URL", ""),
 		WMSClientID:                   getEnv("WMS_CLIENT_ID", ""),
 		WMSClientSecret:               getEnv("WMS_CLIENT_SECRET", ""),
+		StorefrontBaseURL:             getEnv("STOREFRONT_BASE_URL", ""),
 	}
 }
 

@@ -1,9 +1,13 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log"
+	"net/http"
 	"os"
+	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
@@ -33,13 +37,15 @@ type pesananAdminService struct {
 	pesananRepo     repositories.PesananRepository
 	shippingService ShippingService
 	db              *gorm.DB
+	cfg             *config.Config
 }
 
-func NewPesananAdminService(pesananRepo repositories.PesananRepository, shippingService ShippingService, db *gorm.DB) PesananAdminService {
+func NewPesananAdminService(pesananRepo repositories.PesananRepository, shippingService ShippingService, db *gorm.DB, cfg *config.Config) PesananAdminService {
 	return &pesananAdminService{
 		pesananRepo:     pesananRepo,
 		shippingService: shippingService,
 		db:              db,
+		cfg:             cfg,
 	}
 }
 
@@ -137,6 +143,12 @@ func (s *pesananAdminService) UpdateStatus(ctx context.Context, id uuid.UUID, re
 			pesanan.DeliveryType == models.DeliveryTypeForwarder ||
 			pesanan.DeliveryType == models.DeliveryTypeForwarderLCL) {
 		s.shippingService.TriggerBookingAsync(pesanan)
+	}
+
+	// Notifikasi WA ke buyer PICKUP saat pesanan siap diambil — dipanggil ke
+	// endpoint internal storefront BE, best-effort (tidak menggagalkan update status ini).
+	if orderStatus == models.OrderStatusReady && pesanan.DeliveryType == models.DeliveryTypePickup {
+		go s.notifyStorefrontSetReady(pesanan.Kode)
 	}
 
 	return &dto.UpdatePesananStatusResponse{
@@ -418,6 +430,35 @@ func (s *pesananAdminService) GetStatistics(ctx context.Context, params *dto.Sta
 
 func (s *pesananAdminService) CountPaidNotProcessed(ctx context.Context) (int64, error) {
 	return s.pesananRepo.CountPaidNotProcessed()
+}
+
+// notifyStorefrontSetReady memanggil endpoint internal storefront BE agar buyer
+// PICKUP menerima notifikasi WA saat pesanan siap diambil. Best-effort: kegagalan
+// hanya di-log, tidak mempengaruhi update order_status yang sudah tersimpan.
+func (s *pesananAdminService) notifyStorefrontSetReady(kode string) {
+	if s.cfg == nil || s.cfg.StorefrontBaseURL == "" || s.cfg.InternalAPIKey == "" {
+		log.Printf("[pesanan] lewati notifikasi set-ready storefront: kode=%s STOREFRONT_BASE_URL/INTERNAL_API_KEY belum dikonfigurasi", kode)
+		return
+	}
+
+	url := strings.TrimRight(s.cfg.StorefrontBaseURL, "/") + "/internal/pesanan/" + kode + "/set-ready"
+	httpReq, err := http.NewRequestWithContext(context.Background(), http.MethodPost, url, bytes.NewReader(nil))
+	if err != nil {
+		log.Printf("[pesanan] gagal membuat request notifikasi set-ready: kode=%s err=%v", kode, err)
+		return
+	}
+	httpReq.Header.Set("X-Internal-Key", s.cfg.InternalAPIKey)
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		log.Printf("[pesanan] gagal memanggil notifikasi set-ready storefront: kode=%s err=%v", kode, err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("[pesanan] notifikasi set-ready storefront gagal: kode=%s status=%d", kode, resp.StatusCode)
+	}
 }
 
 // derefString mengembalikan nilai string dari pointer, atau string kosong bila nil.
