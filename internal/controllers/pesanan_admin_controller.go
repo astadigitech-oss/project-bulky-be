@@ -300,3 +300,13 @@ func (c *PesananAdminController) GetStatistics(ctx *fiber.Ctx) error {
 
 	return utils.SuccessResponse(ctx, "Statistik pesanan berhasil diambil", stats)
 }
+
+// CountPaidNotProcessed retrieves count of paid-but-not-processed pesanan (admin)
+func (c *PesananAdminController) CountPaidNotProcessed(ctx *fiber.Ctx) error {
+	count, err := c.pesananService.CountPaidNotProcessed(ctx.UserContext())
+	if err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengambil jumlah pesanan", err.Error())
+	}
+
+	return utils.SuccessResponse(ctx, "Jumlah pesanan berhasil diambil", dto.PesananCountPaidNotProcessedResponse{Count: count})
+}

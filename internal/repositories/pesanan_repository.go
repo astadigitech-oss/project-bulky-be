@@ -27,6 +27,9 @@ type PesananRepository interface {
 	Delete(id uuid.UUID) error
 	GetStatistics(tanggalDari, tanggalSampai *time.Time) (map[string]interface{}, error)
 	GetChartData(dari, sampai *time.Time, groupBy string) ([]models.ChartRawPoint, error)
+	// CountPaidNotProcessed menghitung pesanan yang sudah dibayar (PAID) tapi
+	// masih PROCESSING — belum di-set admin ke READY/SHIPPED.
+	CountPaidNotProcessed() (int64, error)
 
 	// Cancel order & restore produk
 	CancelOrder(id uuid.UUID, reason *string, adminID uuid.UUID) error
@@ -459,6 +462,14 @@ func (r *pesananRepository) GetStatistics(tanggalDari, tanggalSampai *time.Time)
 	stats["per_payment_status"] = perPaymentStatus
 
 	return stats, nil
+}
+
+func (r *pesananRepository) CountPaidNotProcessed() (int64, error) {
+	var count int64
+	err := r.db.Model(&models.Pesanan{}).
+		Where("payment_status = ? AND order_status = ?", models.PaymentStatusPaid, models.OrderStatusProcessing).
+		Count(&count).Error
+	return count, err
 }
 
 func (r *pesananRepository) GetChartData(dari, sampai *time.Time, groupBy string) ([]models.ChartRawPoint, error) {

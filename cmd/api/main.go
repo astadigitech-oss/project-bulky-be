@@ -119,8 +119,9 @@ func main() {
 	activityLogService := services.NewActivityLogService(activityLogRepo)
 	delivereeVehicleTypeService := services.NewDelivereeVehicleTypeService(delivereeVehicleTypeRepo, warehouseRepo, activityLogService)
 	forwarderMappingService := services.NewForwarderMappingService(forwarderMappingRepo)
+	wmsService := services.NewWMSService(cfg.WMSBaseURL, cfg.WMSClientID, cfg.WMSClientSecret)
 	shippingService := services.NewShippingService(db, delivereeVehicleTypeService)
-	pesananAdminService := services.NewPesananAdminService(pesananRepo, shippingService, db)
+	pesananAdminService := services.NewPesananAdminService(pesananRepo, shippingService, db, cfg)
 	forceUpdateService := services.NewForceUpdateService(forceUpdateRepo)
 	modeMaintenanceService := services.NewModeMaintenanceService(modeMaintenanceRepo)
 	ppnService := services.NewPPNService(ppnRepo)
@@ -198,6 +199,7 @@ func main() {
 	forwarderWebhookController := controllers.NewForwarderWebhookController(forwarderWebhookService, cfg.ForwarderWebhookAuthorization)
 	delivereeVehicleTypeController := controllers.NewDelivereeVehicleTypeController(delivereeVehicleTypeService, activityLogService)
 	forwarderMappingController := controllers.NewForwarderMappingController(forwarderMappingService, activityLogService)
+	wmsController := controllers.NewWMSController(wmsService)
 
 	// Auth V2 controllers
 	authV2Controller := controllers.NewAuthV2Controller(authV2Service, adminService, buyerService)
@@ -243,6 +245,7 @@ func main() {
 		forwarderWebhookController,
 		delivereeVehicleTypeController,
 		forwarderMappingController,
+		wmsController,
 	)
 
 	// Setup Auth V2 routes (new authentication system with roles & permissions)

@@ -441,7 +441,7 @@ func (s *produkService) UpdateWithFiles(ctx context.Context, id string, req *mod
 		return nil, err
 	}
 
-	// If no new dokumen files, return the result as-is
+	// Kalau tidak ada dokumen baru, cukup return hasil update field biasa.
 	if len(dokumenFiles) == 0 {
 		return result, nil
 	}

@@ -229,3 +229,9 @@ type ChartDataPoint struct {
 	Period       string `json:"period"`
 	TotalPesanan int64  `json:"total_pesanan"`
 }
+
+// PesananCountPaidNotProcessedResponse jumlah pesanan sudah dibayar tapi
+// belum diproses admin (order_status masih PROCESSING) — untuk badge sidebar.
+type PesananCountPaidNotProcessedResponse struct {
+	Count int64 `json:"count"`
+}

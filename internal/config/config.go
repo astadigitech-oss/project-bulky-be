@@ -23,6 +23,10 @@ type Config struct {
 	WMSAPIKey                     string
 	DelivereeWebhookAuthorization string
 	ForwarderWebhookAuthorization string
+	WMSBaseURL                    string
+	WMSClientID                   string
+	WMSClientSecret               string
+	StorefrontBaseURL             string
 }
 
 func LoadConfig() *Config {
@@ -49,6 +53,10 @@ func LoadConfig() *Config {
 		WMSAPIKey:                     getEnv("WMS_API_KEY", ""),
 		DelivereeWebhookAuthorization: getEnv("DELIVEREE_WEBHOOK_AUTHORIZATION", ""),
 		ForwarderWebhookAuthorization: getEnv("FORWARDER_WEBHOOK_AUTHORIZATION", ""),
+		WMSBaseURL:                    getEnv("WMS_BASE_URL", ""),
+		WMSClientID:                   getEnv("WMS_CLIENT_ID", ""),
+		WMSClientSecret:               getEnv("WMS_CLIENT_SECRET", ""),
+		StorefrontBaseURL:             getEnv("STOREFRONT_BASE_URL", ""),
 	}
 }
 
