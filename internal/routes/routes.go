@@ -57,6 +57,7 @@ func SetupRoutes(
 	delivereeVehicleTypeController *controllers.DelivereeVehicleTypeController,
 	forwarderMappingController *controllers.ForwarderMappingController,
 	wmsController *controllers.WMSController,
+	backupController *controllers.BackupController,
 ) {
 	// Health check
 	router.Get("/api/health", func(c *fiber.Ctx) error {
@@ -698,6 +699,16 @@ func SetupRoutes(
 	// produk LQD yang difilter saat migrasi). Body: {"dry_run": true|false}.
 	// Eksekusi permanen butuh dry_run_token dari dry-run sebelumnya.
 	assetMigration.Post("/prune-orphans", assetMigrationController.PruneOrphans)
+
+	// Database Backup routes — Super Admin only
+	backupAdmin := v1.Group("/panel/backups",
+		middleware.AuthMiddleware(),
+		middleware.SuperAdminOnly(),
+	)
+	backupAdmin.Get("", middleware.RequirePermission("backup:read"), backupController.List)
+	backupAdmin.Post("", middleware.RequirePermission("backup:create"), backupController.Create)
+	backupAdmin.Get("/:filename/download", middleware.RequirePermission("backup:download"), backupController.Download)
+	backupAdmin.Delete("/:filename", middleware.RequirePermission("backup:delete"), backupController.Delete)
 
 	// Internal upload routes — only accessible via X-Internal-Key header (storefront BE)
 	internalUpload := v1.Group("/internal/upload",
