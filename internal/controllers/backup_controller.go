@@ -3,6 +3,7 @@ package controllers
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 
 	"project-bulky-be/internal/models"
@@ -25,6 +26,7 @@ func NewBackupController(service services.BackupService) *BackupController {
 func (ctrl *BackupController) List(c *fiber.Ctx) error {
 	result, err := ctrl.service.ListBackups(c.Context())
 	if err != nil {
+		log.Printf("[backup-controller] Gagal mengambil daftar backup: %v", err)
 		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal mengambil daftar backup database", err.Error())
 	}
 	return utils.SimpleSuccessResponse(c, http.StatusOK, "Daftar backup database berhasil diambil", result)
@@ -37,6 +39,7 @@ func (ctrl *BackupController) Create(c *fiber.Ctx) error {
 
 	item, err := ctrl.service.CreateBackup(c.Context(), models.BackupTriggerManual, adminID, adminEmail)
 	if err != nil {
+		log.Printf("[backup-controller] Gagal membuat backup database: %v", err)
 		if errors.Is(err, services.ErrBackupInProgress) {
 			return utils.SimpleErrorResponse(c, http.StatusConflict, err.Error(), "")
 		}

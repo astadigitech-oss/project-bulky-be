@@ -128,9 +128,17 @@ func (s *backupService) CreateBackup(
 		"--if-exists",
 	}
 
+	sslMode := os.Getenv("DB_SSLMODE")
+	if sslMode == "" {
+		sslMode = "disable"
+	}
+
 	cmd := exec.CommandContext(ctx, "pg_dump", args...)
-	// Password dikirim aman via environment variable PGPASSWORD
-	cmd.Env = append(os.Environ(), fmt.Sprintf("PGPASSWORD=%s", s.cfg.DBPassword))
+	// Password dan SSLMODE dikirim aman via environment variable libpq
+	cmd.Env = append(os.Environ(),
+		fmt.Sprintf("PGPASSWORD=%s", s.cfg.DBPassword),
+		fmt.Sprintf("PGSSLMODE=%s", sslMode),
+	)
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
