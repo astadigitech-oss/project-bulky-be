@@ -28,6 +28,7 @@ RUN apk add --no-cache \
     tzdata \
     ffmpeg \
     curl \
+    --repository=https://dl-cdn.alpinelinux.org/alpine/edge/main \
     postgresql-client
 
 ENV TZ=UTC
