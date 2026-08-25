@@ -99,7 +99,7 @@ func (r *produkRepository) FindAll(ctx context.Context, params *models.ProdukFil
 
 	// Apply filters
 	if params.Search != "" {
-		query = query.Where("nama_id ILIKE ? OR nama_en ILIKE ? OR id_cargo ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%", "%"+params.Search+"%")
+		query = query.Where("nama_id ILIKE ? OR nama_en ILIKE ? OR id_cargo ILIKE ? OR reference_code ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%", "%"+params.Search+"%", "%"+params.Search+"%")
 	}
 	if params.KategoriID != "" {
 		query = query.Where("kategori_id = ?", params.KategoriID)
@@ -153,13 +153,14 @@ func (r *produkRepository) FindAll(ctx context.Context, params *models.ProdukFil
 	}
 
 	validSortFields := map[string]string{
-		"nama_id":    "nama_id",
-		"nama_en":    "nama_en",
-		"id_cargo":   "id_cargo",
-		"is_active":  "is_active",
-		"status":     "is_active",
-		"updated_at": "updated_at",
-		"created_at": "created_at",
+		"nama_id":        "nama_id",
+		"nama_en":        "nama_en",
+		"id_cargo":       "id_cargo",
+		"reference_code": "reference_code",
+		"is_active":      "is_active",
+		"status":         "is_active",
+		"updated_at":     "updated_at",
+		"created_at":     "created_at",
 	}
 	sortBy := "nama_id"
 	if col, ok := validSortFields[params.SortBy]; ok {
@@ -170,7 +171,7 @@ func (r *produkRepository) FindAll(ctx context.Context, params *models.ProdukFil
 		order = "asc"
 	}
 	nullsLast := ""
-	if sortBy == "id_cargo" || sortBy == "nama_en" {
+	if sortBy == "id_cargo" || sortBy == "reference_code" || sortBy == "nama_en" {
 		nullsLast = " NULLS LAST"
 	}
 	orderClause := sortBy + " " + order + nullsLast

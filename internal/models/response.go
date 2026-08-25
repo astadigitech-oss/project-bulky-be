@@ -469,16 +469,17 @@ type ProdukListResponse struct {
 
 // ProdukPanelListResponse - Simplified response for admin panel list
 type ProdukPanelListResponse struct {
-	ID          string  `json:"id"`
-	NamaID      string  `json:"nama_id"`
-	NamaEN      string  `json:"nama_en"`
-	IDCargo     *string `json:"id_cargo"`
-	Status      bool    `json:"status"`       // is_active
-	IsSold      bool    `json:"is_sold"`      // sold out status
-	IsSale      bool    `json:"is_sale"`      // SALE ribbon flag
-	IsQcPass    bool    `json:"is_qc_pass"`   // QC PASS flag
-	GambarUtama *string `json:"gambar_utama"` // Primary image URL
-	FilePDF     *string `json:"file_pdf"`     // First PDF document URL
+	ID            string  `json:"id"`
+	NamaID        string  `json:"nama_id"`
+	NamaEN        string  `json:"nama_en"`
+	IDCargo       *string `json:"id_cargo"`
+	ReferenceCode *string `json:"reference_code"`
+	Status        bool    `json:"status"`       // is_active
+	IsSold        bool    `json:"is_sold"`      // sold out status
+	IsSale        bool    `json:"is_sale"`      // SALE ribbon flag
+	IsQcPass      bool    `json:"is_qc_pass"`   // QC PASS flag
+	GambarUtama   *string `json:"gambar_utama"` // Primary image URL
+	FilePDF       *string `json:"file_pdf"`     // First PDF document URL
 }
 
 type DiscrepancyInfo struct {
@@ -493,7 +494,7 @@ type ProdukDetailResponse struct {
 	SlugID             *string                    `json:"slug_id"`
 	SlugEN             *string                    `json:"slug_en"`
 	IDCargo            *string                    `json:"id_cargo"`
-	ReferenceID        *string                    `json:"reference_id"`
+	ReferenceCode      *string                    `json:"reference_code"`
 	Kategori           SimpleProdukRelationInfo   `json:"kategori"`
 	Mereks             []SimpleProdukRelationInfo `json:"mereks"`
 	Kondisi            SimpleProdukRelationInfo   `json:"kondisi"`

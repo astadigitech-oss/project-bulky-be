@@ -177,7 +177,7 @@ func (a *App) phaseProduk() error {
 			discPct = 100
 		}
 
-		if err := a.exec(`INSERT INTO produk (id, nama_id, nama_en, slug, slug_id, slug_en, id_cargo, reference_id,
+		if err := a.exec(`INSERT INTO produk (id, nama_id, nama_en, slug, slug_id, slug_en, id_cargo, reference_code,
 				kategori_id, kondisi_id, kondisi_paket_id, sumber_id, warehouse_id, tipe_produk_id,
 				harga_sebelum_diskon, harga_sesudah_diskon, quantity, is_sold, discrepancy_percentage,
 				panjang, lebar, tinggi, berat, is_active, created_at, updated_at, deleted_at)
