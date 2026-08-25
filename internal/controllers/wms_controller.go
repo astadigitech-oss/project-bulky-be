@@ -160,34 +160,47 @@ func (c *WMSController) UpdateCargoActualPrice(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	result, err := c.service.UpdateCargoActualPrice(ctx.UserContext(), cargoID, req.Value)
+	// Cari di DB Bulky untuk memastikan kita mendapatkan id_cargo (UUID inventory WMS).
+	// Jika input berupa reference_code / kode kargo / ID produk, kita resolve ke id_cargo aslinya.
+	targetWMSID := cargoID
+	if c.produkRepo != nil {
+		if produk, err := c.produkRepo.FindByIdentifier(ctx.UserContext(), cargoID); err == nil && produk != nil {
+			if produk.IDCargo != nil && *produk.IDCargo != "" {
+				targetWMSID = *produk.IDCargo
+			}
+		}
+	}
+
+	result, err := c.service.UpdateCargoActualPrice(ctx.UserContext(), targetWMSID, req.Value)
 	if err != nil {
 		return utils.ErrorResponse(ctx, http.StatusBadGateway, err.Error(), nil)
 	}
 
 	if c.activityLog != nil {
-		c.activityLog.Log(ctx, models.ActionUpdate, "wms_penjualan", fmt.Sprintf("Update penjualan WMS untuk cargo '%s' sebesar Rp%.0f", cargoID, req.Value))
+		c.activityLog.Log(ctx, models.ActionUpdate, "wms_penjualan", fmt.Sprintf("Update penjualan WMS untuk cargo '%s' sebesar Rp%.0f", targetWMSID, req.Value))
 	}
 
 	return utils.SuccessResponse(ctx, "Penjualan cargo WMS berhasil diperbarui", result)
 }
 
-// UpdateProdukPenjualan mencatat harga jual final ke WMS berdasarkan produk Bulky (produk_id).
-// Dipanggil oleh Storefront BE via internal API saat produk dibeli dan dibayar.
-// Jika produk bukan berasal dari WMS (id_cargo dan reference_code kosong/nil), endpoint ini
-// mengembalikan 200 OK dengan status dilewati (skip) agar tidak mengganggu alur checkout.
+// UpdateProdukPenjualan mencatat harga jual final ke WMS berdasarkan produk Bulky.
+// Identifier produk dapat berupa UUID produk, id_cargo (UUID WMS), atau reference_code (kode kargo WMS).
+// Database mencari kecocokan di ketiga field tersebut (id / id_cargo / reference_code).
+// Untuk request ke API WMS, sistem SELALU menggunakan id_cargo (UUID inventory WMS).
+// Jika produk bukan dari WMS (id_cargo kosong/nil), endpoint mengembalikan 200 OK
+// dengan status dilewati (skip) agar tidak mengganggu alur checkout.
 func (c *WMSController) UpdateProdukPenjualan(ctx *fiber.Ctx) error {
 	var req models.InternalUpdatePenjualanProdukRequest
 	if err := BindJSON(ctx, &req); err != nil {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
 	}
 
-	produkID := ctx.Params("id")
-	if produkID == "" {
-		produkID = req.ProdukID
+	identifier := ctx.Params("id")
+	if identifier == "" {
+		identifier = req.ProdukID
 	}
-	if produkID == "" {
-		return utils.ErrorResponse(ctx, http.StatusBadRequest, "ID produk tidak boleh kosong", nil)
+	if identifier == "" {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "ID / identifier produk tidak boleh kosong", nil)
 	}
 
 	val := req.GetValue()
@@ -199,29 +212,25 @@ func (c *WMSController) UpdateProdukPenjualan(ctx *fiber.Ctx) error {
 		return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Repository produk tidak tersedia", nil)
 	}
 
-	produk, err := c.produkRepo.FindByID(ctx.UserContext(), produkID)
+	// Query cepat ke DB Bulky mencakup id, id_cargo, dan reference_code
+	produk, err := c.produkRepo.FindByIdentifier(ctx.UserContext(), identifier)
 	if err != nil {
-		return utils.ErrorResponse(ctx, http.StatusNotFound, "Produk tidak ditemukan", nil)
+		return utils.ErrorResponse(ctx, http.StatusNotFound, "Produk tidak ditemukan di database Bulky", nil)
 	}
 
-	// Cek apakah produk bersumber dari WMS (dicek dari id_cargo atau reference_code)
-	targetCargoID := ""
-	if produk.IDCargo != nil && *produk.IDCargo != "" {
-		targetCargoID = *produk.IDCargo
-	} else if produk.ReferenceCode != nil && *produk.ReferenceCode != "" {
-		targetCargoID = *produk.ReferenceCode
-	}
-
-	if targetCargoID == "" {
-		return utils.SuccessResponse(ctx, "Produk bukan berasal dari WMS, pencatatan penjualan WMS dilewati", fiber.Map{
+	// API WMS hanya menerima id_cargo (UUID inventory WMS).
+	// Jika id_cargo kosong/nil, produk ini bukan produk inventory WMS.
+	if produk.IDCargo == nil || *produk.IDCargo == "" {
+		return utils.SuccessResponse(ctx, "Produk bukan berasal dari WMS atau belum memiliki id_cargo WMS, pencatatan penjualan WMS dilewati", fiber.Map{
 			"is_wms":       false,
 			"produk_id":    produk.ID.String(),
 			"actual_price": val,
 		})
 	}
 
-	// Update ke WMS menggunakan targetCargoID
-	result, err := c.service.UpdateCargoActualPrice(ctx.UserContext(), targetCargoID, val)
+	// Kirim id_cargo (UUID inventory WMS) ke API WMS
+	wmsInventoryID := *produk.IDCargo
+	result, err := c.service.UpdateCargoActualPrice(ctx.UserContext(), wmsInventoryID, val)
 	if err != nil {
 		return utils.ErrorResponse(ctx, http.StatusBadGateway, err.Error(), nil)
 	}
@@ -231,7 +240,7 @@ func (c *WMSController) UpdateProdukPenjualan(ctx *fiber.Ctx) error {
 		if produk.ReferenceCode != nil && *produk.ReferenceCode != "" {
 			refCode = *produk.ReferenceCode
 		}
-		c.activityLog.Log(ctx, models.ActionUpdate, "wms_penjualan", fmt.Sprintf("Update penjualan WMS untuk produk '%s' (Ref: %s / Cargo: %s) sebesar Rp%.0f", produk.NamaID, refCode, targetCargoID, val))
+		c.activityLog.Log(ctx, models.ActionUpdate, "wms_penjualan", fmt.Sprintf("Update penjualan WMS untuk produk '%s' (Ref: %s / Cargo UUID: %s) sebesar Rp%.0f", produk.NamaID, refCode, wmsInventoryID, val))
 	}
 
 	return utils.SuccessResponse(ctx, "Penjualan cargo WMS berhasil diperbarui", fiber.Map{

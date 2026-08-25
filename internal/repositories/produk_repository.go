@@ -13,6 +13,7 @@ import (
 type ProdukRepository interface {
 	Create(ctx context.Context, produk *models.Produk) error
 	FindByID(ctx context.Context, id string) (*models.Produk, error)
+	FindByIdentifier(ctx context.Context, identifier string) (*models.Produk, error)
 	FindBySlug(ctx context.Context, slug string) (*models.Produk, error)
 	FindAll(ctx context.Context, params *models.ProdukFilterRequest) ([]models.Produk, int64, error)
 	Update(ctx context.Context, produk *models.Produk) error
@@ -53,6 +54,33 @@ func (r *produkRepository) FindByID(ctx context.Context, id string) (*models.Pro
 		Where("id = ?", id).
 		First(&produk).Error
 	if err != nil {
+		return nil, err
+	}
+	return &produk, nil
+}
+
+func (r *produkRepository) FindByIdentifier(ctx context.Context, identifier string) (*models.Produk, error) {
+	var produk models.Produk
+	query := r.db.WithContext(ctx).
+		Preload("Kategori").
+		Preload("Mereks").
+		Preload("Kondisi").
+		Preload("KondisiPaket").
+		Preload("Sumber").
+		Preload("Warehouse").
+		Preload("TipeProduk").
+		Preload("Gambar", func(db *gorm.DB) *gorm.DB {
+			return db.Order("urutan ASC")
+		}).
+		Preload("Dokumen")
+
+	if _, err := uuid.Parse(identifier); err == nil {
+		query = query.Where("id = ? OR id_cargo = ? OR reference_code = ?", identifier, identifier, identifier)
+	} else {
+		query = query.Where("id_cargo = ? OR reference_code = ?", identifier, identifier)
+	}
+
+	if err := query.First(&produk).Error; err != nil {
 		return nil, err
 	}
 	return &produk, nil
