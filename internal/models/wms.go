@@ -201,3 +201,45 @@ type WMSCargoSyncStatusEnvelope struct {
 	Message string                     `json:"message"`
 	Data    WMSCargoSyncStatusResponse `json:"data"`
 }
+
+// ========================================
+// Update Penjualan Cargo WMS (Actual Price)
+// ========================================
+
+// SetWMSCargoActualPriceRequest body untuk POST /api/integration/cargos/{id}/actual-price
+// di sisi WMS. Value = harga jual FINAL dalam rupiah (value > 0), APA ADANYA.
+type SetWMSCargoActualPriceRequest struct {
+	Value float64 `json:"value" binding:"required,gt=0"`
+}
+
+// WMSCargoActualPriceResponse hasil update harga jual final (actual price) cargo dari WMS.
+type WMSCargoActualPriceResponse struct {
+	ID                   string    `json:"id"`
+	Code                 string    `json:"code"`
+	SalePrice            float64   `json:"sale_price"`
+	ActualPrice          float64   `json:"actual_price"`
+	ActualPriceUpdatedAt time.Time `json:"actual_price_updated_at"`
+}
+
+// wmsCargoActualPriceEnvelope bentuk respons mentah dari WMS untuk
+// POST /api/integration/cargos/{id}/actual-price.
+type WMSCargoActualPriceEnvelope struct {
+	Success bool                        `json:"success"`
+	Message string                      `json:"message"`
+	Data    WMSCargoActualPriceResponse `json:"data"`
+}
+
+// InternalUpdatePenjualanProdukRequest body request internal dari Storefront BE
+type InternalUpdatePenjualanProdukRequest struct {
+	ProdukID    string  `json:"produk_id"`
+	ActualPrice float64 `json:"actual_price"`
+	Value       float64 `json:"value"` // alias untuk actual_price
+}
+
+func (r *InternalUpdatePenjualanProdukRequest) GetValue() float64 {
+	if r.ActualPrice > 0 {
+		return r.ActualPrice
+	}
+	return r.Value
+}
+

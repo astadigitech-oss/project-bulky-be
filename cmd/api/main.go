@@ -199,7 +199,7 @@ func main() {
 	forwarderWebhookController := controllers.NewForwarderWebhookController(forwarderWebhookService, cfg.ForwarderWebhookAuthorization)
 	delivereeVehicleTypeController := controllers.NewDelivereeVehicleTypeController(delivereeVehicleTypeService, activityLogService)
 	forwarderMappingController := controllers.NewForwarderMappingController(forwarderMappingService, activityLogService)
-	wmsController := controllers.NewWMSController(wmsService)
+	wmsController := controllers.NewWMSController(wmsService, produkRepo, activityLogService)
 	backupService := services.NewBackupService(cfg, activityLogRepo)
 	backupController := controllers.NewBackupController(backupService)
 

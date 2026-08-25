@@ -717,6 +717,14 @@ func SetupRoutes(
 	internalUpload.Post("/ulasan", internalUploadController.UploadUlasanGambar)
 	internalUpload.Post("/buyer-foto", internalUploadController.UploadBuyerFoto)
 
+	// Internal WMS routes — only accessible via X-Internal-Key header (storefront BE)
+	internalWMS := v1.Group("/internal/wms",
+		middleware.InternalKeyMiddleware(cfg.InternalAPIKey),
+	)
+	internalWMS.Post("/penjualan", wmsController.UpdateProdukPenjualan)
+	internalWMS.Post("/produk/:id/actual-price", wmsController.UpdateProdukPenjualan)
+	internalWMS.Post("/cargos/:id/actual-price", wmsController.UpdateCargoActualPrice)
+
 	// Internal WMS master-data routes — only accessible via X-Internal-Key header (WMS sync produk palet)
 	internalMaster := v1.Group("/internal/master",
 		middleware.InternalKeyMiddleware(cfg.WMSAPIKey),
@@ -773,6 +781,8 @@ func SetupRoutes(
 	wmsAdmin.Get("/cargos/already-priced", middleware.RequireAnyPermission("wms_integration:manage", "produk:create", "produk:update"), wmsController.ListAlreadyPricedCargos)
 	wmsAdmin.Get("/cargos/:id/pricing-pdf", middleware.RequireAnyPermission("wms_integration:manage", "produk:create", "produk:update"), wmsController.DownloadCargoPricingPDF)
 	wmsAdmin.Post("/cargos/:id/status", middleware.RequireAnyPermission("wms_integration:manage", "produk:create", "produk:update"), wmsController.MarkCargoSynced)
+	wmsAdmin.Post("/cargos/:id/actual-price", middleware.RequireAnyPermission("wms_integration:manage", "pesanan:manage"), wmsController.UpdateCargoActualPrice)
+	wmsAdmin.Post("/produk/:id/actual-price", middleware.RequireAnyPermission("wms_integration:manage", "pesanan:manage", "produk:update"), wmsController.UpdateProdukPenjualan)
 
 	// Routes list endpoint
 	router.Get("/api/routes", func(c *fiber.Ctx) error {

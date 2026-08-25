@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -62,6 +63,10 @@ type WMSService interface {
 	// menandai cargo sudah dikonfirmasi sinkron (is_sync = true) di WMS.
 	// Idempotent.
 	MarkCargoSynced(ctx context.Context, cargoID string) (*models.WMSCargoSyncStatusResponse, error)
+	// UpdateCargoActualPrice memanggil POST /api/integration/cargos/{id}/actual-price
+	// di WMS untuk mencatat harga jual final (actual_price) saat produk laku terjual.
+	// Boleh dipanggil berkali-kali (idempotent overwrite).
+	UpdateCargoActualPrice(ctx context.Context, cargoID string, actualPrice float64) (*models.WMSCargoActualPriceResponse, error)
 }
 
 type wmsService struct {
@@ -528,3 +533,72 @@ func (s *wmsService) MarkCargoSynced(ctx context.Context, cargoID string) (*mode
 
 	return &envelope.Data, nil
 }
+
+// UpdateCargoActualPrice memanggil POST /api/integration/cargos/{id}/actual-price
+// di WMS untuk mencatat harga jual final (actual_price) saat produk laku terjual
+// di platform Bulky. Boleh dipanggil berkali-kali — jika ada revisi nilai, nilai
+// baru akan menimpa nilai lama di WMS.
+func (s *wmsService) UpdateCargoActualPrice(ctx context.Context, cargoID string, actualPrice float64) (*models.WMSCargoActualPriceResponse, error) {
+	if actualPrice <= 0 {
+		return nil, errors.New("harga actual price harus lebih besar dari 0")
+	}
+
+	token, err := s.GetAccessToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	payload := models.SetWMSCargoActualPriceRequest{
+		Value: actualPrice,
+	}
+	bodyBytes, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("gagal serialize payload actual price: %w", err)
+	}
+
+	reqURL := s.baseURL + "/api/integration/cargos/" + url.PathEscape(cargoID) + "/actual-price"
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, reqURL, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Authorization", "Bearer "+token)
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("connection timeout saat update actual price cargo WMS: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	log.Printf("[wms] <-- POST /api/integration/cargos/%s/actual-price status=%d body=%s", cargoID, resp.StatusCode, string(respBody))
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		s.mu.Lock()
+		s.cachedToken = ""
+		s.mu.Unlock()
+		return nil, fmt.Errorf("token WMS tidak ada / salah / kedaluwarsa / kredensial dicabut")
+	}
+	if resp.StatusCode == http.StatusBadRequest || resp.StatusCode == http.StatusNotFound {
+		var errEnvelope models.WMSErrorEnvelope
+		if err := json.Unmarshal(respBody, &errEnvelope); err == nil && errEnvelope.Message != "" {
+			return nil, fmt.Errorf("WMS API error saat update actual price cargo (status %d): %s", resp.StatusCode, errEnvelope.Message)
+		}
+		return nil, fmt.Errorf("WMS API error saat update actual price cargo (status %d): %s", resp.StatusCode, string(respBody))
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("WMS API error saat update actual price cargo (status %d): %s", resp.StatusCode, string(respBody))
+	}
+
+	var envelope models.WMSCargoActualPriceEnvelope
+	if err := json.Unmarshal(respBody, &envelope); err != nil {
+		return nil, fmt.Errorf("gagal parse response actual price cargo WMS: %w", err)
+	}
+	if !envelope.Success {
+		return nil, fmt.Errorf("WMS API mengembalikan gagal: %s", envelope.Message)
+	}
+
+	return &envelope.Data, nil
+}
+
