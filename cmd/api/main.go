@@ -199,7 +199,9 @@ func main() {
 	forwarderWebhookController := controllers.NewForwarderWebhookController(forwarderWebhookService, cfg.ForwarderWebhookAuthorization)
 	delivereeVehicleTypeController := controllers.NewDelivereeVehicleTypeController(delivereeVehicleTypeService, activityLogService)
 	forwarderMappingController := controllers.NewForwarderMappingController(forwarderMappingService, activityLogService)
-	wmsController := controllers.NewWMSController(wmsService)
+	wmsController := controllers.NewWMSController(wmsService, produkRepo, activityLogService)
+	backupService := services.NewBackupService(cfg, activityLogRepo)
+	backupController := controllers.NewBackupController(backupService)
 
 	// Auth V2 controllers
 	authV2Controller := controllers.NewAuthV2Controller(authV2Service, adminService, buyerService)
@@ -246,6 +248,7 @@ func main() {
 		delivereeVehicleTypeController,
 		forwarderMappingController,
 		wmsController,
+		backupController,
 	)
 
 	// Setup Auth V2 routes (new authentication system with roles & permissions)
@@ -276,6 +279,10 @@ func main() {
 	autoArchiveCtx, stopAutoArchive := context.WithCancel(context.Background())
 	go produkAutoArchiveService.StartScheduler(autoArchiveCtx, 1*time.Hour)
 
+	// Jalankan scheduler auto-backup database harian (00:00 WIB / 17:00 UTC) sampai server shutdown.
+	backupSchedulerCtx, stopBackupScheduler := context.WithCancel(context.Background())
+	go backupService.StartDailyScheduler(backupSchedulerCtx)
+
 	// Graceful shutdown: tunggu sinyal SIGTERM/SIGINT, lalu stop server
 	// setelah request yang sedang berjalan (termasuk upload video) selesai
 	quit := make(chan os.Signal, 1)
@@ -284,6 +291,7 @@ func main() {
 
 	log.Println("Shutting down server gracefully...")
 	stopAutoArchive()
+	stopBackupScheduler()
 	if err := router.ShutdownWithContext(context.Background()); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}

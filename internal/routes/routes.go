@@ -57,6 +57,7 @@ func SetupRoutes(
 	delivereeVehicleTypeController *controllers.DelivereeVehicleTypeController,
 	forwarderMappingController *controllers.ForwarderMappingController,
 	wmsController *controllers.WMSController,
+	backupController *controllers.BackupController,
 ) {
 	// Health check
 	router.Get("/api/health", func(c *fiber.Ctx) error {
@@ -698,6 +699,20 @@ func SetupRoutes(
 	// produk LQD yang difilter saat migrasi). Body: {"dry_run": true|false}.
 	// Eksekusi permanen butuh dry_run_token dari dry-run sebelumnya.
 	assetMigration.Post("/prune-orphans", assetMigrationController.PruneOrphans)
+	// Optimasi seluruh media gambar di database ke WebP (<200KB).
+	// Body: {"dry_run": true|false, "dry_run_token": "...", "scope": "all"}.
+	// File lama tidak dihapus (dibiarkan menjadi orphan yang bisa di-prune kemudian).
+	assetMigration.Post("/optimize-webp", assetMigrationController.OptimizeWebP)
+
+	// Database Backup routes — Super Admin only
+	backupAdmin := v1.Group("/panel/backups",
+		middleware.AuthMiddleware(),
+		middleware.SuperAdminOnly(),
+	)
+	backupAdmin.Get("", middleware.RequirePermission("backup:read"), backupController.List)
+	backupAdmin.Post("", middleware.RequirePermission("backup:create"), backupController.Create)
+	backupAdmin.Get("/:filename/download", middleware.RequirePermission("backup:download"), backupController.Download)
+	backupAdmin.Delete("/:filename", middleware.RequirePermission("backup:delete"), backupController.Delete)
 
 	// Internal upload routes — only accessible via X-Internal-Key header (storefront BE)
 	internalUpload := v1.Group("/internal/upload",
@@ -705,6 +720,14 @@ func SetupRoutes(
 	)
 	internalUpload.Post("/ulasan", internalUploadController.UploadUlasanGambar)
 	internalUpload.Post("/buyer-foto", internalUploadController.UploadBuyerFoto)
+
+	// Internal WMS routes — only accessible via X-Internal-Key header (storefront BE)
+	internalWMS := v1.Group("/internal/wms",
+		middleware.InternalKeyMiddleware(cfg.InternalAPIKey),
+	)
+	internalWMS.Post("/penjualan", wmsController.UpdateProdukPenjualan)
+	internalWMS.Post("/produk/:id/actual-price", wmsController.UpdateProdukPenjualan)
+	internalWMS.Post("/cargos/:id/actual-price", wmsController.UpdateCargoActualPrice)
 
 	// Internal WMS master-data routes — only accessible via X-Internal-Key header (WMS sync produk palet)
 	internalMaster := v1.Group("/internal/master",
@@ -762,6 +785,8 @@ func SetupRoutes(
 	wmsAdmin.Get("/cargos/already-priced", middleware.RequireAnyPermission("wms_integration:manage", "produk:create", "produk:update"), wmsController.ListAlreadyPricedCargos)
 	wmsAdmin.Get("/cargos/:id/pricing-pdf", middleware.RequireAnyPermission("wms_integration:manage", "produk:create", "produk:update"), wmsController.DownloadCargoPricingPDF)
 	wmsAdmin.Post("/cargos/:id/status", middleware.RequireAnyPermission("wms_integration:manage", "produk:create", "produk:update"), wmsController.MarkCargoSynced)
+	wmsAdmin.Post("/cargos/:id/actual-price", middleware.RequireAnyPermission("wms_integration:manage", "pesanan:manage"), wmsController.UpdateCargoActualPrice)
+	wmsAdmin.Post("/produk/:id/actual-price", middleware.RequireAnyPermission("wms_integration:manage", "pesanan:manage", "produk:update"), wmsController.UpdateProdukPenjualan)
 
 	// Routes list endpoint
 	router.Get("/api/routes", func(c *fiber.Ctx) error {

@@ -26,19 +26,19 @@ func GenerateThumbnailFromVideo(videoPath string, directory string, cfg *config.
 		return "", fmt.Errorf("gagal membuat direktori thumbnail: %w", err)
 	}
 
-	// Generate unique filename for thumbnail
-	thumbnailFilename := fmt.Sprintf("%s.jpg", uuid.New().String())
-	thumbnailPath := filepath.Join(thumbnailDir, thumbnailFilename)
+	// Temporary jpg filename for frame extraction
+	tmpFilename := fmt.Sprintf("%s_tmp.jpg", uuid.New().String())
+	tmpPath := filepath.Join(thumbnailDir, tmpFilename)
+	defer os.Remove(tmpPath)
+
+	// Final WebP filename
+	finalFilename := fmt.Sprintf("%s.webp", uuid.New().String())
+	finalPath := filepath.Join(thumbnailDir, finalFilename)
 
 	// Full path to video file
 	fullVideoPath := filepath.Join(cfg.UploadPath, filepath.FromSlash(videoPath))
 
 	// Extract frame at 1 second using ffmpeg
-	// -i: input file
-	// -ss: seek to timestamp (1 second)
-	// -vframes: number of frames to extract (1)
-	// -q:v: quality (2 is high quality, range 2-31)
-	// -y: overwrite output file if exists
 	cmd := exec.Command(
 		"ffmpeg",
 		"-i", fullVideoPath,
@@ -46,7 +46,7 @@ func GenerateThumbnailFromVideo(videoPath string, directory string, cfg *config.
 		"-vframes", "1",
 		"-q:v", "2",
 		"-y",
-		thumbnailPath,
+		tmpPath,
 	)
 
 	// Run command
@@ -55,13 +55,18 @@ func GenerateThumbnailFromVideo(videoPath string, directory string, cfg *config.
 		return "", fmt.Errorf("gagal generate thumbnail dari video: %w (output: %s)", err, string(output))
 	}
 
-	// Verify thumbnail was created
-	if _, err := os.Stat(thumbnailPath); os.IsNotExist(err) {
-		return "", fmt.Errorf("thumbnail file tidak terbuat")
+	// Verify temporary thumbnail was created
+	if _, err := os.Stat(tmpPath); os.IsNotExist(err) {
+		return "", fmt.Errorf("thumbnail temporary file tidak terbuat")
+	}
+
+	// Compress extracted frame to WebP (< 200KB)
+	if err := CompressExistingFileWebP(tmpPath, finalPath); err != nil {
+		return "", fmt.Errorf("gagal kompresi thumbnail video ke webp: %w", err)
 	}
 
 	// Return relative path for URL (tanpa prefix /uploads/, konsisten dengan SaveUploadedFile)
-	relativePath := filepath.ToSlash(filepath.Join(directory, thumbnailFilename))
+	relativePath := filepath.ToSlash(filepath.Join(directory, finalFilename))
 
 	return relativePath, nil
 }

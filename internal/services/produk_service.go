@@ -127,7 +127,7 @@ func (s *produkService) CreateWithFiles(
 		SlugID:             slugID,
 		SlugEN:             slugEN,
 		IDCargo:            req.IDCargo,
-		ReferenceID:        req.ReferenceID,
+		ReferenceCode:      req.ReferenceCode,
 		KategoriID:         kategoriID,
 		KondisiID:          kondisiID,
 		KondisiPaketID:     kondisiPaketID,
@@ -189,8 +189,8 @@ func (s *produkService) CreateWithFiles(
 	// 3. Upload and create gambar records
 	produkDir := fmt.Sprintf("products/%s", produk.ID.String())
 	for i, file := range gambarFiles {
-		// Upload to storage
-		relativePath, err := utils.SaveUploadedFile(file, produkDir, s.cfg)
+		// Upload and compress image to WebP (< 200KB)
+		relativePath, err := utils.CompressAndSaveImageWebP(file, produkDir, s.cfg)
 		if err != nil {
 			tx.Rollback()
 			return nil, fmt.Errorf("gagal upload gambar: %w", err)
@@ -330,8 +330,8 @@ func (s *produkService) Update(ctx context.Context, id string, req *models.Updat
 		produk.IDCargo = req.IDCargo
 	}
 
-	if req.ReferenceID != nil {
-		produk.ReferenceID = req.ReferenceID
+	if req.ReferenceCode != nil {
+		produk.ReferenceCode = req.ReferenceCode
 	}
 
 	if req.KategoriID != nil {
@@ -653,14 +653,15 @@ func (s *produkService) toListResponse(p *models.Produk) *models.ProdukListRespo
 // toPanelListResponse converts Produk to simplified ProdukPanelListResponse for admin panel
 func (s *produkService) toPanelListResponse(p *models.Produk) *models.ProdukPanelListResponse {
 	resp := &models.ProdukPanelListResponse{
-		ID:       p.ID.String(),
-		NamaID:   p.NamaID,
-		NamaEN:   p.NamaEN,
-		IDCargo:  p.IDCargo,
-		Status:   p.IsActive,
-		IsSold:   p.IsSold,
-		IsSale:   p.IsSale,
-		IsQcPass: p.IsQcPass,
+		ID:            p.ID.String(),
+		NamaID:        p.NamaID,
+		NamaEN:        p.NamaEN,
+		IDCargo:       p.IDCargo,
+		ReferenceCode: p.ReferenceCode,
+		Status:        p.IsActive,
+		IsSold:        p.IsSold,
+		IsSale:        p.IsSale,
+		IsQcPass:      p.IsQcPass,
 	}
 
 	// Get primary/first image - prioritize is_primary, fallback to first by urutan
@@ -700,8 +701,8 @@ func (s *produkService) toDetailResponse(p *models.Produk) *models.ProdukDetailR
 		NamaEN:      p.NamaEN,
 		SlugID:      p.SlugID,
 		SlugEN:      p.SlugEN,
-		IDCargo:     p.IDCargo,
-		ReferenceID: p.ReferenceID,
+		IDCargo:       p.IDCargo,
+		ReferenceCode: p.ReferenceCode,
 		Kategori: models.SimpleProdukRelationInfo{
 			ID:   p.Kategori.ID.String(),
 			Nama: p.Kategori.GetNama().ID,

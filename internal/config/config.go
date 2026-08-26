@@ -27,6 +27,10 @@ type Config struct {
 	WMSClientID                   string
 	WMSClientSecret               string
 	StorefrontBaseURL             string
+	BackupPath                    string
+	BackupRetentionDays           int
+	BackupScheduleHour            int
+	BackupScheduleMinute          int
 }
 
 func LoadConfig() *Config {
@@ -35,6 +39,12 @@ func LoadConfig() *Config {
 
 	// Get bcrypt cost based on environment
 	bcryptCost := getBcryptCost(getEnv("APP_ENV", "development"))
+
+	uploadPath := getEnv("UPLOAD_PATH", "./uploads")
+	backupPath := getEnv("BACKUP_PATH", "")
+	if backupPath == "" {
+		backupPath = uploadPath + "/backups"
+	}
 
 	return &Config{
 		AppEnv:                        getEnv("APP_ENV", "development"),
@@ -47,7 +57,7 @@ func LoadConfig() *Config {
 		JWTSecret:                     getEnv("JWT_SECRET", "your-secret-key-minimum-32-characters-long"),
 		JWTAccessDuration:             accessDuration,
 		BcryptCost:                    bcryptCost,
-		UploadPath:                    getEnv("UPLOAD_PATH", "./uploads"),
+		UploadPath:                    uploadPath,
 		BaseURL:                       getEnv("BASE_URL", "http://localhost:8080"),
 		InternalAPIKey:                getEnv("INTERNAL_API_KEY", ""),
 		WMSAPIKey:                     getEnv("WMS_API_KEY", ""),
@@ -57,7 +67,22 @@ func LoadConfig() *Config {
 		WMSClientID:                   getEnv("WMS_CLIENT_ID", ""),
 		WMSClientSecret:               getEnv("WMS_CLIENT_SECRET", ""),
 		StorefrontBaseURL:             getEnv("STOREFRONT_BASE_URL", ""),
+		BackupPath:                    backupPath,
+		BackupRetentionDays:           getEnvInt("BACKUP_RETENTION_DAYS", 7),
+		BackupScheduleHour:            getEnvInt("BACKUP_SCHEDULE_HOUR_UTC", 17), // 17:00 UTC = 00:00 WIB
+		BackupScheduleMinute:          getEnvInt("BACKUP_SCHEDULE_MINUTE_UTC", 0),
 	}
+}
+
+func getEnvInt(key string, defaultValue int) int {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	if intVal, err := strconv.Atoi(value); err == nil {
+		return intVal
+	}
+	return defaultValue
 }
 
 func getEnv(key, defaultValue string) string {

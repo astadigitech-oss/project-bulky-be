@@ -13,6 +13,7 @@ import (
 type ProdukRepository interface {
 	Create(ctx context.Context, produk *models.Produk) error
 	FindByID(ctx context.Context, id string) (*models.Produk, error)
+	FindByIdentifier(ctx context.Context, identifier string) (*models.Produk, error)
 	FindBySlug(ctx context.Context, slug string) (*models.Produk, error)
 	FindAll(ctx context.Context, params *models.ProdukFilterRequest) ([]models.Produk, int64, error)
 	Update(ctx context.Context, produk *models.Produk) error
@@ -53,6 +54,33 @@ func (r *produkRepository) FindByID(ctx context.Context, id string) (*models.Pro
 		Where("id = ?", id).
 		First(&produk).Error
 	if err != nil {
+		return nil, err
+	}
+	return &produk, nil
+}
+
+func (r *produkRepository) FindByIdentifier(ctx context.Context, identifier string) (*models.Produk, error) {
+	var produk models.Produk
+	query := r.db.WithContext(ctx).
+		Preload("Kategori").
+		Preload("Mereks").
+		Preload("Kondisi").
+		Preload("KondisiPaket").
+		Preload("Sumber").
+		Preload("Warehouse").
+		Preload("TipeProduk").
+		Preload("Gambar", func(db *gorm.DB) *gorm.DB {
+			return db.Order("urutan ASC")
+		}).
+		Preload("Dokumen")
+
+	if _, err := uuid.Parse(identifier); err == nil {
+		query = query.Where("id = ? OR id_cargo = ? OR reference_code = ?", identifier, identifier, identifier)
+	} else {
+		query = query.Where("id_cargo = ? OR reference_code = ?", identifier, identifier)
+	}
+
+	if err := query.First(&produk).Error; err != nil {
 		return nil, err
 	}
 	return &produk, nil
@@ -99,7 +127,7 @@ func (r *produkRepository) FindAll(ctx context.Context, params *models.ProdukFil
 
 	// Apply filters
 	if params.Search != "" {
-		query = query.Where("nama_id ILIKE ? OR nama_en ILIKE ? OR id_cargo ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%", "%"+params.Search+"%")
+		query = query.Where("nama_id ILIKE ? OR nama_en ILIKE ? OR id_cargo ILIKE ? OR reference_code ILIKE ?", "%"+params.Search+"%", "%"+params.Search+"%", "%"+params.Search+"%", "%"+params.Search+"%")
 	}
 	if params.KategoriID != "" {
 		query = query.Where("kategori_id = ?", params.KategoriID)
@@ -153,13 +181,14 @@ func (r *produkRepository) FindAll(ctx context.Context, params *models.ProdukFil
 	}
 
 	validSortFields := map[string]string{
-		"nama_id":    "nama_id",
-		"nama_en":    "nama_en",
-		"id_cargo":   "id_cargo",
-		"is_active":  "is_active",
-		"status":     "is_active",
-		"updated_at": "updated_at",
-		"created_at": "created_at",
+		"nama_id":        "nama_id",
+		"nama_en":        "nama_en",
+		"id_cargo":       "id_cargo",
+		"reference_code": "reference_code",
+		"is_active":      "is_active",
+		"status":         "is_active",
+		"updated_at":     "updated_at",
+		"created_at":     "created_at",
 	}
 	sortBy := "nama_id"
 	if col, ok := validSortFields[params.SortBy]; ok {
@@ -170,7 +199,7 @@ func (r *produkRepository) FindAll(ctx context.Context, params *models.ProdukFil
 		order = "asc"
 	}
 	nullsLast := ""
-	if sortBy == "id_cargo" || sortBy == "nama_en" {
+	if sortBy == "id_cargo" || sortBy == "reference_code" || sortBy == "nama_en" {
 		nullsLast = " NULLS LAST"
 	}
 	orderClause := sortBy + " " + order + nullsLast

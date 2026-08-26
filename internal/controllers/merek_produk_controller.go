@@ -51,7 +51,7 @@ func (c *MerekProdukController) Create(ctx *fiber.Ctx) error {
 			if !utils.IsValidImageType(file) {
 				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file logo tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
-			savedPath, err := utils.SaveUploadedFile(file, "product-brands", c.cfg)
+			savedPath, err := utils.CompressAndSaveImageWebP(file, "product-brands", c.cfg)
 			if err != nil {
 				return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan logo: "+err.Error(), nil)
 			}
@@ -147,7 +147,7 @@ func (c *MerekProdukController) Update(ctx *fiber.Ctx) error {
 			if !utils.IsValidImageType(file) {
 				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file logo tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
-			savedPath, err := utils.SaveUploadedFile(file, "product-brands", c.cfg)
+			savedPath, err := utils.CompressAndSaveImageWebP(file, "product-brands", c.cfg)
 			if err != nil {
 				return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan logo: "+err.Error(), nil)
 			}

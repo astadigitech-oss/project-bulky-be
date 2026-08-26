@@ -39,9 +39,9 @@ func (s *produkGambarService) CreateWithFile(ctx context.Context, produkID strin
 		return nil, errors.New("produk_id tidak valid")
 	}
 
-	// Upload file
+	// Upload and compress image to WebP (< 200KB)
 	produkDir := fmt.Sprintf("products/%s", produkID)
-	relativePath, err := utils.SaveUploadedFile(file, produkDir, s.cfg)
+	relativePath, err := utils.CompressAndSaveImageWebP(file, produkDir, s.cfg)
 	if err != nil {
 		return nil, fmt.Errorf("gagal upload gambar: %w", err)
 	}
@@ -102,7 +102,8 @@ func (s *produkGambarService) CreateMultipleWithFiles(ctx context.Context, produ
 	var results []models.ProdukGambarResponse
 
 	for i, file := range files {
-		relativePath, err := utils.SaveUploadedFile(file, produkDir, s.cfg)
+		// Upload and compress image to WebP (< 200KB)
+		relativePath, err := utils.CompressAndSaveImageWebP(file, produkDir, s.cfg)
 		if err != nil {
 			// Rollback: delete all already-uploaded files
 			for _, p := range uploadedPaths {

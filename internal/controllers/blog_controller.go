@@ -123,7 +123,7 @@ func (c *BlogController) Create(ctx *fiber.Ctx) error {
 			if !utils.IsValidImageType(file) {
 				return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file featured_image tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", "")
 			}
-			savedPath, err := utils.SaveUploadedFile(file, "blog", c.cfg)
+			savedPath, err := utils.CompressAndSaveImageWebP(file, "blog", c.cfg)
 			if err != nil {
 				return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file: "+err.Error(), "")
 			}
@@ -248,7 +248,7 @@ func (c *BlogController) Update(ctx *fiber.Ctx) error {
 			if !utils.IsValidImageType(file) {
 				return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file featured_image tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", "")
 			}
-			savedPath, err := utils.SaveUploadedFile(file, "blog", c.cfg)
+			savedPath, err := utils.CompressAndSaveImageWebP(file, "blog", c.cfg)
 			if err != nil {
 				return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file: "+err.Error(), "")
 			}

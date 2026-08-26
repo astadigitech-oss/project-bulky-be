@@ -15,7 +15,7 @@ type Produk struct {
 	SlugID                *string        `gorm:"type:varchar(280);uniqueIndex" json:"slug_id"`
 	SlugEN                *string        `gorm:"type:varchar(280);uniqueIndex" json:"slug_en"`
 	IDCargo               *string        `gorm:"type:varchar(50);unique;column:id_cargo" json:"id_cargo"`
-	ReferenceID           *string        `gorm:"type:varchar(100);column:reference_id" json:"reference_id"`
+	ReferenceCode         *string        `gorm:"type:varchar(100);column:reference_code" json:"reference_code"`
 	KategoriID            uuid.UUID      `gorm:"type:uuid;not null" json:"kategori_id"`
 	KondisiID             uuid.UUID      `gorm:"type:uuid;not null" json:"kondisi_id"`
 	KondisiPaketID        uuid.UUID      `gorm:"type:uuid;not null" json:"kondisi_paket_id"`
@@ -63,7 +63,7 @@ type ProdukResponse struct {
 	SlugID             *string   `json:"slug_id"`
 	SlugEN             *string   `json:"slug_en"`
 	IDCargo            *string   `json:"id_cargo"`
-	ReferenceID        *string   `json:"reference_id"`
+	ReferenceCode      *string   `json:"reference_code"`
 	KategoriID         string    `json:"kategori_id"`
 	KondisiID          string    `json:"kondisi_id"`
 	KondisiPaketID     string    `json:"kondisi_paket_id"`
