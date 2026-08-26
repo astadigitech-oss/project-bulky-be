@@ -22,6 +22,7 @@ import (
 	"project-bulky-be/pkg/utils"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -1110,6 +1111,288 @@ func (ctrl *AssetMigrationController) PruneOrphans(c *fiber.Ctx) error {
 		"orphans":        orphans,
 		"dry_run_token":  dryRunToken,
 		"token_expiry_s": 600,
+	})
+}
+
+type optimizeTargetSpec struct {
+	scope      string
+	table      string
+	idColumn   string
+	pathColumn string
+	where      string
+}
+
+type OptimizeItemDetail struct {
+	Scope        string `json:"scope"`
+	Table        string `json:"table"`
+	Column       string `json:"column"`
+	RecordID     string `json:"record_id"`
+	OldPath      string `json:"old_path"`
+	NewPath      string `json:"new_path,omitempty"`
+	OldSizeBytes int64  `json:"old_size_bytes"`
+	NewSizeBytes int64  `json:"new_size_bytes,omitempty"`
+	SavedBytes   int64  `json:"saved_bytes,omitempty"`
+	Status       string `json:"status"` // "converted", "candidate", "already_optimal", "missing", "failed"
+	ErrorMessage string `json:"error_message,omitempty"`
+}
+
+// OptimizeWebP memindai seluruh referensi gambar di DB, mengonversi gambar non-WebP
+// atau gambar > 200KB ke format WebP berkualitas tinggi, dan mengupdate DB.
+// File asli di disk TIDAK dihapus (dibiarkan menjadi orphan yang dapat di-prune kemudian).
+func (ctrl *AssetMigrationController) OptimizeWebP(c *fiber.Ctx) error {
+	dryRun := true
+	scope := "all"
+	var req struct {
+		DryRun      *bool  `json:"dry_run"`
+		DryRunToken string `json:"dry_run_token"`
+		Scope       string `json:"scope"`
+	}
+	if len(c.Body()) > 0 {
+		if err := c.BodyParser(&req); err != nil {
+			return utils.SimpleErrorResponse(c, http.StatusBadRequest, "Body tidak valid", err.Error())
+		}
+		if req.DryRun != nil {
+			dryRun = *req.DryRun
+		}
+		if req.Scope != "" {
+			scope = strings.ToLower(strings.TrimSpace(req.Scope))
+		}
+	}
+
+	// Eksekusi permanen WAJIB menyertakan dry_run_token dari dry-run sebelumnya
+	if !dryRun {
+		if req.DryRunToken == "" {
+			return utils.SimpleErrorResponse(c, http.StatusBadRequest,
+				"Jalankan dry-run dulu untuk mendapatkan token konfirmasi", "")
+		}
+		mu.Lock()
+		tok, ok := pruneTokens[req.DryRunToken]
+		if ok {
+			delete(pruneTokens, req.DryRunToken) // one-time use
+		}
+		mu.Unlock()
+		if !ok || time.Now().After(tok.expiry) {
+			return utils.SimpleErrorResponse(c, http.StatusBadRequest,
+				"Token dry-run tidak valid atau kedaluwarsa. Jalankan dry-run ulang", "")
+		}
+	}
+
+	specs := []optimizeTargetSpec{
+		{"products", "produk_gambar", "id", "gambar_url", "gambar_url != ''"},
+		{"banners", "banner_event_promo", "id", "gambar_url_id", "gambar_url_id != '' AND deleted_at IS NULL"},
+		{"banners", "banner_event_promo", "id", "gambar_url_en", "gambar_url_en != '' AND deleted_at IS NULL"},
+		{"banners", "banner_tipe_produk", "id", "gambar_url", "gambar_url != '' AND deleted_at IS NULL"},
+		{"blogs", "blog", "id", "featured_image_url", "featured_image_url IS NOT NULL AND featured_image_url != '' AND deleted_at IS NULL"},
+		{"hero", "hero_section", "id", "gambar_url_id", "gambar_url_id != '' AND deleted_at IS NULL"},
+		{"hero", "hero_section", "id", "gambar_url_en", "gambar_url_en IS NOT NULL AND gambar_url_en != '' AND deleted_at IS NULL"},
+		{"categories", "kategori_produk", "id", "icon_url", "icon_url IS NOT NULL AND icon_url != '' AND deleted_at IS NULL"},
+		{"categories", "kategori_produk", "id", "gambar_kondisi_url", "gambar_kondisi_url IS NOT NULL AND gambar_kondisi_url != '' AND deleted_at IS NULL"},
+		{"brands", "merek_produk", "id", "logo_url", "logo_url IS NOT NULL AND logo_url != '' AND deleted_at IS NULL"},
+		{"videos", "video", "id", "thumbnail_url", "thumbnail_url IS NOT NULL AND thumbnail_url != '' AND deleted_at IS NULL"},
+		{"reviews", "ulasan", "id", "gambar", "gambar IS NOT NULL AND gambar != '' AND deleted_at IS NULL"},
+		{"buyers", "buyer", "id", "foto_url", "foto_url IS NOT NULL AND foto_url != '' AND deleted_at IS NULL"},
+	}
+
+	type rawRow struct {
+		ID  string `gorm:"column:id"`
+		URL string `gorm:"column:url"`
+	}
+
+	var (
+		totalScanned       int
+		totalCandidates    int
+		totalConverted     int
+		totalSkipped       int
+		totalMissing       int
+		totalFailed        int
+		totalOriginalBytes int64
+		totalNewBytes      int64
+		items              []OptimizeItemDetail
+	)
+
+	for _, spec := range specs {
+		if scope != "all" && scope != spec.scope {
+			continue
+		}
+
+		var rows []rawRow
+		sql := fmt.Sprintf("SELECT %s as id, %s as url FROM %s WHERE %s", spec.idColumn, spec.pathColumn, spec.table, spec.where)
+		if err := ctrl.db.Raw(sql).Scan(&rows).Error; err != nil {
+			return utils.SimpleErrorResponse(c, http.StatusInternalServerError,
+				fmt.Sprintf("Gagal membaca data dari %s", spec.table), err.Error())
+		}
+
+		for _, row := range rows {
+			totalScanned++
+			relPath := normalizeFilePath(row.URL)
+			if relPath == "" {
+				totalSkipped++
+				continue
+			}
+
+			ext := strings.ToLower(filepath.Ext(relPath))
+			if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" {
+				totalSkipped++
+				continue
+			}
+
+			fullSrcPath := filepath.Join(ctrl.cfg.UploadPath, filepath.FromSlash(relPath))
+			fileInfo, err := os.Stat(fullSrcPath)
+			if err != nil {
+				totalMissing++
+				items = append(items, OptimizeItemDetail{
+					Scope:        spec.scope,
+					Table:        spec.table,
+					Column:       spec.pathColumn,
+					RecordID:     row.ID,
+					OldPath:      relPath,
+					Status:       "missing",
+					ErrorMessage: "File fisik tidak ditemukan di disk",
+				})
+				continue
+			}
+
+			// Jika sudah WebP dan ukurannya sudah <= 200KB, lewati
+			if ext == ".webp" && fileInfo.Size() <= utils.TargetMaxImageSize {
+				totalSkipped++
+				items = append(items, OptimizeItemDetail{
+					Scope:        spec.scope,
+					Table:        spec.table,
+					Column:       spec.pathColumn,
+					RecordID:     row.ID,
+					OldPath:      relPath,
+					OldSizeBytes: fileInfo.Size(),
+					Status:       "already_optimal",
+				})
+				continue
+			}
+
+			// File adalah kandidat optimasi
+			totalCandidates++
+			totalOriginalBytes += fileInfo.Size()
+
+			if dryRun {
+				items = append(items, OptimizeItemDetail{
+					Scope:        spec.scope,
+					Table:        spec.table,
+					Column:       spec.pathColumn,
+					RecordID:     row.ID,
+					OldPath:      relPath,
+					OldSizeBytes: fileInfo.Size(),
+					Status:       "candidate",
+				})
+				continue
+			}
+
+			// Eksekusi konversi ke file baru .webp
+			srcDir := filepath.Dir(relPath)
+			newFilename := fmt.Sprintf("%s.webp", uuid.New().String())
+			newRelPath := filepath.ToSlash(filepath.Join(srcDir, newFilename))
+			fullDstPath := filepath.Join(ctrl.cfg.UploadPath, filepath.FromSlash(newRelPath))
+
+			err = utils.CompressExistingFileWebP(fullSrcPath, fullDstPath)
+			if err != nil {
+				totalFailed++
+				items = append(items, OptimizeItemDetail{
+					Scope:        spec.scope,
+					Table:        spec.table,
+					Column:       spec.pathColumn,
+					RecordID:     row.ID,
+					OldPath:      relPath,
+					OldSizeBytes: fileInfo.Size(),
+					Status:       "failed",
+					ErrorMessage: err.Error(),
+				})
+				continue
+			}
+
+			newInfo, err := os.Stat(fullDstPath)
+			if err != nil {
+				totalFailed++
+				items = append(items, OptimizeItemDetail{
+					Scope:        spec.scope,
+					Table:        spec.table,
+					Column:       spec.pathColumn,
+					RecordID:     row.ID,
+					OldPath:      relPath,
+					OldSizeBytes: fileInfo.Size(),
+					Status:       "failed",
+					ErrorMessage: "Gagal membaca info file baru",
+				})
+				continue
+			}
+
+			// Update database ke path baru
+			updateSQL := fmt.Sprintf("UPDATE %s SET %s = ? WHERE %s = ?", spec.table, spec.pathColumn, spec.idColumn)
+			if err := ctrl.db.Exec(updateSQL, newRelPath, row.ID).Error; err != nil {
+				totalFailed++
+				// Hapus file baru jika update DB gagal agar tidak menambah orphan baru
+				_ = os.Remove(fullDstPath)
+				items = append(items, OptimizeItemDetail{
+					Scope:        spec.scope,
+					Table:        spec.table,
+					Column:       spec.pathColumn,
+					RecordID:     row.ID,
+					OldPath:      relPath,
+					OldSizeBytes: fileInfo.Size(),
+					Status:       "failed",
+					ErrorMessage: fmt.Sprintf("Gagal update DB: %v", err),
+				})
+				continue
+			}
+
+			totalConverted++
+			totalNewBytes += newInfo.Size()
+			saved := fileInfo.Size() - newInfo.Size()
+			items = append(items, OptimizeItemDetail{
+				Scope:        spec.scope,
+				Table:        spec.table,
+				Column:       spec.pathColumn,
+				RecordID:     row.ID,
+				OldPath:      relPath,
+				NewPath:      newRelPath,
+				OldSizeBytes: fileInfo.Size(),
+				NewSizeBytes: newInfo.Size(),
+				SavedBytes:   saved,
+				Status:       "converted",
+			})
+		}
+	}
+
+	var dryRunToken string
+	if dryRun {
+		dryRunToken = fmt.Sprintf("opt-%s", hex.EncodeToString(randomBytes(16)))
+		mu.Lock()
+		pruneTokens[dryRunToken] = pruneToken{
+			expiry:     time.Now().Add(10 * time.Minute),
+			totalFiles: totalCandidates,
+			totalSize:  totalOriginalBytes,
+		}
+		mu.Unlock()
+	}
+
+	savedBytes := totalOriginalBytes - totalNewBytes
+	savedPercentage := 0.0
+	if totalOriginalBytes > 0 && !dryRun {
+		savedPercentage = (float64(savedBytes) / float64(totalOriginalBytes)) * 100.0
+	}
+
+	return utils.SimpleSuccessResponse(c, http.StatusOK, "Proses optimasi WebP selesai", fiber.Map{
+		"dry_run":             dryRun,
+		"scope":               scope,
+		"total_scanned":       totalScanned,
+		"total_candidates":    totalCandidates,
+		"total_converted":     totalConverted,
+		"total_skipped":       totalSkipped,
+		"total_missing":       totalMissing,
+		"total_failed":        totalFailed,
+		"original_size_bytes": totalOriginalBytes,
+		"new_size_bytes":      totalNewBytes,
+		"saved_size_bytes":    savedBytes,
+		"saved_percentage":    savedPercentage,
+		"dry_run_token":       dryRunToken,
+		"token_expiry_s":      600,
+		"items":               items,
 	})
 }
 

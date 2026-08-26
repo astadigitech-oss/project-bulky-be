@@ -50,7 +50,7 @@ func (c *BannerTipeProdukController) Create(ctx *fiber.Ctx) error {
 			if !utils.IsValidImageType(file) {
 				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
-			savedPath, err := utils.SaveUploadedFile(file, "banners/tipe-produk", c.cfg)
+			savedPath, err := utils.CompressAndSaveImageWebP(file, "banners/tipe-produk", c.cfg)
 			if err != nil {
 				return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file: "+err.Error(), nil)
 			}
@@ -172,7 +172,7 @@ func (c *BannerTipeProdukController) Update(ctx *fiber.Ctx) error {
 			if !utils.IsValidImageType(file) {
 				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
-			savedPath, err := utils.SaveUploadedFile(file, "banners/tipe-produk", c.cfg)
+			savedPath, err := utils.CompressAndSaveImageWebP(file, "banners/tipe-produk", c.cfg)
 			if err != nil {
 				return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file: "+err.Error(), nil)
 			}

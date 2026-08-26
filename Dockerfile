@@ -27,6 +27,7 @@ RUN apk add --no-cache \
     ca-certificates \
     tzdata \
     ffmpeg \
+    libwebp-tools \
     curl \
     --repository=https://dl-cdn.alpinelinux.org/alpine/edge/main \
     postgresql-client

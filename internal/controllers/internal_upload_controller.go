@@ -33,7 +33,7 @@ func (ctrl *InternalUploadController) UploadUlasanGambar(c *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "Ukuran file maksimal 5MB", "")
 	}
 
-	relativePath, err := utils.SaveUploadedFile(file, "ulasan", ctrl.cfg)
+	relativePath, err := utils.CompressAndSaveImageWebP(file, "ulasan", ctrl.cfg)
 	if err != nil {
 		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan file", err.Error())
 	}
@@ -63,7 +63,7 @@ func (ctrl *InternalUploadController) UploadBuyerFoto(c *fiber.Ctx) error {
 		return utils.SimpleErrorResponse(c, http.StatusBadRequest, "Ukuran file maksimal 5MB", "")
 	}
 
-	relativePath, err := utils.SaveUploadedFile(file, "buyer/foto-profil", ctrl.cfg)
+	relativePath, err := utils.CompressAndSaveImageWebP(file, "buyer/foto-profil", ctrl.cfg)
 	if err != nil {
 		return utils.SimpleErrorResponse(c, http.StatusInternalServerError, "Gagal menyimpan file", err.Error())
 	}

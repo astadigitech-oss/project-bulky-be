@@ -699,6 +699,10 @@ func SetupRoutes(
 	// produk LQD yang difilter saat migrasi). Body: {"dry_run": true|false}.
 	// Eksekusi permanen butuh dry_run_token dari dry-run sebelumnya.
 	assetMigration.Post("/prune-orphans", assetMigrationController.PruneOrphans)
+	// Optimasi seluruh media gambar di database ke WebP (<200KB).
+	// Body: {"dry_run": true|false, "dry_run_token": "...", "scope": "all"}.
+	// File lama tidak dihapus (dibiarkan menjadi orphan yang bisa di-prune kemudian).
+	assetMigration.Post("/optimize-webp", assetMigrationController.OptimizeWebP)
 
 	// Database Backup routes — Super Admin only
 	backupAdmin := v1.Group("/panel/backups",

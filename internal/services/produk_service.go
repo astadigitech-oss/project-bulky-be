@@ -189,8 +189,8 @@ func (s *produkService) CreateWithFiles(
 	// 3. Upload and create gambar records
 	produkDir := fmt.Sprintf("products/%s", produk.ID.String())
 	for i, file := range gambarFiles {
-		// Upload to storage
-		relativePath, err := utils.SaveUploadedFile(file, produkDir, s.cfg)
+		// Upload and compress image to WebP (< 200KB)
+		relativePath, err := utils.CompressAndSaveImageWebP(file, produkDir, s.cfg)
 		if err != nil {
 			tx.Rollback()
 			return nil, fmt.Errorf("gagal upload gambar: %w", err)

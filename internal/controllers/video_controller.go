@@ -143,7 +143,7 @@ func (c *VideoController) Create(ctx *fiber.Ctx) error {
 			if !utils.IsValidImageType(file) {
 				return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file thumbnail tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", "")
 			}
-			savedPath, err := utils.SaveUploadedFile(file, "video/thumbnail", c.cfg)
+			savedPath, err := utils.CompressAndSaveImageWebP(file, "video/thumbnail", c.cfg)
 			if err != nil {
 				// Rollback: delete video file if thumbnail upload fails
 				if videoURL != "" && strings.HasPrefix(videoURL, "/uploads/") {
@@ -325,7 +325,7 @@ func (c *VideoController) Update(ctx *fiber.Ctx) error {
 			if !utils.IsValidImageType(file) {
 				return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file thumbnail tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", "")
 			}
-			savedPath, err := utils.SaveUploadedFile(file, "video/thumbnail", c.cfg)
+			savedPath, err := utils.CompressAndSaveImageWebP(file, "video/thumbnail", c.cfg)
 			if err != nil {
 				return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file thumbnail: "+err.Error(), "")
 			}
@@ -711,7 +711,7 @@ func (c *VideoController) FinalizeChunk(ctx *fiber.Ctx) error {
 			os.Remove(finalPath)
 			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file thumbnail tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", "")
 		}
-		savedPath, err := utils.SaveUploadedFile(file, "video/thumbnail", c.cfg)
+		savedPath, err := utils.CompressAndSaveImageWebP(file, "video/thumbnail", c.cfg)
 		if err != nil {
 			os.Remove(finalPath)
 			return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan thumbnail", err.Error())
@@ -850,7 +850,7 @@ func (c *VideoController) FinalizeChunkUpdate(ctx *fiber.Ctx) error {
 			os.Remove(finalPath)
 			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Tipe file thumbnail tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", "")
 		}
-		savedPath, err := utils.SaveUploadedFile(file, "video/thumbnail", c.cfg)
+		savedPath, err := utils.CompressAndSaveImageWebP(file, "video/thumbnail", c.cfg)
 		if err != nil {
 			os.Remove(finalPath)
 			return utils.SimpleErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan thumbnail", err.Error())

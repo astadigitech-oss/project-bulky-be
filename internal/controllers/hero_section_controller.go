@@ -60,7 +60,7 @@ func (c *HeroSectionController) Create(ctx *fiber.Ctx) error {
 			if !utils.IsValidBannerImageType(file) {
 				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_id tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
-			savedPath, err := utils.SaveUploadedFile(file, "hero-section", c.cfg)
+			savedPath, err := utils.CompressAndSaveImageWebP(file, "hero-section", c.cfg)
 			if err != nil {
 				return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file gambar_id: "+err.Error(), nil)
 			}
@@ -79,7 +79,7 @@ func (c *HeroSectionController) Create(ctx *fiber.Ctx) error {
 				}
 				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_en tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
-			savedPath, err := utils.SaveUploadedFile(file, "hero-section", c.cfg)
+			savedPath, err := utils.CompressAndSaveImageWebP(file, "hero-section", c.cfg)
 			if err != nil {
 				// Rollback gambar_id if gambar_en upload fails
 				if gambarIDURL != nil {
@@ -192,7 +192,7 @@ func (c *HeroSectionController) Update(ctx *fiber.Ctx) error {
 			if !utils.IsValidBannerImageType(file) {
 				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_id tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
-			savedPath, err := utils.SaveUploadedFile(file, "hero-section", c.cfg)
+			savedPath, err := utils.CompressAndSaveImageWebP(file, "hero-section", c.cfg)
 			if err != nil {
 				return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file gambar_id: "+err.Error(), nil)
 			}
@@ -209,7 +209,7 @@ func (c *HeroSectionController) Update(ctx *fiber.Ctx) error {
 				}
 				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_en tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
-			savedPath, err := utils.SaveUploadedFile(file, "hero-section", c.cfg)
+			savedPath, err := utils.CompressAndSaveImageWebP(file, "hero-section", c.cfg)
 			if err != nil {
 				// Rollback gambar_id if gambar_en upload fails
 				if gambarIDURL != nil {

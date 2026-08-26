@@ -65,7 +65,7 @@ func (c *KategoriProdukController) Create(ctx *fiber.Ctx) error {
 			if !utils.IsValidImageType(file) {
 				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file icon tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
-			savedPath, err := utils.SaveUploadedFile(file, "product-categories", c.cfg)
+			savedPath, err := utils.CompressAndSaveImageWebP(file, "product-categories", c.cfg)
 			if err != nil {
 				return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan icon: "+err.Error(), nil)
 			}
@@ -79,7 +79,7 @@ func (c *KategoriProdukController) Create(ctx *fiber.Ctx) error {
 			if !utils.IsValidImageType(file) {
 				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar kondisi tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
-			savedPath, err := utils.SaveUploadedFile(file, "product-categories/kondisi", c.cfg)
+			savedPath, err := utils.CompressAndSaveImageWebP(file, "product-categories/kondisi", c.cfg)
 			if err != nil {
 				return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan gambar kondisi: "+err.Error(), nil)
 			}
@@ -189,7 +189,7 @@ func (c *KategoriProdukController) Update(ctx *fiber.Ctx) error {
 			if !utils.IsValidImageType(file) {
 				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file icon tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
-			savedPath, err := utils.SaveUploadedFile(file, "product-categories", c.cfg)
+			savedPath, err := utils.CompressAndSaveImageWebP(file, "product-categories", c.cfg)
 			if err != nil {
 				return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan icon: "+err.Error(), nil)
 			}
@@ -203,7 +203,7 @@ func (c *KategoriProdukController) Update(ctx *fiber.Ctx) error {
 			if !utils.IsValidImageType(file) {
 				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar kondisi tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
-			savedPath, err := utils.SaveUploadedFile(file, "product-categories/kondisi", c.cfg)
+			savedPath, err := utils.CompressAndSaveImageWebP(file, "product-categories/kondisi", c.cfg)
 			if err != nil {
 				return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan gambar kondisi: "+err.Error(), nil)
 			}

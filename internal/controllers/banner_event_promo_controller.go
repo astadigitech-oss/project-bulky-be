@@ -62,7 +62,7 @@ func (c *BannerEventPromoController) Create(ctx *fiber.Ctx) error {
 			if !utils.IsValidBannerImageType(file) {
 				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_id tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
-			savedPath, err := utils.SaveUploadedFile(file, "banner-event-promo", c.cfg)
+			savedPath, err := utils.CompressAndSaveImageWebP(file, "banner-event-promo", c.cfg)
 			if err != nil {
 				return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file gambar_id: "+err.Error(), nil)
 			}
@@ -76,7 +76,7 @@ func (c *BannerEventPromoController) Create(ctx *fiber.Ctx) error {
 			if !utils.IsValidBannerImageType(file) {
 				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_en tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
-			savedPath, err := utils.SaveUploadedFile(file, "banner-event-promo", c.cfg)
+			savedPath, err := utils.CompressAndSaveImageWebP(file, "banner-event-promo", c.cfg)
 			if err != nil {
 				return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file gambar_en: "+err.Error(), nil)
 			}
@@ -184,7 +184,7 @@ func (c *BannerEventPromoController) Update(ctx *fiber.Ctx) error {
 			if !utils.IsValidBannerImageType(file) {
 				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_id tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
-			savedPath, err := utils.SaveUploadedFile(file, "banner-event-promo", c.cfg)
+			savedPath, err := utils.CompressAndSaveImageWebP(file, "banner-event-promo", c.cfg)
 			if err != nil {
 				return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file gambar_id: "+err.Error(), nil)
 			}
@@ -198,7 +198,7 @@ func (c *BannerEventPromoController) Update(ctx *fiber.Ctx) error {
 			if !utils.IsValidBannerImageType(file) {
 				return utils.ErrorResponse(ctx, http.StatusBadRequest, "Tipe file gambar_en tidak didukung. Gunakan jpg, png, atau webp (SVG tidak diizinkan)", nil)
 			}
-			savedPath, err := utils.SaveUploadedFile(file, "banner-event-promo", c.cfg)
+			savedPath, err := utils.CompressAndSaveImageWebP(file, "banner-event-promo", c.cfg)
 			if err != nil {
 				return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal menyimpan file gambar_en: "+err.Error(), nil)
 			}
