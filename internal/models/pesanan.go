@@ -85,6 +85,7 @@ type Pesanan struct {
 	AlamatBuyer *AlamatBuyer        `gorm:"foreignKey:AlamatBuyerID" json:"alamat_buyer,omitempty"`
 	Items       []PesananItem       `gorm:"foreignKey:PesananID" json:"items,omitempty"`
 	Pembayaran  []PesananPembayaran `gorm:"foreignKey:PesananID" json:"pembayaran,omitempty"`
+	KuponUsage  *KuponUsage         `gorm:"foreignKey:PesananID" json:"kupon_usage,omitempty"`
 }
 
 func (Pesanan) TableName() string {

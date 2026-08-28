@@ -129,6 +129,8 @@ func (r *pesananRepository) AdminFindByID(id uuid.UUID) (*models.Pesanan, error)
 		Preload("Pembayaran").
 		Preload("Pembayaran.MetodePembayaran").
 		Preload("Pembayaran.Buyer").
+		Preload("KuponUsage").
+		Preload("KuponUsage.Kupon").
 		First(&pesanan, "id = ?", id).Error
 
 	if err != nil {
