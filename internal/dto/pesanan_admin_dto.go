@@ -72,10 +72,20 @@ type PesananAdminDetailResponse struct {
 	BiayaLainnya     decimal.Decimal                     `json:"biaya_lainnya"`
 	PotonganKupon    decimal.Decimal                     `json:"potongan_kupon"`
 	TotalBayar       decimal.Decimal                     `json:"total_bayar"`
+	Kupon            *PesananAdminKuponResponse          `json:"kupon"`
 	CatatanBuyer     *string                             `json:"catatan_buyer"`
 	CatatanAdmin     *string                             `json:"catatan_admin"`
 	CreatedAt        time.Time                           `json:"created_at"`
 	UpdatedAt        time.Time                           `json:"updated_at"`
+}
+
+// PesananAdminKuponResponse info kupon pada detail pesanan (admin)
+type PesananAdminKuponResponse struct {
+	ID            uuid.UUID       `json:"id"`
+	KuponID       uuid.UUID       `json:"kupon_id"`
+	KodeKupon     string          `json:"kode_kupon"`
+	NamaKupon     *string         `json:"nama_kupon,omitempty"`
+	NilaiPotongan decimal.Decimal `json:"nilai_potongan"`
 }
 
 // PesananShippingInfo shipping booking info

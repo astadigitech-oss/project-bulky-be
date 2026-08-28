@@ -657,6 +657,24 @@ func (s *pesananAdminService) mapToDetailResponse(p *models.Pesanan, statusHisto
 		}
 	}
 
+	// Map kupon info
+	potonganKupon := decimal.Zero
+	var kuponInfo *dto.PesananAdminKuponResponse
+	if p.KuponUsage != nil {
+		potonganKupon = decimal.NewFromFloat(p.KuponUsage.NilaiPotongan)
+		var namaKupon *string
+		if p.KuponUsage.Kupon != nil && p.KuponUsage.Kupon.Nama != nil {
+			namaKupon = p.KuponUsage.Kupon.Nama
+		}
+		kuponInfo = &dto.PesananAdminKuponResponse{
+			ID:            p.KuponUsage.ID,
+			KuponID:       p.KuponUsage.KuponID,
+			KodeKupon:     p.KuponUsage.KodeKupon,
+			NamaKupon:     namaKupon,
+			NilaiPotongan: potonganKupon,
+		}
+	}
+
 	response := &dto.PesananAdminDetailResponse{
 		ID:   p.ID,
 		Kode: p.Kode,
@@ -683,8 +701,9 @@ func (s *pesananAdminService) mapToDetailResponse(p *models.Pesanan, statusHisto
 		BiayaPengiriman: p.BiayaPengiriman,
 		BiayaPPN:        p.BiayaPPN,
 		BiayaLainnya:    p.BiayaLainnya,
-		PotonganKupon:   decimal.Zero, // TODO: implement kupon if needed
+		PotonganKupon:   potonganKupon,
 		TotalBayar:      p.Total,
+		Kupon:           kuponInfo,
 		CatatanBuyer:    p.Catatan,
 		CatatanAdmin:    p.CatatanAdmin,
 		CreatedAt:       p.CreatedAt.UTC(),
