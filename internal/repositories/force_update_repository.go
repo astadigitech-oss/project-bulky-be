@@ -79,8 +79,7 @@ func (r *forceUpdateRepository) FindActive() (*models.ForceUpdateApp, error) {
 
 func (r *forceUpdateRepository) FindActiveByPlatform(platform string) (*models.ForceUpdateApp, error) {
 	var forceUpdate models.ForceUpdateApp
-	err := r.db.Where("is_active = ? AND (platform = ? OR platform = ?)", true, platform, models.ForceUpdatePlatformAll).
-		Order("CASE WHEN platform = 'ALL' THEN 1 ELSE 0 END").
+	err := r.db.Where("is_active = ? AND platform = ?", true, platform).
 		First(&forceUpdate).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil, nil

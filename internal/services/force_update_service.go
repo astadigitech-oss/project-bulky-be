@@ -6,6 +6,8 @@ import (
 	"project-bulky-be/internal/repositories"
 )
 
+var errMinimumBuildNumberRequired = errors.New("minimum build number wajib lebih besar dari 0")
+
 type ForceUpdateService interface {
 	CreateForceUpdate(req *models.CreateForceUpdateRequest) (*models.ForceUpdateApp, error)
 	UpdateForceUpdate(id string, req *models.UpdateForceUpdateRequest) (*models.ForceUpdateApp, error)
@@ -27,12 +29,13 @@ func NewForceUpdateService(repo repositories.ForceUpdateRepository) ForceUpdateS
 
 func (s *forceUpdateService) CreateForceUpdate(req *models.CreateForceUpdateRequest) (*models.ForceUpdateApp, error) {
 	forceUpdate := &models.ForceUpdateApp{
-		KodeVersi:         req.KodeVersi,
-		UpdateType:        models.UpdateType(req.UpdateType),
-		InformasiUpdate:   req.InformasiUpdate,
-		InformasiUpdateEn: req.InformasiUpdateEn,
-		Platform:          models.ForceUpdatePlatform(req.Platform),
-		IsActive:          req.IsActive,
+		KodeVersi:          req.KodeVersi,
+		MinimumBuildNumber: req.MinimumBuildNumber,
+		UpdateType:         models.UpdateType(req.UpdateType),
+		InformasiUpdate:    req.InformasiUpdate,
+		InformasiUpdateEn:  req.InformasiUpdateEn,
+		Platform:           models.ForceUpdatePlatform(req.Platform),
+		IsActive:           req.IsActive,
 	}
 
 	err := s.repo.Create(forceUpdate)
@@ -52,6 +55,9 @@ func (s *forceUpdateService) UpdateForceUpdate(id string, req *models.UpdateForc
 	if req.KodeVersi != nil {
 		forceUpdate.KodeVersi = *req.KodeVersi
 	}
+	if req.MinimumBuildNumber != nil {
+		forceUpdate.MinimumBuildNumber = *req.MinimumBuildNumber
+	}
 	if req.UpdateType != nil {
 		forceUpdate.UpdateType = models.UpdateType(*req.UpdateType)
 	}
@@ -66,6 +72,9 @@ func (s *forceUpdateService) UpdateForceUpdate(id string, req *models.UpdateForc
 	}
 	if req.IsActive != nil {
 		forceUpdate.IsActive = *req.IsActive
+	}
+	if forceUpdate.IsActive && forceUpdate.MinimumBuildNumber < 1 {
+		return nil, errMinimumBuildNumberRequired
 	}
 
 	err = s.repo.Update(forceUpdate)
@@ -98,9 +107,12 @@ func (s *forceUpdateService) GetAllForceUpdates(page, limit int, platform string
 }
 
 func (s *forceUpdateService) SetActiveForceUpdate(id string) error {
-	_, err := s.repo.FindByID(id)
+	forceUpdate, err := s.repo.FindByID(id)
 	if err != nil {
 		return errors.New("force update not found")
+	}
+	if forceUpdate.MinimumBuildNumber < 1 {
+		return errMinimumBuildNumberRequired
 	}
 
 	return s.repo.SetActive(id)
