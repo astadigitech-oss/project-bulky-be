@@ -205,6 +205,7 @@ func (s *authV2Service) GetAdminWithPermissions(ctx context.Context, userID uuid
 		"email": admin.Email,
 		"role": map[string]interface{}{
 			"nama": admin.Role.Nama,
+			"kode": admin.Role.Kode,
 		},
 		"permissions": permissions,
 	}, nil

@@ -93,8 +93,10 @@ project-bulky-be/
 │   │   ├── activity_log.go
 │   │   ├── request.go
 │   │   ├── response.go
-│   │   ├── sistem_kontrol_request.go
-│   │   ├── sistem_kontrol_response.go
+│   │   ├── force_update_request.go
+│   │   ├── force_update_response.go
+│   │   ├── mode_maintenance_request.go
+│   │   ├── mode_maintenance_response.go
 │   │   ├── ulasan_request.go
 │   │   └── ulasan_response.go
 │   ├── repositories/                  # Database operations layer (27+ files)
