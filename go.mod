@@ -2,6 +2,8 @@ module project-bulky-be
 
 go 1.25.0
 
+toolchain go1.26.6
+
 require (
 	github.com/abema/go-mp4 v1.7.1
 	github.com/go-playground/validator/v10 v10.30.3
