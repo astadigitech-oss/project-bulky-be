@@ -144,8 +144,8 @@ func main() {
 	kuponService := services.NewKuponService(kuponRepo, kategoriRepo, db)
 	dasborService := services.NewDasborService(dasborRepo)
 
-	// Auto-archive produk yang sudah terjual (is_sold=true) lebih dari 1 hari,
-	// dihitung sejak order-nya mencapai status SHIPPED atau COMPLETED.
+	// Auto-archive produk yang sudah terjual (is_sold=true) lebih dari 1 hari:
+	// sejak READY untuk PICKUP, atau sejak SHIPPED/COMPLETED untuk delivery.
 	produkAutoArchiveService := services.NewProdukAutoArchiveService(produkRepo, activityLogRepo, 24*time.Hour)
 
 	// Auth V2 services

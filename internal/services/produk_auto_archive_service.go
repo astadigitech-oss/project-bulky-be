@@ -11,8 +11,9 @@ import (
 )
 
 // ProdukAutoArchiveService menjalankan job berkala untuk mengarsipkan (is_active=false)
-// produk yang sudah terjual (is_sold=true) lebih dari 1 hari, dihitung dari order-nya
-// mencapai status SHIPPED atau COMPLETED.
+// produk yang sudah terjual (is_sold=true) lebih dari 1 hari. Untuk order PICKUP,
+// waktu tunggu dihitung sejak pesanan READY; untuk delivery, sejak SHIPPED atau
+// COMPLETED.
 type ProdukAutoArchiveService interface {
 	// Run mengeksekusi satu kali proses pengecekan & pengarsipan produk.
 	Run(ctx context.Context)

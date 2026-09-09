@@ -273,12 +273,9 @@ func (r *produkRepository) UpdateIsSoldBatch(ctx context.Context, ids []uuid.UUI
 }
 
 // FindSoldProdukToArchive mengembalikan produk yang sudah terjual (is_sold=true, is_active=true)
-// dari order yang statusnya SHIPPED atau COMPLETED, dan sudah melewati threshold waktu yang
-// dihitung dari COALESCE(shipped_at, completed_at) milik order tersebut.
-//
-// Catatan: order dengan delivery_type=PICKUP tidak pernah memiliki status SHIPPED (langsung
-// READY -> COMPLETED), sehingga COALESCE(shipped_at, completed_at) otomatis jatuh ke completed_at
-// untuk kasus tersebut tanpa perlu pengecekan delivery_type terpisah.
+// dan sudah melewati threshold waktu. Untuk PICKUP, threshold dihitung dari ready_at agar
+// barang tidak terus tampil di store apabila admin belum menandai pengambilan sebagai COMPLETED.
+// Untuk delivery, threshold tetap dihitung dari COALESCE(shipped_at, completed_at).
 func (r *produkRepository) FindSoldProdukToArchive(ctx context.Context, threshold time.Time) ([]models.Produk, error) {
 	var produk []models.Produk
 	query := `
@@ -288,10 +285,16 @@ func (r *produkRepository) FindSoldProdukToArchive(ctx context.Context, threshol
 		JOIN pesanan pe ON pe.id = pi.pesanan_id
 		WHERE p.is_sold = true
 		  AND p.is_active = true
-		  AND pe.order_status IN ('SHIPPED', 'COMPLETED')
-		  AND COALESCE(pe.shipped_at, pe.completed_at) <= ?
+		  AND (
+				(pe.delivery_type = 'PICKUP'
+				 AND pe.order_status IN ('READY', 'COMPLETED')
+				 AND pe.ready_at <= ?)
+			 OR (pe.delivery_type <> 'PICKUP'
+				 AND pe.order_status IN ('SHIPPED', 'COMPLETED')
+				 AND COALESCE(pe.shipped_at, pe.completed_at) <= ?)
+		  )
 	`
-	err := r.db.WithContext(ctx).Raw(query, threshold).Scan(&produk).Error
+	err := r.db.WithContext(ctx).Raw(query, threshold, threshold).Scan(&produk).Error
 	return produk, err
 }
 
