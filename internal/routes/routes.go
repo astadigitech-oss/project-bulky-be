@@ -330,6 +330,11 @@ func SetupRoutes(
 	produkAdmin.Patch("/:id/gambar/:gambar_id/reorder", middleware.RequirePermission("produk:update"), produkController.ReorderGambar)
 	produkAdmin.Post("/:id/dokumen", middleware.RequirePermission("produk:update"), produkController.AddDokumen)
 	produkAdmin.Delete("/:id/dokumen/:dokumen_id", middleware.RequirePermission("produk:update"), produkController.DeleteDokumen)
+	// Download PDF harga terbaru dari WMS di halaman edit produk. ID yang dikirim
+	// ke API WMS adalah nilai kolom id_cargo produk. Diizinkan juga untuk admin
+	// dengan permission wms_integration:manage / produk:create (bukan hanya
+	// produk:update), konsisten dengan dropdown "ID Cargo" di form create produk.
+	produkAdmin.Get("/:id/pricing-pdf", middleware.RequireAnyPermission("wms_integration:manage", "produk:create", "produk:update"), wmsController.DownloadProdukPricingPDF)
 
 	// Master (Dropdown)
 	v1.Get("/master/dropdown", masterController.GetDropdown)
