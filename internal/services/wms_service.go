@@ -69,6 +69,11 @@ type WMSService interface {
 	UpdateCargoActualPrice(ctx context.Context, cargoID string, actualPrice float64) (*models.WMSCargoActualPriceResponse, error)
 }
 
+// ErrWMSCargoNotFound menandakan cargo yang diminta tidak ditemukan di WMS
+// (API WMS mengembalikan status 404). Dipakai controller untuk membedakan
+// error "cargo tidak ada di WMS" dari error lain.
+var ErrWMSCargoNotFound = errors.New("cargo tidak ditemukan di WMS")
+
 type wmsService struct {
 	baseURL      string
 	clientID     string
@@ -468,6 +473,9 @@ func (s *wmsService) DownloadCargoPricingPDF(ctx context.Context, cargoID string
 		s.cachedToken = ""
 		s.mu.Unlock()
 		return nil, fmt.Errorf("token WMS tidak ada / salah / kedaluwarsa / kredensial dicabut")
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, ErrWMSCargoNotFound
 	}
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)

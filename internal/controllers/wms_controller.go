@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -123,6 +124,51 @@ func (c *WMSController) DownloadCargoPricingPDF(ctx *fiber.Ctx) error {
 
 	data, err := c.service.DownloadCargoPricingPDF(ctx.UserContext(), cargoID)
 	if err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadGateway, err.Error(), nil)
+	}
+
+	ctx.Set("Content-Type", "application/pdf")
+	return ctx.Send(data)
+}
+
+// DownloadProdukPricingPDF mengambil PDF harga (pricing PDF) terbaru dari WMS
+// untuk sebuah produk pada panel admin — dipakai di halaman edit produk.
+//
+// ID yang dikirim ke API WMS adalah nilai kolom `id_cargo` (UUID inventory WMS)
+// pada produk tersebut, sesuai komentar di form create/edit produk.
+//
+// Perilaku status:
+//   - Produk tidak ditemukan di DB Bulky              → 404 "Produk tidak ditemukan"
+//   - Produk diinsert manual (id_cargo kosong/nil)    → 404 (bukan dari sync WMS)
+//   - Cargo tidak ditemukan di WMS (status 404)       → 404 "Cargo tidak ditemukan di WMS"
+//   - Error lain dari WMS                             → 502 Bad Gateway
+func (c *WMSController) DownloadProdukPricingPDF(ctx *fiber.Ctx) error {
+	identifier := ctx.Params("id")
+	if identifier == "" {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "ID produk tidak boleh kosong", nil)
+	}
+
+	if c.produkRepo == nil {
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Repository produk tidak tersedia", nil)
+	}
+
+	// Query cepat ke DB Bulky mencakup id, id_cargo, dan reference_code.
+	produk, err := c.produkRepo.FindByIdentifier(ctx.UserContext(), identifier)
+	if err != nil {
+		return utils.ErrorResponse(ctx, http.StatusNotFound, "Produk tidak ditemukan di database Bulky", nil)
+	}
+
+	// API WMS hanya menerima id_cargo (UUID inventory WMS). Jika id_cargo
+	// kosong/nil, produk ini bukan produk inventory WMS (diinsert manual).
+	if produk.IDCargo == nil || *produk.IDCargo == "" {
+		return utils.ErrorResponse(ctx, http.StatusNotFound, "Produk ini diinsert manual, tidak memiliki id_cargo WMS (bukan berasal dari sinkronisasi WMS)", nil)
+	}
+
+	data, err := c.service.DownloadCargoPricingPDF(ctx.UserContext(), *produk.IDCargo)
+	if err != nil {
+		if errors.Is(err, services.ErrWMSCargoNotFound) {
+			return utils.ErrorResponse(ctx, http.StatusNotFound, "Cargo tidak ditemukan di WMS", nil)
+		}
 		return utils.ErrorResponse(ctx, http.StatusBadGateway, err.Error(), nil)
 	}
 
