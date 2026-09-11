@@ -58,7 +58,12 @@ type WMSService interface {
 	// DownloadCargoPricingPDF memanggil GET /api/integration/cargos/{id}/pricing-pdf
 	// dan mengembalikan isi PDF mentah (bukan disimpan ke storage lokal) — FE
 	// yang menyimpannya sebagai file dokumen produk seolah diupload manual.
+	//
+	// DownloadCargoPricingPDFByURL mengunduh PDF memakai URL relatif
+	// `pricing_pdf_url` yang dikembalikan respons POST /api/integration/cargos/{id}/price,
+	// supaya pengunduhan mengikuti path yang diberikan WMS (bukan di-rekonstruksi).
 	DownloadCargoPricingPDF(ctx context.Context, cargoID string) ([]byte, error)
+	DownloadCargoPricingPDFByURL(ctx context.Context, pricingPDFURL string) ([]byte, error)
 	// MarkCargoSynced memanggil POST /api/integration/cargos/{id}/status untuk
 	// menandai cargo sudah dikonfirmasi sinkron (is_sync = true) di WMS.
 	// Idempotent.
@@ -353,6 +358,11 @@ func (s *wmsService) SetCargoPrice(ctx context.Context, cargoID string, req *mod
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+token)
 
+	// Log URL final + body request yang dikirim ke WMS. Berguna untuk
+	// mengonfirmasi prefix path (mis. "/api/integration/..." vs "/integration/...")
+	// dan payload yang benar-benar terkirim saat menetapkan harga cargo.
+	log.Printf("[wms] --> POST %s body=%s", reqURL, string(body))
+
 	resp, err := http.DefaultClient.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("connection timeout saat menetapkan harga cargo WMS: %w", err)
@@ -449,18 +459,48 @@ func (s *wmsService) ListAlreadyPricedCargos(ctx context.Context, search string)
 // dan mengembalikan isi PDF mentah — tidak disimpan ke storage lokal, FE yang
 // mengunggahnya kembali sebagai dokumen produk seolah file diupload manual.
 func (s *wmsService) DownloadCargoPricingPDF(ctx context.Context, cargoID string) ([]byte, error) {
+	reqURL := s.baseURL + "/api/integration/cargos/" + url.PathEscape(cargoID) + "/pricing-pdf"
+	return s.downloadPricingPDF(ctx, reqURL)
+}
+
+// DownloadCargoPricingPDFByURL mengunduh PDF harga menggunakan URL relatif
+// `pricing_pdf_url` yang dikembalikan respons POST /api/integration/cargos/{id}/price.
+// Jika url sudah absolut (http/https) dipakai apa adanya; jika relatif ("/...")
+// atau tanpa leading slash, digabungkan dengan baseURL WMS.
+func (s *wmsService) DownloadCargoPricingPDFByURL(ctx context.Context, pricingPDFURL string) ([]byte, error) {
+	if pricingPDFURL == "" {
+		return nil, errors.New("pricing_pdf_url kosong dari respons WMS")
+	}
+
+	var fullURL string
+	switch {
+	case strings.HasPrefix(pricingPDFURL, "http://") || strings.HasPrefix(pricingPDFURL, "https://"):
+		fullURL = pricingPDFURL
+	case strings.HasPrefix(pricingPDFURL, "/"):
+		fullURL = s.baseURL + pricingPDFURL
+	default:
+		fullURL = s.baseURL + "/" + pricingPDFURL
+	}
+
+	return s.downloadPricingPDF(ctx, fullURL)
+}
+
+// downloadPricingPDF melakukan GET Bearer token ke fullURL dan mengembalikan
+// isi PDF mentah. Dipakai bersama oleh DownloadCargoPricingPDF (rekonstruksi
+// path dari cargoID) dan DownloadCargoPricingPDFByURL (pakai pricing_pdf_url).
+func (s *wmsService) downloadPricingPDF(ctx context.Context, fullURL string) ([]byte, error) {
 	token, err := s.GetAccessToken(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	reqURL := s.baseURL + "/api/integration/cargos/" + url.PathEscape(cargoID) + "/pricing-pdf"
-
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, fullURL, nil)
 	if err != nil {
 		return nil, err
 	}
 	httpReq.Header.Set("Authorization", "Bearer "+token)
+
+	log.Printf("[wms] --> GET %s", fullURL)
 
 	resp, err := http.DefaultClient.Do(httpReq)
 	if err != nil {
@@ -482,7 +522,13 @@ func (s *wmsService) DownloadCargoPricingPDF(ctx context.Context, cargoID string
 		return nil, fmt.Errorf("WMS API error saat download PDF harga cargo (status %d): %s", resp.StatusCode, string(body))
 	}
 
-	return io.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("gagal membaca body PDF cargo: %w", err)
+	}
+	log.Printf("[wms] <-- GET %s status=%d bytes=%d", fullURL, resp.StatusCode, len(data))
+
+	return data, nil
 }
 
 // MarkCargoSynced memanggil POST /api/integration/cargos/{id}/status untuk
