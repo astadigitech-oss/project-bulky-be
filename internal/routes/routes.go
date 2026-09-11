@@ -335,6 +335,11 @@ func SetupRoutes(
 	// dengan permission wms_integration:manage / produk:create (bukan hanya
 	// produk:update), konsisten dengan dropdown "ID Cargo" di form create produk.
 	produkAdmin.Get("/:id/pricing-pdf", middleware.RequireAnyPermission("wms_integration:manage", "produk:create", "produk:update"), wmsController.DownloadProdukPricingPDF)
+	// Generate ulang PDF harga terbaru di halaman edit produk: set ulang harga
+	// cargo WMS (type "fix", value = harga_sesudah_diskon) lalu kembalikan PDF.
+	// Body: {"value": <harga_sesudah_diskon dari live form>}. Dipakai tombol
+	// "Ambil PDF terbaru" — FE memperlakukan blob PDF sebagai dokumen produk.
+	produkAdmin.Post("/:id/refresh-pricing-pdf", middleware.RequireAnyPermission("wms_integration:manage", "produk:create", "produk:update"), wmsController.RefreshProdukPricingPDF)
 
 	// Master (Dropdown)
 	v1.Get("/master/dropdown", masterController.GetDropdown)

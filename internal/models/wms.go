@@ -116,6 +116,15 @@ type SetWMSCargoPriceRequest struct {
 	Value float64 `json:"value" binding:"required,gt=0"`
 }
 
+// RefreshProdukPricingPDFRequest body untuk POST /produk/:id/refresh-pricing-pdf.
+// Value = harga_sesudah_diskon (sale price) produk dari live form di halaman edit.
+// Dipakai untuk menetapkan ulang harga cargo WMS (type "fix") supaya WMS
+// me-render PDF harga terbaru yang bisa diunduh. Nilai diambil dari body (live
+// form); kalau tidak dikirim/0, controller fallback ke nilai produk di DB.
+type RefreshProdukPricingPDFRequest struct {
+	Value float64 `json:"value" binding:"omitempty,gt=0"`
+}
+
 // WMSCargoPriceResponse hasil penetapan harga cargo dari WMS.
 type WMSCargoPriceResponse struct {
 	ID            string    `json:"id"`

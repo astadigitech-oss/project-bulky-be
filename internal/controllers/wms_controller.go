@@ -176,6 +176,93 @@ func (c *WMSController) DownloadProdukPricingPDF(ctx *fiber.Ctx) error {
 	return ctx.Send(data)
 }
 
+// RefreshProdukPricingPDF menetapkan ulang harga jual cargo WMS (type "fix",
+// value = harga_sesudah_diskon produk) lalu mengembalikan PDF harga terbaru.
+//
+// Dipakai tombol "Ambil PDF terbaru" di halaman edit produk: karena WMS hanya
+// me-render PDF saat harga di-set (termasuk diset ulang), GET pricing-pdf biasa
+// hanya mengembalikan PDF terakhir yang tersimpan. Endpoint ini memaksa WMS
+// membuat PDF baru yang mencerminkan harga saat ini, lalu FE memperlakukannya
+// sebagai dokumen produk (diunggah ulang lewat dokumen[] saat save).
+//
+// Nilai harga diambil dari body (live form). Kalau body kosong / value <= 0,
+// fallback ke harga produk di DB (produk.HargaSesudahDiskon).
+//
+// Perilaku status:
+//   - Produk tidak ditemukan                              → 404
+//   - Produk manual (id_cargo kosong)                     → 404
+//   - value tidak valid (<= 0)                            → 400
+//   - SetCargoPrice gagal (mis. cargo terjual/terkunci)  → 502 (pesan WMS)
+//   - Download PDF gagal (cargo 404 di WMS)               → 404
+func (c *WMSController) RefreshProdukPricingPDF(ctx *fiber.Ctx) error {
+	identifier := ctx.Params("id")
+	if identifier == "" {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "ID produk tidak boleh kosong", nil)
+	}
+
+	var req models.RefreshProdukPricingPDFRequest
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
+	}
+
+	if c.produkRepo == nil {
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Repository produk tidak tersedia", nil)
+	}
+
+	produk, err := c.produkRepo.FindByIdentifier(ctx.UserContext(), identifier)
+	if err != nil {
+		return utils.ErrorResponse(ctx, http.StatusNotFound, "Produk tidak ditemukan di database Bulky", nil)
+	}
+
+	// API WMS hanya menerima id_cargo (UUID inventory WMS). Jika id_cargo
+	// kosong/nil, produk ini bukan produk inventory WMS (diinsert manual).
+	if produk.IDCargo == nil || *produk.IDCargo == "" {
+		return utils.ErrorResponse(ctx, http.StatusNotFound, "Produk ini diinsert manual, tidak memiliki id_cargo WMS (bukan berasal dari sinkronisasi WMS)", nil)
+	}
+
+	// Nilai harga: dari live form (req.Value) atau fallback ke harga produk di DB.
+	value := req.Value
+	if value <= 0 {
+		value = produk.HargaSesudahDiskon
+	}
+	if value <= 0 {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Harga jual (harga sesudah diskon) harus lebih besar dari 0", nil)
+	}
+
+	// Set ulang harga cargo → WMS me-render PDF baru yang mencerminkan harga ini.
+	// type "fix" berarti sale_price = value (bukan potongan dari total_price).
+	priceResult, err := c.service.SetCargoPrice(ctx.UserContext(), *produk.IDCargo, &models.SetWMSCargoPriceRequest{
+		Type:  "fix",
+		Value: value,
+	})
+	if err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadGateway, err.Error(), nil)
+	}
+
+	// Ambil PDF terbaru hasil render ulang. Ikuti pricing_pdf_url yang
+	// dikembalikan WMS dari respons POST price; fallback ke path hasil
+	// konstruksi dari id_cargo kalau url kosong.
+	var data []byte
+	if priceResult.PricingPDFURL != "" {
+		data, err = c.service.DownloadCargoPricingPDFByURL(ctx.UserContext(), priceResult.PricingPDFURL)
+	} else {
+		data, err = c.service.DownloadCargoPricingPDF(ctx.UserContext(), *produk.IDCargo)
+	}
+	if err != nil {
+		if errors.Is(err, services.ErrWMSCargoNotFound) {
+			return utils.ErrorResponse(ctx, http.StatusNotFound, "Cargo tidak ditemukan di WMS", nil)
+		}
+		return utils.ErrorResponse(ctx, http.StatusBadGateway, err.Error(), nil)
+	}
+
+	if c.activityLog != nil {
+		c.activityLog.Log(ctx, models.ActionUpdate, "wms_pricing_pdf", fmt.Sprintf("Generate ulang PDF harga WMS untuk produk '%s' sebesar Rp%.0f", produk.NamaID, value))
+	}
+
+	ctx.Set("Content-Type", "application/pdf")
+	return ctx.Send(data)
+}
+
 // MarkCargoSynced menandai cargo sudah dikonfirmasi sinkron (is_sync = true)
 // di WMS setelah produk lokal berhasil dibuat dari cargo terkait. Idempotent
 // — aman dipanggil berkali-kali.
