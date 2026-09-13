@@ -111,6 +111,14 @@ func CompressAndSaveImageWebP(file *multipart.FileHeader, directory string, cfg 
 		if err != nil {
 			return "", fmt.Errorf("gagal kompresi pass kedua gambar: %w", err)
 		}
+		outputInfo, err = os.Stat(outputPath)
+		if err != nil {
+			return "", fmt.Errorf("gagal memeriksa hasil kompresi kedua: %w", err)
+		}
+		if outputInfo.Size() > TargetMaxImageSize {
+			_ = os.Remove(outputPath)
+			return "", fmt.Errorf("gambar tidak dapat dikompresi hingga di bawah %dKB", TargetMaxImageSize/1024)
+		}
 	}
 
 	// 11. Format relative path untuk database / URL
@@ -178,9 +186,9 @@ func executeCwebp(cwebpPath, inputPath, outputPath string, width, height, maxDim
 	args := []string{
 		"-q", fmt.Sprintf("%d", quality),
 		"-size", fmt.Sprintf("%d", TargetMaxImageSize), // Target kompresi < 200KB
-		"-m", "6",                                      // Best compression algorithm
-		"-sharp_yuv",                                   // Menjaga ketajaman warna RGB->YUV
-		"-metadata", "none",                            // Hapus EXIF/metadata agar ukuran efisien
+		"-m", "6", // Best compression algorithm
+		"-sharp_yuv",        // Menjaga ketajaman warna RGB->YUV
+		"-metadata", "none", // Hapus EXIF/metadata agar ukuran efisien
 	}
 
 	// Kalkulasi resize proporsional (salah satu sisi diset 0 agar cwebp mengunci aspek rasio asli)

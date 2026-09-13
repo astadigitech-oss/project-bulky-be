@@ -62,6 +62,7 @@ func main() {
 	alamatBuyerRepo := repositories.NewAlamatBuyerRepository(db)
 	heroSectionRepo := repositories.NewHeroSectionRepository(db)
 	bannerEventPromoRepo := repositories.NewBannerEventPromoRepository(db)
+	seasonalCampaignRepo := repositories.NewSeasonalCampaignRepository(db)
 	pesananRepo := repositories.NewPesananRepository(db)
 	pesananItemRepo := repositories.NewPesananItemRepository(db)
 	ulasanRepo := repositories.NewUlasanRepository(db)
@@ -114,6 +115,7 @@ func main() {
 	alamatBuyerService := services.NewAlamatBuyerService(alamatBuyerRepo, buyerRepo)
 	heroSectionService := services.NewHeroSectionService(heroSectionRepo, cfg)
 	bannerEventPromoService := services.NewBannerEventPromoService(bannerEventPromoRepo, reorderService, kategoriService, cfg)
+	seasonalCampaignService := services.NewSeasonalCampaignService(seasonalCampaignRepo, cfg)
 	ulasanService := services.NewUlasanService(ulasanRepo, pesananItemRepo, pesananRepo, cfg.UploadPath, cfg.BaseURL)
 	ulasanAdminService := services.NewUlasanAdminService(ulasanRepo)
 	activityLogService := services.NewActivityLogService(activityLogRepo)
@@ -171,6 +173,7 @@ func main() {
 	alamatBuyerController := controllers.NewAlamatBuyerController(alamatBuyerService, activityLogService)
 	heroSectionController := controllers.NewHeroSectionController(heroSectionService, cfg, activityLogService)
 	bannerEventPromoController := controllers.NewBannerEventPromoController(bannerEventPromoService, reorderService, cfg, activityLogService)
+	seasonalCampaignController := controllers.NewSeasonalCampaignController(seasonalCampaignService, cfg, activityLogService)
 	ulasanController := controllers.NewUlasanController(ulasanService)
 	ulasanAdminController := controllers.NewUlasanAdminController(ulasanAdminService, activityLogService)
 	pesananAdminController := controllers.NewPesananAdminController(pesananAdminService, activityLogService)
@@ -229,7 +232,7 @@ func main() {
 		warehouseController, tipeProdukController, diskonKategoriController, bannerTipeProdukController,
 		produkController, authController, adminController, masterController,
 		buyerController, alamatBuyerController,
-		heroSectionController, bannerEventPromoController,
+		heroSectionController, bannerEventPromoController, seasonalCampaignController,
 		ulasanController,
 		ulasanAdminController, pesananAdminController,
 		forceUpdateController, modeMaintenanceController,

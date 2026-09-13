@@ -18,6 +18,8 @@ const (
 	ActionDelete       ActivityAction = "DELETE"
 	ActionRestore      ActivityAction = "RESTORE"
 	ActionToggleStatus ActivityAction = "TOGGLE_STATUS"
+	ActionPublish      ActivityAction = "PUBLISH"
+	ActionCancel       ActivityAction = "CANCEL"
 	ActionApprove      ActivityAction = "APPROVE"
 	ActionReject       ActivityAction = "REJECT"
 	ActionExport       ActivityAction = "EXPORT"

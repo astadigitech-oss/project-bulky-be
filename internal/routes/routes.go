@@ -31,6 +31,7 @@ func SetupRoutes(
 	alamatBuyerController *controllers.AlamatBuyerController,
 	heroSectionController *controllers.HeroSectionController,
 	bannerEventPromoController *controllers.BannerEventPromoController,
+	seasonalCampaignController *controllers.SeasonalCampaignController,
 	ulasanController *controllers.UlasanController,
 	ulasanAdminController *controllers.UlasanAdminController,
 	pesananAdminController *controllers.PesananAdminController,
@@ -376,6 +377,20 @@ func SetupRoutes(
 
 	// Banner Event Promo - Public
 	v1.Get("/banner-event-promo/active", bannerEventPromoController.GetActive)
+
+	// Seasonal Campaign - Admin. Public read endpoints are intentionally owned by bulky-storefront-be.
+	seasonalCampaignAdmin := v1.Group("/panel/seasonal-campaigns",
+		middleware.AuthMiddleware(),
+		middleware.AdminOnly(),
+	)
+	seasonalCampaignAdmin.Get("", middleware.RequirePermission("marketing:read"), seasonalCampaignController.FindAll)
+	seasonalCampaignAdmin.Get("/:id/preview", middleware.RequirePermission("marketing:read"), seasonalCampaignController.Preview)
+	seasonalCampaignAdmin.Get("/:id", middleware.RequirePermission("marketing:read"), seasonalCampaignController.FindByID)
+	seasonalCampaignAdmin.Post("", middleware.RequirePermission("marketing:manage"), seasonalCampaignController.Create)
+	seasonalCampaignAdmin.Put("/:id", middleware.RequirePermission("marketing:manage"), seasonalCampaignController.Update)
+	seasonalCampaignAdmin.Patch("/:id/publish", middleware.RequirePermission("marketing:manage"), seasonalCampaignController.Publish)
+	seasonalCampaignAdmin.Patch("/:id/cancel", middleware.RequirePermission("marketing:manage"), seasonalCampaignController.Cancel)
+	seasonalCampaignAdmin.Delete("/:id", middleware.RequirePermission("marketing:manage"), seasonalCampaignController.Delete)
 
 	// Ulasan - Admin
 	ulasanAdmin := v1.Group("/panel/ulasan",
