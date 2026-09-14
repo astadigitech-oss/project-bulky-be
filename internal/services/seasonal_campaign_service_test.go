@@ -132,6 +132,30 @@ func TestSeasonalCampaignUpdateOneAssetKeepsOtherAssets(t *testing.T) {
 	}
 }
 
+func TestSeasonalCampaignUpdateCanClearDraftPeriod(t *testing.T) {
+	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
+	start, end := now.Add(time.Hour), now.Add(2*time.Hour)
+	logo := "seasonal-campaign/logo.webp"
+	repo := &seasonalCampaignRepoStub{campaign: campaignForTest(start, end)}
+	repo.campaign.WebLogoURL = &logo
+	service := newSeasonalServiceForTest(repo, now)
+	empty := ""
+
+	result, err := service.Update(context.Background(), repo.campaign.ID.String(), &models.UpdateSeasonalCampaignRequest{
+		TanggalMulai:   &empty,
+		TanggalSelesai: &empty,
+	}, nil)
+	if err != nil {
+		t.Fatalf("clearing a draft period failed: %v", err)
+	}
+	if repo.campaign.TanggalMulai != nil || repo.campaign.TanggalSelesai != nil {
+		t.Fatalf("period was not cleared: %+v", repo.campaign)
+	}
+	if result.TanggalMulai != nil || result.TanggalSelesai != nil || result.Assets.WebLogoURL == nil {
+		t.Fatalf("unexpected response after clearing period: %+v", result)
+	}
+}
+
 func TestSeasonalCampaignStatusAt(t *testing.T) {
 	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
 	start, end := now.Add(time.Hour), now.Add(2*time.Hour)

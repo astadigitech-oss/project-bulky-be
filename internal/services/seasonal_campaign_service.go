@@ -88,11 +88,15 @@ func (s *seasonalCampaignService) Update(ctx context.Context, id string, req *mo
 		campaign.Nama = *req.Nama
 	}
 	if req.TanggalMulai != nil || req.TanggalSelesai != nil {
-		start, end, parseErr := parseCampaignPeriod(valueOrCurrent(req.TanggalMulai, campaign.TanggalMulai), valueOrCurrent(req.TanggalSelesai, campaign.TanggalSelesai))
-		if parseErr != nil {
-			return nil, parseErr
+		if req.TanggalMulai != nil && req.TanggalSelesai != nil && *req.TanggalMulai == "" && *req.TanggalSelesai == "" {
+			campaign.TanggalMulai, campaign.TanggalSelesai = nil, nil
+		} else {
+			start, end, parseErr := parseCampaignPeriod(valueOrCurrent(req.TanggalMulai, campaign.TanggalMulai), valueOrCurrent(req.TanggalSelesai, campaign.TanggalSelesai))
+			if parseErr != nil {
+				return nil, parseErr
+			}
+			campaign.TanggalMulai, campaign.TanggalSelesai = start, end
 		}
-		campaign.TanggalMulai, campaign.TanggalSelesai = start, end
 	}
 	if req.WebLogoURL != nil {
 		campaign.WebLogoURL = req.WebLogoURL

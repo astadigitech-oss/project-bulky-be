@@ -94,6 +94,13 @@ func (c *SeasonalCampaignController) FindByID(ctx *fiber.Ctx) error {
 func (c *SeasonalCampaignController) Update(ctx *fiber.Ctx) error {
 	var req models.UpdateSeasonalCampaignRequest
 	var uploaded []string
+	// Keep the old paths until the database update succeeds. This lets an asset
+	// replacement be atomic from the campaign's perspective: a failed update
+	// removes only the newly-uploaded files, never the files currently in use.
+	previous, err := c.service.FindByID(ctx.UserContext(), ctx.Params("id"))
+	if err != nil {
+		return seasonalError(ctx, err)
+	}
 	if strings.Contains(ctx.Get("Content-Type"), "multipart/form-data") {
 		if value := optionalFormValue(ctx, "nama"); value != nil {
 			req.Nama = value
@@ -151,6 +158,7 @@ func (c *SeasonalCampaignController) Update(ctx *fiber.Ctx) error {
 		c.deleteUploaded(uploaded)
 		return seasonalError(ctx, err)
 	}
+	c.deleteReplacedAssets(previous, result)
 	c.logUpdate(ctx, result, "Campaign seasonal berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Campaign seasonal berhasil diupdate", result)
 }
@@ -181,6 +189,7 @@ func (c *SeasonalCampaignController) Delete(ctx *fiber.Ctx) error {
 	if id, err := uuid.Parse(result.ID); err == nil {
 		c.activityLog.LogDelete(ctx, "seasonal_campaign", "seasonal_campaign", id, "Campaign seasonal berhasil dihapus", result)
 	}
+	c.deleteCampaignAssets(result)
 	return utils.SuccessResponse(ctx, "Campaign seasonal berhasil dihapus", nil)
 }
 
@@ -235,6 +244,63 @@ func (c *SeasonalCampaignController) deleteUploaded(paths []string) {
 	for _, path := range paths {
 		_ = utils.DeleteFile(path, c.cfg)
 	}
+}
+
+// deleteReplacedAssets performs permanent storage cleanup only after the new
+// campaign state has been persisted. A nil new value means the admin selected
+// "Hapus aset ini dari campaign"; a different value means an upload replaced it.
+func (c *SeasonalCampaignController) deleteReplacedAssets(previous, current *models.SeasonalCampaignResponse) {
+	if previous == nil || current == nil {
+		return
+	}
+	c.deleteAssetIfChanged(previous.Assets.WebLogoURL, current.Assets.WebLogoURL)
+	c.deleteAssetIfChanged(previous.Assets.MobileLoadingLogoURL, current.Assets.MobileLoadingLogoURL)
+	c.deleteAssetIfChanged(previous.Assets.WebNavbarDecorationURL, current.Assets.WebNavbarDecorationURL)
+	c.deleteAssetIfChanged(previous.Assets.MobileTopAppBarOrnamentURL, current.Assets.MobileTopAppBarOrnamentURL)
+}
+
+func (c *SeasonalCampaignController) deleteCampaignAssets(campaign *models.SeasonalCampaignResponse) {
+	if campaign == nil {
+		return
+	}
+	for _, path := range []*string{
+		campaign.Assets.WebLogoURL,
+		campaign.Assets.MobileLoadingLogoURL,
+		campaign.Assets.WebNavbarDecorationURL,
+		campaign.Assets.MobileTopAppBarOrnamentURL,
+	} {
+		if relativePath := seasonalAssetRelativePath(path); relativePath != "" {
+			_ = utils.DeleteFile(relativePath, c.cfg)
+		}
+	}
+}
+
+func (c *SeasonalCampaignController) deleteAssetIfChanged(previous, current *string) {
+	if previous == nil || (current != nil && *previous == *current) {
+		return
+	}
+	if relativePath := seasonalAssetRelativePath(previous); relativePath != "" {
+		_ = utils.DeleteFile(relativePath, c.cfg)
+	}
+}
+
+// API responses expose an absolute URL, whereas DeleteFile expects the path
+// relative to the upload directory. Only seasonal-campaign files are eligible
+// for this cleanup guard.
+func seasonalAssetRelativePath(assetURL *string) string {
+	if assetURL == nil {
+		return ""
+	}
+	const uploadMarker = "/uploads/"
+	index := strings.Index(*assetURL, uploadMarker)
+	if index < 0 {
+		return ""
+	}
+	path := strings.TrimPrefix((*assetURL)[index+len(uploadMarker):], "/")
+	if !strings.HasPrefix(path, "seasonal-campaign/") {
+		return ""
+	}
+	return path
 }
 
 func (c *SeasonalCampaignController) logCreate(ctx *fiber.Ctx, result *models.SeasonalCampaignResponse, description string) {
