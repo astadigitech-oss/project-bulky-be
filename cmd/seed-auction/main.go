@@ -205,7 +205,8 @@ func buildBatchItems(products []models.Produk, quantities []int) ([]models.Aucti
 		grandTotal = grandTotal.Add(subtotal)
 		totalQty += qty
 		items = append(items, models.AuctionBatchItem{
-			ProdukID:          p.ID,
+			ProdukID:          &p.ID,
+			SourceType:        "CATALOG",
 			Quantity:          qty,
 			NamaSnapshot:      p.NamaID,
 			UnitPriceSnapshot: unit,
@@ -255,9 +256,12 @@ func publishBatch(tx *gorm.DB, batch *models.AuctionBatch, adminID uuid.UUID, it
 	}
 	// Reservasi stok.
 	for _, it := range items {
+		if it.ProdukID == nil {
+			continue
+		}
 		res := &models.AuctionStockReservation{
 			BatchID:  batch.ID,
-			ProdukID: it.ProdukID,
+			ProdukID: *it.ProdukID,
 			Quantity: it.Quantity,
 			Status:   "ACTIVE",
 		}

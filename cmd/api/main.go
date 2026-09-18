@@ -62,6 +62,7 @@ func main() {
 	alamatBuyerRepo := repositories.NewAlamatBuyerRepository(db)
 	heroSectionRepo := repositories.NewHeroSectionRepository(db)
 	bannerEventPromoRepo := repositories.NewBannerEventPromoRepository(db)
+	auctionEducationBannerRepo := repositories.NewAuctionEducationBannerRepository(db)
 	seasonalCampaignRepo := repositories.NewSeasonalCampaignRepository(db)
 	pesananRepo := repositories.NewPesananRepository(db)
 	pesananItemRepo := repositories.NewPesananItemRepository(db)
@@ -116,6 +117,7 @@ func main() {
 	alamatBuyerService := services.NewAlamatBuyerService(alamatBuyerRepo, buyerRepo)
 	heroSectionService := services.NewHeroSectionService(heroSectionRepo, cfg)
 	bannerEventPromoService := services.NewBannerEventPromoService(bannerEventPromoRepo, reorderService, kategoriService, cfg)
+	auctionEducationBannerService := services.NewAuctionEducationBannerService(auctionEducationBannerRepo, cfg)
 	seasonalCampaignService := services.NewSeasonalCampaignService(seasonalCampaignRepo, cfg)
 	ulasanService := services.NewUlasanService(ulasanRepo, pesananItemRepo, pesananRepo, cfg.UploadPath, cfg.BaseURL)
 	ulasanAdminService := services.NewUlasanAdminService(ulasanRepo)
@@ -174,6 +176,7 @@ func main() {
 	alamatBuyerController := controllers.NewAlamatBuyerController(alamatBuyerService, activityLogService)
 	heroSectionController := controllers.NewHeroSectionController(heroSectionService, cfg, activityLogService)
 	bannerEventPromoController := controllers.NewBannerEventPromoController(bannerEventPromoService, reorderService, cfg, activityLogService)
+	auctionEducationBannerController := controllers.NewAuctionEducationBannerController(auctionEducationBannerService, cfg, activityLogService)
 	seasonalCampaignController := controllers.NewSeasonalCampaignController(seasonalCampaignService, cfg, activityLogService)
 	ulasanController := controllers.NewUlasanController(ulasanService)
 	ulasanAdminController := controllers.NewUlasanAdminController(ulasanAdminService, activityLogService)
@@ -235,7 +238,7 @@ func main() {
 		warehouseController, tipeProdukController, diskonKategoriController, bannerTipeProdukController,
 		produkController, authController, adminController, masterController,
 		buyerController, alamatBuyerController,
-		heroSectionController, bannerEventPromoController, seasonalCampaignController,
+		heroSectionController, bannerEventPromoController, auctionEducationBannerController, seasonalCampaignController,
 		ulasanController,
 		ulasanAdminController, pesananAdminController,
 		forceUpdateController, modeMaintenanceController,

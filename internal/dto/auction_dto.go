@@ -96,6 +96,10 @@ type AuctionDraftInput struct {
 	NamaEN                *string            `json:"nama_en" validate:"omitempty,max=255"`
 	Description           *string            `json:"description" validate:"omitempty,max=5000"`
 	WarehouseID           *string            `json:"warehouse_id"`
+	OriginType            string             `json:"origin_type" validate:"omitempty,oneof=BULKY_WAREHOUSE SUPPLIER"`
+	SupplierName          *string            `json:"supplier_name" validate:"omitempty,max=255"`
+	SupplierAddress       *string            `json:"supplier_address" validate:"omitempty,max=1000"`
+	SupplierCity          *string            `json:"supplier_city" validate:"omitempty,max=100"`
 	KategoriID            *string            `json:"kategori_id"`
 	KondisiID             *string            `json:"kondisi_id"`
 	KondisiPaketID        *string            `json:"kondisi_paket_id"`
@@ -111,10 +115,14 @@ type AuctionDraftInput struct {
 	PDFAssetID            *string            `json:"pdf_asset_id"`
 }
 
-// AuctionDraftItem satu produk di dalam draft.
+// AuctionDraftItem dapat merujuk katalog Bulky atau snapshot manual. Item
+// MANUAL dipakai untuk barang supplier/consignment yang tidak ada di katalog.
 type AuctionDraftItem struct {
-	ProdukID string `json:"produk_id" validate:"required,uuid"`
-	Quantity int    `json:"quantity" validate:"required,min=1"`
+	SourceType string `json:"source_type" validate:"omitempty,oneof=CATALOG MANUAL"`
+	ProdukID   string `json:"produk_id" validate:"omitempty,uuid"`
+	Nama       string `json:"nama" validate:"omitempty,max=255"`
+	UnitPrice  string `json:"unit_price" validate:"omitempty"`
+	Quantity   int    `json:"quantity" validate:"required,min=1"`
 }
 
 // AuctionPublishRequest payload publish batch. Wajib membawa version terakhir.
@@ -173,6 +181,10 @@ type AuctionBatchDetail struct {
 	NamaEN                *string                `json:"nama_en"`
 	Description           *string                `json:"description"`
 	WarehouseID           *string                `json:"warehouse_id"`
+	OriginType            string                 `json:"origin_type"`
+	SupplierName          *string                `json:"supplier_name"`
+	SupplierAddress       *string                `json:"supplier_address"`
+	SupplierCity          *string                `json:"supplier_city"`
 	KategoriID            *string                `json:"kategori_id"`
 	KondisiID             *string                `json:"kondisi_id"`
 	KondisiPaketID        *string                `json:"kondisi_paket_id"`
@@ -212,11 +224,12 @@ type AuctionBatchDetail struct {
 
 // AuctionItemSnapshot snapshot item batch.
 type AuctionItemSnapshot struct {
-	ProdukID          string `json:"produk_id"`
-	NamaSnapshot      string `json:"nama_snapshot"`
-	Quantity          int    `json:"quantity"`
-	UnitPriceSnapshot string `json:"unit_price_snapshot"`
-	SubtotalSnapshot  string `json:"subtotal_snapshot"`
+	ProdukID          *string `json:"produk_id"`
+	SourceType        string  `json:"source_type"`
+	NamaSnapshot      string  `json:"nama_snapshot"`
+	Quantity          int     `json:"quantity"`
+	UnitPriceSnapshot string  `json:"unit_price_snapshot"`
+	SubtotalSnapshot  string  `json:"subtotal_snapshot"`
 }
 
 // AuctionBidDetail detail bid untuk panel.

@@ -121,6 +121,18 @@ func (ctrl *AuctionController) Update(c *fiber.Ctx) error {
 	return utils.SuccessResponse(c, "Draft batch berhasil diperbarui", result)
 }
 
+func (ctrl *AuctionController) Delete(c *fiber.Ctx) error {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return utils.ErrorResponse(c, http.StatusBadRequest, "ID tidak valid", nil)
+	}
+
+	if err := ctrl.service.DeleteDraft(c.UserContext(), id); err != nil {
+		return handleAuctionError(c, err)
+	}
+	return utils.SuccessResponse(c, "Draft batch berhasil dihapus", nil)
+}
+
 func (ctrl *AuctionController) Publish(c *fiber.Ctx) error {
 	adminID, ok := auctionAdminID(c)
 	if !ok {

@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"mime/multipart"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -51,6 +53,7 @@ func auctionErrFields(status int, message string, fields []models.FieldError) *A
 type AuctionService interface {
 	CreateDraft(ctx context.Context, req *dto.AuctionDraftInput, adminID uuid.UUID, idempotencyKey string) (*dto.AuctionBatchDetail, error)
 	UpdateDraft(ctx context.Context, id uuid.UUID, req *dto.AuctionDraftInput, adminID uuid.UUID, version int) (*dto.AuctionBatchDetail, error)
+	DeleteDraft(ctx context.Context, id uuid.UUID) error
 	Publish(ctx context.Context, id uuid.UUID, version int, adminID uuid.UUID, idempotencyKey string) (*dto.AuctionBatchDetail, error)
 	ListBatches(ctx context.Context, params *dto.AuctionListQueryParams) ([]dto.AuctionBatchSummary, *models.PaginationMeta, error)
 	GetBatchDetail(ctx context.Context, id uuid.UUID) (*dto.AuctionBatchDetail, error)
@@ -59,6 +62,40 @@ type AuctionService interface {
 	UpdateOperations(ctx context.Context, id uuid.UUID, req *dto.AuctionOperationRequest, adminID uuid.UUID, idempotencyKey string) (*dto.AuctionBatchDetail, error)
 	UploadAsset(ctx context.Context, file *multipart.FileHeader, kind string, adminID uuid.UUID) (*dto.AuctionAssetResponse, error)
 	ListProductOptions(ctx context.Context, params *dto.AuctionProductOptionsQueryParams) ([]dto.AuctionProductOption, *models.PaginationMeta, error)
+}
+
+// DeleteDraft menghapus batch yang belum pernah dipublikasikan. Batch dengan
+// status lain harus tetap tersimpan karena dapat memiliki bid, pemenang, atau
+// histori operasional yang tidak boleh dihilangkan.
+func (s *auctionService) DeleteDraft(ctx context.Context, id uuid.UUID) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var batch models.AuctionBatch
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&batch, "id = ?", id).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return auctionErr(404, "Batch tidak ditemukan")
+			}
+			return err
+		}
+		if batch.Status != models.AuctionBatchStatusDRAFT {
+			return auctionErr(409, "Hanya batch berstatus DRAFT yang dapat dihapus")
+		}
+
+		// Seluruh relasi ini memakai ON DELETE RESTRICT. Bersihkan hanya relasi
+		// draft yang aman dihapus, sedangkan file asset dibiarkan sebagai asset
+		// upload terpisah agar tidak berisiko menghapus file yang masih dipakai.
+		for _, relation := range []interface{}{
+			&models.AuctionAuditLog{},
+			&models.AuctionBatchAsset{},
+			&models.AuctionBatchBrand{},
+			&models.AuctionBatchItem{},
+		} {
+			if err := tx.Where("batch_id = ?", id).Delete(relation).Error; err != nil {
+				return err
+			}
+		}
+
+		return tx.Delete(&batch).Error
+	})
 }
 
 type auctionService struct {
@@ -102,6 +139,10 @@ func (s *auctionService) CreateDraft(ctx context.Context, req *dto.AuctionDraftI
 		NamaEN:                req.NamaEN,
 		Description:           req.Description,
 		WarehouseID:           parseUUIDPtr(req.WarehouseID),
+		OriginType:            originType(req.OriginType),
+		SupplierName:          req.SupplierName,
+		SupplierAddress:       req.SupplierAddress,
+		SupplierCity:          req.SupplierCity,
 		KategoriID:            parseUUIDPtr(req.KategoriID),
 		KondisiID:             parseUUIDPtr(req.KondisiID),
 		KondisiPaketID:        parseUUIDPtr(req.KondisiPaketID),
@@ -191,6 +232,10 @@ func (s *auctionService) UpdateDraft(ctx context.Context, id uuid.UUID, req *dto
 	batch.NamaEN = req.NamaEN
 	batch.Description = req.Description
 	batch.WarehouseID = parseUUIDPtr(req.WarehouseID)
+	batch.OriginType = originType(req.OriginType)
+	batch.SupplierName = req.SupplierName
+	batch.SupplierAddress = req.SupplierAddress
+	batch.SupplierCity = req.SupplierCity
 	batch.KategoriID = parseUUIDPtr(req.KategoriID)
 	batch.KondisiID = parseUUIDPtr(req.KondisiID)
 	batch.KondisiPaketID = parseUUIDPtr(req.KondisiPaketID)
@@ -346,8 +391,17 @@ func (s *auctionService) validatePublish(ctx context.Context, batch *models.Auct
 	if len(batch.BatchAssets) == 0 {
 		fieldErrs = append(fieldErrs, models.FieldError{Field: "image_asset_ids", Message: "Minimal satu gambar diperlukan untuk membuka lelang"})
 	}
-	if batch.WarehouseID == nil || batch.KategoriID == nil || batch.KondisiID == nil || batch.KondisiPaketID == nil {
-		fieldErrs = append(fieldErrs, models.FieldError{Field: "master_data", Message: "Warehouse, kategori, kondisi produk dan kondisi paket wajib diisi saat publish"})
+	if batch.KategoriID == nil || batch.KondisiID == nil || batch.KondisiPaketID == nil {
+		fieldErrs = append(fieldErrs, models.FieldError{Field: "master_data", Message: "Kategori, kondisi produk dan kondisi paket wajib diisi saat publish"})
+	}
+	if batch.OriginType == "BULKY_WAREHOUSE" && batch.WarehouseID == nil {
+		fieldErrs = append(fieldErrs, models.FieldError{Field: "warehouse_id", Message: "Warehouse Bulky wajib dipilih"})
+	}
+	if batch.OriginType == "SUPPLIER" && (isBlank(batch.SupplierName) || isBlank(batch.SupplierAddress) || isBlank(batch.SupplierCity)) {
+		fieldErrs = append(fieldErrs, models.FieldError{Field: "supplier_origin", Message: "Nama, alamat dan kota gudang supplier wajib diisi"})
+	}
+	if batch.OriginType != "BULKY_WAREHOUSE" && batch.OriginType != "SUPPLIER" {
+		fieldErrs = append(fieldErrs, models.FieldError{Field: "origin_type", Message: "Asal pengiriman tidak valid"})
 	}
 	if !batch.GrandTotal.IsPositive() {
 		fieldErrs = append(fieldErrs, models.FieldError{Field: "grand_total", Message: "Grand total harus lebih dari nol"})
@@ -360,10 +414,13 @@ func (s *auctionService) validatePublish(ctx context.Context, batch *models.Auct
 		return auctionErrFields(400, "Data batch belum lengkap", fieldErrs)
 	}
 
-	// Validasi produk: aktif, belum sold, satu warehouse, dan snapshot harga bulat.
+	// Hanya item katalog yang terhubung ke stok Bulky. Snapshot MANUAL tidak
+	// boleh dipaksa masuk ke tabel produk atau diresevasi sebagai stok Bulky.
 	produkIDs := make([]uuid.UUID, 0, len(batch.Items))
 	for _, item := range batch.Items {
-		produkIDs = append(produkIDs, item.ProdukID)
+		if item.SourceType == "CATALOG" && item.ProdukID != nil {
+			produkIDs = append(produkIDs, *item.ProdukID)
+		}
 	}
 
 	var produkList []models.Produk
@@ -376,7 +433,21 @@ func (s *auctionService) validatePublish(ctx context.Context, batch *models.Auct
 	}
 
 	for _, item := range batch.Items {
-		p, ok := produkByID[item.ProdukID]
+		if batch.OriginType == "SUPPLIER" && item.SourceType == "CATALOG" {
+			fieldErrs = append(fieldErrs, models.FieldError{Field: "items", Message: "Batch dari gudang supplier hanya dapat memakai item manual"})
+			continue
+		}
+		if item.SourceType == "MANUAL" {
+			if !item.UnitPriceSnapshot.IsPositive() || !isWholeNumber(item.UnitPriceSnapshot) {
+				fieldErrs = append(fieldErrs, models.FieldError{Field: "items", Message: "Harga item manual harus rupiah bulat dan lebih dari nol"})
+			}
+			continue
+		}
+		if item.ProdukID == nil {
+			fieldErrs = append(fieldErrs, models.FieldError{Field: "items", Message: "Produk katalog wajib dipilih"})
+			continue
+		}
+		p, ok := produkByID[*item.ProdukID]
 		if !ok {
 			fieldErrs = append(fieldErrs, models.FieldError{Field: "items", Message: "Produk tidak ditemukan"})
 			continue
@@ -387,7 +458,7 @@ func (s *auctionService) validatePublish(ctx context.Context, batch *models.Auct
 		if p.IsSold {
 			fieldErrs = append(fieldErrs, models.FieldError{Field: "items", Message: "Produk " + p.NamaID + " sudah terjual"})
 		}
-		if batch.WarehouseID != nil && p.WarehouseID != *batch.WarehouseID {
+		if batch.OriginType == "BULKY_WAREHOUSE" && batch.WarehouseID != nil && p.WarehouseID != *batch.WarehouseID {
 			fieldErrs = append(fieldErrs, models.FieldError{Field: "items", Message: "Produk " + p.NamaID + " berada di warehouse berbeda"})
 		}
 		// Snapshot harga harus rupiah bulat (BR03).
@@ -413,7 +484,9 @@ func (s *auctionService) validatePublish(ctx context.Context, batch *models.Auct
 func (s *auctionService) reserveStock(tx *gorm.DB, batchID uuid.UUID, items []models.AuctionBatchItem) error {
 	produkIDs := make([]uuid.UUID, 0, len(items))
 	for _, item := range items {
-		produkIDs = append(produkIDs, item.ProdukID)
+		if item.SourceType == "CATALOG" && item.ProdukID != nil {
+			produkIDs = append(produkIDs, *item.ProdukID)
+		}
 	}
 	// Urutan lock produk konsisten (sorted) untuk mencegah deadlock.
 	sort.Slice(produkIDs, func(i, j int) bool { return produkIDs[i].String() < produkIDs[j].String() })
@@ -442,24 +515,27 @@ func (s *auctionService) reserveStock(tx *gorm.DB, batchID uuid.UUID, items []mo
 
 	// Validasi & insert reservasi (all-or-nothing).
 	for _, item := range items {
-		p, ok := produkByID[item.ProdukID]
+		if item.SourceType != "CATALOG" || item.ProdukID == nil {
+			continue
+		}
+		p, ok := produkByID[*item.ProdukID]
 		if !ok {
 			return auctionErr(409, "Produk tidak ditemukan saat reservasi stok")
 		}
-		available := p.Quantity - reservedByProduk[item.ProdukID]
+		available := p.Quantity - reservedByProduk[*item.ProdukID]
 		if available < item.Quantity {
 			return auctionErr(409, "Stok produk "+p.NamaID+" tidak mencukupi untuk reservasi")
 		}
 		res := &models.AuctionStockReservation{
 			BatchID:  batchID,
-			ProdukID: item.ProdukID,
+			ProdukID: *item.ProdukID,
 			Quantity: item.Quantity,
 			Status:   "ACTIVE",
 		}
 		if err := tx.Create(res).Error; err != nil {
 			return err
 		}
-		reservedByProduk[item.ProdukID] += item.Quantity
+		reservedByProduk[*item.ProdukID] += item.Quantity
 	}
 	return nil
 }
@@ -871,11 +947,27 @@ func (s *auctionService) UploadAsset(ctx context.Context, file *multipart.FileHe
 		return nil, auctionErr(400, "Kind harus IMAGE atau PDF")
 	}
 
-	// Simpan file ke storage.
+	// Gambar batch mengikuti pipeline gambar produk: dikompresi dan selalu
+	// disimpan sebagai WebP. PDF tetap disimpan dalam format aslinya.
 	directory := "auction"
-	storageKey, err := utils.SaveUploadedFile(file, directory, s.cfg)
+	storageKey := ""
+	var err error
+	if kind == "IMAGE" {
+		storageKey, err = utils.CompressAndSaveImageWebP(file, directory, s.cfg)
+	} else {
+		storageKey, err = utils.SaveUploadedFile(file, directory, s.cfg)
+	}
 	if err != nil {
 		return nil, auctionErr(400, err.Error())
+	}
+
+	sizeBytes := file.Size
+	mimeType := file.Header.Get("Content-Type")
+	if kind == "IMAGE" {
+		mimeType = "image/webp"
+		if info, statErr := os.Stat(filepath.Join(s.cfg.UploadPath, filepath.FromSlash(storageKey))); statErr == nil {
+			sizeBytes = info.Size()
+		}
 	}
 
 	asset := &models.AuctionAsset{
@@ -883,8 +975,8 @@ func (s *auctionService) UploadAsset(ctx context.Context, file *multipart.FileHe
 		Kind:         kind,
 		StorageKey:   storageKey,
 		OriginalName: file.Filename,
-		MimeType:     file.Header.Get("Content-Type"),
-		SizeBytes:    file.Size,
+		MimeType:     mimeType,
+		SizeBytes:    sizeBytes,
 	}
 	if err := s.repo.CreateAsset(ctx, asset); err != nil {
 		return nil, err
@@ -950,13 +1042,24 @@ func (s *auctionService) buildItemsSnapshot(ctx context.Context, reqItems []dto.
 
 	produkIDs := make([]uuid.UUID, 0, len(reqItems))
 	for _, it := range reqItems {
-		pid, _ := uuid.Parse(it.ProdukID)
-		produkIDs = append(produkIDs, pid)
+		sourceType := strings.ToUpper(it.SourceType)
+		if sourceType == "" {
+			sourceType = "CATALOG"
+		}
+		if sourceType == "CATALOG" {
+			pid, err := uuid.Parse(it.ProdukID)
+			if err != nil {
+				return nil, decimal.Zero, 0, auctionErr(400, "Produk katalog tidak valid")
+			}
+			produkIDs = append(produkIDs, pid)
+		}
 	}
 
 	var produkList []models.Produk
-	if err := s.db.WithContext(ctx).Where("id IN ?", produkIDs).Find(&produkList).Error; err != nil {
-		return nil, decimal.Zero, 0, err
+	if len(produkIDs) > 0 {
+		if err := s.db.WithContext(ctx).Where("id IN ?", produkIDs).Find(&produkList).Error; err != nil {
+			return nil, decimal.Zero, 0, err
+		}
 	}
 	produkByID := make(map[uuid.UUID]models.Produk)
 	for _, p := range produkList {
@@ -964,6 +1067,29 @@ func (s *auctionService) buildItemsSnapshot(ctx context.Context, reqItems []dto.
 	}
 
 	for _, it := range reqItems {
+		sourceType := strings.ToUpper(it.SourceType)
+		if sourceType == "" {
+			sourceType = "CATALOG"
+		}
+		if sourceType != "CATALOG" && sourceType != "MANUAL" {
+			return nil, decimal.Zero, 0, auctionErr(400, "Sumber item tidak valid")
+		}
+		if it.Quantity < 1 {
+			return nil, decimal.Zero, 0, auctionErr(400, "Jumlah item minimal satu")
+		}
+		if sourceType == "MANUAL" {
+			name := strings.TrimSpace(it.Nama)
+			price := parseDecimal(it.UnitPrice, decimal.Zero)
+			if name == "" || !price.IsPositive() || !isWholeNumber(price) {
+				return nil, decimal.Zero, 0, auctionErr(400, "Item manual memerlukan nama dan harga rupiah bulat lebih dari nol")
+			}
+			subtotal := price.Mul(decimal.NewFromInt(int64(it.Quantity)))
+			grandTotal = grandTotal.Add(subtotal)
+			totalQty += it.Quantity
+			items = append(items, models.AuctionBatchItem{SourceType: "MANUAL", Quantity: it.Quantity, NamaSnapshot: name, UnitPriceSnapshot: price, SubtotalSnapshot: subtotal})
+			continue
+		}
+
 		pid, _ := uuid.Parse(it.ProdukID)
 		if seen[pid] {
 			return nil, decimal.Zero, 0, auctionErr(400, "Produk duplikat pada item batch")
@@ -982,7 +1108,8 @@ func (s *auctionService) buildItemsSnapshot(ctx context.Context, reqItems []dto.
 		totalQty += it.Quantity
 
 		items = append(items, models.AuctionBatchItem{
-			ProdukID:          pid,
+			ProdukID:          &pid,
+			SourceType:        "CATALOG",
 			Quantity:          it.Quantity,
 			NamaSnapshot:      p.NamaID,
 			UnitPriceSnapshot: unitPrice,
@@ -1138,6 +1265,10 @@ func (s *auctionService) mapBatchDetail(b *models.AuctionBatch, analytics *repos
 		NamaEN:                b.NamaEN,
 		Description:           b.Description,
 		WarehouseID:           uuidPtrToString(b.WarehouseID),
+		OriginType:            b.OriginType,
+		SupplierName:          b.SupplierName,
+		SupplierAddress:       b.SupplierAddress,
+		SupplierCity:          b.SupplierCity,
 		KategoriID:            uuidPtrToString(b.KategoriID),
 		KondisiID:             uuidPtrToString(b.KondisiID),
 		KondisiPaketID:        uuidPtrToString(b.KondisiPaketID),
@@ -1169,7 +1300,8 @@ func (s *auctionService) mapBatchDetail(b *models.AuctionBatch, analytics *repos
 
 	for _, item := range b.Items {
 		detail.Items = append(detail.Items, dto.AuctionItemSnapshot{
-			ProdukID:          item.ProdukID.String(),
+			ProdukID:          uuidPtrToString(item.ProdukID),
+			SourceType:        item.SourceType,
 			NamaSnapshot:      item.NamaSnapshot,
 			Quantity:          item.Quantity,
 			UnitPriceSnapshot: item.UnitPriceSnapshot.StringFixed(0),
@@ -1224,6 +1356,18 @@ func parseUUIDPtr(s *string) *uuid.UUID {
 		return nil
 	}
 	return &id
+}
+
+func originType(value string) string {
+	value = strings.ToUpper(strings.TrimSpace(value))
+	if value == "" {
+		return "BULKY_WAREHOUSE"
+	}
+	return value
+}
+
+func isBlank(value *string) bool {
+	return value == nil || strings.TrimSpace(*value) == ""
 }
 
 func parseUUIDList(list []string) []uuid.UUID {

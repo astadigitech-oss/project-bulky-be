@@ -31,6 +31,7 @@ func SetupRoutes(
 	alamatBuyerController *controllers.AlamatBuyerController,
 	heroSectionController *controllers.HeroSectionController,
 	bannerEventPromoController *controllers.BannerEventPromoController,
+	auctionEducationBannerController *controllers.AuctionEducationBannerController,
 	seasonalCampaignController *controllers.SeasonalCampaignController,
 	ulasanController *controllers.UlasanController,
 	ulasanAdminController *controllers.UlasanAdminController,
@@ -375,6 +376,14 @@ func SetupRoutes(
 	bannerEventPromoAdmin.Patch("/:id/toggle-status", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.ToggleStatus)
 	bannerEventPromoAdmin.Put("/reorder", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.Reorder)
 	bannerEventPromoAdmin.Patch("/:id/reorder", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.ReorderByDirection)
+
+	auctionEducationBannerAdmin := v1.Group("/panel/auction-education-banners", middleware.AuthMiddleware(), middleware.AdminOnly())
+	auctionEducationBannerAdmin.Get("", middleware.RequirePermission("auction:read"), auctionEducationBannerController.List)
+	auctionEducationBannerAdmin.Post("", middleware.RequirePermission("auction:manage"), auctionEducationBannerController.Create)
+	auctionEducationBannerAdmin.Put("/reorder", middleware.RequirePermission("auction:manage"), auctionEducationBannerController.Reorder)
+	auctionEducationBannerAdmin.Get("/:id", middleware.RequirePermission("auction:read"), auctionEducationBannerController.Get)
+	auctionEducationBannerAdmin.Put("/:id", middleware.RequirePermission("auction:manage"), auctionEducationBannerController.Update)
+	auctionEducationBannerAdmin.Delete("/:id", middleware.RequirePermission("auction:manage"), auctionEducationBannerController.Delete)
 
 	// Banner Event Promo - Public
 	v1.Get("/banner-event-promo/active", bannerEventPromoController.GetActive)
@@ -752,6 +761,7 @@ func SetupRoutes(
 	auction.Post("", middleware.RequirePermission("auction:manage"), auctionController.Create)
 	auction.Get("/:id", middleware.RequirePermission("auction:read"), auctionController.GetByID)
 	auction.Put("/:id", middleware.RequirePermission("auction:manage"), auctionController.Update)
+	auction.Delete("/:id", middleware.RequirePermission("auction:manage"), auctionController.Delete)
 	auction.Post("/:id/publish", middleware.RequirePermission("auction:manage"), auctionController.Publish)
 	auction.Get("/:id/bids", middleware.RequirePermission("auction:read"), auctionController.ListBids)
 	auction.Post("/:id/winner", middleware.RequirePermission("auction:manage"), auctionController.SelectWinner)

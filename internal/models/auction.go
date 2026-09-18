@@ -55,6 +55,10 @@ type AuctionBatch struct {
 	NamaEN                *string         `gorm:"type:varchar(255)" json:"nama_en"`
 	Description           *string         `gorm:"type:text" json:"description"`
 	WarehouseID           *uuid.UUID      `gorm:"type:uuid" json:"warehouse_id"`
+	OriginType            string          `gorm:"type:varchar(20);not null;default:BULKY_WAREHOUSE" json:"origin_type"`
+	SupplierName          *string         `gorm:"type:varchar(255)" json:"supplier_name"`
+	SupplierAddress       *string         `gorm:"type:text" json:"supplier_address"`
+	SupplierCity          *string         `gorm:"type:varchar(100)" json:"supplier_city"`
 	KategoriID            *uuid.UUID      `gorm:"type:uuid" json:"kategori_id"`
 	KondisiID             *uuid.UUID      `gorm:"type:uuid" json:"kondisi_id"`
 	KondisiPaketID        *uuid.UUID      `gorm:"type:uuid" json:"kondisi_paket_id"`
@@ -89,12 +93,14 @@ func (AuctionBatch) TableName() string {
 	return "auction_batches"
 }
 
-// AuctionBatchItem adalah item produk di dalam batch beserta snapshot
-// nama/harga pada saat draft disimpan. Snapshot dibekukan saat publish.
+// AuctionBatchItem bisa berasal dari katalog Bulky atau input manual. Item
+// CATALOG yang memiliki ProdukID dapat memakai reservasi stok; MANUAL tidak
+// pernah mengubah stok katalog dan menyimpan snapshotnya sendiri.
 type AuctionBatchItem struct {
 	ID                uuid.UUID       `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
 	BatchID           uuid.UUID       `gorm:"type:uuid;not null;uniqueIndex:idx_batch_produk" json:"batch_id"`
-	ProdukID          uuid.UUID       `gorm:"type:uuid;not null;uniqueIndex:idx_batch_produk" json:"produk_id"`
+	ProdukID          *uuid.UUID      `gorm:"type:uuid;uniqueIndex:idx_batch_produk" json:"produk_id,omitempty"`
+	SourceType        string          `gorm:"type:varchar(10);not null;default:CATALOG" json:"source_type"`
 	Quantity          int             `gorm:"not null" json:"quantity"`
 	NamaSnapshot      string          `gorm:"type:varchar(255);not null" json:"nama_snapshot"`
 	UnitPriceSnapshot decimal.Decimal `gorm:"type:numeric(18,0);not null" json:"unit_price_snapshot"`
