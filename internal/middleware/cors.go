@@ -26,7 +26,7 @@ func CORSMiddleware() fiber.Handler {
 		return cors.New(cors.Config{
 			AllowOrigins:     origins,
 			AllowMethods:     "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-			AllowHeaders:     "Origin,Content-Type,Content-Length,Accept,Authorization,X-Requested-With",
+			AllowHeaders:     "Origin,Content-Type,Content-Length,Accept,Authorization,X-Requested-With,Idempotency-Key",
 			AllowCredentials: true,
 			MaxAge:           86400,
 		})
@@ -36,7 +36,7 @@ func CORSMiddleware() fiber.Handler {
 	return cors.New(cors.Config{
 		AllowOrigins: "*",
 		AllowMethods: "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-		AllowHeaders: "Origin,Content-Type,Content-Length,Accept,Authorization,X-Requested-With",
+		AllowHeaders: "Origin,Content-Type,Content-Length,Accept,Authorization,X-Requested-With,Idempotency-Key",
 		MaxAge:       86400,
 	})
 }

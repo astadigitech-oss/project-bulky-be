@@ -59,6 +59,7 @@ func SetupRoutes(
 	forwarderMappingController *controllers.ForwarderMappingController,
 	wmsController *controllers.WMSController,
 	backupController *controllers.BackupController,
+	auctionController *controllers.AuctionController,
 ) {
 	// Health check
 	router.Get("/api/health", func(c *fiber.Ctx) error {
@@ -738,6 +739,23 @@ func SetupRoutes(
 	backupAdmin.Post("", middleware.RequirePermission("backup:create"), backupController.Create)
 	backupAdmin.Get("/:filename/download", middleware.RequirePermission("backup:download"), backupController.Download)
 	backupAdmin.Delete("/:filename", middleware.RequirePermission("backup:delete"), backupController.Delete)
+
+	// Auction (Lelang) Admin Panel Routes
+	auction := v1.Group("/panel/auctions",
+		middleware.AuthMiddleware(),
+		middleware.AdminOnly(),
+	)
+	// Route statis harus didaftarkan sebelum /:id.
+	auction.Get("/product-options", middleware.RequirePermission("auction:read"), auctionController.ListProductOptions)
+	auction.Post("/assets", middleware.RequirePermission("auction:manage"), auctionController.UploadAsset)
+	auction.Get("", middleware.RequirePermission("auction:read"), auctionController.List)
+	auction.Post("", middleware.RequirePermission("auction:manage"), auctionController.Create)
+	auction.Get("/:id", middleware.RequirePermission("auction:read"), auctionController.GetByID)
+	auction.Put("/:id", middleware.RequirePermission("auction:manage"), auctionController.Update)
+	auction.Post("/:id/publish", middleware.RequirePermission("auction:manage"), auctionController.Publish)
+	auction.Get("/:id/bids", middleware.RequirePermission("auction:read"), auctionController.ListBids)
+	auction.Post("/:id/winner", middleware.RequirePermission("auction:manage"), auctionController.SelectWinner)
+	auction.Patch("/:id/operations", middleware.RequirePermission("auction:manage"), auctionController.UpdateOperations)
 
 	// Internal upload routes — only accessible via X-Internal-Key header (storefront BE)
 	internalUpload := v1.Group("/internal/upload",

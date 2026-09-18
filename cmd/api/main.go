@@ -87,6 +87,7 @@ func main() {
 	disclaimerConsentRepo := repositories.NewBuyerDisclaimerConsentRepository(db)
 	delivereeVehicleTypeRepo := repositories.NewDelivereeVehicleTypeRepository(db)
 	forwarderMappingRepo := repositories.NewForwarderMappingRepository(db)
+	auctionRepo := repositories.NewAuctionRepository(db)
 
 	// Auth V2 repositories
 	authRepo := repositories.NewAuthRepository(db)
@@ -205,6 +206,8 @@ func main() {
 	wmsController := controllers.NewWMSController(wmsService, produkRepo, activityLogService)
 	backupService := services.NewBackupService(cfg, activityLogRepo)
 	backupController := controllers.NewBackupController(backupService)
+	auctionService := services.NewAuctionService(auctionRepo, db, cfg)
+	auctionController := controllers.NewAuctionController(auctionService)
 
 	// Auth V2 controllers
 	authV2Controller := controllers.NewAuthV2Controller(authV2Service, adminService, buyerService)
@@ -252,6 +255,7 @@ func main() {
 		forwarderMappingController,
 		wmsController,
 		backupController,
+		auctionController,
 	)
 
 	// Setup Auth V2 routes (new authentication system with roles & permissions)
