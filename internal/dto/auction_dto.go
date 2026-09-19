@@ -99,7 +99,13 @@ type AuctionDraftInput struct {
 	OriginType            string             `json:"origin_type" validate:"omitempty,oneof=BULKY_WAREHOUSE SUPPLIER"`
 	SupplierName          *string            `json:"supplier_name" validate:"omitempty,max=255"`
 	SupplierAddress       *string            `json:"supplier_address" validate:"omitempty,max=1000"`
-	SupplierCity          *string            `json:"supplier_city" validate:"omitempty,max=100"`
+	SupplierProvinsi      *string            `json:"supplier_provinsi" validate:"omitempty,max=100"`
+	SupplierKota          *string            `json:"supplier_kota" validate:"omitempty,max=100"`
+	SupplierKecamatan     *string            `json:"supplier_kecamatan" validate:"omitempty,max=100"`
+	SupplierKelurahan     *string            `json:"supplier_kelurahan" validate:"omitempty,max=100"`
+	SupplierKodePos       *string            `json:"supplier_kode_pos" validate:"omitempty,max=10"`
+	SupplierLatitude      *string            `json:"supplier_latitude"`
+	SupplierLongitude     *string            `json:"supplier_longitude"`
 	KategoriID            *string            `json:"kategori_id"`
 	KondisiID             *string            `json:"kondisi_id"`
 	KondisiPaketID        *string            `json:"kondisi_paket_id"`
@@ -184,7 +190,13 @@ type AuctionBatchDetail struct {
 	OriginType            string                 `json:"origin_type"`
 	SupplierName          *string                `json:"supplier_name"`
 	SupplierAddress       *string                `json:"supplier_address"`
-	SupplierCity          *string                `json:"supplier_city"`
+	SupplierProvinsi      *string                `json:"supplier_provinsi"`
+	SupplierKota          *string                `json:"supplier_kota"`
+	SupplierKecamatan     *string                `json:"supplier_kecamatan"`
+	SupplierKelurahan     *string                `json:"supplier_kelurahan"`
+	SupplierKodePos       *string                `json:"supplier_kode_pos"`
+	SupplierLatitude      *string                `json:"supplier_latitude"`
+	SupplierLongitude     *string                `json:"supplier_longitude"`
 	KategoriID            *string                `json:"kategori_id"`
 	KondisiID             *string                `json:"kondisi_id"`
 	KondisiPaketID        *string                `json:"kondisi_paket_id"`

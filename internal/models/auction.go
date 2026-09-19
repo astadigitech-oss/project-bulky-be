@@ -49,37 +49,43 @@ const (
 // AuctionBatch adalah master batch lelang. Metadata snapshot (kategori,
 // warehouse, fisik, total) dibekukan saat publish. Status hanya DRAFT → OPEN → SOLD.
 type AuctionBatch struct {
-	ID                    uuid.UUID       `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
-	Code                  string          `gorm:"type:varchar(50);uniqueIndex;not null" json:"code"`
-	NamaID                string          `gorm:"type:varchar(255);not null" json:"nama_id"`
-	NamaEN                *string         `gorm:"type:varchar(255)" json:"nama_en"`
-	Description           *string         `gorm:"type:text" json:"description"`
-	WarehouseID           *uuid.UUID      `gorm:"type:uuid" json:"warehouse_id"`
-	OriginType            string          `gorm:"type:varchar(20);not null;default:BULKY_WAREHOUSE" json:"origin_type"`
-	SupplierName          *string         `gorm:"type:varchar(255)" json:"supplier_name"`
-	SupplierAddress       *string         `gorm:"type:text" json:"supplier_address"`
-	SupplierCity          *string         `gorm:"type:varchar(100)" json:"supplier_city"`
-	KategoriID            *uuid.UUID      `gorm:"type:uuid" json:"kategori_id"`
-	KondisiID             *uuid.UUID      `gorm:"type:uuid" json:"kondisi_id"`
-	KondisiPaketID        *uuid.UUID      `gorm:"type:uuid" json:"kondisi_paket_id"`
-	SumberID              *uuid.UUID      `gorm:"type:uuid" json:"sumber_id"`
-	DiscrepancyPercentage decimal.Decimal `gorm:"type:numeric(5,2);not null;default:0" json:"discrepancy_percentage"`
-	Status                string          `gorm:"type:varchar(20);not null;default:DRAFT" json:"status"`
-	GrandTotal            decimal.Decimal `gorm:"type:numeric(18,0);not null;default:0" json:"grand_total"`
-	MinBidPercent         decimal.Decimal `gorm:"type:numeric(12,4);not null;default:0.1" json:"min_bid_percent"`
-	TotalQuantity         int             `gorm:"not null;default:0" json:"total_quantity"`
-	PanjangCm             decimal.Decimal `gorm:"type:numeric(12,3);not null;default:0" json:"panjang_cm"`
-	LebarCm               decimal.Decimal `gorm:"type:numeric(12,3);not null;default:0" json:"lebar_cm"`
-	TinggiCm              decimal.Decimal `gorm:"type:numeric(12,3);not null;default:0" json:"tinggi_cm"`
-	BeratKg               decimal.Decimal `gorm:"type:numeric(12,3);not null;default:0" json:"berat_kg"`
-	VolumeM3              decimal.Decimal `gorm:"type:numeric(12,3);not null;default:0" json:"volume_m3"`
-	Version               int             `gorm:"not null;default:1" json:"version"`
-	CreatedBy             uuid.UUID       `gorm:"type:uuid;not null" json:"created_by"`
-	UpdatedBy             uuid.UUID       `gorm:"type:uuid;not null" json:"updated_by"`
-	CreatedAt             time.Time       `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
-	UpdatedAt             time.Time       `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
-	OpenedAt              *time.Time      `gorm:"type:timestamptz" json:"opened_at"`
-	SoldAt                *time.Time      `gorm:"type:timestamptz" json:"sold_at"`
+	ID                    uuid.UUID        `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
+	Code                  string           `gorm:"type:varchar(50);uniqueIndex;not null" json:"code"`
+	NamaID                string           `gorm:"type:varchar(255);not null" json:"nama_id"`
+	NamaEN                *string          `gorm:"type:varchar(255)" json:"nama_en"`
+	Description           *string          `gorm:"type:text" json:"description"`
+	WarehouseID           *uuid.UUID       `gorm:"type:uuid" json:"warehouse_id"`
+	OriginType            string           `gorm:"type:varchar(20);not null;default:BULKY_WAREHOUSE" json:"origin_type"`
+	SupplierName          *string          `gorm:"type:varchar(255)" json:"supplier_name"`
+	SupplierAddress       *string          `gorm:"type:text" json:"supplier_address"`
+	SupplierProvinsi      *string          `gorm:"type:varchar(100)" json:"supplier_provinsi"`
+	SupplierKota          *string          `gorm:"type:varchar(100)" json:"supplier_kota"`
+	SupplierKecamatan     *string          `gorm:"type:varchar(100)" json:"supplier_kecamatan"`
+	SupplierKelurahan     *string          `gorm:"type:varchar(100)" json:"supplier_kelurahan"`
+	SupplierKodePos       *string          `gorm:"type:varchar(10)" json:"supplier_kode_pos"`
+	SupplierLatitude      *decimal.Decimal `gorm:"type:numeric(10,8)" json:"supplier_latitude"`
+	SupplierLongitude     *decimal.Decimal `gorm:"type:numeric(11,8)" json:"supplier_longitude"`
+	KategoriID            *uuid.UUID       `gorm:"type:uuid" json:"kategori_id"`
+	KondisiID             *uuid.UUID       `gorm:"type:uuid" json:"kondisi_id"`
+	KondisiPaketID        *uuid.UUID       `gorm:"type:uuid" json:"kondisi_paket_id"`
+	SumberID              *uuid.UUID       `gorm:"type:uuid" json:"sumber_id"`
+	DiscrepancyPercentage decimal.Decimal  `gorm:"type:numeric(5,2);not null;default:0" json:"discrepancy_percentage"`
+	Status                string           `gorm:"type:varchar(20);not null;default:DRAFT" json:"status"`
+	GrandTotal            decimal.Decimal  `gorm:"type:numeric(18,0);not null;default:0" json:"grand_total"`
+	MinBidPercent         decimal.Decimal  `gorm:"type:numeric(12,4);not null;default:0.1" json:"min_bid_percent"`
+	TotalQuantity         int              `gorm:"not null;default:0" json:"total_quantity"`
+	PanjangCm             decimal.Decimal  `gorm:"type:numeric(12,3);not null;default:0" json:"panjang_cm"`
+	LebarCm               decimal.Decimal  `gorm:"type:numeric(12,3);not null;default:0" json:"lebar_cm"`
+	TinggiCm              decimal.Decimal  `gorm:"type:numeric(12,3);not null;default:0" json:"tinggi_cm"`
+	BeratKg               decimal.Decimal  `gorm:"type:numeric(12,3);not null;default:0" json:"berat_kg"`
+	VolumeM3              decimal.Decimal  `gorm:"type:numeric(12,3);not null;default:0" json:"volume_m3"`
+	Version               int              `gorm:"not null;default:1" json:"version"`
+	CreatedBy             uuid.UUID        `gorm:"type:uuid;not null" json:"created_by"`
+	UpdatedBy             uuid.UUID        `gorm:"type:uuid;not null" json:"updated_by"`
+	CreatedAt             time.Time        `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	UpdatedAt             time.Time        `gorm:"type:timestamptz;autoUpdateTime" json:"updated_at"`
+	OpenedAt              *time.Time       `gorm:"type:timestamptz" json:"opened_at"`
+	SoldAt                *time.Time       `gorm:"type:timestamptz" json:"sold_at"`
 
 	// Relations
 	Items        []AuctionBatchItem        `gorm:"foreignKey:BatchID" json:"items,omitempty"`

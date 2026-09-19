@@ -133,16 +133,42 @@ func (s *auctionService) CreateDraft(ctx context.Context, req *dto.AuctionDraftI
 		return nil, err
 	}
 
+	bOriginType := originType(req.OriginType)
+	var warehouseID *uuid.UUID
+	var suppName, suppAddress, suppProvinsi, suppKota, suppKecamatan, suppKelurahan, suppKodePos *string
+	var suppLat, suppLng *decimal.Decimal
+
+	if bOriginType == "SUPPLIER" {
+		warehouseID = nil
+		suppName = req.SupplierName
+		suppAddress = req.SupplierAddress
+		suppProvinsi = req.SupplierProvinsi
+		suppKota = req.SupplierKota
+		suppKecamatan = req.SupplierKecamatan
+		suppKelurahan = req.SupplierKelurahan
+		suppKodePos = req.SupplierKodePos
+		suppLat = parseDecimalPtr(req.SupplierLatitude)
+		suppLng = parseDecimalPtr(req.SupplierLongitude)
+	} else {
+		warehouseID = parseUUIDPtr(req.WarehouseID)
+	}
+
 	batch := &models.AuctionBatch{
 		Code:                  s.generateCode(),
 		NamaID:                req.NamaID,
 		NamaEN:                req.NamaEN,
 		Description:           req.Description,
-		WarehouseID:           parseUUIDPtr(req.WarehouseID),
-		OriginType:            originType(req.OriginType),
-		SupplierName:          req.SupplierName,
-		SupplierAddress:       req.SupplierAddress,
-		SupplierCity:          req.SupplierCity,
+		WarehouseID:           warehouseID,
+		OriginType:            bOriginType,
+		SupplierName:          suppName,
+		SupplierAddress:       suppAddress,
+		SupplierProvinsi:      suppProvinsi,
+		SupplierKota:          suppKota,
+		SupplierKecamatan:     suppKecamatan,
+		SupplierKelurahan:     suppKelurahan,
+		SupplierKodePos:       suppKodePos,
+		SupplierLatitude:      suppLat,
+		SupplierLongitude:     suppLng,
 		KategoriID:            parseUUIDPtr(req.KategoriID),
 		KondisiID:             parseUUIDPtr(req.KondisiID),
 		KondisiPaketID:        parseUUIDPtr(req.KondisiPaketID),
@@ -231,11 +257,31 @@ func (s *auctionService) UpdateDraft(ctx context.Context, id uuid.UUID, req *dto
 	batch.NamaID = req.NamaID
 	batch.NamaEN = req.NamaEN
 	batch.Description = req.Description
-	batch.WarehouseID = parseUUIDPtr(req.WarehouseID)
-	batch.OriginType = originType(req.OriginType)
-	batch.SupplierName = req.SupplierName
-	batch.SupplierAddress = req.SupplierAddress
-	batch.SupplierCity = req.SupplierCity
+	bOriginType := originType(req.OriginType)
+	batch.OriginType = bOriginType
+	if bOriginType == "SUPPLIER" {
+		batch.WarehouseID = nil
+		batch.SupplierName = req.SupplierName
+		batch.SupplierAddress = req.SupplierAddress
+		batch.SupplierProvinsi = req.SupplierProvinsi
+		batch.SupplierKota = req.SupplierKota
+		batch.SupplierKecamatan = req.SupplierKecamatan
+		batch.SupplierKelurahan = req.SupplierKelurahan
+		batch.SupplierKodePos = req.SupplierKodePos
+		batch.SupplierLatitude = parseDecimalPtr(req.SupplierLatitude)
+		batch.SupplierLongitude = parseDecimalPtr(req.SupplierLongitude)
+	} else {
+		batch.WarehouseID = parseUUIDPtr(req.WarehouseID)
+		batch.SupplierName = nil
+		batch.SupplierAddress = nil
+		batch.SupplierProvinsi = nil
+		batch.SupplierKota = nil
+		batch.SupplierKecamatan = nil
+		batch.SupplierKelurahan = nil
+		batch.SupplierKodePos = nil
+		batch.SupplierLatitude = nil
+		batch.SupplierLongitude = nil
+	}
 	batch.KategoriID = parseUUIDPtr(req.KategoriID)
 	batch.KondisiID = parseUUIDPtr(req.KondisiID)
 	batch.KondisiPaketID = parseUUIDPtr(req.KondisiPaketID)
@@ -397,8 +443,16 @@ func (s *auctionService) validatePublish(ctx context.Context, batch *models.Auct
 	if batch.OriginType == "BULKY_WAREHOUSE" && batch.WarehouseID == nil {
 		fieldErrs = append(fieldErrs, models.FieldError{Field: "warehouse_id", Message: "Warehouse Bulky wajib dipilih"})
 	}
-	if batch.OriginType == "SUPPLIER" && (isBlank(batch.SupplierName) || isBlank(batch.SupplierAddress) || isBlank(batch.SupplierCity)) {
-		fieldErrs = append(fieldErrs, models.FieldError{Field: "supplier_origin", Message: "Nama, alamat dan kota gudang supplier wajib diisi"})
+	if batch.OriginType == "SUPPLIER" {
+		if isBlank(batch.SupplierName) || isBlank(batch.SupplierAddress) || isBlank(batch.SupplierProvinsi) || isBlank(batch.SupplierKota) || isBlank(batch.SupplierKecamatan) || batch.SupplierLatitude == nil || batch.SupplierLongitude == nil {
+			fieldErrs = append(fieldErrs, models.FieldError{Field: "supplier_origin", Message: "Nama, alamat lengkap, provinsi, kota, kecamatan, latitude, dan longitude gudang supplier wajib diisi saat publish"})
+		}
+		if batch.SupplierLatitude != nil && (batch.SupplierLatitude.LessThan(decimal.NewFromInt(-90)) || batch.SupplierLatitude.GreaterThan(decimal.NewFromInt(90))) {
+			fieldErrs = append(fieldErrs, models.FieldError{Field: "supplier_latitude", Message: "Latitude gudang supplier harus antara -90 dan 90"})
+		}
+		if batch.SupplierLongitude != nil && (batch.SupplierLongitude.LessThan(decimal.NewFromInt(-180)) || batch.SupplierLongitude.GreaterThan(decimal.NewFromInt(180))) {
+			fieldErrs = append(fieldErrs, models.FieldError{Field: "supplier_longitude", Message: "Longitude gudang supplier harus antara -180 dan 180"})
+		}
 	}
 	if batch.OriginType != "BULKY_WAREHOUSE" && batch.OriginType != "SUPPLIER" {
 		fieldErrs = append(fieldErrs, models.FieldError{Field: "origin_type", Message: "Asal pengiriman tidak valid"})
@@ -1268,7 +1322,13 @@ func (s *auctionService) mapBatchDetail(b *models.AuctionBatch, analytics *repos
 		OriginType:            b.OriginType,
 		SupplierName:          b.SupplierName,
 		SupplierAddress:       b.SupplierAddress,
-		SupplierCity:          b.SupplierCity,
+		SupplierProvinsi:      b.SupplierProvinsi,
+		SupplierKota:          b.SupplierKota,
+		SupplierKecamatan:     b.SupplierKecamatan,
+		SupplierKelurahan:     b.SupplierKelurahan,
+		SupplierKodePos:       b.SupplierKodePos,
+		SupplierLatitude:      decimalPtrToString(b.SupplierLatitude),
+		SupplierLongitude:     decimalPtrToString(b.SupplierLongitude),
 		KategoriID:            uuidPtrToString(b.KategoriID),
 		KondisiID:             uuidPtrToString(b.KondisiID),
 		KondisiPaketID:        uuidPtrToString(b.KondisiPaketID),
@@ -1405,6 +1465,25 @@ func parseDecimal(s string, def decimal.Decimal) decimal.Decimal {
 		return def
 	}
 	return d
+}
+
+func parseDecimalPtr(s *string) *decimal.Decimal {
+	if s == nil || strings.TrimSpace(*s) == "" {
+		return nil
+	}
+	d, err := decimal.NewFromString(strings.TrimSpace(*s))
+	if err != nil {
+		return nil
+	}
+	return &d
+}
+
+func decimalPtrToString(d *decimal.Decimal) *string {
+	if d == nil {
+		return nil
+	}
+	v := d.String()
+	return &v
 }
 
 func isWholeNumber(d decimal.Decimal) bool {
