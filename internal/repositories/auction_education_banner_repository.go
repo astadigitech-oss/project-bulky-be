@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"database/sql"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"project-bulky-be/internal/models"
@@ -21,7 +22,22 @@ func NewAuctionEducationBannerRepository(db *gorm.DB) AuctionEducationBannerRepo
 	return &auctionEducationBannerRepository{db}
 }
 func (r *auctionEducationBannerRepository) Create(c context.Context, b *models.AuctionEducationBanner) error {
-	return r.db.WithContext(c).Create(b).Error
+	return r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		// Serialize append operations so concurrent creates cannot receive the
+		// same position. Reordering remains an explicit operation on the list.
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(?)", 191001).Error; err != nil {
+			return err
+		}
+		var maxOrder sql.NullInt64
+		if err := tx.Model(&models.AuctionEducationBanner{}).Select("MAX(urutan)").Scan(&maxOrder).Error; err != nil {
+			return err
+		}
+		b.Urutan = 0
+		if maxOrder.Valid {
+			b.Urutan = int(maxOrder.Int64) + 1
+		}
+		return tx.Create(b).Error
+	})
 }
 func (r *auctionEducationBannerRepository) FindByID(c context.Context, id uuid.UUID) (*models.AuctionEducationBanner, error) {
 	var b models.AuctionEducationBanner
@@ -47,6 +63,9 @@ func (r *auctionEducationBannerRepository) Save(c context.Context, b *models.Auc
 func (r *auctionEducationBannerRepository) Reorder(c context.Context, ids []uuid.UUID) ([]models.AuctionEducationBanner, error) {
 	var banners []models.AuctionEducationBanner
 	err := r.db.WithContext(c).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(?)", 191001).Error; err != nil {
+			return err
+		}
 		if err := tx.Order("urutan ASC, id ASC").Find(&banners).Error; err != nil {
 			return err
 		}

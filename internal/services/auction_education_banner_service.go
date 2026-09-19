@@ -96,12 +96,9 @@ func (s *auctionEducationBannerService) Update(ctx context.Context, id string, n
 	if gambarEN != nil {
 		b.GambarURLEN = *gambarEN
 	}
-	if urutan != nil {
-		if *urutan < 0 {
-			return nil, errors.New("urutan tidak boleh negatif")
-		}
-		b.Urutan = *urutan
-	}
+	// Position changes are handled by Reorder so form edits cannot introduce
+	// duplicate or colliding positions. Keep the parameter for API compatibility.
+	_ = urutan
 	b.TanggalMulai = start
 	b.TanggalSelesai = end
 	if err := validAuctionBannerSchedule(start, end); err != nil {
