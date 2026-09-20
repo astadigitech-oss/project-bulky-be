@@ -157,6 +157,33 @@ type AuctionAssetUploadRequest struct {
 	Kind string `form:"kind" validate:"required,oneof=IMAGE PDF"`
 }
 
+// AuctionSupplierExcelPreview previews the header row so the admin can map
+// workbook columns before importing supplier items.
+type AuctionSupplierExcelPreview struct {
+	SheetName string                       `json:"sheet_name"`
+	HeaderRow int                          `json:"header_row"`
+	Columns   []AuctionSupplierExcelColumn `json:"columns"`
+}
+
+type AuctionSupplierExcelColumn struct {
+	Index   int      `json:"index"`
+	Letter  string   `json:"letter"`
+	Header  string   `json:"header"`
+	Samples []string `json:"samples"`
+}
+
+type AuctionSupplierExcelMapping struct {
+	NameColumn     int `form:"name_column"`
+	PriceColumn    int `form:"price_column"`
+	QuantityColumn int `form:"quantity_column"`
+	HeaderRow      int `form:"header_row"`
+}
+
+type AuctionSupplierExcelImport struct {
+	Items []AuctionDraftItem    `json:"items"`
+	PDF   *AuctionAssetResponse `json:"pdf"`
+}
+
 // ============================================================
 // Response DTOs
 // ============================================================

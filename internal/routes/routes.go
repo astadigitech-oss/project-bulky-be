@@ -756,6 +756,8 @@ func SetupRoutes(
 	)
 	// Route statis harus didaftarkan sebelum /:id.
 	auction.Get("/product-options", middleware.RequirePermission("auction:read"), auctionController.ListProductOptions)
+	auction.Post("/supplier-items/preview", middleware.RequirePermission("auction:manage"), auctionController.PreviewSupplierExcel)
+	auction.Post("/supplier-items/import", middleware.RequirePermission("auction:manage"), auctionController.ImportSupplierExcel)
 	auction.Post("/assets", middleware.RequirePermission("auction:manage"), auctionController.UploadAsset)
 	auction.Get("", middleware.RequirePermission("auction:read"), auctionController.List)
 	auction.Post("", middleware.RequirePermission("auction:manage"), auctionController.Create)

@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"project-bulky-be/internal/dto"
@@ -246,6 +248,59 @@ func (ctrl *AuctionController) UploadAsset(c *fiber.Ctx) error {
 		return handleAuctionError(c, err)
 	}
 	return utils.CreatedResponse(c, "Aset berhasil diupload", result)
+}
+
+func (ctrl *AuctionController) PreviewSupplierExcel(c *fiber.Ctx) error {
+	file, err := c.FormFile("file")
+	if err != nil {
+		return utils.ErrorResponse(c, http.StatusBadRequest, "File Excel tidak ditemukan", nil)
+	}
+	result, err := ctrl.service.PreviewSupplierExcel(c.UserContext(), file)
+	if err != nil {
+		return handleAuctionError(c, err)
+	}
+	return utils.SuccessResponse(c, "Kolom Excel berhasil dibaca", result)
+}
+
+func (ctrl *AuctionController) ImportSupplierExcel(c *fiber.Ctx) error {
+	adminID, ok := auctionAdminID(c)
+	if !ok {
+		return utils.ErrorResponse(c, http.StatusUnauthorized, "Admin tidak valid", nil)
+	}
+	file, err := c.FormFile("file")
+	if err != nil {
+		return utils.ErrorResponse(c, http.StatusBadRequest, "File Excel tidak ditemukan", nil)
+	}
+	parseColumn := func(name string) (int, error) {
+		value, parseErr := strconv.Atoi(c.FormValue(name))
+		if parseErr != nil || value < 0 {
+			return 0, fmt.Errorf("Kolom %s tidak valid", name)
+		}
+		return value, nil
+	}
+	nameColumn, err := parseColumn("name_column")
+	if err != nil {
+		return utils.ErrorResponse(c, http.StatusBadRequest, err.Error(), nil)
+	}
+	priceColumn, err := parseColumn("price_column")
+	if err != nil {
+		return utils.ErrorResponse(c, http.StatusBadRequest, err.Error(), nil)
+	}
+	quantityColumn, err := parseColumn("quantity_column")
+	if err != nil {
+		return utils.ErrorResponse(c, http.StatusBadRequest, err.Error(), nil)
+	}
+	headerRow, err := parseColumn("header_row")
+	if err != nil {
+		return utils.ErrorResponse(c, http.StatusBadRequest, err.Error(), nil)
+	}
+	result, err := ctrl.service.ImportSupplierExcel(c.UserContext(), file, dto.AuctionSupplierExcelMapping{
+		NameColumn: nameColumn, PriceColumn: priceColumn, QuantityColumn: quantityColumn, HeaderRow: headerRow,
+	}, c.FormValue("title"), adminID)
+	if err != nil {
+		return handleAuctionError(c, err)
+	}
+	return utils.CreatedResponse(c, "Item supplier berhasil diimpor dan PDF disimpan", result)
 }
 
 // ============================================================

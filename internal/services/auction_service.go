@@ -61,6 +61,8 @@ type AuctionService interface {
 	SelectWinner(ctx context.Context, id uuid.UUID, req *dto.AuctionWinnerRequest, adminID uuid.UUID, idempotencyKey string) (*dto.AuctionBatchDetail, error)
 	UpdateOperations(ctx context.Context, id uuid.UUID, req *dto.AuctionOperationRequest, adminID uuid.UUID, idempotencyKey string) (*dto.AuctionBatchDetail, error)
 	UploadAsset(ctx context.Context, file *multipart.FileHeader, kind string, adminID uuid.UUID) (*dto.AuctionAssetResponse, error)
+	PreviewSupplierExcel(ctx context.Context, file *multipart.FileHeader) (*dto.AuctionSupplierExcelPreview, error)
+	ImportSupplierExcel(ctx context.Context, file *multipart.FileHeader, mapping dto.AuctionSupplierExcelMapping, title string, adminID uuid.UUID) (*dto.AuctionSupplierExcelImport, error)
 	ListProductOptions(ctx context.Context, params *dto.AuctionProductOptionsQueryParams) ([]dto.AuctionProductOption, *models.PaginationMeta, error)
 }
 
@@ -444,8 +446,8 @@ func (s *auctionService) validatePublish(ctx context.Context, batch *models.Auct
 		fieldErrs = append(fieldErrs, models.FieldError{Field: "warehouse_id", Message: "Warehouse Bulky wajib dipilih"})
 	}
 	if batch.OriginType == "SUPPLIER" {
-		if isBlank(batch.SupplierName) || isBlank(batch.SupplierAddress) || isBlank(batch.SupplierProvinsi) || isBlank(batch.SupplierKota) || isBlank(batch.SupplierKecamatan) || batch.SupplierLatitude == nil || batch.SupplierLongitude == nil {
-			fieldErrs = append(fieldErrs, models.FieldError{Field: "supplier_origin", Message: "Nama, alamat lengkap, provinsi, kota, kecamatan, latitude, dan longitude gudang supplier wajib diisi saat publish"})
+		if isBlank(batch.SupplierName) || isBlank(batch.SupplierAddress) || isBlank(batch.SupplierKota) || batch.SupplierLatitude == nil || batch.SupplierLongitude == nil {
+			fieldErrs = append(fieldErrs, models.FieldError{Field: "supplier_origin", Message: "Nama gudang, alamat, kota, latitude, dan longitude titik asal pengiriman wajib diisi saat publish"})
 		}
 		if batch.SupplierLatitude != nil && (batch.SupplierLatitude.LessThan(decimal.NewFromInt(-90)) || batch.SupplierLatitude.GreaterThan(decimal.NewFromInt(90))) {
 			fieldErrs = append(fieldErrs, models.FieldError{Field: "supplier_latitude", Message: "Latitude gudang supplier harus antara -90 dan 90"})
