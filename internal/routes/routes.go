@@ -383,6 +383,8 @@ func SetupRoutes(
 	auctionEducationBannerAdmin.Put("/reorder", middleware.RequirePermission("auction:manage"), auctionEducationBannerController.Reorder)
 	auctionEducationBannerAdmin.Get("/:id", middleware.RequirePermission("auction:read"), auctionEducationBannerController.Get)
 	auctionEducationBannerAdmin.Put("/:id", middleware.RequirePermission("auction:manage"), auctionEducationBannerController.Update)
+	auctionEducationBannerAdmin.Patch("/:id/publish", middleware.RequirePermission("auction:manage"), auctionEducationBannerController.Publish)
+	auctionEducationBannerAdmin.Patch("/:id/draft", middleware.RequirePermission("auction:manage"), auctionEducationBannerController.Draft)
 	auctionEducationBannerAdmin.Delete("/:id", middleware.RequirePermission("auction:manage"), auctionEducationBannerController.Delete)
 
 	// Banner Event Promo - Public

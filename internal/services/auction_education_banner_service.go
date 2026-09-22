@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -14,10 +13,12 @@ import (
 )
 
 type AuctionEducationBannerService interface {
-	Create(context.Context, string, string, string, int, *time.Time, *time.Time) (*models.AuctionEducationBannerResponse, error)
+	Create(context.Context, string, string, string, int) (*models.AuctionEducationBannerResponse, error)
 	Get(context.Context, string) (*models.AuctionEducationBannerResponse, error)
 	List(context.Context, string, int, int) ([]models.AuctionEducationBannerResponse, *models.PaginationMeta, error)
-	Update(context.Context, string, *string, *string, *string, *int, *time.Time, *time.Time) (*models.AuctionEducationBannerResponse, error)
+	Update(context.Context, string, *string, *string, *string, *int) (*models.AuctionEducationBannerResponse, error)
+	Publish(context.Context, string) (*models.AuctionEducationBannerResponse, error)
+	Draft(context.Context, string) (*models.AuctionEducationBannerResponse, error)
 	Reorder(context.Context, []string) ([]models.AuctionEducationBannerResponse, error)
 	Delete(context.Context, string) error
 }
@@ -29,7 +30,7 @@ type auctionEducationBannerService struct {
 func NewAuctionEducationBannerService(r repositories.AuctionEducationBannerRepository, cfg *config.Config) AuctionEducationBannerService {
 	return &auctionEducationBannerService{r, cfg}
 }
-func (s *auctionEducationBannerService) Create(ctx context.Context, nama, id, en string, urutan int, start, end *time.Time) (*models.AuctionEducationBannerResponse, error) {
+func (s *auctionEducationBannerService) Create(ctx context.Context, nama, id, en string, urutan int) (*models.AuctionEducationBannerResponse, error) {
 	if nama == "" || id == "" || en == "" {
 		return nil, errors.New("nama dan kedua gambar wajib diisi")
 	}
@@ -39,10 +40,7 @@ func (s *auctionEducationBannerService) Create(ctx context.Context, nama, id, en
 	if urutan < 0 {
 		return nil, errors.New("urutan tidak boleh negatif")
 	}
-	if err := validAuctionBannerSchedule(start, end); err != nil {
-		return nil, err
-	}
-	b := &models.AuctionEducationBanner{ID: uuid.New(), Nama: nama, GambarURLID: id, GambarURLEN: en, Urutan: urutan, TanggalMulai: start, TanggalSelesai: end}
+	b := &models.AuctionEducationBanner{ID: uuid.New(), Nama: nama, GambarURLID: id, GambarURLEN: en, Urutan: urutan}
 	if err := s.repo.Create(ctx, b); err != nil {
 		return nil, err
 	}
@@ -76,7 +74,7 @@ func (s *auctionEducationBannerService) List(ctx context.Context, search string,
 	meta := models.NewPaginationMeta(page, perPage, total)
 	return out, &meta, nil
 }
-func (s *auctionEducationBannerService) Update(ctx context.Context, id string, nama, gambarID, gambarEN *string, urutan *int, start, end *time.Time) (*models.AuctionEducationBannerResponse, error) {
+func (s *auctionEducationBannerService) Update(ctx context.Context, id string, nama, gambarID, gambarEN *string, urutan *int) (*models.AuctionEducationBannerResponse, error) {
 	b, err := s.repo.FindByID(ctx, parseAuctionBannerID(id))
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errors.New("banner edukasi lelang tidak ditemukan")
@@ -99,11 +97,28 @@ func (s *auctionEducationBannerService) Update(ctx context.Context, id string, n
 	// Position changes are handled by Reorder so form edits cannot introduce
 	// duplicate or colliding positions. Keep the parameter for API compatibility.
 	_ = urutan
-	b.TanggalMulai = start
-	b.TanggalSelesai = end
-	if err := validAuctionBannerSchedule(start, end); err != nil {
+	if err := s.repo.Save(ctx, b); err != nil {
 		return nil, err
 	}
+	return s.response(b), nil
+}
+func (s *auctionEducationBannerService) Publish(ctx context.Context, id string) (*models.AuctionEducationBannerResponse, error) {
+	b, err := s.find(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	b.IsPublished = true
+	if err := s.repo.Save(ctx, b); err != nil {
+		return nil, err
+	}
+	return s.response(b), nil
+}
+func (s *auctionEducationBannerService) Draft(ctx context.Context, id string) (*models.AuctionEducationBannerResponse, error) {
+	b, err := s.find(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	b.IsPublished = false
 	if err := s.repo.Save(ctx, b); err != nil {
 		return nil, err
 	}
@@ -150,7 +165,18 @@ func (s *auctionEducationBannerService) Reorder(ctx context.Context, ids []strin
 	return responses, nil
 }
 func (s *auctionEducationBannerService) response(b *models.AuctionEducationBanner) *models.AuctionEducationBannerResponse {
-	return &models.AuctionEducationBannerResponse{ID: b.ID.String(), Nama: b.Nama, GambarURL: models.TranslatableImage{ID: fullAuctionBannerURL(s.cfg.BaseURL, b.GambarURLID), EN: stringPtr(fullAuctionBannerURL(s.cfg.BaseURL, b.GambarURLEN))}, Urutan: b.Urutan, TanggalMulai: b.TanggalMulai, TanggalSelesai: b.TanggalSelesai, CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt}
+	status := "draft"
+	if b.IsPublished {
+		status = "published"
+	}
+	return &models.AuctionEducationBannerResponse{ID: b.ID.String(), Nama: b.Nama, GambarURL: models.TranslatableImage{ID: fullAuctionBannerURL(s.cfg.BaseURL, b.GambarURLID), EN: stringPtr(fullAuctionBannerURL(s.cfg.BaseURL, b.GambarURLEN))}, Urutan: b.Urutan, Status: status, CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt}
+}
+func (s *auctionEducationBannerService) find(ctx context.Context, id string) (*models.AuctionEducationBanner, error) {
+	b, err := s.repo.FindByID(ctx, parseAuctionBannerID(id))
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, errors.New("banner edukasi lelang tidak ditemukan")
+	}
+	return b, err
 }
 func parseAuctionBannerID(v string) uuid.UUID {
 	id, err := uuid.Parse(v)
@@ -158,12 +184,6 @@ func parseAuctionBannerID(v string) uuid.UUID {
 		return uuid.Nil
 	}
 	return id
-}
-func validAuctionBannerSchedule(a, b *time.Time) error {
-	if a != nil && b != nil && !b.After(*a) {
-		return errors.New("tanggal selesai harus setelah tanggal mulai")
-	}
-	return nil
 }
 func fullAuctionBannerURL(base, path string) string {
 	if path == "" {

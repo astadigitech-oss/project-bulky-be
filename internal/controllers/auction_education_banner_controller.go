@@ -9,7 +9,6 @@ import (
 	"project-bulky-be/pkg/utils"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type AuctionEducationBannerController struct {
@@ -20,25 +19,6 @@ type AuctionEducationBannerController struct {
 
 func NewAuctionEducationBannerController(s services.AuctionEducationBannerService, c *config.Config, a services.ActivityLogService) *AuctionEducationBannerController {
 	return &AuctionEducationBannerController{s, c, a}
-}
-func auctionBannerDates(c *fiber.Ctx) (*time.Time, *time.Time, error) {
-	parse := func(n string) (*time.Time, error) {
-		v := strings.TrimSpace(c.FormValue(n))
-		if v == "" {
-			return nil, nil
-		}
-		t, e := time.Parse(time.RFC3339, v)
-		if e != nil {
-			return nil, e
-		}
-		return &t, nil
-	}
-	a, e := parse("tanggal_mulai")
-	if e != nil {
-		return nil, nil, e
-	}
-	b, e := parse("tanggal_selesai")
-	return a, b, e
 }
 func (c *AuctionEducationBannerController) upload(ctx *fiber.Ctx, name string, required bool) (*string, error) {
 	f, e := ctx.FormFile(name)
@@ -74,10 +54,6 @@ type auctionBannerError string
 
 func (e auctionBannerError) Error() string { return string(e) }
 func (c *AuctionEducationBannerController) Create(ctx *fiber.Ctx) error {
-	start, end, e := auctionBannerDates(ctx)
-	if e != nil {
-		return utils.ErrorResponse(ctx, 400, "format tanggal tidak valid", nil)
-	}
 	id, e := c.upload(ctx, "gambar_id", true)
 	if e != nil {
 		return utils.ErrorResponse(ctx, 400, e.Error(), nil)
@@ -97,7 +73,7 @@ func (c *AuctionEducationBannerController) Create(ctx *fiber.Ctx) error {
 	if order != nil {
 		urutan = *order
 	}
-	r, e := c.service.Create(ctx.UserContext(), ctx.FormValue("nama"), *id, *en, urutan, start, end)
+	r, e := c.service.Create(ctx.UserContext(), ctx.FormValue("nama"), *id, *en, urutan)
 	if e != nil {
 		utils.DeleteFile(*id, c.cfg)
 		utils.DeleteFile(*en, c.cfg)
@@ -123,10 +99,6 @@ func (c *AuctionEducationBannerController) Get(ctx *fiber.Ctx) error {
 	return utils.SuccessResponse(ctx, "Detail banner edukasi lelang berhasil diambil", r)
 }
 func (c *AuctionEducationBannerController) Update(ctx *fiber.Ctx) error {
-	start, end, e := auctionBannerDates(ctx)
-	if e != nil {
-		return utils.ErrorResponse(ctx, 400, "format tanggal tidak valid", nil)
-	}
 	var nama *string
 	if v := ctx.FormValue("nama"); v != "" {
 		nama = &v
@@ -152,7 +124,7 @@ func (c *AuctionEducationBannerController) Update(ctx *fiber.Ctx) error {
 		}
 		return utils.ErrorResponse(ctx, 400, e.Error(), nil)
 	}
-	r, e := c.service.Update(ctx.UserContext(), ctx.Params("id"), nama, id, en, order, start, end)
+	r, e := c.service.Update(ctx.UserContext(), ctx.Params("id"), nama, id, en, order)
 	if e != nil {
 		if id != nil {
 			utils.DeleteFile(*id, c.cfg)
@@ -164,6 +136,22 @@ func (c *AuctionEducationBannerController) Update(ctx *fiber.Ctx) error {
 	}
 	c.activity.Log(ctx, models.ActionUpdate, "auction_education_banner", "Banner edukasi lelang diperbarui")
 	return utils.SuccessResponse(ctx, "Banner edukasi lelang berhasil diperbarui", r)
+}
+func (c *AuctionEducationBannerController) Publish(ctx *fiber.Ctx) error {
+	r, err := c.service.Publish(ctx.UserContext(), ctx.Params("id"))
+	if err != nil {
+		return auctionBannerServiceError(ctx, err)
+	}
+	c.activity.Log(ctx, models.ActionPublish, "auction_education_banner", "Banner edukasi lelang dipublish")
+	return utils.SuccessResponse(ctx, "Banner edukasi lelang berhasil dipublish", r)
+}
+func (c *AuctionEducationBannerController) Draft(ctx *fiber.Ctx) error {
+	r, err := c.service.Draft(ctx.UserContext(), ctx.Params("id"))
+	if err != nil {
+		return auctionBannerServiceError(ctx, err)
+	}
+	c.activity.Log(ctx, models.ActionUpdate, "auction_education_banner", "Banner edukasi lelang dikembalikan ke draft")
+	return utils.SuccessResponse(ctx, "Banner edukasi lelang berhasil dikembalikan ke draft", r)
 }
 func (c *AuctionEducationBannerController) Reorder(ctx *fiber.Ctx) error {
 	var request struct {
@@ -185,4 +173,10 @@ func (c *AuctionEducationBannerController) Delete(ctx *fiber.Ctx) error {
 	}
 	c.activity.Log(ctx, models.ActionDelete, "auction_education_banner", "Banner edukasi lelang dihapus")
 	return utils.SuccessResponse(ctx, "Banner edukasi lelang berhasil dihapus", nil)
+}
+func auctionBannerServiceError(ctx *fiber.Ctx, err error) error {
+	if err.Error() == "banner edukasi lelang tidak ditemukan" {
+		return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
+	}
+	return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 }
