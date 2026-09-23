@@ -1583,15 +1583,24 @@ func mapAsset(a *models.AuctionAsset, cfg *config.Config) *dto.AuctionAssetRespo
 func mapBidDetail(b models.AuctionBid, isSelected bool) dto.AuctionBidDetail {
 	effective := computeEffectivePercent(b.Amount, b.GrandTotalSnapshot)
 	detail := dto.AuctionBidDetail{
-		ID:                 b.ID.String(),
-		BatchID:            b.BatchID.String(),
-		Sequence:           b.Sequence,
-		InputMode:          b.InputMode,
-		Amount:             b.Amount.StringFixed(0),
-		GrandTotalSnapshot: b.GrandTotalSnapshot.StringFixed(0),
-		CreatedAt:          b.CreatedAt,
-		IsSelected:         isSelected,
-		EffectivePercent:   effective,
+		ID:                       b.ID.String(),
+		BatchID:                  b.BatchID.String(),
+		Sequence:                 b.Sequence,
+		InputMode:                b.InputMode,
+		Amount:                   b.Amount.StringFixed(0),
+		GrandTotalSnapshot:       b.GrandTotalSnapshot.StringFixed(0),
+		ShippingProviderSnapshot: b.ShippingProviderSnapshot,
+		ShippingServiceSnapshot:  b.ShippingServiceSnapshot,
+		ShippingAmountSnapshot:   b.ShippingAmountSnapshot.StringFixed(0),
+		PPNRateSnapshot:          b.PPNRateSnapshot.String(),
+		PPNAmountSnapshot:        b.PPNAmountSnapshot.StringFixed(0),
+		EstimatedTotalSnapshot:   b.EstimatedTotalSnapshot.StringFixed(0),
+		CreatedAt:                b.CreatedAt,
+		IsSelected:               isSelected,
+		EffectivePercent:         effective,
+	}
+	if b.Note != nil {
+		detail.Note = *b.Note
 	}
 	if b.Buyer != nil {
 		detail.Buyer = dto.AuctionBuyerSimple{

@@ -277,17 +277,24 @@ type AuctionItemSnapshot struct {
 
 // AuctionBidDetail detail bid untuk panel.
 type AuctionBidDetail struct {
-	ID                 string             `json:"id"`
-	BatchID            string             `json:"batch_id"`
-	Buyer              AuctionBuyerSimple `json:"buyer"`
-	Sequence           int                `json:"sequence"`
-	InputMode          string             `json:"input_mode"`
-	InputPercent       *string            `json:"input_percent"`
-	EffectivePercent   string             `json:"effective_percent"`
-	Amount             string             `json:"amount"`
-	GrandTotalSnapshot string             `json:"grand_total_snapshot"`
-	CreatedAt          time.Time          `json:"created_at"`
-	IsSelected         bool               `json:"is_selected"`
+	ID                       string             `json:"id"`
+	BatchID                  string             `json:"batch_id"`
+	Buyer                    AuctionBuyerSimple `json:"buyer"`
+	Sequence                 int                `json:"sequence"`
+	InputMode                string             `json:"input_mode"`
+	InputPercent             *string            `json:"input_percent"`
+	EffectivePercent         string             `json:"effective_percent"`
+	Amount                   string             `json:"amount"`
+	GrandTotalSnapshot       string             `json:"grand_total_snapshot"`
+	ShippingProviderSnapshot string             `json:"shipping_provider_snapshot"`
+	ShippingServiceSnapshot  string             `json:"shipping_service_snapshot"`
+	ShippingAmountSnapshot   string             `json:"shipping_amount_snapshot"`
+	PPNRateSnapshot          string             `json:"ppn_rate_snapshot"`
+	PPNAmountSnapshot        string             `json:"ppn_amount_snapshot"`
+	EstimatedTotalSnapshot   string             `json:"estimated_total_snapshot"`
+	Note                     string             `json:"note"`
+	CreatedAt                time.Time          `json:"created_at"`
+	IsSelected               bool               `json:"is_selected"`
 }
 
 // AuctionBuyerSimple info buyer pada bid.
