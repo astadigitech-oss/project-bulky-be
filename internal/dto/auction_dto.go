@@ -192,6 +192,8 @@ type AuctionSupplierExcelImport struct {
 type AuctionBatchSummary struct {
 	ID           string     `json:"id"`
 	Code         string     `json:"code"`
+	SlugID       string     `json:"slug_id"`
+	SlugEN       string     `json:"slug_en"`
 	NamaID       string     `json:"nama_id"`
 	ThumbnailURL *string    `json:"thumbnail_url"`
 	Status       string     `json:"status"`
@@ -210,6 +212,8 @@ type AuctionBatchSummary struct {
 type AuctionBatchDetail struct {
 	ID                    string                 `json:"id"`
 	Code                  string                 `json:"code"`
+	SlugID                string                 `json:"slug_id"`
+	SlugEN                string                 `json:"slug_en"`
 	NamaID                string                 `json:"nama_id"`
 	NamaEN                *string                `json:"nama_en"`
 	Description           *string                `json:"description"`

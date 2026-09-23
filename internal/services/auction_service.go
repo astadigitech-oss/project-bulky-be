@@ -155,8 +155,12 @@ func (s *auctionService) CreateDraft(ctx context.Context, req *dto.AuctionDraftI
 		warehouseID = parseUUIDPtr(req.WarehouseID)
 	}
 
+	batchID := uuid.New()
 	batch := &models.AuctionBatch{
+		ID:                    batchID,
 		Code:                  s.generateCode(),
+		SlugID:                auctionBatchSlug(req.NamaID, batchID),
+		SlugEN:                auctionBatchSlug(auctionBatchSlugName(req.NamaID, req.NamaEN), batchID),
 		NamaID:                req.NamaID,
 		NamaEN:                req.NamaEN,
 		Description:           req.Description,
@@ -258,6 +262,8 @@ func (s *auctionService) UpdateDraft(ctx context.Context, id uuid.UUID, req *dto
 
 	batch.NamaID = req.NamaID
 	batch.NamaEN = req.NamaEN
+	batch.SlugID = auctionBatchSlug(req.NamaID, batch.ID)
+	batch.SlugEN = auctionBatchSlug(auctionBatchSlugName(req.NamaID, req.NamaEN), batch.ID)
 	batch.Description = req.Description
 	bOriginType := originType(req.OriginType)
 	batch.OriginType = bOriginType
@@ -1289,6 +1295,8 @@ func (s *auctionService) mapBatchSummary(b models.AuctionBatch, analytics *repos
 	summary := dto.AuctionBatchSummary{
 		ID:           b.ID.String(),
 		Code:         b.Code,
+		SlugID:       b.SlugID,
+		SlugEN:       b.SlugEN,
 		NamaID:       b.NamaID,
 		Status:       b.Status,
 		GrandTotal:   b.GrandTotal.StringFixed(0),
@@ -1317,6 +1325,8 @@ func (s *auctionService) mapBatchDetail(b *models.AuctionBatch, analytics *repos
 	detail := &dto.AuctionBatchDetail{
 		ID:                    b.ID.String(),
 		Code:                  b.Code,
+		SlugID:                b.SlugID,
+		SlugEN:                b.SlugEN,
 		NamaID:                b.NamaID,
 		NamaEN:                b.NamaEN,
 		Description:           b.Description,
@@ -1426,6 +1436,21 @@ func originType(value string) string {
 		return "BULKY_WAREHOUSE"
 	}
 	return value
+}
+
+func auctionBatchSlugName(nameID string, nameEN *string) string {
+	if nameEN != nil && strings.TrimSpace(*nameEN) != "" {
+		return *nameEN
+	}
+	return nameID
+}
+
+func auctionBatchSlug(name string, id uuid.UUID) string {
+	slug := utils.GenerateSlug(name)
+	if slug == "" {
+		slug = "auction"
+	}
+	return slug + "-" + id.String()[:8]
 }
 
 func isBlank(value *string) bool {

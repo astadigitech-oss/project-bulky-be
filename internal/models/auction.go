@@ -51,6 +51,8 @@ const (
 type AuctionBatch struct {
 	ID                    uuid.UUID        `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
 	Code                  string           `gorm:"type:varchar(50);uniqueIndex;not null" json:"code"`
+	SlugID                string           `gorm:"type:varchar(320);uniqueIndex;not null" json:"slug_id"`
+	SlugEN                string           `gorm:"type:varchar(320);uniqueIndex;not null" json:"slug_en"`
 	NamaID                string           `gorm:"type:varchar(255);not null" json:"nama_id"`
 	NamaEN                *string          `gorm:"type:varchar(255)" json:"nama_en"`
 	Description           *string          `gorm:"type:text" json:"description"`
@@ -157,16 +159,22 @@ func (AuctionBatchAsset) TableName() string {
 
 // AuctionBid adalah bid buyer. Immutable; ditulis oleh storefront backend.
 type AuctionBid struct {
-	ID                 uuid.UUID        `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
-	BatchID            uuid.UUID        `gorm:"type:uuid;not null;uniqueIndex:idx_bid_batch_seq" json:"batch_id"`
-	BuyerID            uuid.UUID        `gorm:"type:uuid;not null" json:"buyer_id"`
-	Sequence           int              `gorm:"not null;uniqueIndex:idx_bid_batch_seq" json:"sequence"`
-	InputMode          string           `gorm:"type:varchar(10);not null" json:"input_mode"`
-	InputPercent       *decimal.Decimal `gorm:"type:numeric(12,4)" json:"input_percent"`
-	Amount             decimal.Decimal  `gorm:"type:numeric(18,0);not null" json:"amount"`
-	GrandTotalSnapshot decimal.Decimal  `gorm:"type:numeric(18,0);not null" json:"grand_total_snapshot"`
-	ShippingQuoteID    *uuid.UUID       `gorm:"type:uuid" json:"shipping_quote_id"`
-	CreatedAt          time.Time        `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	ID                       uuid.UUID        `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
+	BatchID                  uuid.UUID        `gorm:"type:uuid;not null;uniqueIndex:idx_bid_batch_seq" json:"batch_id"`
+	BuyerID                  uuid.UUID        `gorm:"type:uuid;not null" json:"buyer_id"`
+	Sequence                 int              `gorm:"not null;uniqueIndex:idx_bid_batch_seq" json:"sequence"`
+	InputMode                string           `gorm:"type:varchar(10);not null" json:"input_mode"`
+	InputPercent             *decimal.Decimal `gorm:"type:numeric(12,4)" json:"input_percent"`
+	Amount                   decimal.Decimal  `gorm:"type:numeric(18,0);not null" json:"amount"`
+	GrandTotalSnapshot       decimal.Decimal  `gorm:"type:numeric(18,0);not null" json:"grand_total_snapshot"`
+	ShippingQuoteID          *uuid.UUID       `gorm:"type:uuid" json:"shipping_quote_id"`
+	ShippingProviderSnapshot string           `gorm:"type:varchar(50);not null" json:"shipping_provider_snapshot"`
+	ShippingServiceSnapshot  string           `gorm:"type:varchar(100);not null" json:"shipping_service_snapshot"`
+	ShippingAmountSnapshot   decimal.Decimal  `gorm:"type:numeric(18,0);not null" json:"shipping_amount_snapshot"`
+	PPNRateSnapshot          decimal.Decimal  `gorm:"type:numeric(5,2);not null" json:"ppn_rate_snapshot"`
+	PPNAmountSnapshot        decimal.Decimal  `gorm:"type:numeric(18,0);not null" json:"ppn_amount_snapshot"`
+	EstimatedTotalSnapshot   decimal.Decimal  `gorm:"type:numeric(18,0);not null" json:"estimated_total_snapshot"`
+	CreatedAt                time.Time        `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
 
 	// Relations
 	Buyer *Buyer `gorm:"foreignKey:BuyerID" json:"buyer,omitempty"`
@@ -216,7 +224,7 @@ func (AuctionStockReservation) TableName() string {
 type AuctionShippingQuote struct {
 	ID                  uuid.UUID       `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
 	BatchID             uuid.UUID       `gorm:"type:uuid;not null" json:"batch_id"`
-	BuyerID             uuid.UUID       `gorm:"type:uuid;not null" json:"buyer_id"`
+	BuyerID             *uuid.UUID      `gorm:"type:uuid" json:"buyer_id"`
 	Provider            string          `gorm:"type:varchar(50);not null" json:"provider"`
 	Service             string          `gorm:"type:varchar(100);not null" json:"service"`
 	OriginSnapshot      JSONMap         `gorm:"type:jsonb;not null" json:"origin_snapshot"`
