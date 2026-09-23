@@ -174,6 +174,7 @@ type AuctionBid struct {
 	PPNRateSnapshot          decimal.Decimal  `gorm:"type:numeric(5,2);not null" json:"ppn_rate_snapshot"`
 	PPNAmountSnapshot        decimal.Decimal  `gorm:"type:numeric(18,0);not null" json:"ppn_amount_snapshot"`
 	EstimatedTotalSnapshot   decimal.Decimal  `gorm:"type:numeric(18,0);not null" json:"estimated_total_snapshot"`
+	Note                     *string          `gorm:"type:text" json:"note"`
 	CreatedAt                time.Time        `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
 
 	// Relations

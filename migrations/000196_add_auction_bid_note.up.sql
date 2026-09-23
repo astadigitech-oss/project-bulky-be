@@ -1,0 +1,2 @@
+ALTER TABLE auction_bids
+    ADD COLUMN IF NOT EXISTS note TEXT;
