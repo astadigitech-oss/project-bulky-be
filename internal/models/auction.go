@@ -178,7 +178,8 @@ type AuctionBid struct {
 	CreatedAt                time.Time        `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
 
 	// Relations
-	Buyer *Buyer `gorm:"foreignKey:BuyerID" json:"buyer,omitempty"`
+	Buyer *Buyer        `gorm:"foreignKey:BuyerID" json:"buyer,omitempty"`
+	Batch *AuctionBatch `gorm:"foreignKey:BatchID" json:"-"`
 }
 
 func (AuctionBid) TableName() string {

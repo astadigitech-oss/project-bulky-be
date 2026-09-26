@@ -43,6 +43,7 @@ func SetupRoutes(
 	dokumenKebijakanController *controllers.DokumenKebijakanController,
 	disclaimerController *controllers.DisclaimerController,
 	disclaimerConsentController *controllers.BuyerDisclaimerConsentController,
+	persetujuanSyaratKetentuanLelangController *controllers.PersetujuanSyaratKetentuanLelangController,
 	formulirPartaiBesarController *controllers.FormulirPartaiBesarController,
 	whatsappHandlerController *controllers.WhatsAppHandlerController,
 	faqController *controllers.FAQController,
@@ -556,6 +557,14 @@ func SetupRoutes(
 	)
 	disclaimerConsentAdmin.Get("", middleware.RequirePermission("system:read"), disclaimerConsentController.GetAllConsents)
 	disclaimerConsentAdmin.Get("/:id", middleware.RequirePermission("system:read"), disclaimerConsentController.GetConsentByPesanan)
+
+	// Persetujuan Syarat Ketentuan Lelang - Admin (audit log)
+	persetujuanSyaratKetentuanLelangAdmin := v1.Group("/panel/persetujuan-syarat-ketentuan-lelang",
+		middleware.AuthMiddleware(),
+		middleware.AdminOnly(),
+	)
+	persetujuanSyaratKetentuanLelangAdmin.Get("", middleware.RequirePermission("system:read"), persetujuanSyaratKetentuanLelangController.AmbilSemua)
+	persetujuanSyaratKetentuanLelangAdmin.Get("/:id", middleware.RequirePermission("system:read"), persetujuanSyaratKetentuanLelangController.AmbilBerdasarkanID)
 
 	// Formulir Partai Besar - Config (Admin)
 	formulirConfigAdmin := v1.Group("/panel/formulir-partai-besar/config",

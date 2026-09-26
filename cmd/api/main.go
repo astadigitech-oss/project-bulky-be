@@ -86,6 +86,7 @@ func main() {
 	kuponRepo := repositories.NewKuponRepository(db)
 	dasborRepo := repositories.NewDasborRepository(db)
 	disclaimerConsentRepo := repositories.NewBuyerDisclaimerConsentRepository(db)
+	persetujuanSyaratKetentuanLelangRepo := repositories.NewPersetujuanSyaratKetentuanLelangRepository(db)
 	delivereeVehicleTypeRepo := repositories.NewDelivereeVehicleTypeRepository(db)
 	forwarderMappingRepo := repositories.NewForwarderMappingRepository(db)
 	auctionRepo := repositories.NewAuctionRepository(db)
@@ -134,6 +135,7 @@ func main() {
 	dokumenKebijakanService := services.NewDokumenKebijakanService(dokumenKebijakanRepo)
 	disclaimerService := services.NewDisclaimerService(disclaimerRepo)
 	disclaimerConsentService := services.NewBuyerDisclaimerConsentService(disclaimerConsentRepo)
+	persetujuanSyaratKetentuanLelangService := services.NewPersetujuanSyaratKetentuanLelangService(persetujuanSyaratKetentuanLelangRepo)
 	emailService := services.NewEmailService()
 	formulirPartaiBesarService := services.NewFormulirPartaiBesarService(formulirPartaiBesarRepo, kategoriRepo, reorderService, emailService)
 	whatsappHandlerService := services.NewWhatsAppHandlerService(whatsappHandlerRepo)
@@ -188,6 +190,7 @@ func main() {
 	dokumenKebijakanController := controllers.NewDokumenKebijakanController(dokumenKebijakanService, activityLogService)
 	disclaimerController := controllers.NewDisclaimerController(disclaimerService, activityLogService)
 	disclaimerConsentController := controllers.NewBuyerDisclaimerConsentController(disclaimerConsentService)
+	persetujuanSyaratKetentuanLelangController := controllers.NewPersetujuanSyaratKetentuanLelangController(persetujuanSyaratKetentuanLelangService)
 	formulirPartaiBesarController := controllers.NewFormulirPartaiBesarController(formulirPartaiBesarService, reorderService, activityLogService)
 	whatsappHandlerController := controllers.NewWhatsAppHandlerController(whatsappHandlerService)
 	faqController := controllers.NewFAQController(faqService, activityLogService)
@@ -244,7 +247,7 @@ func main() {
 		forceUpdateController, modeMaintenanceController,
 		ppnController,
 		metodePembayaranController,
-		dokumenKebijakanController, disclaimerController, disclaimerConsentController,
+		dokumenKebijakanController, disclaimerController, disclaimerConsentController, persetujuanSyaratKetentuanLelangController,
 		formulirPartaiBesarController, whatsappHandlerController,
 		faqController,
 		blogController, kategoriBlogController, labelBlogController,
