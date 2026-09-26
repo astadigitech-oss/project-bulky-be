@@ -378,14 +378,14 @@ func SetupRoutes(
 	bannerEventPromoAdmin.Patch("/:id/reorder", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.ReorderByDirection)
 
 	auctionEducationBannerAdmin := v1.Group("/panel/auction-education-banners", middleware.AuthMiddleware(), middleware.AdminOnly())
-	auctionEducationBannerAdmin.Get("", middleware.RequirePermission("auction:read"), auctionEducationBannerController.List)
-	auctionEducationBannerAdmin.Post("", middleware.RequirePermission("auction:manage"), auctionEducationBannerController.Create)
-	auctionEducationBannerAdmin.Put("/reorder", middleware.RequirePermission("auction:manage"), auctionEducationBannerController.Reorder)
-	auctionEducationBannerAdmin.Get("/:id", middleware.RequirePermission("auction:read"), auctionEducationBannerController.Get)
-	auctionEducationBannerAdmin.Put("/:id", middleware.RequirePermission("auction:manage"), auctionEducationBannerController.Update)
-	auctionEducationBannerAdmin.Patch("/:id/publish", middleware.RequirePermission("auction:manage"), auctionEducationBannerController.Publish)
-	auctionEducationBannerAdmin.Patch("/:id/draft", middleware.RequirePermission("auction:manage"), auctionEducationBannerController.Draft)
-	auctionEducationBannerAdmin.Delete("/:id", middleware.RequirePermission("auction:manage"), auctionEducationBannerController.Delete)
+	auctionEducationBannerAdmin.Get("", middleware.RequirePermission("auction_education_banner:read"), auctionEducationBannerController.List)
+	auctionEducationBannerAdmin.Post("", middleware.RequirePermission("auction_education_banner:manage"), auctionEducationBannerController.Create)
+	auctionEducationBannerAdmin.Put("/reorder", middleware.RequirePermission("auction_education_banner:manage"), auctionEducationBannerController.Reorder)
+	auctionEducationBannerAdmin.Get("/:id", middleware.RequirePermission("auction_education_banner:read"), auctionEducationBannerController.Get)
+	auctionEducationBannerAdmin.Put("/:id", middleware.RequirePermission("auction_education_banner:manage"), auctionEducationBannerController.Update)
+	auctionEducationBannerAdmin.Patch("/:id/publish", middleware.RequirePermission("auction_education_banner:manage"), auctionEducationBannerController.Publish)
+	auctionEducationBannerAdmin.Patch("/:id/draft", middleware.RequirePermission("auction_education_banner:manage"), auctionEducationBannerController.Draft)
+	auctionEducationBannerAdmin.Delete("/:id", middleware.RequirePermission("auction_education_banner:manage"), auctionEducationBannerController.Delete)
 
 	// Banner Event Promo - Public
 	v1.Get("/banner-event-promo/active", bannerEventPromoController.GetActive)
@@ -504,6 +504,14 @@ func SetupRoutes(
 	dokumenKebijakanAdmin.Get("", middleware.RequirePermission("system:read"), dokumenKebijakanController.GetAll)
 	dokumenKebijakanAdmin.Get("/:id", middleware.RequirePermission("system:read"), dokumenKebijakanController.GetByID)
 	dokumenKebijakanAdmin.Put("/:id", middleware.RequirePermission("system:manage"), dokumenKebijakanController.Update)
+
+	// Syarat dan ketentuan lelang memiliki izin khusus, terpisah dari kebijakan global.
+	dokumenKebijakanLelangAdmin := v1.Group("/panel/dokumen-kebijakan-lelang",
+		middleware.AuthMiddleware(),
+		middleware.AdminOnly(),
+	)
+	dokumenKebijakanLelangAdmin.Get("", middleware.RequirePermission("syarat_ketentuan_lelang:read"), dokumenKebijakanController.AmbilSyaratKetentuanLelang)
+	dokumenKebijakanLelangAdmin.Put("", middleware.RequirePermission("syarat_ketentuan_lelang:manage"), dokumenKebijakanController.PerbaruiSyaratKetentuanLelang)
 
 	// Dokumen Kebijakan - Public
 	dokumenKebijakanPublic := v1.Group("/public/dokumen-kebijakan")
@@ -761,6 +769,7 @@ func SetupRoutes(
 	auction.Post("/supplier-items/preview", middleware.RequirePermission("auction:manage"), auctionController.PreviewSupplierExcel)
 	auction.Post("/supplier-items/import", middleware.RequirePermission("auction:manage"), auctionController.ImportSupplierExcel)
 	auction.Post("/assets", middleware.RequirePermission("auction:manage"), auctionController.UploadAsset)
+	auction.Get("/bids/export", middleware.RequirePermission("auction:read"), auctionController.ExportBids)
 	auction.Get("", middleware.RequirePermission("auction:read"), auctionController.List)
 	auction.Post("", middleware.RequirePermission("auction:manage"), auctionController.Create)
 	auction.Get("/:id", middleware.RequirePermission("auction:read"), auctionController.GetByID)

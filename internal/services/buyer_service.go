@@ -15,6 +15,7 @@ import (
 type BuyerService interface {
 	FindByID(ctx context.Context, id string) (*models.BuyerDetailResponse, error)
 	FindAll(ctx context.Context, params *models.BuyerFilterRequest) ([]models.BuyerListResponse, *models.PaginationMeta, error)
+	FindAllForExport(ctx context.Context, params *models.BuyerFilterRequest) ([]models.Buyer, error)
 	Update(ctx context.Context, id string, req *models.UpdateBuyerRequest) (*models.BuyerDetailResponse, error)
 	Delete(ctx context.Context, id string) error
 	ToggleStatus(ctx context.Context, id string) (*models.ToggleStatusResponse, error)
@@ -72,6 +73,11 @@ func (s *buyerService) FindAll(ctx context.Context, params *models.BuyerFilterRe
 	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
 
 	return items, &meta, nil
+}
+
+func (s *buyerService) FindAllForExport(ctx context.Context, params *models.BuyerFilterRequest) ([]models.Buyer, error) {
+	params.SetDefaults()
+	return s.repo.FindAllForExport(ctx, params)
 }
 
 func (s *buyerService) Update(ctx context.Context, id string, req *models.UpdateBuyerRequest) (*models.BuyerDetailResponse, error) {

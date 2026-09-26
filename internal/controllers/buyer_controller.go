@@ -1,13 +1,16 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
+	"time"
 
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/xuri/excelize/v2"
 )
 
 type BuyerController struct {
@@ -31,6 +34,63 @@ func (c *BuyerController) FindAll(ctx *fiber.Ctx) error {
 	}
 
 	return utils.PaginatedSuccessResponse(ctx, "Data buyer berhasil diambil", items, *meta)
+}
+
+// Export returns the complete buyer dataset using the same search and sort
+// filters as the list endpoint.
+func (c *BuyerController) Export(ctx *fiber.Ctx) error {
+	var params models.BuyerFilterRequest
+	if err := ctx.QueryParser(&params); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Parameter tidak valid", nil)
+	}
+
+	items, err := c.service.FindAllForExport(ctx.UserContext(), &params)
+	if err != nil {
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal mengekspor data buyer", nil)
+	}
+
+	f := excelize.NewFile()
+	defer f.Close()
+	sheet := "Buyer"
+	f.SetSheetName("Sheet1", sheet)
+	headers := []string{"No", "Nama", "Username", "Email", "Telepon", "Aktif", "Terverifikasi", "Login Terakhir", "Terdaftar"}
+	for column, header := range headers {
+		cell, _ := excelize.CoordinatesToCellName(column+1, 1)
+		_ = f.SetCellValue(sheet, cell, header)
+	}
+	for index, buyer := range items {
+		row := index + 2
+		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), index+1)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("B%d", row), buyer.Nama)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("C%d", row), nullableString(buyer.Username))
+		_ = f.SetCellValue(sheet, fmt.Sprintf("D%d", row), nullableString(buyer.Email))
+		_ = f.SetCellValue(sheet, fmt.Sprintf("E%d", row), buyer.Telepon)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("F%d", row), buyer.IsActive)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("G%d", row), buyer.IsVerified)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("H%d", row), formatExportTime(buyer.LastLoginAt))
+		_ = f.SetCellValue(sheet, fmt.Sprintf("I%d", row), buyer.CreatedAt.Format(time.RFC3339))
+	}
+
+	ctx.Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	ctx.Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"buyer-bulky-%s.xlsx\"", time.Now().Format("20060102")))
+	if err := f.Write(ctx.Response().BodyWriter()); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Gagal membuat file Excel", nil)
+	}
+	return nil
+}
+
+func nullableString(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
+func formatExportTime(value *time.Time) string {
+	if value == nil {
+		return ""
+	}
+	return value.Format(time.RFC3339)
 }
 
 func (c *BuyerController) FindByID(ctx *fiber.Ctx) error {

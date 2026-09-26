@@ -55,6 +55,9 @@ func (c *DokumenKebijakanController) GetByID(ctx *fiber.Ctx) error {
 		}
 		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
 	}
+	if isSyaratKetentuanLelang(result) && !memilikiIzin(ctx, "syarat_ketentuan_lelang:read") {
+		return utils.ErrorResponse(ctx, http.StatusForbidden, "Akses syarat dan ketentuan lelang ditolak", nil)
+	}
 
 	return utils.SuccessResponse(ctx, "Detail dokumen kebijakan berhasil diambil", result)
 }
@@ -62,6 +65,20 @@ func (c *DokumenKebijakanController) GetByID(ctx *fiber.Ctx) error {
 // Update - Update dokumen kebijakan by ID or slug
 func (c *DokumenKebijakanController) Update(ctx *fiber.Ctx) error {
 	idOrSlug := ctx.Params("id")
+	if utils.IsValidUUID(idOrSlug) && len(idOrSlug) == 36 {
+		existing, err := c.service.FindByID(ctx.UserContext(), idOrSlug)
+		if err != nil {
+			if err.Error() == "dokumen kebijakan tidak ditemukan" {
+				return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
+			}
+			return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
+		}
+		if isSyaratKetentuanLelang(existing) && !memilikiIzin(ctx, "syarat_ketentuan_lelang:manage") {
+			return utils.ErrorResponse(ctx, http.StatusForbidden, "Akses syarat dan ketentuan lelang ditolak", nil)
+		}
+	} else if isSlugSyaratKetentuanLelang(idOrSlug) && !memilikiIzin(ctx, "syarat_ketentuan_lelang:manage") {
+		return utils.ErrorResponse(ctx, http.StatusForbidden, "Akses syarat dan ketentuan lelang ditolak", nil)
+	}
 
 	var req models.UpdateDokumenKebijakanRequest
 	if err := BindJSON(ctx, &req); err != nil {
@@ -89,6 +106,61 @@ func (c *DokumenKebijakanController) Update(ctx *fiber.Ctx) error {
 
 	c.activityLog.Log(ctx, models.ActionUpdate, "dokumen_kebijakan", "Dokumen kebijakan berhasil diupdate")
 	return utils.SuccessResponse(ctx, "Dokumen kebijakan berhasil diupdate", result)
+}
+
+// AmbilSyaratKetentuanLelang hanya mengambil dokumen S&K lelang untuk panel.
+func (c *DokumenKebijakanController) AmbilSyaratKetentuanLelang(ctx *fiber.Ctx) error {
+	result, err := c.service.FindBySlug(ctx.UserContext(), "syarat-ketentuan-lelang")
+	if err != nil {
+		if err.Error() == "dokumen kebijakan tidak ditemukan" {
+			return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
+		}
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	return utils.SuccessResponse(ctx, "Syarat dan ketentuan lelang berhasil diambil", result)
+}
+
+// PerbaruiSyaratKetentuanLelang hanya memperbarui dokumen S&K lelang.
+func (c *DokumenKebijakanController) PerbaruiSyaratKetentuanLelang(ctx *fiber.Ctx) error {
+	var req models.UpdateDokumenKebijakanRequest
+	if err := BindJSON(ctx, &req); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
+	}
+
+	result, err := c.service.UpdateBySlug(ctx.UserContext(), "syarat-ketentuan-lelang", &req)
+	if err != nil {
+		if err.Error() == "dokumen kebijakan tidak ditemukan" {
+			return utils.ErrorResponse(ctx, http.StatusNotFound, err.Error(), nil)
+		}
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	c.activityLog.Log(ctx, models.ActionUpdate, "dokumen_kebijakan", "Syarat dan ketentuan lelang berhasil diperbarui")
+	return utils.SuccessResponse(ctx, "Syarat dan ketentuan lelang berhasil diperbarui", result)
+}
+
+func isSyaratKetentuanLelang(dokumen *models.DokumenKebijakanDetailResponse) bool {
+	return dokumen != nil &&
+		((dokumen.SlugID != nil && *dokumen.SlugID == "syarat-ketentuan-lelang") ||
+			(dokumen.SlugEN != nil && *dokumen.SlugEN == "auction-terms-and-conditions"))
+}
+
+func isSlugSyaratKetentuanLelang(slug string) bool {
+	return slug == "syarat-ketentuan-lelang" || slug == "auction-terms-and-conditions"
+}
+
+func memilikiIzin(ctx *fiber.Ctx, izin string) bool {
+	permissions, ok := ctx.Locals("user_permissions").([]string)
+	if !ok {
+		return false
+	}
+	for _, permission := range permissions {
+		if permission == izin {
+			return true
+		}
+	}
+	return false
 }
 
 // ========================================

@@ -29,6 +29,7 @@ type AuctionRepository interface {
 
 	// Bids
 	ListBids(ctx context.Context, batchID uuid.UUID, params *dto.AuctionBidsQueryParams) ([]models.AuctionBid, int64, error)
+	ListBidsForExport(ctx context.Context, params *dto.AuctionBidsExportQueryParams) ([]models.AuctionBid, error)
 	FindBidByID(ctx context.Context, id uuid.UUID) (*models.AuctionBid, error)
 	FindBidByBatchAndID(ctx context.Context, batchID, bidID uuid.UUID) (*models.AuctionBid, error)
 
@@ -246,6 +247,35 @@ func (r *auctionRepository) ListBids(ctx context.Context, batchID uuid.UUID, par
 	}
 
 	return bids, total, nil
+}
+
+func (r *auctionRepository) ListBidsForExport(ctx context.Context, params *dto.AuctionBidsExportQueryParams) ([]models.AuctionBid, error) {
+	var bids []models.AuctionBid
+	query := r.db.WithContext(ctx).Model(&models.AuctionBid{})
+
+	if params.Search != "" {
+		search := "%" + params.Search + "%"
+		query = query.Joins("JOIN buyer ON buyer.id = auction_bids.buyer_id").Joins("JOIN auction_batches ON auction_batches.id = auction_bids.batch_id").Where("buyer.nama ILIKE ? OR buyer.telepon ILIKE ? OR auction_batches.nama_id ILIKE ? OR auction_batches.code ILIKE ?", search, search, search, search)
+	}
+	if params.BuyerID != "" {
+		if buyerID, err := uuid.Parse(params.BuyerID); err == nil {
+			query = query.Where("auction_bids.buyer_id = ?", buyerID)
+		}
+	}
+	if params.BatchID != "" {
+		if batchID, err := uuid.Parse(params.BatchID); err == nil {
+			query = query.Where("auction_bids.batch_id = ?", batchID)
+		}
+	}
+
+	order := "auction_bids.created_at DESC, auction_bids.id DESC"
+	if params.SortBy == "amount_desc" {
+		order = "auction_bids.amount DESC, auction_bids.id DESC"
+	} else if params.SortBy == "amount_asc" {
+		order = "auction_bids.amount ASC, auction_bids.id ASC"
+	}
+
+	return bids, query.Preload("Buyer").Order(order).Find(&bids).Error
 }
 
 func (r *auctionRepository) FindBidByID(ctx context.Context, id uuid.UUID) (*models.AuctionBid, error) {

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"project-bulky-be/internal/dto"
 	"project-bulky-be/internal/services"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+	"github.com/xuri/excelize/v2"
 )
 
 type AuctionController struct {
@@ -175,6 +177,69 @@ func (ctrl *AuctionController) ListBids(c *fiber.Ctx) error {
 		return handleAuctionError(c, err)
 	}
 	return utils.PaginatedSuccessResponse(c, "Data bid berhasil diambil", items, *meta)
+}
+
+func (ctrl *AuctionController) ExportBids(c *fiber.Ctx) error {
+	var params dto.AuctionBidsExportQueryParams
+	if err := c.QueryParser(&params); err != nil {
+		return utils.ErrorResponse(c, http.StatusBadRequest, "Parameter tidak valid", parseValidationErrors(err))
+	}
+	params.SetDefaults()
+
+	items, err := ctrl.service.ExportBids(c.UserContext(), &params)
+	if err != nil {
+		return handleAuctionError(c, err)
+	}
+
+	f := excelize.NewFile()
+	defer f.Close()
+	sheet := "Bid"
+	f.SetSheetName("Sheet1", sheet)
+	headers := []string{"No", "Batch ID", "Buyer", "Telepon", "Bid ke-", "Mode", "Persentase Input", "Nominal Bid", "Ongkir", "PPN", "Total Estimasi", "Catatan", "Waktu", "Pemenang"}
+	for column, header := range headers {
+		cell, _ := excelize.CoordinatesToCellName(column+1, 1)
+		_ = f.SetCellValue(sheet, cell, header)
+	}
+	for index, item := range items {
+		row := index + 2
+		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), index+1)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("B%d", row), item.BatchID)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("C%d", row), item.Buyer.Nama)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("D%d", row), item.Buyer.Telepon)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("E%d", row), item.Sequence)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("F%d", row), item.InputMode)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("G%d", row), nullableAuctionPercent(item.InputPercent))
+		_ = f.SetCellValue(sheet, fmt.Sprintf("H%d", row), item.Amount)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("I%d", row), item.ShippingAmountSnapshot)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("J%d", row), item.PPNAmountSnapshot)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("K%d", row), item.EstimatedTotalSnapshot)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("L%d", row), item.Note)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("M%d", row), formatAuctionExportTime(item.CreatedAt))
+		winner := "Tidak"
+		if item.IsSelected {
+			winner = "Ya"
+		}
+		_ = f.SetCellValue(sheet, fmt.Sprintf("N%d", row), winner)
+	}
+
+	c.Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"bid-lelang-bulky-%s.xlsx\"", time.Now().Format("20060102")))
+	if err := f.Write(c.Response().BodyWriter()); err != nil {
+		return utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal membuat file Excel", nil)
+	}
+	return nil
+}
+
+func formatAuctionExportTime(value time.Time) string {
+	wib := time.FixedZone("WIB", 7*60*60)
+	return value.In(wib).Format("02 Jan 2006 15:04 WIB")
+}
+
+func nullableAuctionPercent(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 func (ctrl *AuctionController) SelectWinner(c *fiber.Ctx) error {

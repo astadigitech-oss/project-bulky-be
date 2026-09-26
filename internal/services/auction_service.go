@@ -58,6 +58,7 @@ type AuctionService interface {
 	ListBatches(ctx context.Context, params *dto.AuctionListQueryParams) ([]dto.AuctionBatchSummary, *models.PaginationMeta, error)
 	GetBatchDetail(ctx context.Context, id uuid.UUID) (*dto.AuctionBatchDetail, error)
 	ListBids(ctx context.Context, batchID uuid.UUID, params *dto.AuctionBidsQueryParams) ([]dto.AuctionBidDetail, *models.PaginationMeta, error)
+	ExportBids(ctx context.Context, params *dto.AuctionBidsExportQueryParams) ([]dto.AuctionBidDetail, error)
 	SelectWinner(ctx context.Context, id uuid.UUID, req *dto.AuctionWinnerRequest, adminID uuid.UUID, idempotencyKey string) (*dto.AuctionBatchDetail, error)
 	UpdateOperations(ctx context.Context, id uuid.UUID, req *dto.AuctionOperationRequest, adminID uuid.UUID, idempotencyKey string) (*dto.AuctionBatchDetail, error)
 	UploadAsset(ctx context.Context, file *multipart.FileHeader, kind string, adminID uuid.UUID) (*dto.AuctionAssetResponse, error)
@@ -698,6 +699,40 @@ func (s *auctionService) ListBids(ctx context.Context, batchID uuid.UUID, params
 
 	meta := models.NewPaginationMeta(params.Page, params.PerPage, total)
 	return response, &meta, nil
+}
+
+func (s *auctionService) ExportBids(ctx context.Context, params *dto.AuctionBidsExportQueryParams) ([]dto.AuctionBidDetail, error) {
+	params.SetDefaults()
+	bids, err := s.repo.ListBidsForExport(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+
+	selected := make(map[uuid.UUID]bool)
+	batchIDs := make([]uuid.UUID, 0, len(bids))
+	seen := make(map[uuid.UUID]struct{})
+	for _, bid := range bids {
+		if _, ok := seen[bid.BatchID]; ok {
+			continue
+		}
+		seen[bid.BatchID] = struct{}{}
+		batchIDs = append(batchIDs, bid.BatchID)
+	}
+	if len(batchIDs) > 0 {
+		var winners []models.AuctionWinner
+		if err := s.db.WithContext(ctx).Where("batch_id IN ?", batchIDs).Find(&winners).Error; err != nil {
+			return nil, err
+		}
+		for _, winner := range winners {
+			selected[winner.BidID] = true
+		}
+	}
+
+	items := make([]dto.AuctionBidDetail, 0, len(bids))
+	for _, bid := range bids {
+		items = append(items, mapBidDetail(bid, selected[bid.ID]))
+	}
+	return items, nil
 }
 
 // ============================================================

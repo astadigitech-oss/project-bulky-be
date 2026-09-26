@@ -43,6 +43,22 @@ type AuctionBidsQueryParams struct {
 	SortDesc bool   `query:"sort_desc"`
 }
 
+// AuctionBidsExportQueryParams filters the complete bid export. It is
+// intentionally separate from the paginated list query so exports are never
+// capped by the UI page size.
+type AuctionBidsExportQueryParams struct {
+	Search  string `query:"search"`
+	BuyerID string `query:"buyer_id"`
+	BatchID string `query:"batch_id"`
+	SortBy  string `query:"sort_by"`
+}
+
+func (p *AuctionBidsExportQueryParams) SetDefaults() {
+	if p.SortBy != "amount_desc" && p.SortBy != "amount_asc" {
+		p.SortBy = "created_at_desc"
+	}
+}
+
 func (p *AuctionBidsQueryParams) SetDefaults() {
 	if p.Page < 1 {
 		p.Page = 1
