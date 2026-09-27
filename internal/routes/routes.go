@@ -33,6 +33,7 @@ func SetupRoutes(
 	bannerEventPromoController *controllers.BannerEventPromoController,
 	auctionEducationBannerController *controllers.AuctionEducationBannerController,
 	seasonalCampaignController *controllers.SeasonalCampaignController,
+	pushTestController *controllers.PushTestController,
 	ulasanController *controllers.UlasanController,
 	ulasanAdminController *controllers.UlasanAdminController,
 	pesananAdminController *controllers.PesananAdminController,
@@ -404,6 +405,14 @@ func SetupRoutes(
 	seasonalCampaignAdmin.Patch("/:id/publish", middleware.RequirePermission("marketing:manage"), seasonalCampaignController.Publish)
 	seasonalCampaignAdmin.Patch("/:id/cancel", middleware.RequirePermission("marketing:manage"), seasonalCampaignController.Cancel)
 	seasonalCampaignAdmin.Delete("/:id", middleware.RequirePermission("marketing:manage"), seasonalCampaignController.Delete)
+
+	pushTestAdmin := v1.Group("/panel/marketing/push-test",
+		middleware.AuthMiddleware(),
+		middleware.AdminOnly(),
+		middleware.RequirePermission("marketing:manage"),
+	)
+	pushTestAdmin.Get("/recipients", pushTestController.FindRecipients)
+	pushTestAdmin.Post("", pushTestController.Send)
 
 	// Ulasan - Admin
 	ulasanAdmin := v1.Group("/panel/ulasan",

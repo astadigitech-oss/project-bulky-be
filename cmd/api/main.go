@@ -180,6 +180,8 @@ func main() {
 	bannerEventPromoController := controllers.NewBannerEventPromoController(bannerEventPromoService, reorderService, cfg, activityLogService)
 	auctionEducationBannerController := controllers.NewAuctionEducationBannerController(auctionEducationBannerService, cfg, activityLogService)
 	seasonalCampaignController := controllers.NewSeasonalCampaignController(seasonalCampaignService, cfg, activityLogService)
+	pushTestService := services.NewPushTestService(cfg)
+	pushTestController := controllers.NewPushTestController(pushTestService)
 	ulasanController := controllers.NewUlasanController(ulasanService)
 	ulasanAdminController := controllers.NewUlasanAdminController(ulasanAdminService, activityLogService)
 	pesananAdminController := controllers.NewPesananAdminController(pesananAdminService, activityLogService)
@@ -241,7 +243,7 @@ func main() {
 		warehouseController, tipeProdukController, diskonKategoriController, bannerTipeProdukController,
 		produkController, authController, adminController, masterController,
 		buyerController, alamatBuyerController,
-		heroSectionController, bannerEventPromoController, auctionEducationBannerController, seasonalCampaignController,
+		heroSectionController, bannerEventPromoController, auctionEducationBannerController, seasonalCampaignController, pushTestController,
 		ulasanController,
 		ulasanAdminController, pesananAdminController,
 		forceUpdateController, modeMaintenanceController,
