@@ -65,11 +65,9 @@ func (s *PushTestService) FindRecipients(ctx context.Context, search string) ([]
 	return result, nil
 }
 
-func (s *PushTestService) Send(ctx context.Context, buyerID string) (*PushTestSummary, error) {
+func (s *PushTestService) Send(ctx context.Context, buyerIDs []string) (*PushTestSummary, error) {
 	var result PushTestSummary
-	body := struct {
-		BuyerID string `json:"buyer_id"`
-	}{BuyerID: buyerID}
+	body := map[string]any{"buyer_ids": buyerIDs}
 	if err := s.do(ctx, http.MethodPost, "/internal/notifications/push-test/send", body, &result); err != nil {
 		return nil, err
 	}

@@ -33,15 +33,36 @@ func (c *PushTestController) FindRecipients(ctx *fiber.Ctx) error {
 
 func (c *PushTestController) Send(ctx *fiber.Ctx) error {
 	var req struct {
-		BuyerID string `json:"buyer_id"`
+		BuyerID  string   `json:"buyer_id,omitempty"`
+		BuyerIDs []string `json:"buyer_ids,omitempty"`
 	}
 	if err := BindJSON(ctx, &req); err != nil {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Payload tes push tidak valid", parseValidationErrors(err))
 	}
-	if _, err := uuid.Parse(req.BuyerID); err != nil {
-		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Buyer tidak valid", "buyer_id harus UUID")
+	if req.BuyerID != "" && len(req.BuyerIDs) > 0 {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Penerima tidak valid", "kirim buyer_id atau buyer_ids")
 	}
-	result, err := c.service.Send(ctx.UserContext(), req.BuyerID)
+	buyerIDs := req.BuyerIDs
+	if len(buyerIDs) == 0 && req.BuyerID != "" {
+		buyerIDs = []string{req.BuyerID}
+	}
+	if len(buyerIDs) == 0 || len(buyerIDs) > 100 {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Penerima tidak valid", "pilih antara 1 sampai 100 buyer")
+	}
+	validatedIDs := make([]string, 0, len(buyerIDs))
+	seen := make(map[string]struct{}, len(buyerIDs))
+	for _, buyerID := range buyerIDs {
+		buyerID = strings.TrimSpace(buyerID)
+		if _, err := uuid.Parse(buyerID); err != nil {
+			return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Buyer tidak valid", "setiap buyer_id harus berupa UUID")
+		}
+		if _, exists := seen[buyerID]; exists {
+			continue
+		}
+		seen[buyerID] = struct{}{}
+		validatedIDs = append(validatedIDs, buyerID)
+	}
+	result, err := c.service.Send(ctx.UserContext(), validatedIDs)
 	if err != nil {
 		return utils.SimpleErrorResponse(ctx, http.StatusBadGateway, "Gagal mengirim tes push notification", err.Error())
 	}
