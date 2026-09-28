@@ -152,6 +152,14 @@ type AuctionPublishRequest struct {
 	Version int `json:"version" validate:"required,min=1"`
 }
 
+// AuctionDisplayRequest menentukan apakah batch yang sudah dibuka tetap
+// ditampilkan di Storefront. Status lelang dan kemampuan untuk melakukan bid
+// tidak berubah oleh pengaturan ini.
+type AuctionDisplayRequest struct {
+	IsDisplayed bool `json:"is_displayed"`
+	Version     int  `json:"version" validate:"required,min=1"`
+}
+
 // AuctionWinnerRequest payload konfirmasi winner. Wajib Idempotency-Key header.
 type AuctionWinnerRequest struct {
 	BidID   string  `json:"bid_id" validate:"required,uuid"`
@@ -213,6 +221,7 @@ type AuctionBatchSummary struct {
 	NamaID       string     `json:"nama_id"`
 	ThumbnailURL *string    `json:"thumbnail_url"`
 	Status       string     `json:"status"`
+	IsDisplayed  bool       `json:"is_displayed"`
 	GrandTotal   string     `json:"grand_total"`
 	MinBidAmount string     `json:"min_bid_amount"`
 	BidderCount  int64      `json:"bidder_count"`
@@ -250,6 +259,7 @@ type AuctionBatchDetail struct {
 	SumberID              *string                `json:"sumber_id"`
 	DiscrepancyPercentage string                 `json:"discrepancy_percentage"`
 	Status                string                 `json:"status"`
+	IsDisplayed           bool                   `json:"is_displayed"`
 	GrandTotal            string                 `json:"grand_total"`
 	MinBidPercent         string                 `json:"min_bid_percent"`
 	MinBidAmount          string                 `json:"min_bid_amount"`

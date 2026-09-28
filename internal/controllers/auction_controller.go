@@ -160,6 +160,33 @@ func (ctrl *AuctionController) Publish(c *fiber.Ctx) error {
 	return utils.SuccessResponse(c, "Batch berhasil dibuka untuk lelang", result)
 }
 
+func (ctrl *AuctionController) SetDisplay(c *fiber.Ctx) error {
+	adminID, ok := auctionAdminID(c)
+	if !ok {
+		return utils.ErrorResponse(c, http.StatusUnauthorized, "Admin tidak valid", nil)
+	}
+
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return utils.ErrorResponse(c, http.StatusBadRequest, "ID tidak valid", nil)
+	}
+
+	var req dto.AuctionDisplayRequest
+	if err := BindJSON(c, &req); err != nil {
+		return utils.ErrorResponse(c, http.StatusBadRequest, "Validasi gagal", parseValidationErrors(err))
+	}
+
+	result, err := ctrl.service.SetDisplay(c.UserContext(), id, &req, adminID, idempotencyKey(c))
+	if err != nil {
+		return handleAuctionError(c, err)
+	}
+	message := "Batch ditampilkan di Storefront"
+	if !result.IsDisplayed {
+		message = "Batch disembunyikan dari Storefront"
+	}
+	return utils.SuccessResponse(c, message, result)
+}
+
 func (ctrl *AuctionController) ListBids(c *fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {

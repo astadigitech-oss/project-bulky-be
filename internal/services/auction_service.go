@@ -55,6 +55,7 @@ type AuctionService interface {
 	UpdateDraft(ctx context.Context, id uuid.UUID, req *dto.AuctionDraftInput, adminID uuid.UUID, version int) (*dto.AuctionBatchDetail, error)
 	DeleteDraft(ctx context.Context, id uuid.UUID) error
 	Publish(ctx context.Context, id uuid.UUID, version int, adminID uuid.UUID, idempotencyKey string) (*dto.AuctionBatchDetail, error)
+	SetDisplay(ctx context.Context, id uuid.UUID, req *dto.AuctionDisplayRequest, adminID uuid.UUID, idempotencyKey string) (*dto.AuctionBatchDetail, error)
 	ListBatches(ctx context.Context, params *dto.AuctionListQueryParams) ([]dto.AuctionBatchSummary, *models.PaginationMeta, error)
 	GetBatchDetail(ctx context.Context, id uuid.UUID) (*dto.AuctionBatchDetail, error)
 	ListBids(ctx context.Context, batchID uuid.UUID, params *dto.AuctionBidsQueryParams) ([]dto.AuctionBidDetail, *models.PaginationMeta, error)
@@ -182,6 +183,7 @@ func (s *auctionService) CreateDraft(ctx context.Context, req *dto.AuctionDraftI
 		SumberID:              parseUUIDPtr(req.SumberID),
 		DiscrepancyPercentage: parseDecimal(req.DiscrepancyPercentage, decimal.Zero),
 		Status:                models.AuctionBatchStatusDRAFT,
+		IsDisplayed:           false,
 		GrandTotal:            grandTotal,
 		MinBidPercent:         decimal.NewFromFloat(0.1),
 		TotalQuantity:         totalQty,
@@ -404,6 +406,7 @@ func (s *auctionService) publishInTransaction(ctx context.Context, id uuid.UUID,
 
 		now := time.Now().UTC()
 		locked.Status = models.AuctionBatchStatusOPEN
+		locked.IsDisplayed = true
 		locked.OpenedAt = &now
 		locked.UpdatedBy = adminID
 		locked.Version++
@@ -733,6 +736,85 @@ func (s *auctionService) ExportBids(ctx context.Context, params *dto.AuctionBids
 		items = append(items, mapBidDetail(bid, selected[bid.ID]))
 	}
 	return items, nil
+}
+
+// SetDisplay only controls a batch's visibility in the Storefront. It can be
+// changed after a winner is selected without changing the SOLD auction state.
+func (s *auctionService) SetDisplay(ctx context.Context, id uuid.UUID, req *dto.AuctionDisplayRequest, adminID uuid.UUID, idempotencyKey string) (*dto.AuctionBatchDetail, error) {
+	operation := fmt.Sprintf("display:%s", id.String())
+	if idempotencyKey != "" {
+		replay, batchID, err := s.checkIdempotency(ctx, "ADMIN", adminID, operation, id, idempotencyKey, req)
+		if err != nil {
+			return nil, err
+		}
+		if replay {
+			return s.GetBatchDetail(ctx, batchID)
+		}
+	}
+
+	batch, err := s.repo.FindBatchByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, auctionErr(404, "Batch tidak ditemukan")
+		}
+		return nil, err
+	}
+	if batch.Status != models.AuctionBatchStatusOPEN && batch.Status != models.AuctionBatchStatusSOLD {
+		return nil, auctionErr(409, "Tampilan Storefront hanya dapat diubah untuk batch yang sudah dibuka")
+	}
+	if batch.Version != req.Version {
+		return nil, auctionErr(409, "Version batch tidak sesuai. Silakan muat ulang data terbaru.")
+	}
+	if batch.IsDisplayed == req.IsDisplayed {
+		return s.GetBatchDetail(ctx, id)
+	}
+
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var locked models.AuctionBatch
+		if err := tx.Clauses(lockClause()).First(&locked, "id = ?", id).Error; err != nil {
+			return err
+		}
+		if locked.Status != models.AuctionBatchStatusOPEN && locked.Status != models.AuctionBatchStatusSOLD {
+			return auctionErr(409, "Tampilan Storefront hanya dapat diubah untuk batch yang sudah dibuka")
+		}
+		if locked.Version != req.Version {
+			return auctionErr(409, "Version batch tidak sesuai. Silakan muat ulang data terbaru.")
+		}
+
+		before := toJSONMap(&locked)
+		locked.IsDisplayed = req.IsDisplayed
+		locked.UpdatedBy = adminID
+		locked.Version++
+		if err := tx.Save(&locked).Error; err != nil {
+			return err
+		}
+
+		note := "Batch ditampilkan di Storefront"
+		if !locked.IsDisplayed {
+			note = "Batch disembunyikan dari Storefront"
+		}
+		if err := tx.Create(&models.AuctionAuditLog{
+			BatchID:      id,
+			ActorAdminID: adminID,
+			Action:       "display",
+			BeforeData:   before,
+			AfterData:    toJSONMap(&locked),
+			Note:         &note,
+		}).Error; err != nil {
+			return err
+		}
+		if idempotencyKey != "" {
+			if err := s.saveIdempotency(tx, "ADMIN", adminID, operation, id, idempotencyKey, req, 200, &locked); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, s.wrapDBError(err)
+	}
+
+	return s.GetBatchDetail(ctx, id)
 }
 
 // ============================================================
@@ -1334,6 +1416,7 @@ func (s *auctionService) mapBatchSummary(b models.AuctionBatch, analytics *repos
 		SlugEN:       b.SlugEN,
 		NamaID:       b.NamaID,
 		Status:       b.Status,
+		IsDisplayed:  b.IsDisplayed,
 		GrandTotal:   b.GrandTotal.StringFixed(0),
 		MinBidAmount: minBidAmount(b.GrandTotal).StringFixed(0),
 		CreatedAt:    b.CreatedAt,
@@ -1382,6 +1465,7 @@ func (s *auctionService) mapBatchDetail(b *models.AuctionBatch, analytics *repos
 		SumberID:              uuidPtrToString(b.SumberID),
 		DiscrepancyPercentage: b.DiscrepancyPercentage.String(),
 		Status:                b.Status,
+		IsDisplayed:           b.IsDisplayed,
 		GrandTotal:            b.GrandTotal.StringFixed(0),
 		MinBidPercent:         b.MinBidPercent.String(),
 		MinBidAmount:          minBidAmount(b.GrandTotal).StringFixed(0),

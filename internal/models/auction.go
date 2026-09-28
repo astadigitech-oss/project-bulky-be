@@ -73,6 +73,7 @@ type AuctionBatch struct {
 	SumberID              *uuid.UUID       `gorm:"type:uuid" json:"sumber_id"`
 	DiscrepancyPercentage decimal.Decimal  `gorm:"type:numeric(5,2);not null;default:0" json:"discrepancy_percentage"`
 	Status                string           `gorm:"type:varchar(20);not null;default:DRAFT" json:"status"`
+	IsDisplayed           bool             `gorm:"not null;default:false" json:"is_displayed"`
 	GrandTotal            decimal.Decimal  `gorm:"type:numeric(18,0);not null;default:0" json:"grand_total"`
 	MinBidPercent         decimal.Decimal  `gorm:"type:numeric(12,4);not null;default:0.1" json:"min_bid_percent"`
 	TotalQuantity         int              `gorm:"not null;default:0" json:"total_quantity"`
