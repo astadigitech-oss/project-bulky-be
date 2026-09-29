@@ -91,34 +91,9 @@ func CompressAndSaveImageWebP(file *multipart.FileHeader, directory string, cfg 
 	filename := fmt.Sprintf("%s.webp", uuid.New().String())
 	outputPath := filepath.Join(uploadPath, filename)
 
-	// 8. Eksekusi pass pertama kompresi cwebp
-	err = executeCwebp(cwebpPath, tempPath, outputPath, origWidth, origHeight, MaxImageResolution, 82)
-	if err != nil {
-		return "", fmt.Errorf("gagal mengonversi gambar ke WebP: %w", err)
-	}
-
-	// 9. Cek ukuran file hasil
-	outputInfo, err := os.Stat(outputPath)
-	if err != nil {
-		return "", fmt.Errorf("gagal memeriksa file output: %w", err)
-	}
-
-	// 10. Pass kedua (safety check): jika ukuran masih > 200KB, kompres ulang dengan parameter lebih ketat
-	if outputInfo.Size() > TargetMaxImageSize {
-		_ = os.Remove(outputPath) // Hapus file pass 1
-
-		err = executeCwebp(cwebpPath, tempPath, outputPath, origWidth, origHeight, SecondPassResolution, 75)
-		if err != nil {
-			return "", fmt.Errorf("gagal kompresi pass kedua gambar: %w", err)
-		}
-		outputInfo, err = os.Stat(outputPath)
-		if err != nil {
-			return "", fmt.Errorf("gagal memeriksa hasil kompresi kedua: %w", err)
-		}
-		if outputInfo.Size() > TargetMaxImageSize {
-			_ = os.Remove(outputPath)
-			return "", fmt.Errorf("gambar tidak dapat dikompresi hingga di bawah %dKB", TargetMaxImageSize/1024)
-		}
+	// 8. Coba kompresi bertahap sampai ukuran output memenuhi batas.
+	if err := compressToTargetWebP(cwebpPath, tempPath, outputPath, origWidth, origHeight); err != nil {
+		return "", err
 	}
 
 	// 11. Format relative path untuk database / URL
@@ -142,28 +117,48 @@ func CompressExistingFileWebP(srcFullPath, dstFullPath string) error {
 	// Deteksi dimensi asli
 	origWidth, origHeight, _ := getImageDimensions(srcFullPath)
 
-	// Eksekusi pass pertama kompresi cwebp
-	err = executeCwebp(cwebpPath, srcFullPath, dstFullPath, origWidth, origHeight, MaxImageResolution, 82)
-	if err != nil {
-		return fmt.Errorf("gagal mengonversi gambar ke WebP: %w", err)
+	return compressToTargetWebP(cwebpPath, srcFullPath, dstFullPath, origWidth, origHeight)
+}
+
+// compressToTargetWebP menurunkan resolusi dan kualitas secara bertahap sampai
+// file hasil benar-benar berada di bawah batas ukuran.
+func compressToTargetWebP(cwebpPath, inputPath, outputPath string, width, height int) error {
+	passes := [...]struct {
+		maxDimension int
+		quality      int
+	}{
+		{MaxImageResolution, 82},
+		{SecondPassResolution, 75},
+		{1280, 68},
+		{1024, 58},
+		{800, 48},
+		{640, 38},
 	}
 
-	// Cek ukuran file hasil
-	outputInfo, err := os.Stat(dstFullPath)
-	if err != nil {
-		return fmt.Errorf("gagal memeriksa file output: %w", err)
-	}
+	for index, pass := range passes {
+		if index > 0 {
+			if err := os.Remove(outputPath); err != nil && !os.IsNotExist(err) {
+				return fmt.Errorf("gagal menyiapkan kompresi ulang gambar: %w", err)
+			}
+		}
 
-	// Pass kedua jika ukuran masih > 200KB
-	if outputInfo.Size() > TargetMaxImageSize {
-		_ = os.Remove(dstFullPath)
-		err = executeCwebp(cwebpPath, srcFullPath, dstFullPath, origWidth, origHeight, SecondPassResolution, 75)
+		if err := executeCwebp(cwebpPath, inputPath, outputPath, width, height, pass.maxDimension, pass.quality); err != nil {
+			_ = os.Remove(outputPath)
+			return fmt.Errorf("gagal mengonversi gambar ke WebP: %w", err)
+		}
+
+		outputInfo, err := os.Stat(outputPath)
 		if err != nil {
-			return fmt.Errorf("gagal kompresi pass kedua gambar: %w", err)
+			_ = os.Remove(outputPath)
+			return fmt.Errorf("gagal memeriksa file hasil kompresi: %w", err)
+		}
+		if outputInfo.Size() <= TargetMaxImageSize {
+			return nil
 		}
 	}
 
-	return nil
+	_ = os.Remove(outputPath)
+	return fmt.Errorf("gambar tidak dapat dikompresi hingga di bawah %dKB", TargetMaxImageSize/1024)
 }
 
 // getImageDimensions membaca lebar dan tinggi gambar tanpa memuat seluruh piksel ke memori
