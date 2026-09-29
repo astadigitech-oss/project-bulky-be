@@ -895,6 +895,7 @@ func (s *auctionService) SelectWinner(ctx context.Context, id uuid.UUID, req *dt
 		}
 
 		locked.Status = models.AuctionBatchStatusSOLD
+		locked.IsDisplayed = false
 		locked.SoldAt = &now
 		locked.UpdatedBy = adminID
 		locked.Version++
