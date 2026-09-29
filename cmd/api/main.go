@@ -62,6 +62,8 @@ func main() {
 	alamatBuyerRepo := repositories.NewAlamatBuyerRepository(db)
 	heroSectionRepo := repositories.NewHeroSectionRepository(db)
 	bannerEventPromoRepo := repositories.NewBannerEventPromoRepository(db)
+	auctionEducationBannerRepo := repositories.NewAuctionEducationBannerRepository(db)
+	seasonalCampaignRepo := repositories.NewSeasonalCampaignRepository(db)
 	pesananRepo := repositories.NewPesananRepository(db)
 	pesananItemRepo := repositories.NewPesananItemRepository(db)
 	ulasanRepo := repositories.NewUlasanRepository(db)
@@ -84,8 +86,10 @@ func main() {
 	kuponRepo := repositories.NewKuponRepository(db)
 	dasborRepo := repositories.NewDasborRepository(db)
 	disclaimerConsentRepo := repositories.NewBuyerDisclaimerConsentRepository(db)
+	persetujuanSyaratKetentuanLelangRepo := repositories.NewPersetujuanSyaratKetentuanLelangRepository(db)
 	delivereeVehicleTypeRepo := repositories.NewDelivereeVehicleTypeRepository(db)
 	forwarderMappingRepo := repositories.NewForwarderMappingRepository(db)
+	auctionRepo := repositories.NewAuctionRepository(db)
 
 	// Auth V2 repositories
 	authRepo := repositories.NewAuthRepository(db)
@@ -114,6 +118,8 @@ func main() {
 	alamatBuyerService := services.NewAlamatBuyerService(alamatBuyerRepo, buyerRepo)
 	heroSectionService := services.NewHeroSectionService(heroSectionRepo, cfg)
 	bannerEventPromoService := services.NewBannerEventPromoService(bannerEventPromoRepo, reorderService, kategoriService, cfg)
+	auctionEducationBannerService := services.NewAuctionEducationBannerService(auctionEducationBannerRepo, cfg)
+	seasonalCampaignService := services.NewSeasonalCampaignService(seasonalCampaignRepo, cfg)
 	ulasanService := services.NewUlasanService(ulasanRepo, pesananItemRepo, pesananRepo, cfg.UploadPath, cfg.BaseURL)
 	ulasanAdminService := services.NewUlasanAdminService(ulasanRepo)
 	activityLogService := services.NewActivityLogService(activityLogRepo)
@@ -129,6 +135,7 @@ func main() {
 	dokumenKebijakanService := services.NewDokumenKebijakanService(dokumenKebijakanRepo)
 	disclaimerService := services.NewDisclaimerService(disclaimerRepo)
 	disclaimerConsentService := services.NewBuyerDisclaimerConsentService(disclaimerConsentRepo)
+	persetujuanSyaratKetentuanLelangService := services.NewPersetujuanSyaratKetentuanLelangService(persetujuanSyaratKetentuanLelangRepo)
 	emailService := services.NewEmailService()
 	formulirPartaiBesarService := services.NewFormulirPartaiBesarService(formulirPartaiBesarRepo, kategoriRepo, reorderService, emailService)
 	whatsappHandlerService := services.NewWhatsAppHandlerService(whatsappHandlerRepo)
@@ -171,6 +178,10 @@ func main() {
 	alamatBuyerController := controllers.NewAlamatBuyerController(alamatBuyerService, activityLogService)
 	heroSectionController := controllers.NewHeroSectionController(heroSectionService, cfg, activityLogService)
 	bannerEventPromoController := controllers.NewBannerEventPromoController(bannerEventPromoService, reorderService, cfg, activityLogService)
+	auctionEducationBannerController := controllers.NewAuctionEducationBannerController(auctionEducationBannerService, cfg, activityLogService)
+	seasonalCampaignController := controllers.NewSeasonalCampaignController(seasonalCampaignService, cfg, activityLogService)
+	pushTestService := services.NewPushTestService(cfg)
+	pushTestController := controllers.NewPushTestController(pushTestService)
 	ulasanController := controllers.NewUlasanController(ulasanService)
 	ulasanAdminController := controllers.NewUlasanAdminController(ulasanAdminService, activityLogService)
 	pesananAdminController := controllers.NewPesananAdminController(pesananAdminService, activityLogService)
@@ -181,6 +192,7 @@ func main() {
 	dokumenKebijakanController := controllers.NewDokumenKebijakanController(dokumenKebijakanService, activityLogService)
 	disclaimerController := controllers.NewDisclaimerController(disclaimerService, activityLogService)
 	disclaimerConsentController := controllers.NewBuyerDisclaimerConsentController(disclaimerConsentService)
+	persetujuanSyaratKetentuanLelangController := controllers.NewPersetujuanSyaratKetentuanLelangController(persetujuanSyaratKetentuanLelangService)
 	formulirPartaiBesarController := controllers.NewFormulirPartaiBesarController(formulirPartaiBesarService, reorderService, activityLogService)
 	whatsappHandlerController := controllers.NewWhatsAppHandlerController(whatsappHandlerService)
 	faqController := controllers.NewFAQController(faqService, activityLogService)
@@ -202,6 +214,8 @@ func main() {
 	wmsController := controllers.NewWMSController(wmsService, produkRepo, activityLogService)
 	backupService := services.NewBackupService(cfg, activityLogRepo)
 	backupController := controllers.NewBackupController(backupService)
+	auctionService := services.NewAuctionService(auctionRepo, db, cfg)
+	auctionController := controllers.NewAuctionController(auctionService)
 
 	// Auth V2 controllers
 	authV2Controller := controllers.NewAuthV2Controller(authV2Service, adminService, buyerService)
@@ -229,13 +243,13 @@ func main() {
 		warehouseController, tipeProdukController, diskonKategoriController, bannerTipeProdukController,
 		produkController, authController, adminController, masterController,
 		buyerController, alamatBuyerController,
-		heroSectionController, bannerEventPromoController,
+		heroSectionController, bannerEventPromoController, auctionEducationBannerController, seasonalCampaignController, pushTestController,
 		ulasanController,
 		ulasanAdminController, pesananAdminController,
 		forceUpdateController, modeMaintenanceController,
 		ppnController,
 		metodePembayaranController,
-		dokumenKebijakanController, disclaimerController, disclaimerConsentController,
+		dokumenKebijakanController, disclaimerController, disclaimerConsentController, persetujuanSyaratKetentuanLelangController,
 		formulirPartaiBesarController, whatsappHandlerController,
 		faqController,
 		blogController, kategoriBlogController, labelBlogController,
@@ -249,6 +263,7 @@ func main() {
 		forwarderMappingController,
 		wmsController,
 		backupController,
+		auctionController,
 	)
 
 	// Setup Auth V2 routes (new authentication system with roles & permissions)

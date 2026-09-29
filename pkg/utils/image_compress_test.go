@@ -203,3 +203,44 @@ func TestCompressAndSaveImageWebP(t *testing.T) {
 		}
 	})
 }
+
+func TestSaveSeasonalAssetCreatesPlatformSizedWebP(t *testing.T) {
+	tempDir := t.TempDir()
+	cfg := &config.Config{UploadPath: tempDir}
+	fileHeader := createMultipartFileHeader(t, "ornament.png", "image/png", generateTestPNG(t, 2160, 480))
+
+	tests := []struct {
+		name   string
+		target SeasonalAssetTarget
+	}{
+		{name: "web navbar", target: SeasonalWebNavbarDecorationTarget},
+		{name: "mobile top app bar", target: SeasonalMobileTopAppBarTarget},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			relPath, err := SaveSeasonalAsset(fileHeader, cfg, test.target)
+			if err != nil {
+				t.Fatalf("SaveSeasonalAsset error: %v", err)
+			}
+			if filepath.Ext(relPath) != ".webp" {
+				t.Fatalf("expected .webp output, got %s", relPath)
+			}
+			fullPath := filepath.Join(cfg.UploadPath, relPath)
+			info, err := os.Stat(fullPath)
+			if err != nil {
+				t.Fatalf("expected generated asset: %v", err)
+			}
+			if info.Size() > test.target.MaxFileSize {
+				t.Fatalf("output is %d bytes, limit is %d bytes", info.Size(), test.target.MaxFileSize)
+			}
+			width, height, err := getImageDimensions(fullPath)
+			if err != nil {
+				t.Fatalf("failed to inspect output dimensions: %v", err)
+			}
+			if width != test.target.Width || height != test.target.Height {
+				t.Fatalf("got %dx%d, want %dx%d", width, height, test.target.Width, test.target.Height)
+			}
+		})
+	}
+}

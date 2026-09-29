@@ -31,6 +31,9 @@ func SetupRoutes(
 	alamatBuyerController *controllers.AlamatBuyerController,
 	heroSectionController *controllers.HeroSectionController,
 	bannerEventPromoController *controllers.BannerEventPromoController,
+	auctionEducationBannerController *controllers.AuctionEducationBannerController,
+	seasonalCampaignController *controllers.SeasonalCampaignController,
+	pushTestController *controllers.PushTestController,
 	ulasanController *controllers.UlasanController,
 	ulasanAdminController *controllers.UlasanAdminController,
 	pesananAdminController *controllers.PesananAdminController,
@@ -41,6 +44,7 @@ func SetupRoutes(
 	dokumenKebijakanController *controllers.DokumenKebijakanController,
 	disclaimerController *controllers.DisclaimerController,
 	disclaimerConsentController *controllers.BuyerDisclaimerConsentController,
+	persetujuanSyaratKetentuanLelangController *controllers.PersetujuanSyaratKetentuanLelangController,
 	formulirPartaiBesarController *controllers.FormulirPartaiBesarController,
 	whatsappHandlerController *controllers.WhatsAppHandlerController,
 	faqController *controllers.FAQController,
@@ -58,6 +62,7 @@ func SetupRoutes(
 	forwarderMappingController *controllers.ForwarderMappingController,
 	wmsController *controllers.WMSController,
 	backupController *controllers.BackupController,
+	auctionController *controllers.AuctionController,
 ) {
 	// Health check
 	router.Get("/api/health", func(c *fiber.Ctx) error {
@@ -374,8 +379,40 @@ func SetupRoutes(
 	bannerEventPromoAdmin.Put("/reorder", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.Reorder)
 	bannerEventPromoAdmin.Patch("/:id/reorder", middleware.RequirePermission("marketing:manage"), bannerEventPromoController.ReorderByDirection)
 
+	auctionEducationBannerAdmin := v1.Group("/panel/auction-education-banners", middleware.AuthMiddleware(), middleware.AdminOnly())
+	auctionEducationBannerAdmin.Get("", middleware.RequirePermission("auction_education_banner:read"), auctionEducationBannerController.List)
+	auctionEducationBannerAdmin.Post("", middleware.RequirePermission("auction_education_banner:manage"), auctionEducationBannerController.Create)
+	auctionEducationBannerAdmin.Put("/reorder", middleware.RequirePermission("auction_education_banner:manage"), auctionEducationBannerController.Reorder)
+	auctionEducationBannerAdmin.Get("/:id", middleware.RequirePermission("auction_education_banner:read"), auctionEducationBannerController.Get)
+	auctionEducationBannerAdmin.Put("/:id", middleware.RequirePermission("auction_education_banner:manage"), auctionEducationBannerController.Update)
+	auctionEducationBannerAdmin.Patch("/:id/publish", middleware.RequirePermission("auction_education_banner:manage"), auctionEducationBannerController.Publish)
+	auctionEducationBannerAdmin.Patch("/:id/draft", middleware.RequirePermission("auction_education_banner:manage"), auctionEducationBannerController.Draft)
+	auctionEducationBannerAdmin.Delete("/:id", middleware.RequirePermission("auction_education_banner:manage"), auctionEducationBannerController.Delete)
+
 	// Banner Event Promo - Public
 	v1.Get("/banner-event-promo/active", bannerEventPromoController.GetActive)
+
+	// Seasonal Campaign - Admin. Public read endpoints are intentionally owned by bulky-storefront-be.
+	seasonalCampaignAdmin := v1.Group("/panel/seasonal-campaigns",
+		middleware.AuthMiddleware(),
+		middleware.AdminOnly(),
+	)
+	seasonalCampaignAdmin.Get("", middleware.RequirePermission("marketing:read"), seasonalCampaignController.FindAll)
+	seasonalCampaignAdmin.Get("/:id/preview", middleware.RequirePermission("marketing:read"), seasonalCampaignController.Preview)
+	seasonalCampaignAdmin.Get("/:id", middleware.RequirePermission("marketing:read"), seasonalCampaignController.FindByID)
+	seasonalCampaignAdmin.Post("", middleware.RequirePermission("marketing:manage"), seasonalCampaignController.Create)
+	seasonalCampaignAdmin.Put("/:id", middleware.RequirePermission("marketing:manage"), seasonalCampaignController.Update)
+	seasonalCampaignAdmin.Patch("/:id/publish", middleware.RequirePermission("marketing:manage"), seasonalCampaignController.Publish)
+	seasonalCampaignAdmin.Patch("/:id/cancel", middleware.RequirePermission("marketing:manage"), seasonalCampaignController.Cancel)
+	seasonalCampaignAdmin.Delete("/:id", middleware.RequirePermission("marketing:manage"), seasonalCampaignController.Delete)
+
+	pushTestAdmin := v1.Group("/panel/marketing/push-test",
+		middleware.AuthMiddleware(),
+		middleware.AdminOnly(),
+		middleware.RequirePermission("marketing:manage"),
+	)
+	pushTestAdmin.Get("/recipients", pushTestController.FindRecipients)
+	pushTestAdmin.Post("", pushTestController.Send)
 
 	// Ulasan - Admin
 	ulasanAdmin := v1.Group("/panel/ulasan",
@@ -478,6 +515,14 @@ func SetupRoutes(
 	dokumenKebijakanAdmin.Get("/:id", middleware.RequirePermission("system:read"), dokumenKebijakanController.GetByID)
 	dokumenKebijakanAdmin.Put("/:id", middleware.RequirePermission("system:manage"), dokumenKebijakanController.Update)
 
+	// Syarat dan ketentuan lelang memiliki izin khusus, terpisah dari kebijakan global.
+	dokumenKebijakanLelangAdmin := v1.Group("/panel/dokumen-kebijakan-lelang",
+		middleware.AuthMiddleware(),
+		middleware.AdminOnly(),
+	)
+	dokumenKebijakanLelangAdmin.Get("", middleware.RequirePermission("syarat_ketentuan_lelang:read"), dokumenKebijakanController.AmbilSyaratKetentuanLelang)
+	dokumenKebijakanLelangAdmin.Put("", middleware.RequirePermission("syarat_ketentuan_lelang:manage"), dokumenKebijakanController.PerbaruiSyaratKetentuanLelang)
+
 	// Dokumen Kebijakan - Public
 	dokumenKebijakanPublic := v1.Group("/public/dokumen-kebijakan")
 	dokumenKebijakanPublic.Get("", dokumenKebijakanController.GetAllPublic)
@@ -521,6 +566,14 @@ func SetupRoutes(
 	)
 	disclaimerConsentAdmin.Get("", middleware.RequirePermission("system:read"), disclaimerConsentController.GetAllConsents)
 	disclaimerConsentAdmin.Get("/:id", middleware.RequirePermission("system:read"), disclaimerConsentController.GetConsentByPesanan)
+
+	// Persetujuan Syarat Ketentuan Lelang - Admin (audit log)
+	persetujuanSyaratKetentuanLelangAdmin := v1.Group("/panel/persetujuan-syarat-ketentuan-lelang",
+		middleware.AuthMiddleware(),
+		middleware.AdminOnly(),
+	)
+	persetujuanSyaratKetentuanLelangAdmin.Get("", middleware.RequirePermission("system:read"), persetujuanSyaratKetentuanLelangController.AmbilSemua)
+	persetujuanSyaratKetentuanLelangAdmin.Get("/:id", middleware.RequirePermission("system:read"), persetujuanSyaratKetentuanLelangController.AmbilBerdasarkanID)
 
 	// Formulir Partai Besar - Config (Admin)
 	formulirConfigAdmin := v1.Group("/panel/formulir-partai-besar/config",
@@ -723,6 +776,28 @@ func SetupRoutes(
 	backupAdmin.Post("", middleware.RequirePermission("backup:create"), backupController.Create)
 	backupAdmin.Get("/:filename/download", middleware.RequirePermission("backup:download"), backupController.Download)
 	backupAdmin.Delete("/:filename", middleware.RequirePermission("backup:delete"), backupController.Delete)
+
+	// Auction (Lelang) Admin Panel Routes
+	auction := v1.Group("/panel/auctions",
+		middleware.AuthMiddleware(),
+		middleware.AdminOnly(),
+	)
+	// Route statis harus didaftarkan sebelum /:id.
+	auction.Get("/product-options", middleware.RequirePermission("auction:read"), auctionController.ListProductOptions)
+	auction.Post("/supplier-items/preview", middleware.RequirePermission("auction:manage"), auctionController.PreviewSupplierExcel)
+	auction.Post("/supplier-items/import", middleware.RequirePermission("auction:manage"), auctionController.ImportSupplierExcel)
+	auction.Post("/assets", middleware.RequirePermission("auction:manage"), auctionController.UploadAsset)
+	auction.Get("/bids/export", middleware.RequirePermission("auction:read"), auctionController.ExportBids)
+	auction.Get("", middleware.RequirePermission("auction:read"), auctionController.List)
+	auction.Post("", middleware.RequirePermission("auction:manage"), auctionController.Create)
+	auction.Get("/:id", middleware.RequirePermission("auction:read"), auctionController.GetByID)
+	auction.Put("/:id", middleware.RequirePermission("auction:manage"), auctionController.Update)
+	auction.Delete("/:id", middleware.RequirePermission("auction:manage"), auctionController.Delete)
+	auction.Post("/:id/publish", middleware.RequirePermission("auction:manage"), auctionController.Publish)
+	auction.Patch("/:id/display", middleware.RequirePermission("auction:manage"), auctionController.SetDisplay)
+	auction.Get("/:id/bids", middleware.RequirePermission("auction:read"), auctionController.ListBids)
+	auction.Post("/:id/winner", middleware.RequirePermission("auction:manage"), auctionController.SelectWinner)
+	auction.Patch("/:id/operations", middleware.RequirePermission("auction:manage"), auctionController.UpdateOperations)
 
 	// Internal upload routes — only accessible via X-Internal-Key header (storefront BE)
 	internalUpload := v1.Group("/internal/upload",

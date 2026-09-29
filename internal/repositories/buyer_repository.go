@@ -13,6 +13,7 @@ type BuyerRepository interface {
 	FindByID(ctx context.Context, id string) (*models.Buyer, error)
 	FindByIDWithAlamat(ctx context.Context, id string) (*models.Buyer, error)
 	FindAll(ctx context.Context, params *models.BuyerFilterRequest) ([]models.Buyer, int64, error)
+	FindAllForExport(ctx context.Context, params *models.BuyerFilterRequest) ([]models.Buyer, error)
 	Update(ctx context.Context, buyer *models.Buyer) error
 	Delete(ctx context.Context, id string) error
 	ExistsByUsername(ctx context.Context, username string, excludeID *string) (bool, error)
@@ -74,6 +75,21 @@ func (r *buyerRepository) FindAll(ctx context.Context, params *models.BuyerFilte
 		Find(&buyers).Error
 
 	return buyers, total, err
+}
+
+func (r *buyerRepository) FindAllForExport(ctx context.Context, params *models.BuyerFilterRequest) ([]models.Buyer, error) {
+	var buyers []models.Buyer
+	query := r.db.WithContext(ctx).Model(&models.Buyer{})
+
+	if params.Search != "" {
+		search := "%" + params.Search + "%"
+		query = query.Where("nama ILIKE ? OR username ILIKE ? OR email ILIKE ? OR telepon ILIKE ?", search, search, search, search)
+	}
+	if params.IsActive != nil {
+		query = query.Where("is_active = ?", *params.IsActive)
+	}
+
+	return buyers, query.Order(params.SortBy + " " + params.Order).Find(&buyers).Error
 }
 
 func (r *buyerRepository) Update(ctx context.Context, buyer *models.Buyer) error {
