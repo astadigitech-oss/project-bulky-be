@@ -74,6 +74,26 @@ func (s *PushTestService) Send(ctx context.Context, buyerIDs []string) (*PushTes
 	return &result, nil
 }
 
+func (s *PushTestService) NotifyNewProduct(ctx context.Context, productID, slug, name string) error {
+	var result PushTestSummary
+	return s.do(ctx, http.MethodPost, "/internal/notifications/events/new-product", map[string]string{
+		"product_id": productID,
+		"slug":       slug,
+		"name":       name,
+	}, &result)
+}
+
+func (s *PushTestService) NotifyOrderStatusChanged(ctx context.Context, buyerID, orderID, orderCode, previousStatus, orderStatus string) error {
+	var result PushTestSummary
+	return s.do(ctx, http.MethodPost, "/internal/notifications/events/order-status", map[string]string{
+		"buyer_id":        buyerID,
+		"order_id":        orderID,
+		"order_code":      orderCode,
+		"previous_status": previousStatus,
+		"order_status":    orderStatus,
+	}, &result)
+}
+
 func (s *PushTestService) do(ctx context.Context, method, path string, body any, output any) error {
 	if s.storefrontBaseURL == "" || s.internalAPIKey == "" {
 		return fmt.Errorf("integrasi push test dengan storefront belum dikonfigurasi")

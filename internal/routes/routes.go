@@ -34,6 +34,7 @@ func SetupRoutes(
 	auctionEducationBannerController *controllers.AuctionEducationBannerController,
 	seasonalCampaignController *controllers.SeasonalCampaignController,
 	pushTestController *controllers.PushTestController,
+	adminNotificationController *controllers.AdminNotificationController,
 	ulasanController *controllers.UlasanController,
 	ulasanAdminController *controllers.UlasanAdminController,
 	pesananAdminController *controllers.PesananAdminController,
@@ -413,6 +414,15 @@ func SetupRoutes(
 	)
 	pushTestAdmin.Get("/recipients", pushTestController.FindRecipients)
 	pushTestAdmin.Post("", pushTestController.Send)
+
+	adminNotifications := v1.Group("/panel/notifications",
+		middleware.AuthMiddleware(),
+		middleware.AdminOnly(),
+	)
+	adminNotifications.Post("/devices", adminNotificationController.RegisterDevice)
+	adminNotifications.Delete("/devices", adminNotificationController.UnregisterDevice)
+	adminNotifications.Get("", middleware.RequirePermission("pesanan:read"), adminNotificationController.List)
+	adminNotifications.Patch("/:id/read", middleware.RequirePermission("pesanan:read"), adminNotificationController.MarkRead)
 
 	// Ulasan - Admin
 	ulasanAdmin := v1.Group("/panel/ulasan",

@@ -38,14 +38,16 @@ type pesananAdminService struct {
 	shippingService ShippingService
 	db              *gorm.DB
 	cfg             *config.Config
+	pushService     *PushTestService
 }
 
-func NewPesananAdminService(pesananRepo repositories.PesananRepository, shippingService ShippingService, db *gorm.DB, cfg *config.Config) PesananAdminService {
+func NewPesananAdminService(pesananRepo repositories.PesananRepository, shippingService ShippingService, db *gorm.DB, cfg *config.Config, pushService *PushTestService) PesananAdminService {
 	return &pesananAdminService{
 		pesananRepo:     pesananRepo,
 		shippingService: shippingService,
 		db:              db,
 		cfg:             cfg,
+		pushService:     pushService,
 	}
 }
 
@@ -136,6 +138,9 @@ func (s *pesananAdminService) UpdateStatus(ctx context.Context, id uuid.UUID, re
 	if err := s.pesananRepo.UpdateStatus(id, orderStatus, req.Note, adminID); err != nil {
 		return nil, err
 	}
+	if previousStatus != string(orderStatus) {
+		s.notifyBuyerOrderStatusChanged(pesanan.BuyerID.String(), id.String(), pesanan.Kode, previousStatus, string(orderStatus))
+	}
 
 	// Trigger booking async when status → READY for DELIVEREE/FORWARDER/FORWARDER_LCL
 	if orderStatus == models.OrderStatusReady &&
@@ -188,6 +193,19 @@ func (s *pesananAdminService) CancelOrder(ctx context.Context, id uuid.UUID, req
 		CancelledAt:     time.Now().UTC(),
 		CancelledBy:     adminID,
 	}, nil
+}
+
+func (s *pesananAdminService) notifyBuyerOrderStatusChanged(buyerID, orderID, orderCode, previousStatus, orderStatus string) {
+	if s.pushService == nil || orderStatus == string(models.OrderStatusCancelled) {
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		if err := s.pushService.NotifyOrderStatusChanged(ctx, buyerID, orderID, orderCode, previousStatus, orderStatus); err != nil {
+			log.Printf("[push] gagal mengirim notifikasi perubahan status pesanan %s: %v", orderCode, err)
+		}
+	}()
 }
 
 func (s *pesananAdminService) RetryBooking(ctx context.Context, id uuid.UUID) (*dto.RetryBookingResponse, error) {
