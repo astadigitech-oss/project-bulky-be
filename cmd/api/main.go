@@ -57,6 +57,7 @@ func main() {
 	produkGambarRepo := repositories.NewProdukGambarRepository(db)
 	produkDokumenRepo := repositories.NewProdukDokumenRepository(db)
 	adminRepo := repositories.NewAdminRepository(db)
+	adminNotificationRepo := repositories.NewAdminNotificationRepository(db)
 	adminSessionRepo := repositories.NewAdminSessionRepository(db)
 	buyerRepo := repositories.NewBuyerRepository(db)
 	alamatBuyerRepo := repositories.NewAlamatBuyerRepository(db)
@@ -110,7 +111,9 @@ func main() {
 	bannerTipeProdukService := services.NewBannerTipeProdukService(bannerTipeProdukRepo, tipeProdukRepo, reorderService, cfg)
 	produkGambarService := services.NewProdukGambarService(produkGambarRepo, cfg)
 	produkDokumenService := services.NewProdukDokumenService(produkDokumenRepo, cfg)
-	produkService := services.NewProdukService(produkRepo, produkGambarRepo, produkDokumenRepo, warehouseRepo, tipeProdukRepo, cfg, db)
+	pushTestService := services.NewPushTestService(cfg)
+	produkService := services.NewProdukService(produkRepo, produkGambarRepo, produkDokumenRepo, warehouseRepo, tipeProdukRepo, cfg, db, pushTestService)
+	adminNotificationService := services.NewAdminNotificationService(adminNotificationRepo)
 	authService := services.NewAuthService(adminRepo, adminSessionRepo)
 	adminService := services.NewAdminService(adminRepo, adminSessionRepo, roleRepo)
 	masterService := services.NewMasterService(kategoriRepo, merekRepo, kondisiRepo, kondisiPaketRepo, sumberRepo)
@@ -127,7 +130,7 @@ func main() {
 	forwarderMappingService := services.NewForwarderMappingService(forwarderMappingRepo)
 	wmsService := services.NewWMSService(cfg.WMSBaseURL, cfg.WMSClientID, cfg.WMSClientSecret)
 	shippingService := services.NewShippingService(db, delivereeVehicleTypeService)
-	pesananAdminService := services.NewPesananAdminService(pesananRepo, shippingService, db, cfg)
+	pesananAdminService := services.NewPesananAdminService(pesananRepo, shippingService, db, cfg, pushTestService)
 	forceUpdateService := services.NewForceUpdateService(forceUpdateRepo)
 	modeMaintenanceService := services.NewModeMaintenanceService(modeMaintenanceRepo)
 	ppnService := services.NewPPNService(ppnRepo)
@@ -180,8 +183,8 @@ func main() {
 	bannerEventPromoController := controllers.NewBannerEventPromoController(bannerEventPromoService, reorderService, cfg, activityLogService)
 	auctionEducationBannerController := controllers.NewAuctionEducationBannerController(auctionEducationBannerService, cfg, activityLogService)
 	seasonalCampaignController := controllers.NewSeasonalCampaignController(seasonalCampaignService, cfg, activityLogService)
-	pushTestService := services.NewPushTestService(cfg)
 	pushTestController := controllers.NewPushTestController(pushTestService)
+	adminNotificationController := controllers.NewAdminNotificationController(adminNotificationService)
 	ulasanController := controllers.NewUlasanController(ulasanService)
 	ulasanAdminController := controllers.NewUlasanAdminController(ulasanAdminService, activityLogService)
 	pesananAdminController := controllers.NewPesananAdminController(pesananAdminService, activityLogService)
@@ -243,7 +246,7 @@ func main() {
 		warehouseController, tipeProdukController, diskonKategoriController, bannerTipeProdukController,
 		produkController, authController, adminController, masterController,
 		buyerController, alamatBuyerController,
-		heroSectionController, bannerEventPromoController, auctionEducationBannerController, seasonalCampaignController, pushTestController,
+		heroSectionController, bannerEventPromoController, auctionEducationBannerController, seasonalCampaignController, pushTestController, adminNotificationController,
 		ulasanController,
 		ulasanAdminController, pesananAdminController,
 		forceUpdateController, modeMaintenanceController,
