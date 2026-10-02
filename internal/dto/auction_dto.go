@@ -169,9 +169,10 @@ type AuctionWinnerRequest struct {
 }
 
 // AuctionOperationRequest payload PATCH /operations. Menerima tepat satu target
-// status: payment_status ATAU fulfillment_status.
+// status batch, payment, atau fulfillment.
 type AuctionOperationRequest struct {
 	Version           int     `json:"version" validate:"required,min=1"`
+	BatchStatus       *string `json:"batch_status" validate:"omitempty,oneof=OPEN SOLD"`
 	PaymentStatus     *string `json:"payment_status" validate:"omitempty,oneof=UNPAID PAID"`
 	FulfillmentStatus *string `json:"fulfillment_status" validate:"omitempty,oneof=PENDING PROCESSING COMPLETED"`
 	Note              *string `json:"note" validate:"omitempty,max=1000"`
