@@ -712,6 +712,7 @@ func (s *auctionService) ExportBids(ctx context.Context, params *dto.AuctionBids
 	}
 
 	selected := make(map[uuid.UUID]bool)
+	winnerBuyerNames := make(map[uuid.UUID]string)
 	batchIDs := make([]uuid.UUID, 0, len(bids))
 	seen := make(map[uuid.UUID]struct{})
 	for _, bid := range bids {
@@ -722,18 +723,32 @@ func (s *auctionService) ExportBids(ctx context.Context, params *dto.AuctionBids
 		batchIDs = append(batchIDs, bid.BatchID)
 	}
 	if len(batchIDs) > 0 {
-		var winners []models.AuctionWinner
-		if err := s.db.WithContext(ctx).Where("batch_id IN ?", batchIDs).Find(&winners).Error; err != nil {
+		type winnerExportRow struct {
+			BatchID   uuid.UUID `gorm:"column:batch_id"`
+			BidID     uuid.UUID `gorm:"column:bid_id"`
+			BuyerName string    `gorm:"column:buyer_name"`
+		}
+		var winners []winnerExportRow
+		if err := s.db.WithContext(ctx).
+			Table("auction_winners AS aw").
+			Select("aw.batch_id, aw.bid_id, buyer.nama AS buyer_name").
+			Joins("LEFT JOIN auction_bids AS bid ON bid.id = aw.bid_id").
+			Joins("LEFT JOIN buyer ON buyer.id = bid.buyer_id").
+			Where("aw.batch_id IN ?", batchIDs).
+			Scan(&winners).Error; err != nil {
 			return nil, err
 		}
 		for _, winner := range winners {
 			selected[winner.BidID] = true
+			winnerBuyerNames[winner.BatchID] = winner.BuyerName
 		}
 	}
 
 	items := make([]dto.AuctionBidDetail, 0, len(bids))
 	for _, bid := range bids {
-		items = append(items, mapBidDetail(bid, selected[bid.ID]))
+		item := mapBidDetail(bid, selected[bid.ID])
+		item.WinnerBuyerName = winnerBuyerNames[bid.BatchID]
+		items = append(items, item)
 	}
 	return items, nil
 }
@@ -1471,6 +1486,7 @@ func (s *auctionService) mapBatchSummary(b models.AuctionBatch, analytics *repos
 		SlugEN:       b.SlugEN,
 		NamaID:       b.NamaID,
 		Status:       b.Status,
+		HasWinner:    b.Winner != nil,
 		IsDisplayed:  b.IsDisplayed,
 		GrandTotal:   b.GrandTotal.StringFixed(0),
 		MinBidAmount: minBidAmount(b.GrandTotal).StringFixed(0),

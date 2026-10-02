@@ -222,7 +222,7 @@ func (ctrl *AuctionController) ExportBids(c *fiber.Ctx) error {
 	defer f.Close()
 	sheet := "Bid"
 	f.SetSheetName("Sheet1", sheet)
-	headers := []string{"No", "Batch ID", "Buyer", "Telepon", "Bid ke-", "Mode", "Persentase Input", "Nominal Bid", "Ongkir", "PPN", "Total Estimasi", "Catatan", "Waktu", "Pemenang"}
+	headers := []string{"No", "Batch ID", "Buyer", "Telepon", "Bid ke-", "Mode", "Persentase Input", "Nominal Bid", "Ongkir", "PPN", "Total Estimasi", "Catatan", "Waktu", "Bid Terjual", "Nama Pemenang Batch"}
 	for column, header := range headers {
 		cell, _ := excelize.CoordinatesToCellName(column+1, 1)
 		_ = f.SetCellValue(sheet, cell, header)
@@ -247,6 +247,11 @@ func (ctrl *AuctionController) ExportBids(c *fiber.Ctx) error {
 			winner = "Ya"
 		}
 		_ = f.SetCellValue(sheet, fmt.Sprintf("N%d", row), winner)
+		winnerBuyerName := item.WinnerBuyerName
+		if winnerBuyerName == "" {
+			winnerBuyerName = "-"
+		}
+		_ = f.SetCellValue(sheet, fmt.Sprintf("O%d", row), winnerBuyerName)
 	}
 
 	c.Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
