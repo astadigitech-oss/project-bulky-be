@@ -91,6 +91,7 @@ func (r *auctionRepository) ListBatches(ctx context.Context, params *dto.Auction
 	}
 
 	if err := query.
+		Preload("Winner").
 		Order(order).
 		Offset((params.Page - 1) * params.PerPage).
 		Limit(params.PerPage).

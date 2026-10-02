@@ -223,6 +223,7 @@ type AuctionBatchSummary struct {
 	NamaID       string     `json:"nama_id"`
 	ThumbnailURL *string    `json:"thumbnail_url"`
 	Status       string     `json:"status"`
+	HasWinner    bool       `json:"has_winner"`
 	IsDisplayed  bool       `json:"is_displayed"`
 	GrandTotal   string     `json:"grand_total"`
 	MinBidAmount string     `json:"min_bid_amount"`
@@ -323,6 +324,7 @@ type AuctionBidDetail struct {
 	Note                     string             `json:"note"`
 	CreatedAt                time.Time          `json:"created_at"`
 	IsSelected               bool               `json:"is_selected"`
+	WinnerBuyerName          string             `json:"winner_buyer_name,omitempty"`
 }
 
 // AuctionBuyerSimple info buyer pada bid.
