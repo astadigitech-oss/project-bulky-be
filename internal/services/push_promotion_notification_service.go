@@ -7,6 +7,7 @@ import (
 	"log"
 	"strings"
 	"time"
+	"unicode/utf16"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -39,7 +40,7 @@ func (s *PushPromotionNotificationService) Create(ctx context.Context, req *mode
 		BodyID:    strings.TrimSpace(req.BodyID),
 		TitleEN:   strings.TrimSpace(req.TitleEN),
 		BodyEN:    strings.TrimSpace(req.BodyEN),
-		DeepLink:  strings.TrimSpace(req.DeepLink),
+		DeepLink:  "/products",
 		Status:    models.PushPromotionStatusDraft,
 		CreatedBy: adminID,
 		UpdatedBy: adminID,
@@ -112,9 +113,8 @@ func (s *PushPromotionNotificationService) Update(ctx context.Context, rawID str
 	if req.BodyEN != nil {
 		item.BodyEN = strings.TrimSpace(*req.BodyEN)
 	}
-	if req.DeepLink != nil {
-		item.DeepLink = strings.TrimSpace(*req.DeepLink)
-	}
+	// Promo notifications always open the Store product listing.
+	item.DeepLink = "/products"
 	if req.ScheduledAt != nil {
 		if strings.TrimSpace(*req.ScheduledAt) == "" {
 			item.ScheduledAt = nil
@@ -234,7 +234,7 @@ func (s *PushPromotionNotificationService) processDue(ctx context.Context) {
 }
 
 func (s *PushPromotionNotificationService) deliver(ctx context.Context, item *models.PushPromotionNotification) (*models.PushPromotionNotification, error) {
-	result, err := s.pushClient.SendPromotion(ctx, item.ID.String(), item.TitleID, item.BodyID, item.TitleEN, item.BodyEN, item.DeepLink)
+	result, err := s.pushClient.SendPromotion(ctx, item.ID.String(), item.TitleID, item.BodyID, item.TitleEN, item.BodyEN, "/products")
 	if err != nil {
 		markCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -257,18 +257,24 @@ func validatePushPromotion(item *models.PushPromotionNotification) error {
 		return errors.New("judul dan isi bahasa Indonesia wajib diisi")
 	case item.TitleEN == "" || item.BodyEN == "":
 		return errors.New("judul dan isi bahasa Inggris wajib diisi")
-	case len(item.TitleID) > 160 || len(item.TitleEN) > 160:
-		return errors.New("judul notifikasi maksimal 160 karakter")
-	case len(item.BodyID) > 2000 || len(item.BodyEN) > 2000:
-		return errors.New("isi notifikasi maksimal 2000 karakter")
+	case pushTextLength(item.TitleID) > 50 || pushTextLength(item.TitleEN) > 50:
+		return errors.New("judul notifikasi maksimal 50 karakter")
+	case pushTextLength(item.BodyID) > 120 || pushTextLength(item.BodyEN) > 120:
+		return errors.New("isi notifikasi maksimal 120 karakter")
 	case len(item.Nama) > 120:
 		return errors.New("nama promo maksimal 120 karakter")
-	case item.DeepLink == "" || !strings.HasPrefix(item.DeepLink, "/") || strings.HasPrefix(item.DeepLink, "//"):
-		return errors.New("tautan promo harus berupa path Store yang diawali satu garis miring")
-	case strings.ContainsAny(item.DeepLink, "\r\n"):
-		return errors.New("tautan promo tidak valid")
+	case item.DeepLink != "/products":
+		return errors.New("tujuan notifikasi promo harus halaman produk Store")
 	}
 	return nil
+}
+
+func pushTextLength(value string) int {
+	length := 0
+	for _, char := range value {
+		length += utf16.RuneLen(char)
+	}
+	return length
 }
 
 func parsePushSchedule(raw string, now time.Time) (time.Time, error) {

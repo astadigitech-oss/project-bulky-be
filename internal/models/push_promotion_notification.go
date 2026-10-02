@@ -40,21 +40,19 @@ func (PushPromotionNotification) TableName() string {
 
 type CreatePushPromotionRequest struct {
 	Nama        string  `json:"nama" binding:"required,min=1,max=120"`
-	TitleID     string  `json:"title_id" binding:"required,min=1,max=160"`
-	BodyID      string  `json:"body_id" binding:"required,min=1,max=2000"`
-	TitleEN     string  `json:"title_en" binding:"required,min=1,max=160"`
-	BodyEN      string  `json:"body_en" binding:"required,min=1,max=2000"`
-	DeepLink    string  `json:"deep_link" binding:"required,max=500"`
+	TitleID     string  `json:"title_id" binding:"required,min=1,max=50"`
+	BodyID      string  `json:"body_id" binding:"required,min=1,max=120"`
+	TitleEN     string  `json:"title_en" binding:"required,min=1,max=50"`
+	BodyEN      string  `json:"body_en" binding:"required,min=1,max=120"`
 	ScheduledAt *string `json:"scheduled_at"`
 }
 
 type UpdatePushPromotionRequest struct {
 	Nama        *string `json:"nama" binding:"omitempty,min=1,max=120"`
-	TitleID     *string `json:"title_id" binding:"omitempty,min=1,max=160"`
-	BodyID      *string `json:"body_id" binding:"omitempty,min=1,max=2000"`
-	TitleEN     *string `json:"title_en" binding:"omitempty,min=1,max=160"`
-	BodyEN      *string `json:"body_en" binding:"omitempty,min=1,max=2000"`
-	DeepLink    *string `json:"deep_link" binding:"omitempty,max=500"`
+	TitleID     *string `json:"title_id" binding:"omitempty,min=1,max=50"`
+	BodyID      *string `json:"body_id" binding:"omitempty,min=1,max=120"`
+	TitleEN     *string `json:"title_en" binding:"omitempty,min=1,max=50"`
+	BodyEN      *string `json:"body_en" binding:"omitempty,min=1,max=120"`
 	ScheduledAt *string `json:"scheduled_at"`
 }
 
