@@ -112,6 +112,8 @@ func main() {
 	produkGambarService := services.NewProdukGambarService(produkGambarRepo, cfg)
 	produkDokumenService := services.NewProdukDokumenService(produkDokumenRepo, cfg)
 	pushTestService := services.NewPushTestService(cfg)
+	pushPromotionRepo := repositories.NewPushPromotionNotificationRepository(db)
+	pushPromotionService := services.NewPushPromotionNotificationService(pushPromotionRepo, pushTestService)
 	produkService := services.NewProdukService(produkRepo, produkGambarRepo, produkDokumenRepo, warehouseRepo, tipeProdukRepo, cfg, db, pushTestService)
 	adminNotificationService := services.NewAdminNotificationService(adminNotificationRepo)
 	authService := services.NewAuthService(adminRepo, adminSessionRepo)
@@ -184,6 +186,7 @@ func main() {
 	auctionEducationBannerController := controllers.NewAuctionEducationBannerController(auctionEducationBannerService, cfg, activityLogService)
 	seasonalCampaignController := controllers.NewSeasonalCampaignController(seasonalCampaignService, cfg, activityLogService)
 	pushTestController := controllers.NewPushTestController(pushTestService)
+	pushPromotionController := controllers.NewPushPromotionNotificationController(pushPromotionService)
 	adminNotificationController := controllers.NewAdminNotificationController(adminNotificationService)
 	ulasanController := controllers.NewUlasanController(ulasanService)
 	ulasanAdminController := controllers.NewUlasanAdminController(ulasanAdminService, activityLogService)
@@ -217,7 +220,7 @@ func main() {
 	wmsController := controllers.NewWMSController(wmsService, produkRepo, activityLogService)
 	backupService := services.NewBackupService(cfg, activityLogRepo)
 	backupController := controllers.NewBackupController(backupService)
-	auctionService := services.NewAuctionService(auctionRepo, db, cfg)
+	auctionService := services.NewAuctionService(auctionRepo, db, cfg, pushTestService)
 	auctionController := controllers.NewAuctionController(auctionService)
 
 	// Auth V2 controllers
@@ -246,7 +249,7 @@ func main() {
 		warehouseController, tipeProdukController, diskonKategoriController, bannerTipeProdukController,
 		produkController, authController, adminController, masterController,
 		buyerController, alamatBuyerController,
-		heroSectionController, bannerEventPromoController, auctionEducationBannerController, seasonalCampaignController, pushTestController, adminNotificationController,
+		heroSectionController, bannerEventPromoController, auctionEducationBannerController, seasonalCampaignController, pushTestController, pushPromotionController, adminNotificationController,
 		ulasanController,
 		ulasanAdminController, pesananAdminController,
 		forceUpdateController, modeMaintenanceController,
@@ -301,6 +304,9 @@ func main() {
 	backupSchedulerCtx, stopBackupScheduler := context.WithCancel(context.Background())
 	go backupService.StartDailyScheduler(backupSchedulerCtx)
 
+	pushPromotionSchedulerCtx, stopPushPromotionScheduler := context.WithCancel(context.Background())
+	go pushPromotionService.StartScheduler(pushPromotionSchedulerCtx, time.Minute)
+
 	// Graceful shutdown: tunggu sinyal SIGTERM/SIGINT, lalu stop server
 	// setelah request yang sedang berjalan (termasuk upload video) selesai
 	quit := make(chan os.Signal, 1)
@@ -310,6 +316,7 @@ func main() {
 	log.Println("Shutting down server gracefully...")
 	stopAutoArchive()
 	stopBackupScheduler()
+	stopPushPromotionScheduler()
 	if err := router.ShutdownWithContext(context.Background()); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}

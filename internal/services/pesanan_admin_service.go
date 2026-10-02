@@ -139,7 +139,7 @@ func (s *pesananAdminService) UpdateStatus(ctx context.Context, id uuid.UUID, re
 		return nil, err
 	}
 	if previousStatus != string(orderStatus) {
-		s.notifyBuyerOrderStatusChanged(pesanan.BuyerID.String(), id.String(), pesanan.Kode, previousStatus, string(orderStatus))
+		s.notifyBuyerOrderStatusChanged(pesanan.BuyerID.String(), id.String(), pesanan.Kode, string(pesanan.DeliveryType), previousStatus, string(orderStatus))
 	}
 
 	// Trigger booking async when status → READY for DELIVEREE/FORWARDER/FORWARDER_LCL
@@ -195,14 +195,14 @@ func (s *pesananAdminService) CancelOrder(ctx context.Context, id uuid.UUID, req
 	}, nil
 }
 
-func (s *pesananAdminService) notifyBuyerOrderStatusChanged(buyerID, orderID, orderCode, previousStatus, orderStatus string) {
+func (s *pesananAdminService) notifyBuyerOrderStatusChanged(buyerID, orderID, orderCode, deliveryType, previousStatus, orderStatus string) {
 	if s.pushService == nil || orderStatus == string(models.OrderStatusCancelled) {
 		return
 	}
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
-		if err := s.pushService.NotifyOrderStatusChanged(ctx, buyerID, orderID, orderCode, previousStatus, orderStatus); err != nil {
+		if err := s.pushService.NotifyOrderStatusChanged(ctx, buyerID, orderID, orderCode, deliveryType, previousStatus, orderStatus); err != nil {
 			log.Printf("[push] gagal mengirim notifikasi perubahan status pesanan %s: %v", orderCode, err)
 		}
 	}()

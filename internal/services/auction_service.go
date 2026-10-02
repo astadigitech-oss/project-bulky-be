@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -103,13 +104,18 @@ func (s *auctionService) DeleteDraft(ctx context.Context, id uuid.UUID) error {
 }
 
 type auctionService struct {
-	repo repositories.AuctionRepository
-	db   *gorm.DB
-	cfg  *config.Config
+	repo       repositories.AuctionRepository
+	db         *gorm.DB
+	cfg        *config.Config
+	pushClient *PushTestService
 }
 
-func NewAuctionService(repo repositories.AuctionRepository, db *gorm.DB, cfg *config.Config) AuctionService {
-	return &auctionService{repo: repo, db: db, cfg: cfg}
+func NewAuctionService(repo repositories.AuctionRepository, db *gorm.DB, cfg *config.Config, pushClients ...*PushTestService) AuctionService {
+	service := &auctionService{repo: repo, db: db, cfg: cfg}
+	if len(pushClients) > 0 {
+		service.pushClient = pushClients[0]
+	}
+	return service
 }
 
 // ============================================================
@@ -365,7 +371,27 @@ func (s *auctionService) Publish(ctx context.Context, id uuid.UUID, version int,
 	if err != nil {
 		return nil, err
 	}
+	if detail.Status == models.AuctionBatchStatusOPEN && detail.IsDisplayed {
+		s.notifyNewAuctionBatch(detail)
+	}
 	return detail, nil
+}
+
+func (s *auctionService) notifyNewAuctionBatch(batch *dto.AuctionBatchDetail) {
+	if s.pushClient == nil || batch == nil {
+		return
+	}
+	nameEN := batch.NamaID
+	if batch.NamaEN != nil && strings.TrimSpace(*batch.NamaEN) != "" {
+		nameEN = *batch.NamaEN
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		if err := s.pushClient.NotifyNewAuctionBatch(ctx, batch.ID, batch.SlugID, batch.SlugEN, batch.NamaID, nameEN); err != nil {
+			log.Printf("[push] gagal mengirim notifikasi batch lelang baru %s: %v", batch.ID, err)
+		}
+	}()
 }
 
 func (s *auctionService) publishInTransaction(ctx context.Context, id uuid.UUID, version int, adminID uuid.UUID, idempotencyKey, operation string) (*dto.AuctionBatchDetail, error) {

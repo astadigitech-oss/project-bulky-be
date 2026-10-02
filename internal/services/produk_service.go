@@ -563,15 +563,23 @@ func (s *produkService) notifyNewProductPush(produk *models.Produk) {
 		return
 	}
 	productID := produk.ID.String()
-	slug := produk.Slug
+	slugID := produk.Slug
 	if produk.SlugID != nil && strings.TrimSpace(*produk.SlugID) != "" {
-		slug = *produk.SlugID
+		slugID = *produk.SlugID
 	}
-	name := produk.NamaID
+	slugEN := slugID
+	if produk.SlugEN != nil && strings.TrimSpace(*produk.SlugEN) != "" {
+		slugEN = *produk.SlugEN
+	}
+	nameID := produk.NamaID
+	nameEN := produk.NamaEN
+	if strings.TrimSpace(nameEN) == "" {
+		nameEN = nameID
+	}
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
-		if err := s.pushService.NotifyNewProduct(ctx, productID, slug, name); err != nil {
+		if err := s.pushService.NotifyNewProduct(ctx, productID, slugID, slugEN, nameID, nameEN); err != nil {
 			log.Printf("[push] gagal mengirim notifikasi produk baru %s: %v", productID, err)
 		}
 	}()

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"project-bulky-be/internal/config"
+	"project-bulky-be/internal/models"
 )
 
 type PushTestRecipient struct {
@@ -18,6 +19,11 @@ type PushTestRecipient struct {
 	BuyerName   string `json:"buyer_name"`
 	Email       string `json:"email"`
 	DeviceCount int64  `json:"device_count"`
+}
+
+type PushTestRecipientPage struct {
+	Data []PushTestRecipient   `json:"data"`
+	Meta models.PaginationMeta `json:"meta"`
 }
 
 type PushTestSummary struct {
@@ -50,19 +56,22 @@ func NewPushTestService(cfg *config.Config) *PushTestService {
 	}
 }
 
-func (s *PushTestService) FindRecipients(ctx context.Context, search string) ([]PushTestRecipient, error) {
-	var result []PushTestRecipient
-	path := "/internal/notifications/push-test/recipients"
+func (s *PushTestService) FindRecipients(ctx context.Context, search string, page, perPage int) (*PushTestRecipientPage, error) {
+	var result PushTestRecipientPage
+	query := url.Values{}
+	query.Set("page", fmt.Sprintf("%d", page))
+	query.Set("per_page", fmt.Sprintf("%d", perPage))
 	if search != "" {
-		path += "?search=" + url.QueryEscape(search)
+		query.Set("search", search)
 	}
+	path := "/internal/notifications/push-test/recipients?" + query.Encode()
 	if err := s.do(ctx, http.MethodGet, path, nil, &result); err != nil {
 		return nil, err
 	}
-	if result == nil {
-		result = []PushTestRecipient{}
+	if result.Data == nil {
+		result.Data = []PushTestRecipient{}
 	}
-	return result, nil
+	return &result, nil
 }
 
 func (s *PushTestService) Send(ctx context.Context, buyerIDs []string) (*PushTestSummary, error) {
@@ -74,24 +83,54 @@ func (s *PushTestService) Send(ctx context.Context, buyerIDs []string) (*PushTes
 	return &result, nil
 }
 
-func (s *PushTestService) NotifyNewProduct(ctx context.Context, productID, slug, name string) error {
+func (s *PushTestService) NotifyNewProduct(ctx context.Context, productID, slugID, slugEN, nameID, nameEN string) error {
 	var result PushTestSummary
 	return s.do(ctx, http.MethodPost, "/internal/notifications/events/new-product", map[string]string{
 		"product_id": productID,
-		"slug":       slug,
-		"name":       name,
+		"slug_id":    slugID,
+		"slug_en":    slugEN,
+		"name_id":    nameID,
+		"name_en":    nameEN,
 	}, &result)
 }
 
-func (s *PushTestService) NotifyOrderStatusChanged(ctx context.Context, buyerID, orderID, orderCode, previousStatus, orderStatus string) error {
+func (s *PushTestService) NotifyNewAuctionBatch(ctx context.Context, batchID, slugID, slugEN, nameID, nameEN string) error {
+	var result PushTestSummary
+	return s.do(ctx, http.MethodPost, "/internal/notifications/events/new-auction-batch", map[string]string{
+		"batch_id": batchID,
+		"slug_id":  slugID,
+		"slug_en":  slugEN,
+		"name_id":  nameID,
+		"name_en":  nameEN,
+	}, &result)
+}
+
+func (s *PushTestService) NotifyOrderStatusChanged(ctx context.Context, buyerID, orderID, orderCode, deliveryType, previousStatus, orderStatus string) error {
 	var result PushTestSummary
 	return s.do(ctx, http.MethodPost, "/internal/notifications/events/order-status", map[string]string{
 		"buyer_id":        buyerID,
 		"order_id":        orderID,
 		"order_code":      orderCode,
+		"delivery_type":   deliveryType,
 		"previous_status": previousStatus,
 		"order_status":    orderStatus,
 	}, &result)
+}
+
+func (s *PushTestService) SendPromotion(ctx context.Context, campaignID, titleID, bodyID, titleEN, bodyEN, deepLink string) (*PushTestSummary, error) {
+	var result PushTestSummary
+	body := map[string]string{
+		"campaign_id": campaignID,
+		"title_id":    titleID,
+		"body_id":     bodyID,
+		"title_en":    titleEN,
+		"body_en":     bodyEN,
+		"deep_link":   deepLink,
+	}
+	if err := s.do(ctx, http.MethodPost, "/internal/notifications/promotions/send", body, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
 }
 
 func (s *PushTestService) do(ctx context.Context, method, path string, body any, output any) error {
