@@ -1005,10 +1005,20 @@ func (s *auctionService) UpdateOperations(ctx context.Context, id uuid.UUID, req
 	if batch.Version != req.Version {
 		return nil, auctionErr(409, "Version batch tidak sesuai. Silakan muat ulang data terbaru.")
 	}
-	if req.PaymentStatus == nil && req.FulfillmentStatus == nil {
-		return nil, auctionErr(400, "Tepat satu target status (payment atau fulfillment) harus dikirim")
+	targetCount := 0
+	if req.BatchStatus != nil {
+		targetCount++
 	}
-	if req.PaymentStatus != nil && req.FulfillmentStatus != nil {
+	if req.PaymentStatus != nil {
+		targetCount++
+	}
+	if req.FulfillmentStatus != nil {
+		targetCount++
+	}
+	if targetCount == 0 {
+		return nil, auctionErr(400, "Tepat satu target status (batch, payment, atau fulfillment) harus dikirim")
+	}
+	if targetCount > 1 {
 		return nil, auctionErr(400, "Hanya satu target status per request yang diperbolehkan")
 	}
 
@@ -1022,7 +1032,12 @@ func (s *auctionService) UpdateOperations(ctx context.Context, id uuid.UUID, req
 
 	// Tentukan transisi.
 	var changed bool
-	if req.PaymentStatus != nil {
+	if req.BatchStatus != nil {
+		if *req.BatchStatus != models.AuctionBatchStatusOPEN && *req.BatchStatus != models.AuctionBatchStatusSOLD {
+			return nil, auctionErr(400, "Status batch harus OPEN atau SOLD")
+		}
+		changed = batch.Status != *req.BatchStatus
+	} else if req.PaymentStatus != nil {
 		target := *req.PaymentStatus
 		if winner.PaymentStatus != target {
 			if winner.PaymentStatus == "UNPAID" && target == "PAID" {
@@ -1059,40 +1074,70 @@ func (s *auctionService) UpdateOperations(ctx context.Context, id uuid.UUID, req
 	}
 
 	now := time.Now().UTC()
-	updates := map[string]interface{}{}
-	if req.PaymentStatus != nil {
-		updates["payment_status"] = "PAID"
-		updates["paid_at"] = now
-		updates["payment_note"] = req.Note
+	winnerUpdates := models.JSONMap{}
+	batchUpdates := map[string]interface{}{}
+	auditAfter := models.JSONMap{}
+	auditBefore := models.JSONMap(nil)
+	auditAction := "operations"
+	if req.BatchStatus != nil {
+		batchUpdates["status"] = *req.BatchStatus
+		auditBefore = models.JSONMap{"status": batch.Status}
+		auditAfter["status"] = *req.BatchStatus
+		auditAction = "batch_status"
+	} else if req.PaymentStatus != nil {
+		winnerUpdates["payment_status"] = "PAID"
+		winnerUpdates["paid_at"] = now
+		winnerUpdates["payment_note"] = req.Note
+		auditAfter = winnerUpdates
 	} else {
 		if *req.FulfillmentStatus == "COMPLETED" {
-			updates["fulfillment_status"] = "COMPLETED"
-			updates["completed_at"] = now
+			winnerUpdates["fulfillment_status"] = "COMPLETED"
+			winnerUpdates["completed_at"] = now
 		} else {
-			updates["fulfillment_status"] = "PROCESSING"
+			winnerUpdates["fulfillment_status"] = "PROCESSING"
 		}
-		updates["fulfillment_note"] = req.Note
+		winnerUpdates["fulfillment_note"] = req.Note
+		auditAfter = winnerUpdates
 	}
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&models.AuctionWinner{}).Where("id = ?", winner.ID).Updates(updates).Error; err != nil {
+		var locked models.AuctionBatch
+		if err := tx.Clauses(lockClause()).First(&locked, "id = ?", id).Error; err != nil {
 			return err
 		}
-		if err := tx.Model(&models.AuctionBatch{}).Where("id = ?", id).
-			Updates(map[string]interface{}{"version": batch.Version + 1, "updated_by": adminID}).Error; err != nil {
+		if locked.Version != req.Version {
+			return auctionErr(409, "Version batch tidak sesuai. Silakan muat ulang data terbaru.")
+		}
+		if locked.Status != models.AuctionBatchStatusOPEN && locked.Status != models.AuctionBatchStatusSOLD {
+			return auctionErr(409, "Operasi manual hanya dapat dilakukan setelah winner dipilih")
+		}
+		if len(winnerUpdates) > 0 {
+			if err := tx.Model(&models.AuctionWinner{}).Where("id = ?", winner.ID).Updates(winnerUpdates).Error; err != nil {
+				return err
+			}
+		}
+		batchUpdates["version"] = locked.Version + 1
+		batchUpdates["updated_by"] = adminID
+		if err := tx.Model(&locked).Updates(batchUpdates).Error; err != nil {
 			return err
 		}
 		if err := tx.Create(&models.AuctionAuditLog{
 			BatchID:      id,
 			ActorAdminID: adminID,
-			Action:       "operations",
-			AfterData:    updates,
+			Action:       auditAction,
+			BeforeData:   auditBefore,
+			AfterData:    auditAfter,
 			Note:         req.Note,
 		}).Error; err != nil {
 			return err
 		}
 		if idempotencyKey != "" {
-			if err := s.saveIdempotency(tx, "ADMIN", adminID, operation, id, idempotencyKey, req, 200, batch); err != nil {
+			locked.Version++
+			locked.UpdatedBy = adminID
+			if req.BatchStatus != nil {
+				locked.Status = *req.BatchStatus
+			}
+			if err := s.saveIdempotency(tx, "ADMIN", adminID, operation, id, idempotencyKey, req, 200, &locked); err != nil {
 				return err
 			}
 		}
