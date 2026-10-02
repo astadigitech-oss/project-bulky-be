@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/services"
 	"project-bulky-be/pkg/utils"
 
@@ -20,11 +21,16 @@ func NewPushTestController(service *services.PushTestService) *PushTestControlle
 }
 
 func (c *PushTestController) FindRecipients(ctx *fiber.Ctx) error {
-	search := strings.TrimSpace(ctx.Query("search"))
-	if len(search) > 100 {
+	var params models.PaginationRequest
+	if err := ctx.QueryParser(&params); err != nil {
+		return utils.SimpleErrorResponse(ctx, http.StatusBadRequest, "Parameter penerima tidak valid", err.Error())
+	}
+	params.SetDefaults()
+	params.Search = strings.TrimSpace(params.Search)
+	if len(params.Search) > 100 {
 		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Pencarian maksimal 100 karakter", nil)
 	}
-	recipients, err := c.service.FindRecipients(ctx.UserContext(), search)
+	recipients, err := c.service.FindRecipients(ctx.UserContext(), params.Search, params.Page, params.PerPage)
 	if err != nil {
 		return utils.SimpleErrorResponse(ctx, http.StatusBadGateway, "Gagal mengambil daftar penerima tes", err.Error())
 	}
