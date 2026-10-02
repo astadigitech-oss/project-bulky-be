@@ -822,6 +822,14 @@ func (s *auctionService) SetDisplay(ctx context.Context, id uuid.UUID, req *dto.
 // ============================================================
 
 func (s *auctionService) SelectWinner(ctx context.Context, id uuid.UUID, req *dto.AuctionWinnerRequest, adminID uuid.UUID, idempotencyKey string) (*dto.AuctionBatchDetail, error) {
+	statusAfterWinner := req.Status
+	if statusAfterWinner == "" {
+		statusAfterWinner = models.AuctionBatchStatusOPEN
+	}
+	if statusAfterWinner != models.AuctionBatchStatusOPEN && statusAfterWinner != models.AuctionBatchStatusSOLD {
+		return nil, auctionErr(400, "Status setelah memilih winner harus OPEN atau SOLD")
+	}
+
 	operation := fmt.Sprintf("winner:%s", id.String())
 	if idempotencyKey != "" {
 		replay, bid, err := s.checkIdempotency(ctx, "ADMIN", adminID, operation, id, idempotencyKey, req)
@@ -861,7 +869,7 @@ func (s *auctionService) SelectWinner(ctx context.Context, id uuid.UUID, req *dt
 		return nil, auctionErr(409, "Batch sudah memiliki pemenang")
 	}
 
-	// Lock batch + insert winner + konsumsi stok + SOLD dalam satu transaksi.
+	// Lock batch + insert winner + konsumsi stok + update status in one transaction.
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var locked models.AuctionBatch
 		if err := tx.Clauses(lockClause()).First(&locked, "id = ?", id).Error; err != nil {
@@ -873,6 +881,7 @@ func (s *auctionService) SelectWinner(ctx context.Context, id uuid.UUID, req *dt
 		if _, err := s.repo.FindWinnerByBatchID(ctx, id); err == nil {
 			return auctionErr(409, "Batch sudah memiliki pemenang")
 		}
+		beforeData := toJSONMap(&locked)
 
 		now := time.Now().UTC()
 		winner := &models.AuctionWinner{
@@ -894,8 +903,8 @@ func (s *auctionService) SelectWinner(ctx context.Context, id uuid.UUID, req *dt
 			return err
 		}
 
-		locked.Status = models.AuctionBatchStatusSOLD
-		locked.IsDisplayed = false
+		locked.Status = statusAfterWinner
+		locked.IsDisplayed = true
 		locked.SoldAt = &now
 		locked.UpdatedBy = adminID
 		locked.Version++
@@ -907,7 +916,7 @@ func (s *auctionService) SelectWinner(ctx context.Context, id uuid.UUID, req *dt
 			BatchID:      id,
 			ActorAdminID: adminID,
 			Action:       "winner",
-			BeforeData:   toJSONMap(&locked),
+			BeforeData:   beforeData,
 			AfterData:    toJSONMap(winner),
 			Note:         req.Note,
 		}).Error; err != nil {
@@ -990,8 +999,8 @@ func (s *auctionService) UpdateOperations(ctx context.Context, id uuid.UUID, req
 		}
 		return nil, err
 	}
-	if batch.Status != models.AuctionBatchStatusSOLD {
-		return nil, auctionErr(409, "Operasi manual hanya dapat dilakukan saat batch berstatus SOLD")
+	if batch.Status != models.AuctionBatchStatusOPEN && batch.Status != models.AuctionBatchStatusSOLD {
+		return nil, auctionErr(409, "Operasi manual hanya dapat dilakukan setelah winner dipilih")
 	}
 	if batch.Version != req.Version {
 		return nil, auctionErr(409, "Version batch tidak sesuai. Silakan muat ulang data terbaru.")

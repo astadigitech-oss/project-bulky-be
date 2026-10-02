@@ -164,6 +164,7 @@ type AuctionDisplayRequest struct {
 type AuctionWinnerRequest struct {
 	BidID   string  `json:"bid_id" validate:"required,uuid"`
 	Version int     `json:"version" validate:"required,min=1"`
+	Status  string  `json:"status" validate:"omitempty,oneof=OPEN SOLD"`
 	Note    *string `json:"note" validate:"omitempty,max=1000"`
 }
 
