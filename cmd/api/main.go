@@ -57,6 +57,7 @@ func main() {
 	produkGambarRepo := repositories.NewProdukGambarRepository(db)
 	produkDokumenRepo := repositories.NewProdukDokumenRepository(db)
 	adminRepo := repositories.NewAdminRepository(db)
+	adminNotificationRepo := repositories.NewAdminNotificationRepository(db)
 	adminSessionRepo := repositories.NewAdminSessionRepository(db)
 	buyerRepo := repositories.NewBuyerRepository(db)
 	alamatBuyerRepo := repositories.NewAlamatBuyerRepository(db)
@@ -110,7 +111,11 @@ func main() {
 	bannerTipeProdukService := services.NewBannerTipeProdukService(bannerTipeProdukRepo, tipeProdukRepo, reorderService, cfg)
 	produkGambarService := services.NewProdukGambarService(produkGambarRepo, cfg)
 	produkDokumenService := services.NewProdukDokumenService(produkDokumenRepo, cfg)
-	produkService := services.NewProdukService(produkRepo, produkGambarRepo, produkDokumenRepo, warehouseRepo, tipeProdukRepo, cfg, db)
+	pushTestService := services.NewPushTestService(cfg)
+	pushPromotionRepo := repositories.NewPushPromotionNotificationRepository(db)
+	pushPromotionService := services.NewPushPromotionNotificationService(pushPromotionRepo, pushTestService)
+	produkService := services.NewProdukService(produkRepo, produkGambarRepo, produkDokumenRepo, warehouseRepo, tipeProdukRepo, cfg, db, pushTestService)
+	adminNotificationService := services.NewAdminNotificationService(adminNotificationRepo)
 	authService := services.NewAuthService(adminRepo, adminSessionRepo)
 	adminService := services.NewAdminService(adminRepo, adminSessionRepo, roleRepo)
 	masterService := services.NewMasterService(kategoriRepo, merekRepo, kondisiRepo, kondisiPaketRepo, sumberRepo)
@@ -127,7 +132,7 @@ func main() {
 	forwarderMappingService := services.NewForwarderMappingService(forwarderMappingRepo)
 	wmsService := services.NewWMSService(cfg.WMSBaseURL, cfg.WMSClientID, cfg.WMSClientSecret)
 	shippingService := services.NewShippingService(db, delivereeVehicleTypeService)
-	pesananAdminService := services.NewPesananAdminService(pesananRepo, shippingService, db, cfg)
+	pesananAdminService := services.NewPesananAdminService(pesananRepo, shippingService, db, cfg, pushTestService)
 	forceUpdateService := services.NewForceUpdateService(forceUpdateRepo)
 	modeMaintenanceService := services.NewModeMaintenanceService(modeMaintenanceRepo)
 	ppnService := services.NewPPNService(ppnRepo)
@@ -180,8 +185,9 @@ func main() {
 	bannerEventPromoController := controllers.NewBannerEventPromoController(bannerEventPromoService, reorderService, cfg, activityLogService)
 	auctionEducationBannerController := controllers.NewAuctionEducationBannerController(auctionEducationBannerService, cfg, activityLogService)
 	seasonalCampaignController := controllers.NewSeasonalCampaignController(seasonalCampaignService, cfg, activityLogService)
-	pushTestService := services.NewPushTestService(cfg)
 	pushTestController := controllers.NewPushTestController(pushTestService)
+	pushPromotionController := controllers.NewPushPromotionNotificationController(pushPromotionService)
+	adminNotificationController := controllers.NewAdminNotificationController(adminNotificationService)
 	ulasanController := controllers.NewUlasanController(ulasanService)
 	ulasanAdminController := controllers.NewUlasanAdminController(ulasanAdminService, activityLogService)
 	pesananAdminController := controllers.NewPesananAdminController(pesananAdminService, activityLogService)
@@ -214,7 +220,7 @@ func main() {
 	wmsController := controllers.NewWMSController(wmsService, produkRepo, activityLogService)
 	backupService := services.NewBackupService(cfg, activityLogRepo)
 	backupController := controllers.NewBackupController(backupService)
-	auctionService := services.NewAuctionService(auctionRepo, db, cfg)
+	auctionService := services.NewAuctionService(auctionRepo, db, cfg, pushTestService)
 	auctionController := controllers.NewAuctionController(auctionService)
 
 	// Auth V2 controllers
@@ -243,7 +249,7 @@ func main() {
 		warehouseController, tipeProdukController, diskonKategoriController, bannerTipeProdukController,
 		produkController, authController, adminController, masterController,
 		buyerController, alamatBuyerController,
-		heroSectionController, bannerEventPromoController, auctionEducationBannerController, seasonalCampaignController, pushTestController,
+		heroSectionController, bannerEventPromoController, auctionEducationBannerController, seasonalCampaignController, pushTestController, pushPromotionController, adminNotificationController,
 		ulasanController,
 		ulasanAdminController, pesananAdminController,
 		forceUpdateController, modeMaintenanceController,
@@ -298,6 +304,9 @@ func main() {
 	backupSchedulerCtx, stopBackupScheduler := context.WithCancel(context.Background())
 	go backupService.StartDailyScheduler(backupSchedulerCtx)
 
+	pushPromotionSchedulerCtx, stopPushPromotionScheduler := context.WithCancel(context.Background())
+	go pushPromotionService.StartScheduler(pushPromotionSchedulerCtx, time.Minute)
+
 	// Graceful shutdown: tunggu sinyal SIGTERM/SIGINT, lalu stop server
 	// setelah request yang sedang berjalan (termasuk upload video) selesai
 	quit := make(chan os.Signal, 1)
@@ -307,6 +316,7 @@ func main() {
 	log.Println("Shutting down server gracefully...")
 	stopAutoArchive()
 	stopBackupScheduler()
+	stopPushPromotionScheduler()
 	if err := router.ShutdownWithContext(context.Background()); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}

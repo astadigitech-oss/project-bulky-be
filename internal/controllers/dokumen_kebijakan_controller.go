@@ -142,12 +142,12 @@ func (c *DokumenKebijakanController) PerbaruiSyaratKetentuanLelang(ctx *fiber.Ct
 
 func isSyaratKetentuanLelang(dokumen *models.DokumenKebijakanDetailResponse) bool {
 	return dokumen != nil &&
-		((dokumen.SlugID != nil && *dokumen.SlugID == "syarat-ketentuan-lelang") ||
+		((dokumen.SlugID != nil && (*dokumen.SlugID == "syarat-ketentuan-lelang" || *dokumen.SlugID == "syarat-dan-ketentuan-lelang")) ||
 			(dokumen.SlugEN != nil && *dokumen.SlugEN == "auction-terms-and-conditions"))
 }
 
 func isSlugSyaratKetentuanLelang(slug string) bool {
-	return slug == "syarat-ketentuan-lelang" || slug == "auction-terms-and-conditions"
+	return slug == "syarat-ketentuan-lelang" || slug == "syarat-dan-ketentuan-lelang" || slug == "auction-terms-and-conditions"
 }
 
 func memilikiIzin(ctx *fiber.Ctx, izin string) bool {

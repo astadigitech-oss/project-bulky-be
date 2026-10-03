@@ -164,13 +164,15 @@ type AuctionDisplayRequest struct {
 type AuctionWinnerRequest struct {
 	BidID   string  `json:"bid_id" validate:"required,uuid"`
 	Version int     `json:"version" validate:"required,min=1"`
+	Status  string  `json:"status" validate:"omitempty,oneof=OPEN SOLD"`
 	Note    *string `json:"note" validate:"omitempty,max=1000"`
 }
 
 // AuctionOperationRequest payload PATCH /operations. Menerima tepat satu target
-// status: payment_status ATAU fulfillment_status.
+// status batch, payment, atau fulfillment.
 type AuctionOperationRequest struct {
 	Version           int     `json:"version" validate:"required,min=1"`
+	BatchStatus       *string `json:"batch_status" validate:"omitempty,oneof=OPEN SOLD"`
 	PaymentStatus     *string `json:"payment_status" validate:"omitempty,oneof=UNPAID PAID"`
 	FulfillmentStatus *string `json:"fulfillment_status" validate:"omitempty,oneof=PENDING PROCESSING COMPLETED"`
 	Note              *string `json:"note" validate:"omitempty,max=1000"`
@@ -221,6 +223,7 @@ type AuctionBatchSummary struct {
 	NamaID       string     `json:"nama_id"`
 	ThumbnailURL *string    `json:"thumbnail_url"`
 	Status       string     `json:"status"`
+	HasWinner    bool       `json:"has_winner"`
 	IsDisplayed  bool       `json:"is_displayed"`
 	GrandTotal   string     `json:"grand_total"`
 	MinBidAmount string     `json:"min_bid_amount"`
@@ -321,6 +324,7 @@ type AuctionBidDetail struct {
 	Note                     string             `json:"note"`
 	CreatedAt                time.Time          `json:"created_at"`
 	IsSelected               bool               `json:"is_selected"`
+	WinnerBuyerName          string             `json:"winner_buyer_name,omitempty"`
 }
 
 // AuctionBuyerSimple info buyer pada bid.

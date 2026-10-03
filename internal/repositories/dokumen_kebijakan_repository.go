@@ -42,7 +42,12 @@ func (r *dokumenKebijakanRepository) FindByID(ctx context.Context, id string) (*
 
 func (r *dokumenKebijakanRepository) FindBySlug(ctx context.Context, slug string) (*models.DokumenKebijakan, error) {
 	var dokumen models.DokumenKebijakan
-	err := r.db.WithContext(ctx).Where("slug_id = ? OR slug_en = ?", slug, slug).First(&dokumen).Error
+	// `slug` is the stable legacy key used by Admin routes. Keep resolving it
+	// alongside localized slugs so changing or migrating a localized slug does
+	// not make the policy document unreachable.
+	err := r.db.WithContext(ctx).
+		Where("slug = ? OR slug_id = ? OR slug_en = ?", slug, slug, slug).
+		First(&dokumen).Error
 	if err != nil {
 		return nil, err
 	}

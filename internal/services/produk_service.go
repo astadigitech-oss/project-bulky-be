@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"mime/multipart"
 	"strings"
+	"time"
 
 	"project-bulky-be/internal/config"
 	"project-bulky-be/internal/constants"
@@ -41,6 +43,7 @@ type produkService struct {
 	tipeProdukRepo repositories.TipeProdukRepository
 	cfg            *config.Config
 	db             *gorm.DB
+	pushService    *PushTestService
 }
 
 func NewProdukService(
@@ -51,6 +54,7 @@ func NewProdukService(
 	tipeProdukRepo repositories.TipeProdukRepository,
 	cfg *config.Config,
 	db *gorm.DB,
+	pushService *PushTestService,
 ) ProdukService {
 	return &produkService{
 		repo:           repo,
@@ -60,6 +64,7 @@ func NewProdukService(
 		tipeProdukRepo: tipeProdukRepo,
 		cfg:            cfg,
 		db:             db,
+		pushService:    pushService,
 	}
 }
 
@@ -249,6 +254,9 @@ func (s *produkService) CreateWithFiles(
 	if err := tx.Commit().Error; err != nil {
 		return nil, err
 	}
+	if isActive {
+		s.notifyNewProductPush(produk)
+	}
 
 	// Reload with relations
 	return s.FindByID(ctx, produk.ID.String())
@@ -293,6 +301,7 @@ func (s *produkService) Update(ctx context.Context, id string, req *models.Updat
 	if err != nil {
 		return nil, errors.New("produk tidak ditemukan")
 	}
+	wasActive := produk.IsActive
 
 	if req.NamaID != nil {
 		produk.NamaID = *req.NamaID
@@ -430,6 +439,9 @@ func (s *produkService) Update(ctx context.Context, id string, req *models.Updat
 	if err := tx.Commit().Error; err != nil {
 		return nil, err
 	}
+	if !wasActive && produk.IsActive {
+		s.notifyNewProductPush(produk)
+	}
 
 	return s.FindByID(ctx, id)
 }
@@ -530,9 +542,13 @@ func (s *produkService) ToggleStatus(ctx context.Context, id string) (*models.To
 		return nil, errors.New("produk tidak ditemukan")
 	}
 
+	wasActive := produk.IsActive
 	produk.IsActive = !produk.IsActive
 	if err := s.repo.Update(ctx, produk); err != nil {
 		return nil, err
+	}
+	if !wasActive && produk.IsActive {
+		s.notifyNewProductPush(produk)
 	}
 
 	return &models.ToggleStatusResponse{
@@ -540,6 +556,33 @@ func (s *produkService) ToggleStatus(ctx context.Context, id string) (*models.To
 		IsActive:  produk.IsActive,
 		UpdatedAt: produk.UpdatedAt,
 	}, nil
+}
+
+func (s *produkService) notifyNewProductPush(produk *models.Produk) {
+	if s.pushService == nil || produk == nil {
+		return
+	}
+	productID := produk.ID.String()
+	slugID := produk.Slug
+	if produk.SlugID != nil && strings.TrimSpace(*produk.SlugID) != "" {
+		slugID = *produk.SlugID
+	}
+	slugEN := slugID
+	if produk.SlugEN != nil && strings.TrimSpace(*produk.SlugEN) != "" {
+		slugEN = *produk.SlugEN
+	}
+	nameID := produk.NamaID
+	nameEN := produk.NamaEN
+	if strings.TrimSpace(nameEN) == "" {
+		nameEN = nameID
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		if err := s.pushService.NotifyNewProduct(ctx, productID, slugID, slugEN, nameID, nameEN); err != nil {
+			log.Printf("[push] gagal mengirim notifikasi produk baru %s: %v", productID, err)
+		}
+	}()
 }
 
 func (s *produkService) ToggleSale(ctx context.Context, id string) (*models.ToggleSaleResponse, error) {
@@ -696,11 +739,11 @@ func (s *produkService) toPanelListResponse(p *models.Produk) *models.ProdukPane
 
 func (s *produkService) toDetailResponse(p *models.Produk) *models.ProdukDetailResponse {
 	resp := &models.ProdukDetailResponse{
-		ID:          p.ID.String(),
-		NamaID:      p.NamaID,
-		NamaEN:      p.NamaEN,
-		SlugID:      p.SlugID,
-		SlugEN:      p.SlugEN,
+		ID:            p.ID.String(),
+		NamaID:        p.NamaID,
+		NamaEN:        p.NamaEN,
+		SlugID:        p.SlugID,
+		SlugEN:        p.SlugEN,
 		IDCargo:       p.IDCargo,
 		ReferenceCode: p.ReferenceCode,
 		Kategori: models.SimpleProdukRelationInfo{

@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -52,6 +54,7 @@ func auctionErrFields(status int, message string, fields []models.FieldError) *A
 
 type AuctionService interface {
 	CreateDraft(ctx context.Context, req *dto.AuctionDraftInput, adminID uuid.UUID, idempotencyKey string) (*dto.AuctionBatchDetail, error)
+	DuplicateDraft(ctx context.Context, id uuid.UUID, adminID uuid.UUID, idempotencyKey string) (*dto.AuctionBatchDetail, error)
 	UpdateDraft(ctx context.Context, id uuid.UUID, req *dto.AuctionDraftInput, adminID uuid.UUID, version int) (*dto.AuctionBatchDetail, error)
 	DeleteDraft(ctx context.Context, id uuid.UUID) error
 	Publish(ctx context.Context, id uuid.UUID, version int, adminID uuid.UUID, idempotencyKey string) (*dto.AuctionBatchDetail, error)
@@ -103,13 +106,18 @@ func (s *auctionService) DeleteDraft(ctx context.Context, id uuid.UUID) error {
 }
 
 type auctionService struct {
-	repo repositories.AuctionRepository
-	db   *gorm.DB
-	cfg  *config.Config
+	repo       repositories.AuctionRepository
+	db         *gorm.DB
+	cfg        *config.Config
+	pushClient *PushTestService
 }
 
-func NewAuctionService(repo repositories.AuctionRepository, db *gorm.DB, cfg *config.Config) AuctionService {
-	return &auctionService{repo: repo, db: db, cfg: cfg}
+func NewAuctionService(repo repositories.AuctionRepository, db *gorm.DB, cfg *config.Config, pushClients ...*PushTestService) AuctionService {
+	service := &auctionService{repo: repo, db: db, cfg: cfg}
+	if len(pushClients) > 0 {
+		service.pushClient = pushClients[0]
+	}
+	return service
 }
 
 // ============================================================
@@ -251,8 +259,8 @@ func (s *auctionService) UpdateDraft(ctx context.Context, id uuid.UUID, req *dto
 		}
 		return nil, err
 	}
-	if batch.Status != models.AuctionBatchStatusDRAFT {
-		return nil, auctionErr(409, "Batch hanya dapat diedit saat status DRAFT")
+	if batch.Status != models.AuctionBatchStatusDRAFT && batch.Status != models.AuctionBatchStatusOPEN && batch.Status != models.AuctionBatchStatusSOLD {
+		return nil, auctionErr(409, "Status batch tidak mendukung perubahan data")
 	}
 	if batch.Version != version {
 		return nil, auctionErr(409, "Version batch tidak sesuai. Silakan muat ulang data terbaru.")
@@ -263,6 +271,254 @@ func (s *auctionService) UpdateDraft(ctx context.Context, id uuid.UUID, req *dto
 		return nil, err
 	}
 
+	brandIDs := parseUUIDList(req.MerekIDs)
+	assetIDs := parseAssetIDs(req.ImageAssetIDs, req.PDFAssetID)
+	before := toJSONMap(batch)
+
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var locked models.AuctionBatch
+		if err := tx.Clauses(lockClause()).First(&locked, "id = ?", id).Error; err != nil {
+			return err
+		}
+		if locked.Version != version {
+			return auctionErr(409, "Version batch tidak sesuai. Silakan muat ulang data terbaru.")
+		}
+		if locked.Status != models.AuctionBatchStatusDRAFT && locked.Status != models.AuctionBatchStatusOPEN && locked.Status != models.AuctionBatchStatusSOLD {
+			return auctionErr(409, "Status batch tidak mendukung perubahan data")
+		}
+
+		wasOpen := locked.Status == models.AuctionBatchStatusOPEN
+		wasPublished := locked.Status == models.AuctionBatchStatusOPEN || locked.Status == models.AuctionBatchStatusSOLD
+		hasWinner := false
+		if wasPublished {
+			var winnerCount int64
+			if err := tx.Model(&models.AuctionWinner{}).Where("batch_id = ?", id).Count(&winnerCount).Error; err != nil {
+				return err
+			}
+			hasWinner = winnerCount > 0
+		}
+
+		applyAuctionDraftInput(&locked, req, adminID, grandTotal, totalQty)
+		if err := tx.Save(&locked).Error; err != nil {
+			return err
+		}
+		if err := s.replaceItems(tx, id, items); err != nil {
+			return err
+		}
+		if err := s.replaceBrands(tx, id, brandIDs); err != nil {
+			return err
+		}
+		if err := s.replaceBatchAssets(tx, id, assetIDs); err != nil {
+			return err
+		}
+		if wasPublished {
+			now := time.Now().UTC()
+			if err := tx.Model(&models.AuctionShippingQuote{}).
+				Where("batch_id = ? AND (expires_at IS NULL OR expires_at > ?)", id, now).
+				Update("expires_at", now).Error; err != nil {
+				return err
+			}
+			// Setelah winner dipilih, reservasi sudah dikonsumsi. Pertahankan
+			// transaksi stok historis meski isi batch diedit kemudian.
+			if wasOpen && !hasWinner {
+				if err := tx.Where("batch_id = ? AND status = ?", id, "ACTIVE").Delete(&models.AuctionStockReservation{}).Error; err != nil {
+					return err
+				}
+				if err := s.reserveStock(tx, id, items); err != nil {
+					return err
+				}
+			}
+		}
+
+		var updated models.AuctionBatch
+		if err := tx.Preload("Items").Preload("Brands").Preload("BatchAssets").Preload("Winner").First(&updated, "id = ?", id).Error; err != nil {
+			return err
+		}
+		note := "Draft batch diperbarui"
+		if wasPublished {
+			note = fmt.Sprintf("Batch %s diedit untuk tindak lanjut manual; riwayat bid, winner, pembayaran, fulfillment, dan transaksi stok tidak diubah. Buyer perlu dikonfirmasi di luar platform.", locked.Status)
+		}
+		if err := tx.Create(&models.AuctionAuditLog{
+			BatchID:      id,
+			ActorAdminID: adminID,
+			Action:       "update",
+			BeforeData:   before,
+			AfterData:    toJSONMap(&updated),
+			Note:         &note,
+		}).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, s.wrapDBError(err)
+	}
+
+	return s.GetBatchDetail(ctx, id)
+}
+
+// DuplicateDraft membuat salinan setup batch sebagai draft baru. Data transaksi
+// (bid, winner, status operasi, reservasi) tidak ikut disalin; setiap aset
+// storage dibuatkan file dan record aset baru agar salinan mandiri.
+func (s *auctionService) DuplicateDraft(ctx context.Context, id uuid.UUID, adminID uuid.UUID, idempotencyKey string) (*dto.AuctionBatchDetail, error) {
+	operation := "duplicate:" + id.String()
+	payload := map[string]string{"source_batch_id": id.String()}
+	if idempotencyKey != "" {
+		replay, duplicateID, err := s.checkIdempotency(ctx, "ADMIN", adminID, operation, uuid.Nil, idempotencyKey, payload)
+		if err != nil {
+			return nil, err
+		}
+		if replay {
+			if duplicateID == uuid.Nil {
+				return nil, auctionErr(409, "Idempotency key salinan batch tidak valid")
+			}
+			return s.GetBatchDetail(ctx, duplicateID)
+		}
+	}
+
+	source, err := s.repo.FindBatchByIDWithRelations(ctx, id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, auctionErr(404, "Batch sumber tidak ditemukan")
+		}
+		return nil, err
+	}
+	assets, err := s.repo.GetBatchAssetDetails(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	createdFiles := make([]string, 0, len(assets))
+	clonedAssets := make([]models.AuctionAsset, 0, len(assets))
+	cleanupFiles := func() {
+		for _, path := range createdFiles {
+			if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+				log.Printf("[auction] gagal membersihkan file hasil salinan %s: %v", path, err)
+			}
+		}
+	}
+	for _, asset := range assets {
+		storageKey, absolutePath, err := copyAuctionAssetStorageFile(asset.StorageKey, s.cfg)
+		if err != nil {
+			cleanupFiles()
+			return nil, fmt.Errorf("gagal menyalin aset %s: %w", asset.OriginalName, err)
+		}
+		createdFiles = append(createdFiles, absolutePath)
+		clonedAssets = append(clonedAssets, models.AuctionAsset{
+			ID:           uuid.New(),
+			UploadedBy:   adminID,
+			Kind:         asset.Kind,
+			StorageKey:   storageKey,
+			OriginalName: asset.OriginalName,
+			MimeType:     asset.MimeType,
+			SizeBytes:    asset.SizeBytes,
+		})
+	}
+
+	duplicateID := uuid.New()
+	duplicate := *source
+	duplicate.ID = duplicateID
+	duplicate.Code = s.generateCode()
+	duplicate.SlugID = auctionBatchSlug(source.NamaID, duplicateID)
+	duplicate.SlugEN = auctionBatchSlug(auctionBatchSlugName(source.NamaID, source.NamaEN), duplicateID)
+	duplicate.Status = models.AuctionBatchStatusDRAFT
+	duplicate.IsDisplayed = false
+	duplicate.Version = 1
+	duplicate.CreatedBy = adminID
+	duplicate.UpdatedBy = adminID
+	duplicate.CreatedAt = time.Time{}
+	duplicate.UpdatedAt = time.Time{}
+	duplicate.OpenedAt = nil
+	duplicate.SoldAt = nil
+	duplicate.Items = nil
+	duplicate.Brands = nil
+	duplicate.BatchAssets = nil
+	duplicate.Winner = nil
+	duplicate.Reservations = nil
+
+	items := make([]models.AuctionBatchItem, 0, len(source.Items))
+	for _, item := range source.Items {
+		items = append(items, models.AuctionBatchItem{
+			ID:                uuid.New(),
+			BatchID:           duplicateID,
+			ProdukID:          item.ProdukID,
+			SourceType:        item.SourceType,
+			Quantity:          item.Quantity,
+			NamaSnapshot:      item.NamaSnapshot,
+			UnitPriceSnapshot: item.UnitPriceSnapshot,
+			SubtotalSnapshot:  item.SubtotalSnapshot,
+		})
+	}
+	brandIDs := make([]uuid.UUID, 0, len(source.Brands))
+	for _, brand := range source.Brands {
+		brandIDs = append(brandIDs, brand.MerekID)
+	}
+	assetIDs := make([]uuid.UUID, 0, len(clonedAssets))
+	for _, asset := range clonedAssets {
+		assetIDs = append(assetIDs, asset.ID)
+	}
+
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var currentSource models.AuctionBatch
+		if err := tx.Clauses(lockClause()).First(&currentSource, "id = ?", id).Error; err != nil {
+			return err
+		}
+		if currentSource.Version != source.Version {
+			return auctionErr(409, "Batch sumber berubah saat disalin. Muat ulang lalu coba lagi.")
+		}
+		if err := tx.Create(&duplicate).Error; err != nil {
+			return err
+		}
+		if len(items) > 0 {
+			if err := tx.Create(&items).Error; err != nil {
+				return err
+			}
+		}
+		if len(clonedAssets) > 0 {
+			if err := tx.Create(&clonedAssets).Error; err != nil {
+				return err
+			}
+		}
+		if err := s.replaceBrands(tx, duplicateID, brandIDs); err != nil {
+			return err
+		}
+		if err := s.replaceBatchAssets(tx, duplicateID, assetIDs); err != nil {
+			return err
+		}
+		var duplicateSnapshot models.AuctionBatch
+		if err := tx.Preload("Items").Preload("Brands").Preload("BatchAssets").First(&duplicateSnapshot, "id = ?", duplicateID).Error; err != nil {
+			return err
+		}
+		if err := tx.Create(&models.AuctionAuditLog{
+			BatchID:      duplicateID,
+			ActorAdminID: adminID,
+			Action:       "duplicate",
+			BeforeData: models.JSONMap{
+				"source_batch_id": id.String(),
+				"source_code":     source.Code,
+				"source_status":   source.Status,
+			},
+			AfterData: toJSONMap(&duplicateSnapshot),
+			Note:      ptrString("Salinan dari batch " + source.Code),
+		}).Error; err != nil {
+			return err
+		}
+		if idempotencyKey != "" {
+			if err := s.saveIdempotency(tx, "ADMIN", adminID, operation, uuid.Nil, idempotencyKey, payload, 201, &duplicate); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		cleanupFiles()
+		return nil, s.wrapDBError(err)
+	}
+
+	return s.GetBatchDetail(ctx, duplicateID)
+}
+
+func applyAuctionDraftInput(batch *models.AuctionBatch, req *dto.AuctionDraftInput, adminID uuid.UUID, grandTotal decimal.Decimal, totalQty int) {
 	batch.NamaID = req.NamaID
 	batch.NamaEN = req.NamaEN
 	batch.SlugID = auctionBatchSlug(req.NamaID, batch.ID)
@@ -307,42 +563,74 @@ func (s *auctionService) UpdateDraft(ctx context.Context, id uuid.UUID, req *dto
 	batch.VolumeM3 = computeVolume(batch.PanjangCm, batch.LebarCm, batch.TinggiCm)
 	batch.UpdatedBy = adminID
 	batch.Version++
+}
 
-	before := toJSONMap(batch)
-
-	brandIDs := parseUUIDList(req.MerekIDs)
-	assetIDs := parseAssetIDs(req.ImageAssetIDs, req.PDFAssetID)
-
-	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Save(batch).Error; err != nil {
-			return err
-		}
-		if err := s.replaceItems(tx, id, items); err != nil {
-			return err
-		}
-		if err := s.replaceBrands(tx, id, brandIDs); err != nil {
-			return err
-		}
-		if err := s.replaceBatchAssets(tx, id, assetIDs); err != nil {
-			return err
-		}
-		if err := tx.Create(&models.AuctionAuditLog{
-			BatchID:      id,
-			ActorAdminID: adminID,
-			Action:       "update",
-			BeforeData:   before,
-			AfterData:    toJSONMap(batch),
-			Note:         &req.NamaID,
-		}).Error; err != nil {
-			return err
-		}
-		return nil
-	})
+func copyAuctionAssetStorageFile(storageKey string, cfg *config.Config) (string, string, error) {
+	if cfg == nil || strings.TrimSpace(cfg.UploadPath) == "" {
+		return "", "", errors.New("path upload belum dikonfigurasi")
+	}
+	rootPath, err := filepath.Abs(cfg.UploadPath)
 	if err != nil {
-		return nil, s.wrapDBError(err)
+		return "", "", fmt.Errorf("gagal membaca path upload: %w", err)
+	}
+	rootPath, err = filepath.EvalSymlinks(rootPath)
+	if err != nil {
+		return "", "", fmt.Errorf("gagal membaca direktori upload: %w", err)
 	}
 
-	return s.GetBatchDetail(ctx, id)
+	sourceRelative := filepath.Clean(filepath.FromSlash(storageKey))
+	if sourceRelative == "." || sourceRelative == ".." || filepath.IsAbs(sourceRelative) || strings.HasPrefix(sourceRelative, ".."+string(filepath.Separator)) {
+		return "", "", errors.New("storage key aset tidak valid")
+	}
+	sourcePath := filepath.Join(rootPath, sourceRelative)
+	sourcePath, err = filepath.EvalSymlinks(sourcePath)
+	if err != nil {
+		return "", "", fmt.Errorf("file sumber tidak dapat dibaca: %w", err)
+	}
+	sourceRelative, err = filepath.Rel(rootPath, sourcePath)
+	if err != nil || sourceRelative == ".." || strings.HasPrefix(sourceRelative, ".."+string(filepath.Separator)) || filepath.IsAbs(sourceRelative) {
+		return "", "", errors.New("file aset berada di luar direktori upload")
+	}
+	sourceInfo, err := os.Stat(sourcePath)
+	if err != nil {
+		return "", "", fmt.Errorf("gagal memeriksa file sumber: %w", err)
+	}
+	if !sourceInfo.Mode().IsRegular() {
+		return "", "", errors.New("file aset bukan file biasa")
+	}
+
+	destinationRelative := filepath.Join(filepath.Dir(sourceRelative), uuid.New().String()+filepath.Ext(sourceRelative))
+	destinationPath := filepath.Join(rootPath, destinationRelative)
+	if err := os.MkdirAll(filepath.Dir(destinationPath), 0755); err != nil {
+		return "", "", fmt.Errorf("gagal membuat direktori aset salinan: %w", err)
+	}
+
+	source, err := os.Open(sourcePath)
+	if err != nil {
+		return "", "", fmt.Errorf("gagal membuka file sumber: %w", err)
+	}
+	defer source.Close()
+
+	destination, err := os.OpenFile(destinationPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+	if err != nil {
+		return "", "", fmt.Errorf("gagal membuat file salinan: %w", err)
+	}
+	copyErr := func() error {
+		if _, err := io.Copy(destination, source); err != nil {
+			return err
+		}
+		if err := destination.Sync(); err != nil {
+			return err
+		}
+		return destination.Close()
+	}()
+	if copyErr != nil {
+		_ = destination.Close()
+		_ = os.Remove(destinationPath)
+		return "", "", fmt.Errorf("gagal menyalin file aset: %w", copyErr)
+	}
+
+	return filepath.ToSlash(destinationRelative), destinationPath, nil
 }
 
 // ============================================================
@@ -365,7 +653,27 @@ func (s *auctionService) Publish(ctx context.Context, id uuid.UUID, version int,
 	if err != nil {
 		return nil, err
 	}
+	if detail.Status == models.AuctionBatchStatusOPEN && detail.IsDisplayed {
+		s.notifyNewAuctionBatch(detail)
+	}
 	return detail, nil
+}
+
+func (s *auctionService) notifyNewAuctionBatch(batch *dto.AuctionBatchDetail) {
+	if s.pushClient == nil || batch == nil {
+		return
+	}
+	nameEN := batch.NamaID
+	if batch.NamaEN != nil && strings.TrimSpace(*batch.NamaEN) != "" {
+		nameEN = *batch.NamaEN
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		if err := s.pushClient.NotifyNewAuctionBatch(ctx, batch.ID, batch.SlugID, batch.SlugEN, batch.NamaID, nameEN); err != nil {
+			log.Printf("[push] gagal mengirim notifikasi batch lelang baru %s: %v", batch.ID, err)
+		}
+	}()
 }
 
 func (s *auctionService) publishInTransaction(ctx context.Context, id uuid.UUID, version int, adminID uuid.UUID, idempotencyKey, operation string) (*dto.AuctionBatchDetail, error) {
@@ -557,7 +865,18 @@ func (s *auctionService) reserveStock(tx *gorm.DB, batchID uuid.UUID, items []mo
 	// Urutan lock produk konsisten (sorted) untuk mencegah deadlock.
 	sort.Slice(produkIDs, func(i, j int) bool { return produkIDs[i].String() < produkIDs[j].String() })
 
-	// Ambil reservasi aktif existing untuk produk tersebut.
+	// Lock row produk satu per satu dalam urutan konsisten.
+	produkByID := make(map[uuid.UUID]models.Produk)
+	for _, pid := range produkIDs {
+		var p models.Produk
+		if err := tx.Clauses(lockClause()).First(&p, "id = ?", pid).Error; err != nil {
+			return err
+		}
+		produkByID[pid] = p
+	}
+
+	// Baca reservasi setelah lock produk didapat agar dua transaksi reservasi
+	// untuk produk sama tidak mengambil hitungan stok tersedia yang sama.
 	var existingReservations []models.AuctionStockReservation
 	if len(produkIDs) > 0 {
 		if err := tx.Where("produk_id IN ? AND status = ?", produkIDs, "ACTIVE").Find(&existingReservations).Error; err != nil {
@@ -567,16 +886,6 @@ func (s *auctionService) reserveStock(tx *gorm.DB, batchID uuid.UUID, items []mo
 	reservedByProduk := make(map[uuid.UUID]int)
 	for _, r := range existingReservations {
 		reservedByProduk[r.ProdukID] += r.Quantity
-	}
-
-	// Lock row produk satu per satu dalam urutan konsisten.
-	produkByID := make(map[uuid.UUID]models.Produk)
-	for _, pid := range produkIDs {
-		var p models.Produk
-		if err := tx.Clauses(lockClause()).First(&p, "id = ?", pid).Error; err != nil {
-			return err
-		}
-		produkByID[pid] = p
 	}
 
 	// Validasi & insert reservasi (all-or-nothing).
@@ -712,6 +1021,7 @@ func (s *auctionService) ExportBids(ctx context.Context, params *dto.AuctionBids
 	}
 
 	selected := make(map[uuid.UUID]bool)
+	winnerBuyerNames := make(map[uuid.UUID]string)
 	batchIDs := make([]uuid.UUID, 0, len(bids))
 	seen := make(map[uuid.UUID]struct{})
 	for _, bid := range bids {
@@ -722,18 +1032,32 @@ func (s *auctionService) ExportBids(ctx context.Context, params *dto.AuctionBids
 		batchIDs = append(batchIDs, bid.BatchID)
 	}
 	if len(batchIDs) > 0 {
-		var winners []models.AuctionWinner
-		if err := s.db.WithContext(ctx).Where("batch_id IN ?", batchIDs).Find(&winners).Error; err != nil {
+		type winnerExportRow struct {
+			BatchID   uuid.UUID `gorm:"column:batch_id"`
+			BidID     uuid.UUID `gorm:"column:bid_id"`
+			BuyerName string    `gorm:"column:buyer_name"`
+		}
+		var winners []winnerExportRow
+		if err := s.db.WithContext(ctx).
+			Table("auction_winners AS aw").
+			Select("aw.batch_id, aw.bid_id, buyer.nama AS buyer_name").
+			Joins("LEFT JOIN auction_bids AS bid ON bid.id = aw.bid_id").
+			Joins("LEFT JOIN buyer ON buyer.id = bid.buyer_id").
+			Where("aw.batch_id IN ?", batchIDs).
+			Scan(&winners).Error; err != nil {
 			return nil, err
 		}
 		for _, winner := range winners {
 			selected[winner.BidID] = true
+			winnerBuyerNames[winner.BatchID] = winner.BuyerName
 		}
 	}
 
 	items := make([]dto.AuctionBidDetail, 0, len(bids))
 	for _, bid := range bids {
-		items = append(items, mapBidDetail(bid, selected[bid.ID]))
+		item := mapBidDetail(bid, selected[bid.ID])
+		item.WinnerBuyerName = winnerBuyerNames[bid.BatchID]
+		items = append(items, item)
 	}
 	return items, nil
 }
@@ -822,6 +1146,14 @@ func (s *auctionService) SetDisplay(ctx context.Context, id uuid.UUID, req *dto.
 // ============================================================
 
 func (s *auctionService) SelectWinner(ctx context.Context, id uuid.UUID, req *dto.AuctionWinnerRequest, adminID uuid.UUID, idempotencyKey string) (*dto.AuctionBatchDetail, error) {
+	statusAfterWinner := req.Status
+	if statusAfterWinner == "" {
+		statusAfterWinner = models.AuctionBatchStatusOPEN
+	}
+	if statusAfterWinner != models.AuctionBatchStatusOPEN && statusAfterWinner != models.AuctionBatchStatusSOLD {
+		return nil, auctionErr(400, "Status setelah memilih winner harus OPEN atau SOLD")
+	}
+
 	operation := fmt.Sprintf("winner:%s", id.String())
 	if idempotencyKey != "" {
 		replay, bid, err := s.checkIdempotency(ctx, "ADMIN", adminID, operation, id, idempotencyKey, req)
@@ -861,7 +1193,7 @@ func (s *auctionService) SelectWinner(ctx context.Context, id uuid.UUID, req *dt
 		return nil, auctionErr(409, "Batch sudah memiliki pemenang")
 	}
 
-	// Lock batch + insert winner + konsumsi stok + SOLD dalam satu transaksi.
+	// Lock batch + insert winner + konsumsi stok + update status in one transaction.
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var locked models.AuctionBatch
 		if err := tx.Clauses(lockClause()).First(&locked, "id = ?", id).Error; err != nil {
@@ -873,6 +1205,7 @@ func (s *auctionService) SelectWinner(ctx context.Context, id uuid.UUID, req *dt
 		if _, err := s.repo.FindWinnerByBatchID(ctx, id); err == nil {
 			return auctionErr(409, "Batch sudah memiliki pemenang")
 		}
+		beforeData := toJSONMap(&locked)
 
 		now := time.Now().UTC()
 		winner := &models.AuctionWinner{
@@ -894,8 +1227,8 @@ func (s *auctionService) SelectWinner(ctx context.Context, id uuid.UUID, req *dt
 			return err
 		}
 
-		locked.Status = models.AuctionBatchStatusSOLD
-		locked.IsDisplayed = false
+		locked.Status = statusAfterWinner
+		locked.IsDisplayed = true
 		locked.SoldAt = &now
 		locked.UpdatedBy = adminID
 		locked.Version++
@@ -907,7 +1240,7 @@ func (s *auctionService) SelectWinner(ctx context.Context, id uuid.UUID, req *dt
 			BatchID:      id,
 			ActorAdminID: adminID,
 			Action:       "winner",
-			BeforeData:   toJSONMap(&locked),
+			BeforeData:   beforeData,
 			AfterData:    toJSONMap(winner),
 			Note:         req.Note,
 		}).Error; err != nil {
@@ -990,16 +1323,26 @@ func (s *auctionService) UpdateOperations(ctx context.Context, id uuid.UUID, req
 		}
 		return nil, err
 	}
-	if batch.Status != models.AuctionBatchStatusSOLD {
-		return nil, auctionErr(409, "Operasi manual hanya dapat dilakukan saat batch berstatus SOLD")
+	if batch.Status != models.AuctionBatchStatusOPEN && batch.Status != models.AuctionBatchStatusSOLD {
+		return nil, auctionErr(409, "Operasi manual hanya dapat dilakukan setelah winner dipilih")
 	}
 	if batch.Version != req.Version {
 		return nil, auctionErr(409, "Version batch tidak sesuai. Silakan muat ulang data terbaru.")
 	}
-	if req.PaymentStatus == nil && req.FulfillmentStatus == nil {
-		return nil, auctionErr(400, "Tepat satu target status (payment atau fulfillment) harus dikirim")
+	targetCount := 0
+	if req.BatchStatus != nil {
+		targetCount++
 	}
-	if req.PaymentStatus != nil && req.FulfillmentStatus != nil {
+	if req.PaymentStatus != nil {
+		targetCount++
+	}
+	if req.FulfillmentStatus != nil {
+		targetCount++
+	}
+	if targetCount == 0 {
+		return nil, auctionErr(400, "Tepat satu target status (batch, payment, atau fulfillment) harus dikirim")
+	}
+	if targetCount > 1 {
 		return nil, auctionErr(400, "Hanya satu target status per request yang diperbolehkan")
 	}
 
@@ -1013,7 +1356,12 @@ func (s *auctionService) UpdateOperations(ctx context.Context, id uuid.UUID, req
 
 	// Tentukan transisi.
 	var changed bool
-	if req.PaymentStatus != nil {
+	if req.BatchStatus != nil {
+		if *req.BatchStatus != models.AuctionBatchStatusOPEN && *req.BatchStatus != models.AuctionBatchStatusSOLD {
+			return nil, auctionErr(400, "Status batch harus OPEN atau SOLD")
+		}
+		changed = batch.Status != *req.BatchStatus
+	} else if req.PaymentStatus != nil {
 		target := *req.PaymentStatus
 		if winner.PaymentStatus != target {
 			if winner.PaymentStatus == "UNPAID" && target == "PAID" {
@@ -1050,40 +1398,70 @@ func (s *auctionService) UpdateOperations(ctx context.Context, id uuid.UUID, req
 	}
 
 	now := time.Now().UTC()
-	updates := map[string]interface{}{}
-	if req.PaymentStatus != nil {
-		updates["payment_status"] = "PAID"
-		updates["paid_at"] = now
-		updates["payment_note"] = req.Note
+	winnerUpdates := models.JSONMap{}
+	batchUpdates := map[string]interface{}{}
+	auditAfter := models.JSONMap{}
+	auditBefore := models.JSONMap(nil)
+	auditAction := "operations"
+	if req.BatchStatus != nil {
+		batchUpdates["status"] = *req.BatchStatus
+		auditBefore = models.JSONMap{"status": batch.Status}
+		auditAfter["status"] = *req.BatchStatus
+		auditAction = "batch_status"
+	} else if req.PaymentStatus != nil {
+		winnerUpdates["payment_status"] = "PAID"
+		winnerUpdates["paid_at"] = now
+		winnerUpdates["payment_note"] = req.Note
+		auditAfter = winnerUpdates
 	} else {
 		if *req.FulfillmentStatus == "COMPLETED" {
-			updates["fulfillment_status"] = "COMPLETED"
-			updates["completed_at"] = now
+			winnerUpdates["fulfillment_status"] = "COMPLETED"
+			winnerUpdates["completed_at"] = now
 		} else {
-			updates["fulfillment_status"] = "PROCESSING"
+			winnerUpdates["fulfillment_status"] = "PROCESSING"
 		}
-		updates["fulfillment_note"] = req.Note
+		winnerUpdates["fulfillment_note"] = req.Note
+		auditAfter = winnerUpdates
 	}
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&models.AuctionWinner{}).Where("id = ?", winner.ID).Updates(updates).Error; err != nil {
+		var locked models.AuctionBatch
+		if err := tx.Clauses(lockClause()).First(&locked, "id = ?", id).Error; err != nil {
 			return err
 		}
-		if err := tx.Model(&models.AuctionBatch{}).Where("id = ?", id).
-			Updates(map[string]interface{}{"version": batch.Version + 1, "updated_by": adminID}).Error; err != nil {
+		if locked.Version != req.Version {
+			return auctionErr(409, "Version batch tidak sesuai. Silakan muat ulang data terbaru.")
+		}
+		if locked.Status != models.AuctionBatchStatusOPEN && locked.Status != models.AuctionBatchStatusSOLD {
+			return auctionErr(409, "Operasi manual hanya dapat dilakukan setelah winner dipilih")
+		}
+		if len(winnerUpdates) > 0 {
+			if err := tx.Model(&models.AuctionWinner{}).Where("id = ?", winner.ID).Updates(winnerUpdates).Error; err != nil {
+				return err
+			}
+		}
+		batchUpdates["version"] = locked.Version + 1
+		batchUpdates["updated_by"] = adminID
+		if err := tx.Model(&locked).Updates(batchUpdates).Error; err != nil {
 			return err
 		}
 		if err := tx.Create(&models.AuctionAuditLog{
 			BatchID:      id,
 			ActorAdminID: adminID,
-			Action:       "operations",
-			AfterData:    updates,
+			Action:       auditAction,
+			BeforeData:   auditBefore,
+			AfterData:    auditAfter,
 			Note:         req.Note,
 		}).Error; err != nil {
 			return err
 		}
 		if idempotencyKey != "" {
-			if err := s.saveIdempotency(tx, "ADMIN", adminID, operation, id, idempotencyKey, req, 200, batch); err != nil {
+			locked.Version++
+			locked.UpdatedBy = adminID
+			if req.BatchStatus != nil {
+				locked.Status = *req.BatchStatus
+			}
+			if err := s.saveIdempotency(tx, "ADMIN", adminID, operation, id, idempotencyKey, req, 200, &locked); err != nil {
 				return err
 			}
 		}
@@ -1417,6 +1795,7 @@ func (s *auctionService) mapBatchSummary(b models.AuctionBatch, analytics *repos
 		SlugEN:       b.SlugEN,
 		NamaID:       b.NamaID,
 		Status:       b.Status,
+		HasWinner:    b.Winner != nil,
 		IsDisplayed:  b.IsDisplayed,
 		GrandTotal:   b.GrandTotal.StringFixed(0),
 		MinBidAmount: minBidAmount(b.GrandTotal).StringFixed(0),

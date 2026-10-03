@@ -34,6 +34,8 @@ func SetupRoutes(
 	auctionEducationBannerController *controllers.AuctionEducationBannerController,
 	seasonalCampaignController *controllers.SeasonalCampaignController,
 	pushTestController *controllers.PushTestController,
+	pushPromotionController *controllers.PushPromotionNotificationController,
+	adminNotificationController *controllers.AdminNotificationController,
 	ulasanController *controllers.UlasanController,
 	ulasanAdminController *controllers.UlasanAdminController,
 	pesananAdminController *controllers.PesananAdminController,
@@ -414,6 +416,28 @@ func SetupRoutes(
 	pushTestAdmin.Get("/recipients", pushTestController.FindRecipients)
 	pushTestAdmin.Post("", pushTestController.Send)
 
+	pushPromotions := v1.Group("/panel/marketing/push-promotions",
+		middleware.AuthMiddleware(),
+		middleware.AdminOnly(),
+	)
+	pushPromotions.Get("", middleware.RequirePermission("marketing:manage"), pushPromotionController.FindAll)
+	pushPromotions.Get("/:id", middleware.RequirePermission("marketing:manage"), pushPromotionController.FindByID)
+	pushPromotions.Post("", middleware.RequirePermission("marketing:manage"), pushPromotionController.Create)
+	pushPromotions.Put("/:id", middleware.RequirePermission("marketing:manage"), pushPromotionController.Update)
+	pushPromotions.Post("/:id/schedule", middleware.RequirePermission("marketing:manage"), pushPromotionController.Schedule)
+	pushPromotions.Patch("/:id/cancel-schedule", middleware.RequirePermission("marketing:manage"), pushPromotionController.CancelSchedule)
+	pushPromotions.Post("/:id/send", middleware.RequirePermission("marketing:manage"), pushPromotionController.SendNow)
+	pushPromotions.Delete("/:id", middleware.RequirePermission("marketing:manage"), pushPromotionController.Delete)
+
+	adminNotifications := v1.Group("/panel/notifications",
+		middleware.AuthMiddleware(),
+		middleware.AdminOnly(),
+	)
+	adminNotifications.Post("/devices", adminNotificationController.RegisterDevice)
+	adminNotifications.Delete("/devices", adminNotificationController.UnregisterDevice)
+	adminNotifications.Get("", middleware.RequirePermission("pesanan:read"), adminNotificationController.List)
+	adminNotifications.Patch("/:id/read", middleware.RequirePermission("pesanan:read"), adminNotificationController.MarkRead)
+
 	// Ulasan - Admin
 	ulasanAdmin := v1.Group("/panel/ulasan",
 		middleware.AuthMiddleware(),
@@ -790,6 +814,7 @@ func SetupRoutes(
 	auction.Get("/bids/export", middleware.RequirePermission("auction:read"), auctionController.ExportBids)
 	auction.Get("", middleware.RequirePermission("auction:read"), auctionController.List)
 	auction.Post("", middleware.RequirePermission("auction:manage"), auctionController.Create)
+	auction.Post("/:id/duplicate", middleware.RequirePermission("auction:manage"), auctionController.Duplicate)
 	auction.Get("/:id", middleware.RequirePermission("auction:read"), auctionController.GetByID)
 	auction.Put("/:id", middleware.RequirePermission("auction:manage"), auctionController.Update)
 	auction.Delete("/:id", middleware.RequirePermission("auction:manage"), auctionController.Delete)
