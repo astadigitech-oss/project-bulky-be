@@ -47,6 +47,29 @@ var fixedPagesOrder = []string{
 	"kebijakan-privasi",
 }
 
+const (
+	policyDocumentTermsSlug        = "syarat-ketentuan"
+	policyDocumentAuctionTermsSlug = "syarat-ketentuan-lelang"
+	policyDocumentTermsSlugID      = "syarat-dan-ketentuan"
+	policyDocumentTermsSlugEN      = "terms-and-conditions"
+	policyDocumentAuctionSlugID    = "syarat-dan-ketentuan-lelang"
+	policyDocumentAuctionSlugEN    = "auction-terms-and-conditions"
+)
+
+// lockTermsDocumentSlugs keeps the public URLs for the two terms documents
+// stable even when an Admin changes either localized title or submits custom
+// slug values.
+func lockTermsDocumentSlugs(dokumen *models.DokumenKebijakan) {
+	switch dokumen.Slug {
+	case policyDocumentTermsSlug:
+		slugID, slugEN := policyDocumentTermsSlugID, policyDocumentTermsSlugEN
+		dokumen.SlugID, dokumen.SlugEN = &slugID, &slugEN
+	case policyDocumentAuctionTermsSlug:
+		slugID, slugEN := policyDocumentAuctionSlugID, policyDocumentAuctionSlugEN
+		dokumen.SlugID, dokumen.SlugEN = &slugID, &slugEN
+	}
+}
+
 func (s *dokumenKebijakanService) FindAll(ctx context.Context) ([]models.DokumenKebijakanListResponse, error) {
 	dokumens, err := s.repo.FindAllSimple(ctx)
 	if err != nil {
@@ -155,6 +178,7 @@ func (s *dokumenKebijakanService) Update(ctx context.Context, id string, req *mo
 		s := utils.GenerateSlug(*req.JudulEN)
 		dokumen.SlugEN = &s
 	}
+	lockTermsDocumentSlugs(dokumen)
 
 	// Update konten if provided (sanitize HTML for non-FAQ, keep JSON for FAQ)
 	if req.Konten != nil {
@@ -234,6 +258,7 @@ func (s *dokumenKebijakanService) UpdateBySlug(ctx context.Context, slug string,
 		s := utils.GenerateSlug(*req.JudulEN)
 		dokumen.SlugEN = &s
 	}
+	lockTermsDocumentSlugs(dokumen)
 
 	// Update konten if provided (sanitize HTML for non-FAQ, keep JSON for FAQ)
 	if req.Konten != nil {
