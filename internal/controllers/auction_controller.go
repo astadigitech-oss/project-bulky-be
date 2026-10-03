@@ -89,6 +89,24 @@ func (ctrl *AuctionController) Create(c *fiber.Ctx) error {
 	return utils.CreatedResponse(c, "Draft batch berhasil dibuat", result)
 }
 
+func (ctrl *AuctionController) Duplicate(c *fiber.Ctx) error {
+	adminID, ok := auctionAdminID(c)
+	if !ok {
+		return utils.ErrorResponse(c, http.StatusUnauthorized, "Admin tidak valid", nil)
+	}
+
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return utils.ErrorResponse(c, http.StatusBadRequest, "ID batch tidak valid", nil)
+	}
+
+	result, err := ctrl.service.DuplicateDraft(c.UserContext(), id, adminID, idempotencyKey(c))
+	if err != nil {
+		return handleAuctionError(c, err)
+	}
+	return utils.CreatedResponse(c, "Draft batch hasil salinan berhasil dibuat", result)
+}
+
 func (ctrl *AuctionController) GetByID(c *fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {

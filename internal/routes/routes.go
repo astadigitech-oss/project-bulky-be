@@ -814,6 +814,7 @@ func SetupRoutes(
 	auction.Get("/bids/export", middleware.RequirePermission("auction:read"), auctionController.ExportBids)
 	auction.Get("", middleware.RequirePermission("auction:read"), auctionController.List)
 	auction.Post("", middleware.RequirePermission("auction:manage"), auctionController.Create)
+	auction.Post("/:id/duplicate", middleware.RequirePermission("auction:manage"), auctionController.Duplicate)
 	auction.Get("/:id", middleware.RequirePermission("auction:read"), auctionController.GetByID)
 	auction.Put("/:id", middleware.RequirePermission("auction:manage"), auctionController.Update)
 	auction.Delete("/:id", middleware.RequirePermission("auction:manage"), auctionController.Delete)
