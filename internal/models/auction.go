@@ -75,7 +75,7 @@ type AuctionBatch struct {
 	Status                string           `gorm:"type:varchar(20);not null;default:DRAFT" json:"status"`
 	IsDisplayed           bool             `gorm:"not null;default:false" json:"is_displayed"`
 	GrandTotal            decimal.Decimal  `gorm:"type:numeric(18,0);not null;default:0" json:"grand_total"`
-	MinBidPercent         decimal.Decimal  `gorm:"type:numeric(12,4);not null;default:0.1" json:"min_bid_percent"`
+	MinBidPercent         decimal.Decimal  `gorm:"type:numeric(12,4);not null;default:5" json:"min_bid_percent"`
 	TotalQuantity         int              `gorm:"not null;default:0" json:"total_quantity"`
 	PanjangCm             decimal.Decimal  `gorm:"type:numeric(12,3);not null;default:0" json:"panjang_cm"`
 	LebarCm               decimal.Decimal  `gorm:"type:numeric(12,3);not null;default:0" json:"lebar_cm"`

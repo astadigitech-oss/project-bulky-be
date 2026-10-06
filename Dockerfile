@@ -37,11 +37,14 @@ ENV APP_PORT=8080
 
 COPY --from=builder /app/bulky-api /app/bulky-api
 
+# Jalankan migration production sebelum API menerima traffic.
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod 755 /app/docker-entrypoint.sh
+
 # golang-migrate CLI agar migrasi bisa dijalankan dari dalam container
 # (berguna saat DB hanya accessible di dalam Docker network)
 COPY --from=migrate/migrate /migrate /usr/local/bin/migrate
-# File migration di-copy ke image supaya siap dipakai (opsional: hapus baris ini
-# jika migrasi dijalankan via PostDeployCommand dengan volume terpisah)
+# File migration di-copy ke image agar entrypoint dapat menjalankannya saat startup.
 COPY migrations ./migrations
 
 EXPOSE 8080
@@ -50,4 +53,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD curl -f http://localhost:8080/api/health || exit 1
 
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["/app/bulky-api"]
