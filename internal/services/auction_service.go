@@ -193,7 +193,7 @@ func (s *auctionService) CreateDraft(ctx context.Context, req *dto.AuctionDraftI
 		Status:                models.AuctionBatchStatusDRAFT,
 		IsDisplayed:           false,
 		GrandTotal:            grandTotal,
-		MinBidPercent:         decimal.NewFromFloat(0.1),
+		MinBidPercent:         decimal.NewFromInt(5),
 		TotalQuantity:         totalQty,
 		PanjangCm:             parseDecimal(req.PanjangCm, decimal.Zero),
 		LebarCm:               parseDecimal(req.LebarCm, decimal.Zero),
@@ -1686,8 +1686,8 @@ func computeVolume(p, l, t decimal.Decimal) decimal.Decimal {
 	return vol.Round(3)
 }
 
-func minBidAmount(grandTotal decimal.Decimal) decimal.Decimal {
-	return grandTotal.Mul(decimal.NewFromFloat(0.001)).Ceil()
+func minBidAmount(grandTotal, minBidPercent decimal.Decimal) decimal.Decimal {
+	return grandTotal.Mul(minBidPercent).Div(decimal.NewFromInt(100)).Ceil()
 }
 
 // ============================================================
@@ -1798,7 +1798,7 @@ func (s *auctionService) mapBatchSummary(b models.AuctionBatch, analytics *repos
 		HasWinner:    b.Winner != nil,
 		IsDisplayed:  b.IsDisplayed,
 		GrandTotal:   b.GrandTotal.StringFixed(0),
-		MinBidAmount: minBidAmount(b.GrandTotal).StringFixed(0),
+		MinBidAmount: minBidAmount(b.GrandTotal, b.MinBidPercent).StringFixed(0),
 		CreatedAt:    b.CreatedAt,
 		OpenedAt:     b.OpenedAt,
 		SoldAt:       b.SoldAt,
@@ -1848,7 +1848,7 @@ func (s *auctionService) mapBatchDetail(b *models.AuctionBatch, analytics *repos
 		IsDisplayed:           b.IsDisplayed,
 		GrandTotal:            b.GrandTotal.StringFixed(0),
 		MinBidPercent:         b.MinBidPercent.String(),
-		MinBidAmount:          minBidAmount(b.GrandTotal).StringFixed(0),
+		MinBidAmount:          minBidAmount(b.GrandTotal, b.MinBidPercent).StringFixed(0),
 		TotalQuantity:         b.TotalQuantity,
 		PanjangCm:             b.PanjangCm.String(),
 		LebarCm:               b.LebarCm.String(),
