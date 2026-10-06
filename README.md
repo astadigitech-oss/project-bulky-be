@@ -507,21 +507,16 @@ Ini akan membuat 2 file:
 
 #### Migrasi di Production (Dokploy / Docker-only DB)
 
-Jika database production **tidak di-expose ke publik** dan hanya bisa diakses dari dalam Docker network, jalankan migrasi dari dalam container aplikasi. Image runtime sudah menyertakan binary `migrate` (dari `migrate/migrate`) dan folder `migrations/`:
+Jika database production **tidak di-expose ke publik** dan hanya bisa diakses dari dalam Docker network, container aplikasi otomatis menjalankan `migrate up` sebelum API start. Ini aktif ketika `APP_ENV=production` dan memakai `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, serta `DB_NAME` dari environment Dokploy. Migrasi hanya dijalankan saat container mulai; `migrate up` melewati versi yang sudah diterapkan.
+
+Atur Dokploy agar deploy otomatis dari branch `main` setelah merge. Saat deployment membuat dan menjalankan container baru, log container akan menampilkan status migrasi. Jika migrasi gagal, API tidak akan start sehingga kegagalannya terlihat pada deployment.
+
+Untuk memeriksa versi migrasi atau melakukan rollback manual dari dalam container:
 
 ```sh
 # Masuk ke container (SSH ke server Dokploy atau fitur Terminal di UI Dokploy)
 docker exec -it <nama-container-app> sh
 
-# Jalankan migrasi (pakai env DB_* yang sudah di-set di Dokploy)
-migrate -path /app/migrations \
-  -database "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable" \
-  up
-```
-
-Command pendukung dari dalam container:
-
-```sh
 # Cek versi migrasi saat ini
 migrate -path /app/migrations \
   -database "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable" \
@@ -533,13 +528,7 @@ migrate -path /app/migrations \
   down 1
 ```
 
-**Otomasi (opsional):** di Dokploy → Application → **Advanced → PostDeployCommand**, isi command migrasi di atas (tanpa `docker exec`) agar migrasi berjalan otomatis setiap deploy:
-
-```sh
-migrate -path /app/migrations -database "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable" up
-```
-
-> Catatan: state migrasi (`schema_migrations`) tersimpan di database, bukan di container — aman walau container di-redeploy.
+> Catatan: state migrasi (`schema_migrations`) tersimpan di database, bukan di container — aman walau container di-redeploy. Jangan tambahkan command migrasi yang sama di PostDeployCommand Dokploy karena entrypoint sudah menjalankannya sebelum API start.
 
 ## Seeder Scripts
 
