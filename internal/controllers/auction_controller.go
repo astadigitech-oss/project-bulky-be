@@ -393,6 +393,17 @@ func (ctrl *AuctionController) ImportSupplierExcel(c *fiber.Ctx) error {
 		}
 		return value, nil
 	}
+	parseOptionalColumn := func(name string) (*int, error) {
+		value := strings.TrimSpace(c.FormValue(name))
+		if value == "" {
+			return nil, nil
+		}
+		column, parseErr := strconv.Atoi(value)
+		if parseErr != nil || column < 0 {
+			return nil, fmt.Errorf("Kolom %s tidak valid", name)
+		}
+		return &column, nil
+	}
 	nameColumn, err := parseColumn("name_column")
 	if err != nil {
 		return utils.ErrorResponse(c, http.StatusBadRequest, err.Error(), nil)
@@ -409,8 +420,30 @@ func (ctrl *AuctionController) ImportSupplierExcel(c *fiber.Ctx) error {
 	if err != nil {
 		return utils.ErrorResponse(c, http.StatusBadRequest, err.Error(), nil)
 	}
+	lengthColumn, err := parseOptionalColumn("length_column")
+	if err != nil {
+		return utils.ErrorResponse(c, http.StatusBadRequest, err.Error(), nil)
+	}
+	widthColumn, err := parseOptionalColumn("width_column")
+	if err != nil {
+		return utils.ErrorResponse(c, http.StatusBadRequest, err.Error(), nil)
+	}
+	heightColumn, err := parseOptionalColumn("height_column")
+	if err != nil {
+		return utils.ErrorResponse(c, http.StatusBadRequest, err.Error(), nil)
+	}
+	volumeColumn, err := parseOptionalColumn("volume_column")
+	if err != nil {
+		return utils.ErrorResponse(c, http.StatusBadRequest, err.Error(), nil)
+	}
+	weightColumn, err := parseOptionalColumn("weight_column")
+	if err != nil {
+		return utils.ErrorResponse(c, http.StatusBadRequest, err.Error(), nil)
+	}
 	result, err := ctrl.service.ImportSupplierExcel(c.UserContext(), file, dto.AuctionSupplierExcelMapping{
 		NameColumn: nameColumn, PriceColumn: priceColumn, QuantityColumn: quantityColumn, HeaderRow: headerRow,
+		LengthColumn: lengthColumn, WidthColumn: widthColumn, HeightColumn: heightColumn,
+		VolumeColumn: volumeColumn, WeightColumn: weightColumn,
 	}, c.FormValue("title"), adminID)
 	if err != nil {
 		return handleAuctionError(c, err)

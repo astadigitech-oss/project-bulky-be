@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -74,7 +75,36 @@ func (s *auctionService) ImportSupplierExcel(ctx context.Context, file *multipar
 	if mapping.HeaderRow != workbook.headerRow {
 		return nil, auctionErr(400, "Header Excel berubah. Unggah ulang file untuk membaca kolom terbaru")
 	}
+	physicalColumns := []*int{mapping.LengthColumn, mapping.WidthColumn, mapping.HeightColumn, mapping.VolumeColumn, mapping.WeightColumn}
+	selectedPhysicalColumns := 0
+	for _, column := range physicalColumns {
+		if column != nil {
+			selectedPhysicalColumns++
+		}
+	}
+	if selectedPhysicalColumns != 0 && selectedPhysicalColumns != len(physicalColumns) {
+		return nil, auctionErr(400, "Pilih semua kolom panjang, lebar, tinggi, kubikasi, dan berat atau kosongkan semuanya")
+	}
+
+	usedColumns := map[int]string{
+		mapping.NameColumn:     "nama",
+		mapping.PriceColumn:    "harga",
+		mapping.QuantityColumn: "qty",
+	}
 	maxColumn := max(mapping.NameColumn, mapping.PriceColumn, mapping.QuantityColumn)
+	for index, column := range physicalColumns {
+		if column == nil {
+			continue
+		}
+		if *column < 0 {
+			return nil, auctionErr(400, "Kolom fisik Excel tidak valid")
+		}
+		if existing, duplicate := usedColumns[*column]; duplicate {
+			return nil, auctionErr(400, fmt.Sprintf("Kolom %s juga dipakai sebagai kolom %s", excelColumnLetter(*column), existing))
+		}
+		usedColumns[*column] = []string{"panjang", "lebar", "tinggi", "kubikasi", "berat"}[index]
+		maxColumn = max(maxColumn, *column)
+	}
 	if maxColumn >= len(workbook.rows[workbook.headerRow]) {
 		return nil, auctionErr(400, "Kolom yang dipilih tidak ditemukan di file Excel")
 	}
@@ -85,7 +115,15 @@ func (s *auctionService) ImportSupplierExcel(ctx context.Context, file *multipar
 		name := strings.TrimSpace(excelCell(row, mapping.NameColumn))
 		priceText := strings.TrimSpace(excelCell(row, mapping.PriceColumn))
 		quantityText := strings.TrimSpace(excelCell(row, mapping.QuantityColumn))
-		if name == "" && priceText == "" && quantityText == "" {
+		lengthText, widthText, heightText, volumeText, weightText := "", "", "", "", ""
+		if selectedPhysicalColumns > 0 {
+			lengthText = strings.TrimSpace(excelCell(row, *mapping.LengthColumn))
+			widthText = strings.TrimSpace(excelCell(row, *mapping.WidthColumn))
+			heightText = strings.TrimSpace(excelCell(row, *mapping.HeightColumn))
+			volumeText = strings.TrimSpace(excelCell(row, *mapping.VolumeColumn))
+			weightText = strings.TrimSpace(excelCell(row, *mapping.WeightColumn))
+		}
+		if name == "" && priceText == "" && quantityText == "" && lengthText == "" && widthText == "" && heightText == "" && volumeText == "" && weightText == "" {
 			continue
 		}
 		excelRow := rowIndex + 1
@@ -104,12 +142,33 @@ func (s *auctionService) ImportSupplierExcel(ctx context.Context, file *multipar
 		if int64(int(quantity)) != quantity {
 			return nil, auctionErr(400, fmt.Sprintf("Baris %d: qty terlalu besar", excelRow))
 		}
-		items = append(items, dto.AuctionDraftItem{
+		item := dto.AuctionDraftItem{
 			SourceType: "MANUAL",
 			Nama:       name,
 			UnitPrice:  price.StringFixed(0),
 			Quantity:   int(quantity),
-		})
+		}
+		if selectedPhysicalColumns > 0 {
+			metrics := []struct {
+				name   string
+				text   string
+				target *string
+			}{
+				{name: "panjang", text: lengthText, target: &item.PanjangCm},
+				{name: "lebar", text: widthText, target: &item.LebarCm},
+				{name: "tinggi", text: heightText, target: &item.TinggiCm},
+				{name: "kubikasi", text: volumeText, target: &item.VolumeM3},
+				{name: "berat", text: weightText, target: &item.BeratKg},
+			}
+			for _, metric := range metrics {
+				value, ok := parseExcelMeasurement(metric.text)
+				if !ok || !value.IsPositive() {
+					return nil, auctionErr(400, fmt.Sprintf("Baris %d: %s harus berupa angka lebih dari nol", excelRow, metric.name))
+				}
+				*metric.target = value.String()
+			}
+		}
+		items = append(items, item)
 		if len(items) > maxSupplierWorkbookRows {
 			return nil, auctionErr(400, fmt.Sprintf("Excel maksimal berisi %d baris item", maxSupplierWorkbookRows))
 		}
@@ -132,7 +191,36 @@ func (s *auctionService) ImportSupplierExcel(ctx context.Context, file *multipar
 	if err != nil {
 		return nil, err
 	}
-	return &dto.AuctionSupplierExcelImport{Items: items, PDF: mapAsset(asset, s.cfg)}, nil
+	result := &dto.AuctionSupplierExcelImport{Items: items, PDF: mapAsset(asset, s.cfg)}
+	if selectedPhysicalColumns > 0 {
+		result.BatchPhysical = summarizeSupplierBatchPhysical(items)
+	}
+	return result, nil
+}
+
+func summarizeSupplierBatchPhysical(items []dto.AuctionDraftItem) *dto.AuctionBatchPhysicalValues {
+	totalVolume := decimal.Zero
+	totalWeight := decimal.Zero
+	for _, item := range items {
+		quantity := decimal.NewFromInt(int64(item.Quantity))
+		unitVolume, _ := decimal.NewFromString(item.VolumeM3)
+		unitWeight, _ := decimal.NewFromString(item.BeratKg)
+		totalVolume = totalVolume.Add(unitVolume.Mul(quantity))
+		totalWeight = totalWeight.Add(unitWeight.Mul(quantity))
+	}
+	totalVolume = totalVolume.Round(6)
+	totalWeight = totalWeight.Round(3)
+	if !totalVolume.IsPositive() {
+		return nil
+	}
+	sideCm := decimal.NewFromFloat(math.Cbrt(totalVolume.InexactFloat64()) * 100).Round(3)
+	return &dto.AuctionBatchPhysicalValues{
+		PanjangCm: sideCm.StringFixed(3),
+		LebarCm:   sideCm.StringFixed(3),
+		TinggiCm:  sideCm.StringFixed(3),
+		VolumeM3:  totalVolume.StringFixed(6),
+		BeratKg:   totalWeight.StringFixed(3),
+	}
 }
 
 func readSupplierWorkbook(file *multipart.FileHeader) (*supplierWorkbook, error) {
@@ -245,6 +333,50 @@ func parseExcelWholeNumber(value string) (decimal.Decimal, bool) {
 	}
 	number, err := decimal.NewFromString(normalized.String())
 	if err != nil || !number.IsInteger() {
+		return decimal.Zero, false
+	}
+	return number, true
+}
+
+func parseExcelMeasurement(value string) (decimal.Decimal, bool) {
+	value = strings.ToLower(strings.TrimSpace(value))
+	value = strings.ReplaceAll(value, "\u00a0", "")
+	value = strings.ReplaceAll(value, " ", "")
+	for _, suffix := range []string{"cm", "kg", "m³", "m3"} {
+		value = strings.TrimSuffix(value, suffix)
+	}
+	if value == "" {
+		return decimal.Zero, false
+	}
+
+	lastDot := strings.LastIndex(value, ".")
+	lastComma := strings.LastIndex(value, ",")
+	decimalSeparator := byte(0)
+	if lastDot >= 0 && lastComma >= 0 {
+		if lastDot > lastComma {
+			decimalSeparator = '.'
+		} else {
+			decimalSeparator = ','
+		}
+	} else if lastDot >= 0 {
+		decimalSeparator = '.'
+	} else if lastComma >= 0 {
+		decimalSeparator = ','
+	}
+
+	var normalized strings.Builder
+	for index := 0; index < len(value); index++ {
+		character := value[index]
+		if character >= '0' && character <= '9' || character == '-' {
+			normalized.WriteByte(character)
+			continue
+		}
+		if (character == '.' || character == ',') && character == decimalSeparator {
+			normalized.WriteByte('.')
+		}
+	}
+	number, err := decimal.NewFromString(normalized.String())
+	if err != nil {
 		return decimal.Zero, false
 	}
 	return number, true
