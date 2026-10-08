@@ -129,6 +129,7 @@ type AuctionDraftInput struct {
 	DiscrepancyPercentage string             `json:"discrepancy_percentage"`
 	MerekIDs              []string           `json:"merek_ids"`
 	Items                 []AuctionDraftItem `json:"items"`
+	PhysicalSource        string             `json:"physical_source" validate:"omitempty,oneof=MANUAL ITEM_AGGREGATE"`
 	PanjangCm             string             `json:"panjang_cm"`
 	LebarCm               string             `json:"lebar_cm"`
 	TinggiCm              string             `json:"tinggi_cm"`
@@ -145,6 +146,11 @@ type AuctionDraftItem struct {
 	Nama       string `json:"nama" validate:"omitempty,max=255"`
 	UnitPrice  string `json:"unit_price" validate:"omitempty"`
 	Quantity   int    `json:"quantity" validate:"required,min=1"`
+	PanjangCm  string `json:"panjang_cm,omitempty"`
+	LebarCm    string `json:"lebar_cm,omitempty"`
+	TinggiCm   string `json:"tinggi_cm,omitempty"`
+	VolumeM3   string `json:"volume_m3,omitempty"`
+	BeratKg    string `json:"berat_kg,omitempty"`
 }
 
 // AuctionPublishRequest payload publish batch. Wajib membawa version terakhir.
@@ -199,15 +205,29 @@ type AuctionSupplierExcelColumn struct {
 }
 
 type AuctionSupplierExcelMapping struct {
-	NameColumn     int `form:"name_column"`
-	PriceColumn    int `form:"price_column"`
-	QuantityColumn int `form:"quantity_column"`
-	HeaderRow      int `form:"header_row"`
+	NameColumn     int  `form:"name_column"`
+	PriceColumn    int  `form:"price_column"`
+	QuantityColumn int  `form:"quantity_column"`
+	HeaderRow      int  `form:"header_row"`
+	LengthColumn   *int `form:"length_column"`
+	WidthColumn    *int `form:"width_column"`
+	HeightColumn   *int `form:"height_column"`
+	VolumeColumn   *int `form:"volume_column"`
+	WeightColumn   *int `form:"weight_column"`
 }
 
 type AuctionSupplierExcelImport struct {
-	Items []AuctionDraftItem    `json:"items"`
-	PDF   *AuctionAssetResponse `json:"pdf"`
+	Items         []AuctionDraftItem          `json:"items"`
+	BatchPhysical *AuctionBatchPhysicalValues `json:"batch_physical,omitempty"`
+	PDF           *AuctionAssetResponse       `json:"pdf"`
+}
+
+type AuctionBatchPhysicalValues struct {
+	PanjangCm string `json:"panjang_cm"`
+	LebarCm   string `json:"lebar_cm"`
+	TinggiCm  string `json:"tinggi_cm"`
+	VolumeM3  string `json:"volume_m3"`
+	BeratKg   string `json:"berat_kg"`
 }
 
 // ============================================================
@@ -267,6 +287,7 @@ type AuctionBatchDetail struct {
 	MinBidPercent         string                 `json:"min_bid_percent"`
 	MinBidAmount          string                 `json:"min_bid_amount"`
 	TotalQuantity         int                    `json:"total_quantity"`
+	PhysicalSource        string                 `json:"physical_source"`
 	PanjangCm             string                 `json:"panjang_cm"`
 	LebarCm               string                 `json:"lebar_cm"`
 	TinggiCm              string                 `json:"tinggi_cm"`
@@ -302,6 +323,11 @@ type AuctionItemSnapshot struct {
 	Quantity          int     `json:"quantity"`
 	UnitPriceSnapshot string  `json:"unit_price_snapshot"`
 	SubtotalSnapshot  string  `json:"subtotal_snapshot"`
+	PanjangCm         *string `json:"panjang_cm"`
+	LebarCm           *string `json:"lebar_cm"`
+	TinggiCm          *string `json:"tinggi_cm"`
+	VolumeM3          *string `json:"volume_m3"`
+	BeratKg           *string `json:"berat_kg"`
 }
 
 // AuctionBidDetail detail bid untuk panel.

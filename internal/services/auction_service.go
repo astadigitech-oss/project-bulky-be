@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -204,6 +205,9 @@ func (s *auctionService) CreateDraft(ctx context.Context, req *dto.AuctionDraftI
 		CreatedBy:             adminID,
 		UpdatedBy:             adminID,
 	}
+	if err := applyBatchPhysical(batch, req, items); err != nil {
+		return nil, err
+	}
 
 	batch.Items = items
 	brandIDs := parseUUIDList(req.MerekIDs)
@@ -299,6 +303,9 @@ func (s *auctionService) UpdateDraft(ctx context.Context, id uuid.UUID, req *dto
 		}
 
 		applyAuctionDraftInput(&locked, req, adminID, grandTotal, totalQty)
+		if err := applyBatchPhysical(&locked, req, items); err != nil {
+			return err
+		}
 		if err := tx.Save(&locked).Error; err != nil {
 			return err
 		}
@@ -447,6 +454,11 @@ func (s *auctionService) DuplicateDraft(ctx context.Context, id uuid.UUID, admin
 			NamaSnapshot:      item.NamaSnapshot,
 			UnitPriceSnapshot: item.UnitPriceSnapshot,
 			SubtotalSnapshot:  item.SubtotalSnapshot,
+			UnitPanjangCm:     item.UnitPanjangCm,
+			UnitLebarCm:       item.UnitLebarCm,
+			UnitTinggiCm:      item.UnitTinggiCm,
+			UnitVolumeM3:      item.UnitVolumeM3,
+			UnitBeratKg:       item.UnitBeratKg,
 		})
 	}
 	brandIDs := make([]uuid.UUID, 0, len(source.Brands))
@@ -563,6 +575,49 @@ func applyAuctionDraftInput(batch *models.AuctionBatch, req *dto.AuctionDraftInp
 	batch.VolumeM3 = computeVolume(batch.PanjangCm, batch.LebarCm, batch.TinggiCm)
 	batch.UpdatedBy = adminID
 	batch.Version++
+}
+
+func applyBatchPhysical(batch *models.AuctionBatch, req *dto.AuctionDraftInput, items []models.AuctionBatchItem) error {
+	source := strings.ToUpper(strings.TrimSpace(req.PhysicalSource))
+	if source == "" {
+		source = "MANUAL"
+	}
+	if source != "MANUAL" && source != "ITEM_AGGREGATE" {
+		return auctionErr(400, "Sumber data fisik batch tidak valid")
+	}
+	batch.PhysicalSource = source
+
+	if source == "MANUAL" {
+		batch.PanjangCm = parseDecimal(req.PanjangCm, decimal.Zero)
+		batch.LebarCm = parseDecimal(req.LebarCm, decimal.Zero)
+		batch.TinggiCm = parseDecimal(req.TinggiCm, decimal.Zero)
+		batch.BeratKg = parseDecimal(req.BeratKg, decimal.Zero)
+		batch.VolumeM3 = computeVolume(batch.PanjangCm, batch.LebarCm, batch.TinggiCm)
+		return nil
+	}
+
+	totalVolume := decimal.Zero
+	totalWeight := decimal.Zero
+	for _, item := range items {
+		if item.UnitPanjangCm == nil || item.UnitLebarCm == nil || item.UnitTinggiCm == nil || item.UnitVolumeM3 == nil || item.UnitBeratKg == nil {
+			return auctionErr(400, "Semua item wajib memiliki panjang, lebar, tinggi, kubikasi, dan berat untuk menghitung fisik batch")
+		}
+		quantity := decimal.NewFromInt(int64(item.Quantity))
+		totalVolume = totalVolume.Add(item.UnitVolumeM3.Mul(quantity))
+		totalWeight = totalWeight.Add(item.UnitBeratKg.Mul(quantity))
+	}
+	totalVolume = totalVolume.Round(6)
+	totalWeight = totalWeight.Round(3)
+	if !totalVolume.IsPositive() || !totalWeight.IsPositive() {
+		return auctionErr(400, "Total kubikasi dan berat hasil impor harus lebih dari nol")
+	}
+	sideCm := decimal.NewFromFloat(math.Cbrt(totalVolume.InexactFloat64()) * 100).Round(3)
+	batch.PanjangCm = sideCm
+	batch.LebarCm = sideCm
+	batch.TinggiCm = sideCm
+	batch.VolumeM3 = totalVolume
+	batch.BeratKg = totalWeight
+	return nil
 }
 
 func copyAuctionAssetStorageFile(storageKey string, cfg *config.Config) (string, string, error) {
@@ -1641,10 +1696,20 @@ func (s *auctionService) buildItemsSnapshot(ctx context.Context, reqItems []dto.
 			if name == "" || !price.IsPositive() || !isWholeNumber(price) {
 				return nil, decimal.Zero, 0, auctionErr(400, "Item manual memerlukan nama dan harga rupiah bulat lebih dari nol")
 			}
+			physical, err := snapshotAuctionItemPhysical(it, nil)
+			if err != nil {
+				return nil, decimal.Zero, 0, err
+			}
 			subtotal := price.Mul(decimal.NewFromInt(int64(it.Quantity)))
 			grandTotal = grandTotal.Add(subtotal)
 			totalQty += it.Quantity
-			items = append(items, models.AuctionBatchItem{SourceType: "MANUAL", Quantity: it.Quantity, NamaSnapshot: name, UnitPriceSnapshot: price, SubtotalSnapshot: subtotal})
+			items = append(items, models.AuctionBatchItem{
+				SourceType: "MANUAL", Quantity: it.Quantity, NamaSnapshot: name,
+				UnitPriceSnapshot: price, SubtotalSnapshot: subtotal,
+				UnitPanjangCm: physical.panjang, UnitLebarCm: physical.lebar,
+				UnitTinggiCm: physical.tinggi, UnitVolumeM3: physical.volume,
+				UnitBeratKg: physical.berat,
+			})
 			continue
 		}
 
@@ -1657,6 +1722,10 @@ func (s *auctionService) buildItemsSnapshot(ctx context.Context, reqItems []dto.
 		p, ok := produkByID[pid]
 		if !ok {
 			return nil, decimal.Zero, 0, auctionErr(404, "Produk tidak ditemukan")
+		}
+		physical, err := snapshotAuctionItemPhysical(it, &p)
+		if err != nil {
+			return nil, decimal.Zero, 0, err
 		}
 
 		// Snapshot harga: rupiah bulat (pembulatan ke atas per D02).
@@ -1672,10 +1741,60 @@ func (s *auctionService) buildItemsSnapshot(ctx context.Context, reqItems []dto.
 			NamaSnapshot:      p.NamaID,
 			UnitPriceSnapshot: unitPrice,
 			SubtotalSnapshot:  subtotal,
+			UnitPanjangCm:     physical.panjang,
+			UnitLebarCm:       physical.lebar,
+			UnitTinggiCm:      physical.tinggi,
+			UnitVolumeM3:      physical.volume,
+			UnitBeratKg:       physical.berat,
 		})
 	}
 
 	return items, grandTotal, totalQty, nil
+}
+
+type auctionItemPhysicalSnapshot struct {
+	panjang *decimal.Decimal
+	lebar   *decimal.Decimal
+	tinggi  *decimal.Decimal
+	volume  *decimal.Decimal
+	berat   *decimal.Decimal
+}
+
+func snapshotAuctionItemPhysical(input dto.AuctionDraftItem, product *models.Produk) (auctionItemPhysicalSnapshot, error) {
+	values := []string{input.PanjangCm, input.LebarCm, input.TinggiCm, input.VolumeM3, input.BeratKg}
+	provided := 0
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			provided++
+		}
+	}
+	if provided == 0 {
+		if product == nil || product.Panjang <= 0 || product.Lebar <= 0 || product.Tinggi <= 0 || product.Berat <= 0 {
+			return auctionItemPhysicalSnapshot{}, nil
+		}
+		panjang := decimal.NewFromFloat(product.Panjang)
+		lebar := decimal.NewFromFloat(product.Lebar)
+		tinggi := decimal.NewFromFloat(product.Tinggi)
+		volume := panjang.Mul(lebar).Mul(tinggi).Div(decimal.NewFromInt(1_000_000)).Round(6)
+		berat := decimal.NewFromFloat(product.Berat)
+		return auctionItemPhysicalSnapshot{
+			panjang: &panjang, lebar: &lebar, tinggi: &tinggi, volume: &volume, berat: &berat,
+		}, nil
+	}
+	if provided != len(values) {
+		return auctionItemPhysicalSnapshot{}, auctionErr(400, "Data fisik item harus mengisi panjang, lebar, tinggi, kubikasi, dan berat sekaligus")
+	}
+	parsed := make([]decimal.Decimal, len(values))
+	for index, value := range values {
+		decimalValue, err := decimal.NewFromString(strings.TrimSpace(value))
+		if err != nil || !decimalValue.IsPositive() {
+			return auctionItemPhysicalSnapshot{}, auctionErr(400, "Data fisik item harus berupa angka lebih dari nol")
+		}
+		parsed[index] = decimalValue
+	}
+	return auctionItemPhysicalSnapshot{
+		panjang: &parsed[0], lebar: &parsed[1], tinggi: &parsed[2], volume: &parsed[3], berat: &parsed[4],
+	}, nil
 }
 
 func computeVolume(p, l, t decimal.Decimal) decimal.Decimal {
@@ -1683,7 +1802,7 @@ func computeVolume(p, l, t decimal.Decimal) decimal.Decimal {
 		return decimal.Zero
 	}
 	vol := p.Mul(l).Mul(t).Div(decimal.NewFromInt(1000000))
-	return vol.Round(3)
+	return vol.Round(6)
 }
 
 func minBidAmount(grandTotal, minBidPercent decimal.Decimal) decimal.Decimal {
@@ -1850,6 +1969,7 @@ func (s *auctionService) mapBatchDetail(b *models.AuctionBatch, analytics *repos
 		MinBidPercent:         b.MinBidPercent.String(),
 		MinBidAmount:          minBidAmount(b.GrandTotal, b.MinBidPercent).StringFixed(0),
 		TotalQuantity:         b.TotalQuantity,
+		PhysicalSource:        b.PhysicalSource,
 		PanjangCm:             b.PanjangCm.String(),
 		LebarCm:               b.LebarCm.String(),
 		TinggiCm:              b.TinggiCm.String(),
@@ -1877,6 +1997,11 @@ func (s *auctionService) mapBatchDetail(b *models.AuctionBatch, analytics *repos
 			Quantity:          item.Quantity,
 			UnitPriceSnapshot: item.UnitPriceSnapshot.StringFixed(0),
 			SubtotalSnapshot:  item.SubtotalSnapshot.StringFixed(0),
+			PanjangCm:         decimalPtrToString(item.UnitPanjangCm),
+			LebarCm:           decimalPtrToString(item.UnitLebarCm),
+			TinggiCm:          decimalPtrToString(item.UnitTinggiCm),
+			VolumeM3:          decimalPtrToString(item.UnitVolumeM3),
+			BeratKg:           decimalPtrToString(item.UnitBeratKg),
 		})
 	}
 	for _, brand := range b.Brands {

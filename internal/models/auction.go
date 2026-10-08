@@ -77,11 +77,12 @@ type AuctionBatch struct {
 	GrandTotal            decimal.Decimal  `gorm:"type:numeric(18,0);not null;default:0" json:"grand_total"`
 	MinBidPercent         decimal.Decimal  `gorm:"type:numeric(12,4);not null;default:5" json:"min_bid_percent"`
 	TotalQuantity         int              `gorm:"not null;default:0" json:"total_quantity"`
+	PhysicalSource        string           `gorm:"type:varchar(20);not null;default:MANUAL" json:"physical_source"`
 	PanjangCm             decimal.Decimal  `gorm:"type:numeric(12,3);not null;default:0" json:"panjang_cm"`
 	LebarCm               decimal.Decimal  `gorm:"type:numeric(12,3);not null;default:0" json:"lebar_cm"`
 	TinggiCm              decimal.Decimal  `gorm:"type:numeric(12,3);not null;default:0" json:"tinggi_cm"`
 	BeratKg               decimal.Decimal  `gorm:"type:numeric(12,3);not null;default:0" json:"berat_kg"`
-	VolumeM3              decimal.Decimal  `gorm:"type:numeric(12,3);not null;default:0" json:"volume_m3"`
+	VolumeM3              decimal.Decimal  `gorm:"type:numeric(12,6);not null;default:0" json:"volume_m3"`
 	Version               int              `gorm:"not null;default:1" json:"version"`
 	CreatedBy             uuid.UUID        `gorm:"type:uuid;not null" json:"created_by"`
 	UpdatedBy             uuid.UUID        `gorm:"type:uuid;not null" json:"updated_by"`
@@ -106,15 +107,20 @@ func (AuctionBatch) TableName() string {
 // CATALOG yang memiliki ProdukID dapat memakai reservasi stok; MANUAL tidak
 // pernah mengubah stok katalog dan menyimpan snapshotnya sendiri.
 type AuctionBatchItem struct {
-	ID                uuid.UUID       `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
-	BatchID           uuid.UUID       `gorm:"type:uuid;not null;uniqueIndex:idx_batch_produk" json:"batch_id"`
-	ProdukID          *uuid.UUID      `gorm:"type:uuid;uniqueIndex:idx_batch_produk" json:"produk_id,omitempty"`
-	SourceType        string          `gorm:"type:varchar(10);not null;default:CATALOG" json:"source_type"`
-	Quantity          int             `gorm:"not null" json:"quantity"`
-	NamaSnapshot      string          `gorm:"type:varchar(255);not null" json:"nama_snapshot"`
-	UnitPriceSnapshot decimal.Decimal `gorm:"type:numeric(18,0);not null" json:"unit_price_snapshot"`
-	SubtotalSnapshot  decimal.Decimal `gorm:"type:numeric(18,0);not null" json:"subtotal_snapshot"`
-	CreatedAt         time.Time       `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
+	ID                uuid.UUID        `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
+	BatchID           uuid.UUID        `gorm:"type:uuid;not null;uniqueIndex:idx_batch_produk" json:"batch_id"`
+	ProdukID          *uuid.UUID       `gorm:"type:uuid;uniqueIndex:idx_batch_produk" json:"produk_id,omitempty"`
+	SourceType        string           `gorm:"type:varchar(10);not null;default:CATALOG" json:"source_type"`
+	Quantity          int              `gorm:"not null" json:"quantity"`
+	NamaSnapshot      string           `gorm:"type:varchar(255);not null" json:"nama_snapshot"`
+	UnitPriceSnapshot decimal.Decimal  `gorm:"type:numeric(18,0);not null" json:"unit_price_snapshot"`
+	SubtotalSnapshot  decimal.Decimal  `gorm:"type:numeric(18,0);not null" json:"subtotal_snapshot"`
+	UnitPanjangCm     *decimal.Decimal `gorm:"column:unit_panjang_cm;type:numeric(12,3)" json:"unit_panjang_cm,omitempty"`
+	UnitLebarCm       *decimal.Decimal `gorm:"column:unit_lebar_cm;type:numeric(12,3)" json:"unit_lebar_cm,omitempty"`
+	UnitTinggiCm      *decimal.Decimal `gorm:"column:unit_tinggi_cm;type:numeric(12,3)" json:"unit_tinggi_cm,omitempty"`
+	UnitVolumeM3      *decimal.Decimal `gorm:"column:unit_volume_m3;type:numeric(15,6)" json:"unit_volume_m3,omitempty"`
+	UnitBeratKg       *decimal.Decimal `gorm:"column:unit_berat_kg;type:numeric(12,3)" json:"unit_berat_kg,omitempty"`
+	CreatedAt         time.Time        `gorm:"type:timestamptz;autoCreateTime" json:"created_at"`
 }
 
 func (AuctionBatchItem) TableName() string {
