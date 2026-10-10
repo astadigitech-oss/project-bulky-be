@@ -886,6 +886,8 @@ func SetupRoutes(
 		middleware.AdminOnly(),
 	)
 	wmsAdmin.Post("/test-connection", middleware.RequirePermission("wms_integration:manage"), wmsController.TestConnection)
+	wmsAdmin.Get("/cargos/sync-ids/preview", middleware.RequirePermission("wms_integration:manage"), wmsController.PreviewSyncCargoIDs)
+	wmsAdmin.Post("/cargos/sync-ids", middleware.RequirePermission("wms_integration:manage"), wmsController.SyncCargoIDs)
 	wmsAdmin.Get("/cargos/ready-to-price", middleware.RequirePermission("wms_integration:manage"), wmsController.ListReadyToPriceCargos)
 	wmsAdmin.Get("/cargos/ready-to-price/count", middleware.RequirePermission("wms_integration:manage"), wmsController.CountReadyToPriceCargos)
 	wmsAdmin.Post("/cargos/:id/price", middleware.RequirePermission("wms_integration:manage"), wmsController.SetCargoPrice)

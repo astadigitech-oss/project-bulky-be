@@ -1,9 +1,16 @@
 package controllers
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
+	"strconv"
+	"strings"
 
 	"project-bulky-be/internal/models"
 	"project-bulky-be/internal/repositories"
@@ -11,6 +18,7 @@ import (
 	"project-bulky-be/pkg/utils"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 )
 
 // WMSController menyediakan endpoint admin panel untuk memverifikasi integrasi
@@ -40,6 +48,313 @@ func (c *WMSController) TestConnection(ctx *fiber.Ctx) error {
 	}
 
 	return utils.SuccessResponse(ctx, "Koneksi WMS berhasil diverifikasi", result)
+}
+
+type wmsCargoIDSyncCandidate struct {
+	productID uuid.UUID
+	legacyID  int64
+	idCargo   string
+	code      string
+}
+
+type wmsCargoIDSyncFingerprintRow struct {
+	LegacyID             int64   `json:"legacy_id"`
+	ProductID            string  `json:"product_id"`
+	ProductName          string  `json:"product_name"`
+	CurrentIDCargo       *string `json:"current_id_cargo"`
+	CurrentLegacyIDCargo *int64  `json:"current_legacy_id_cargo"`
+	CurrentReferenceCode *string `json:"current_reference_code"`
+	IncomingID           string  `json:"incoming_id"`
+	IncomingCode         string  `json:"incoming_code"`
+	IDCargoConflict      bool    `json:"id_cargo_conflict"`
+	LookupFailed         bool    `json:"lookup_failed"`
+}
+
+type wmsCargoIDSyncPlan struct {
+	preview         models.WMSCargoIDSyncPreview
+	candidates      []wmsCargoIDSyncCandidate
+	fingerprintRows []wmsCargoIDSyncFingerprintRow
+}
+
+func (c *WMSController) buildCargoIDSyncPlan(ctx context.Context) (*wmsCargoIDSyncPlan, error) {
+	items, err := c.service.ListCargoIDsForSync(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	plan := &wmsCargoIDSyncPlan{
+		preview: models.WMSCargoIDSyncPreview{
+			TotalFromWMS: len(items),
+			Failures:     make([]models.WMSCargoIDSyncFailure, 0),
+			Candidates:   make([]models.WMSCargoIDSyncCandidate, 0),
+		},
+		candidates:      make([]wmsCargoIDSyncCandidate, 0),
+		fingerprintRows: make([]wmsCargoIDSyncFingerprintRow, 0),
+	}
+	sort.Slice(items, func(i, j int) bool {
+		left, right := items[i], items[j]
+		if left.LegacyID == nil && right.LegacyID != nil {
+			return false
+		}
+		if left.LegacyID != nil && right.LegacyID == nil {
+			return true
+		}
+		if left.LegacyID != nil && right.LegacyID != nil && *left.LegacyID != *right.LegacyID {
+			return *left.LegacyID < *right.LegacyID
+		}
+		if left.ID != right.ID {
+			return left.ID < right.ID
+		}
+		return left.Code < right.Code
+	})
+	legacyCounts := make(map[int64]int)
+	for _, item := range items {
+		if item.LegacyID != nil {
+			legacyCounts[*item.LegacyID]++
+		}
+	}
+
+	for _, item := range items {
+		if item.LegacyID == nil {
+			plan.preview.SkippedNoLegacyID++
+			continue
+		}
+
+		legacyID := *item.LegacyID
+		fail := func(reason string) {
+			plan.preview.Failed++
+			plan.preview.Failures = append(plan.preview.Failures, models.WMSCargoIDSyncFailure{
+				LegacyID: legacyID,
+				Code:     item.Code,
+				Reason:   reason,
+			})
+		}
+
+		if legacyID <= 0 {
+			fail("legacy_id harus berupa angka positif")
+			continue
+		}
+		if legacyCounts[legacyID] > 1 {
+			fail("legacy_id duplikat pada respons WMS; pemetaan dilewati")
+			continue
+		}
+
+		wmsID, err := uuid.Parse(strings.TrimSpace(item.ID))
+		if err != nil {
+			fail("id WMS bukan UUID yang valid")
+			continue
+		}
+		code := strings.TrimSpace(item.Code)
+		if code == "" || len(code) > 100 {
+			fail("code WMS kosong atau melebihi 100 karakter")
+			continue
+		}
+
+		products, err := c.produkRepo.FindByLegacyIDCargo(ctx, legacyID)
+		if err != nil {
+			plan.fingerprintRows = append(plan.fingerprintRows, wmsCargoIDSyncFingerprintRow{
+				LegacyID:     legacyID,
+				IncomingID:   wmsID.String(),
+				IncomingCode: code,
+				LookupFailed: true,
+			})
+			fail("gagal mencari produk berdasarkan legacy_id")
+			continue
+		}
+		sort.Slice(products, func(i, j int) bool {
+			return products[i].ID.String() < products[j].ID.String()
+		})
+		for _, product := range products {
+			plan.fingerprintRows = append(plan.fingerprintRows, wmsCargoIDSyncFingerprintRow{
+				LegacyID:             legacyID,
+				ProductID:            product.ID.String(),
+				ProductName:          product.NamaID,
+				CurrentIDCargo:       product.IDCargo,
+				CurrentLegacyIDCargo: product.LegacyIDCargo,
+				CurrentReferenceCode: product.ReferenceCode,
+				IncomingID:           wmsID.String(),
+				IncomingCode:         code,
+			})
+		}
+
+		if len(products) == 0 {
+			plan.preview.NotFound++
+			plan.preview.UnmatchedLegacyIDs = append(plan.preview.UnmatchedLegacyIDs, legacyID)
+			continue
+		}
+		if len(products) > 1 {
+			fail("legacy_id cocok ke lebih dari satu produk Bulky")
+			continue
+		}
+
+		product := products[0]
+		plan.preview.Matched++
+		if product.IDCargo != nil && *product.IDCargo == strconv.FormatInt(legacyID, 10) {
+			plan.preview.LegacyIDCargoMatches++
+		}
+		if product.LegacyIDCargo != nil && *product.LegacyIDCargo != legacyID {
+			fail("produk sudah terhubung ke legacy_id_cargo yang berbeda")
+			continue
+		}
+
+		productID := product.ID.String()
+		idCargoConflict, err := c.produkRepo.ExistsByIDCargo(ctx, wmsID.String(), &productID)
+		if err != nil {
+			plan.fingerprintRows[len(plan.fingerprintRows)-1].LookupFailed = true
+			fail("gagal memeriksa benturan id_cargo WMS")
+			continue
+		}
+		plan.fingerprintRows[len(plan.fingerprintRows)-1].IDCargoConflict = idCargoConflict
+		if idCargoConflict {
+			fail("id_cargo WMS sudah digunakan oleh produk lain")
+			continue
+		}
+
+		currentIDCargo := ""
+		if product.IDCargo != nil {
+			currentIDCargo = *product.IDCargo
+		}
+		currentReferenceCode := ""
+		if product.ReferenceCode != nil {
+			currentReferenceCode = *product.ReferenceCode
+		}
+		isAlreadyCurrent := currentIDCargo == wmsID.String() &&
+			currentReferenceCode == code &&
+			product.LegacyIDCargo != nil && *product.LegacyIDCargo == legacyID
+		if isAlreadyCurrent {
+			plan.preview.AlreadyCurrent++
+			continue
+		}
+
+		plan.preview.WillUpdate++
+		plan.candidates = append(plan.candidates, wmsCargoIDSyncCandidate{
+			productID: product.ID,
+			legacyID:  legacyID,
+			idCargo:   wmsID.String(),
+			code:      code,
+		})
+		plan.preview.Candidates = append(plan.preview.Candidates, models.WMSCargoIDSyncCandidate{
+			ProductID:            product.ID.String(),
+			ProductName:          product.NamaID,
+			LegacyID:             legacyID,
+			CurrentIDCargo:       product.IDCargo,
+			CurrentReferenceCode: product.ReferenceCode,
+			WMSID:                wmsID.String(),
+			WMSCode:              code,
+		})
+	}
+
+	fingerprint, err := json.Marshal(struct {
+		Items []models.WMSCargoSyncID        `json:"items"`
+		Rows  []wmsCargoIDSyncFingerprintRow `json:"rows"`
+	}{Items: items, Rows: plan.fingerprintRows})
+	if err != nil {
+		return nil, err
+	}
+	token := sha256.Sum256(fingerprint)
+	plan.preview.PreviewToken = hex.EncodeToString(token[:])
+	return plan, nil
+}
+
+// PreviewSyncCargoIDs membaca pemetaan WMS dan menghitung hasil pencocokan
+// tanpa mengubah data produk Bulky.
+func (c *WMSController) PreviewSyncCargoIDs(ctx *fiber.Ctx) error {
+	if c.produkRepo == nil {
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Repository produk tidak tersedia", nil)
+	}
+	plan, err := c.buildCargoIDSyncPlan(ctx.UserContext())
+	if err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadGateway, err.Error(), nil)
+	}
+	return utils.SuccessResponse(ctx, "Preview re-sync ID cargo WMS berhasil dibuat", plan.preview)
+}
+
+// SyncCargoIDs mengambil ulang pemetaan cargo dari WMS untuk memvalidasi
+// preview_token, lalu hanya menerapkan kandidat produk terpilih. Produk tanpa
+// pasangan lokal tidak dicocokkan berdasarkan nama produk.
+func (c *WMSController) SyncCargoIDs(ctx *fiber.Ctx) error {
+	if c.produkRepo == nil {
+		return utils.ErrorResponse(ctx, http.StatusInternalServerError, "Repository produk tidak tersedia", nil)
+	}
+	var request models.SyncWMSCargoIDsRequest
+	if err := BindJSON(ctx, &request); err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Body preview_token wajib diisi", nil)
+	}
+	if strings.TrimSpace(request.PreviewToken) == "" {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "preview_token wajib diisi", nil)
+	}
+	if len(request.SelectedProductIDs) == 0 {
+		return utils.ErrorResponse(ctx, http.StatusBadRequest, "Pilih minimal satu produk untuk di-re-sync", nil)
+	}
+
+	plan, err := c.buildCargoIDSyncPlan(ctx.UserContext())
+	if err != nil {
+		return utils.ErrorResponse(ctx, http.StatusBadGateway, err.Error(), nil)
+	}
+	if request.PreviewToken != plan.preview.PreviewToken {
+		return utils.ErrorResponse(ctx, http.StatusConflict, "Data WMS atau produk Bulky berubah sejak preview. Muat ulang preview sebelum melanjutkan.", nil)
+	}
+
+	candidatesByProductID := make(map[uuid.UUID]wmsCargoIDSyncCandidate, len(plan.candidates))
+	for _, candidate := range plan.candidates {
+		candidatesByProductID[candidate.productID] = candidate
+	}
+	selectedCandidates := make([]wmsCargoIDSyncCandidate, 0, len(request.SelectedProductIDs))
+	selectedProductIDs := make(map[uuid.UUID]struct{}, len(request.SelectedProductIDs))
+	for _, productIDString := range request.SelectedProductIDs {
+		productID, err := uuid.Parse(strings.TrimSpace(productIDString))
+		if err != nil {
+			return utils.ErrorResponse(ctx, http.StatusBadRequest, "selected_product_ids berisi ID produk yang tidak valid", nil)
+		}
+		if _, duplicate := selectedProductIDs[productID]; duplicate {
+			return utils.ErrorResponse(ctx, http.StatusBadRequest, "selected_product_ids tidak boleh berisi ID duplikat", nil)
+		}
+		candidate, exists := candidatesByProductID[productID]
+		if !exists {
+			return utils.ErrorResponse(ctx, http.StatusBadRequest, "Produk yang dipilih bukan kandidat update pada preview ini", nil)
+		}
+		selectedProductIDs[productID] = struct{}{}
+		selectedCandidates = append(selectedCandidates, candidate)
+	}
+
+	result := models.WMSCargoIDSyncResult{
+		TotalFromWMS:         plan.preview.TotalFromWMS,
+		Matched:              plan.preview.Matched,
+		LegacyIDCargoMatches: plan.preview.LegacyIDCargoMatches,
+		AlreadyCurrent:       plan.preview.AlreadyCurrent,
+		Selected:             len(selectedCandidates),
+		NotSelected:          len(plan.candidates) - len(selectedCandidates),
+		SkippedNoLegacyID:    plan.preview.SkippedNoLegacyID,
+		NotFound:             plan.preview.NotFound,
+		UnmatchedLegacyIDs:   plan.preview.UnmatchedLegacyIDs,
+		Failed:               plan.preview.Failed,
+		Failures:             append([]models.WMSCargoIDSyncFailure(nil), plan.preview.Failures...),
+	}
+	for _, candidate := range selectedCandidates {
+		if err := c.produkRepo.SyncCargoID(ctx.UserContext(), candidate.productID, candidate.legacyID, candidate.idCargo, candidate.code); err != nil {
+			result.Failed++
+			result.Failures = append(result.Failures, models.WMSCargoIDSyncFailure{
+				LegacyID: candidate.legacyID,
+				Code:     candidate.code,
+				Reason:   "gagal menyimpan id_cargo dan reference_code: " + err.Error(),
+			})
+			continue
+		}
+		result.Updated++
+	}
+
+	if c.activityLog != nil {
+		c.activityLog.Log(ctx, models.ActionUpdate, "wms_cargo_id_sync", fmt.Sprintf(
+			"Re-sync ID cargo WMS selesai: selected=%d, updated=%d, not_selected=%d, no_legacy_id=%d, not_found=%d, failed=%d",
+			result.Selected, result.Updated, result.NotSelected, result.SkippedNoLegacyID, result.NotFound, result.Failed,
+		))
+	}
+
+	message := "Re-sync ID cargo WMS selesai"
+	if result.NotFound > 0 || result.Failed > 0 {
+		message = "Re-sync ID cargo WMS selesai dengan sebagian cargo tidak diperbarui"
+	}
+	return utils.SuccessResponse(ctx, message, result)
 }
 
 // ListReadyToPriceCargos memanggil GET /api/integration/cargos/ready-to-price
@@ -386,4 +701,3 @@ func (c *WMSController) UpdateProdukPenjualan(ctx *fiber.Ctx) error {
 		"actual_price_updated_at": result.ActualPriceUpdatedAt,
 	})
 }
-

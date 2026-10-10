@@ -15,6 +15,7 @@ type Produk struct {
 	SlugID                *string        `gorm:"type:varchar(280);uniqueIndex" json:"slug_id"`
 	SlugEN                *string        `gorm:"type:varchar(280);uniqueIndex" json:"slug_en"`
 	IDCargo               *string        `gorm:"type:varchar(50);unique;column:id_cargo" json:"id_cargo"`
+	LegacyIDCargo         *int64         `gorm:"type:bigint;uniqueIndex;column:legacy_id_cargo" json:"-"`
 	ReferenceCode         *string        `gorm:"type:varchar(100);column:reference_code" json:"reference_code"`
 	KategoriID            uuid.UUID      `gorm:"type:uuid;not null" json:"kategori_id"`
 	KondisiID             uuid.UUID      `gorm:"type:uuid;not null" json:"kondisi_id"`
