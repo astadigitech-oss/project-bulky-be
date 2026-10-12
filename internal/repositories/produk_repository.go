@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"project-bulky-be/internal/models"
@@ -20,6 +21,8 @@ type ProdukRepository interface {
 	Delete(ctx context.Context, produk *models.Produk) error
 	ExistsBySlug(ctx context.Context, slug string, excludeID *string) (bool, error)
 	ExistsByIDCargo(ctx context.Context, idCargo string, excludeID *string) (bool, error)
+	FindByLegacyIDCargo(ctx context.Context, legacyID int64) ([]models.Produk, error)
+	SyncCargoID(ctx context.Context, produkID uuid.UUID, legacyID int64, idCargo, referenceCode string) error
 	UpdateIsSoldBatch(ctx context.Context, ids []uuid.UUID, isSold bool) error
 	FindSoldProdukToArchive(ctx context.Context, threshold time.Time) ([]models.Produk, error)
 	ArchiveProduk(ctx context.Context, id uuid.UUID) error
@@ -263,6 +266,35 @@ func (r *produkRepository) ExistsByIDCargo(ctx context.Context, idCargo string, 
 	}
 	err := query.Count(&count).Error
 	return count > 0, err
+}
+
+// FindByLegacyIDCargo mencocokkan ID WMS lama yang masih berada di id_cargo,
+// atau yang sudah dipindahkan ke legacy_id_cargo pada proses re-sync terdahulu.
+func (r *produkRepository) FindByLegacyIDCargo(ctx context.Context, legacyID int64) ([]models.Produk, error) {
+	var produks []models.Produk
+	err := r.db.WithContext(ctx).
+		Where("legacy_id_cargo = ? OR id_cargo = ?", legacyID, strconv.FormatInt(legacyID, 10)).
+		Find(&produks).Error
+	return produks, err
+}
+
+// SyncCargoID menyimpan ID lama untuk pemetaan berikutnya, lalu mengganti
+// id_cargo dan reference_code sesuai data dari WMS.
+func (r *produkRepository) SyncCargoID(ctx context.Context, produkID uuid.UUID, legacyID int64, idCargo, referenceCode string) error {
+	result := r.db.WithContext(ctx).Model(&models.Produk{}).
+		Where("id = ?", produkID).
+		Updates(map[string]interface{}{
+			"legacy_id_cargo": legacyID,
+			"id_cargo":        idCargo,
+			"reference_code":  referenceCode,
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *produkRepository) UpdateIsSoldBatch(ctx context.Context, ids []uuid.UUID, isSold bool) error {

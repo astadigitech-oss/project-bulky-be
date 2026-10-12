@@ -34,6 +34,8 @@ type WMSService interface {
 	// GetAccessToken mengembalikan access token WMS yang valid, meminta token
 	// baru ke API kalau cache kosong/hampir kedaluwarsa.
 	GetAccessToken(ctx context.Context) (string, error)
+	// ListCargoIDsForSync mengambil seluruh halaman GET /api/integration/cargos/sync-ids.
+	ListCargoIDsForSync(ctx context.Context) ([]models.WMSCargoSyncID, error)
 	// TestConnection memanggil GET /api/integration/me untuk memverifikasi
 	// kredensial WMS aktif & terkoneksi. Dipanggil setelah dapat token, sebelum
 	// mencoba endpoint bisnis lain.
@@ -130,9 +132,23 @@ func (s *wmsService) GetAccessToken(ctx context.Context) (string, error) {
 	return token, nil
 }
 
+func (s *wmsService) invalidateAccessToken(token string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.cachedToken == token {
+		s.cachedToken = ""
+		s.expiresAt = time.Time{}
+	}
+}
+
 // fetchToken menukar client_id/client_secret jadi access token via
 // POST /api/oauth/token. Publik, tidak butuh Authorization header.
 func (s *wmsService) fetchToken(ctx context.Context) (string, time.Time, error) {
+	return s.fetchTokenAt(ctx, "/api/oauth/token")
+}
+
+func (s *wmsService) fetchTokenAt(ctx context.Context, tokenPath string) (string, time.Time, error) {
 	if s.baseURL == "" || s.clientID == "" || s.clientSecret == "" {
 		return "", time.Time{}, fmt.Errorf("konfigurasi WMS tidak lengkap (WMS_BASE_URL/WMS_CLIENT_ID/WMS_CLIENT_SECRET)")
 	}
@@ -143,7 +159,7 @@ func (s *wmsService) fetchToken(ctx context.Context) (string, time.Time, error) 
 		"client_secret": s.clientSecret,
 	})
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, s.baseURL+"/api/oauth/token", bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, s.baseURL+tokenPath, bytes.NewReader(body))
 	if err != nil {
 		return "", time.Time{}, err
 	}
@@ -156,7 +172,7 @@ func (s *wmsService) fetchToken(ctx context.Context) (string, time.Time, error) 
 	defer resp.Body.Close()
 
 	respBody, _ := io.ReadAll(resp.Body)
-	log.Printf("[wms] <-- POST /api/oauth/token status=%d body=%s", resp.StatusCode, string(respBody))
+	log.Printf("[wms] <-- POST %s status=%d", tokenPath, resp.StatusCode)
 
 	if resp.StatusCode != http.StatusOK {
 		return "", time.Time{}, fmt.Errorf("WMS API error saat minta token (status %d): %s", resp.StatusCode, string(respBody))
@@ -178,6 +194,97 @@ func (s *wmsService) fetchToken(ctx context.Context) (string, time.Time, error) 
 	}
 
 	return envelope.Data.AccessToken, expiresAt, nil
+}
+
+// ListCargoIDsForSync memanggil endpoint WMS baru di namespace /api/integration
+// yang menyediakan pemetaan
+// UUID cargo, code, dan legacy_id. Semua halaman diambil sebelum caller menulis
+// perubahan ke database Bulky, sehingga kegagalan fetch tidak meninggalkan
+// hasil sinkronisasi parsial.
+func (s *wmsService) ListCargoIDsForSync(ctx context.Context) ([]models.WMSCargoSyncID, error) {
+	const limit = 1000
+	const maxPages = 10000
+
+	items := make([]models.WMSCargoSyncID, 0)
+	totalPages := 1
+	for page := 1; page <= totalPages; page++ {
+		if page > maxPages {
+			return nil, fmt.Errorf("WMS mengembalikan jumlah halaman yang melebihi batas aman (%d)", maxPages)
+		}
+
+		pageItems, meta, err := s.listCargoIDSyncPage(ctx, page, limit)
+		if err != nil {
+			return nil, err
+		}
+		if meta.Page != 0 && meta.Page != page {
+			return nil, fmt.Errorf("halaman response WMS tidak sesuai: diminta %d, menerima %d", page, meta.Page)
+		}
+		if page == 1 {
+			totalPages = meta.TotalPage
+			if totalPages < 0 || totalPages > maxPages {
+				return nil, fmt.Errorf("jumlah halaman WMS tidak valid: %d", totalPages)
+			}
+			if totalPages == 0 && len(pageItems) > 0 {
+				return nil, fmt.Errorf("metadata halaman WMS tidak valid: data tersedia tetapi total_page bernilai 0")
+			}
+		}
+		if page < totalPages && len(pageItems) == 0 {
+			return nil, fmt.Errorf("halaman %d WMS kosong sebelum halaman terakhir (%d)", page, totalPages)
+		}
+		items = append(items, pageItems...)
+	}
+
+	return items, nil
+}
+
+func (s *wmsService) listCargoIDSyncPage(ctx context.Context, page, limit int) ([]models.WMSCargoSyncID, models.WMSPaginationMetaRaw, error) {
+	query := url.Values{}
+	query.Set("page", strconv.Itoa(page))
+	query.Set("limit", strconv.Itoa(limit))
+	reqURL := s.baseURL + "/api/integration/cargos/sync-ids?" + query.Encode()
+
+	for attempt := 0; attempt < 2; attempt++ {
+		token, err := s.GetAccessToken(ctx)
+		if err != nil {
+			return nil, models.WMSPaginationMetaRaw{}, err
+		}
+
+		httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+		if err != nil {
+			return nil, models.WMSPaginationMetaRaw{}, err
+		}
+		httpReq.Header.Set("Authorization", "Bearer "+token)
+
+		resp, err := http.DefaultClient.Do(httpReq)
+		if err != nil {
+			return nil, models.WMSPaginationMetaRaw{}, fmt.Errorf("gagal mengambil halaman %d sync ID cargo WMS: %w", page, err)
+		}
+		respBody, readErr := io.ReadAll(io.LimitReader(resp.Body, 5<<20))
+		resp.Body.Close()
+		if readErr != nil {
+			return nil, models.WMSPaginationMetaRaw{}, fmt.Errorf("gagal membaca halaman %d sync ID cargo WMS: %w", page, readErr)
+		}
+		log.Printf("[wms-sync-ids] <-- GET /api/integration/cargos/sync-ids page=%d status=%d", page, resp.StatusCode)
+
+		if resp.StatusCode == http.StatusUnauthorized && attempt == 0 {
+			s.invalidateAccessToken(token)
+			continue
+		}
+		if resp.StatusCode != http.StatusOK {
+			return nil, models.WMSPaginationMetaRaw{}, fmt.Errorf("WMS API error saat mengambil sync ID cargo halaman %d (status %d): %s", page, resp.StatusCode, strings.TrimSpace(string(respBody)))
+		}
+
+		var envelope models.WMSCargoSyncIDEnvelope
+		if err := json.Unmarshal(respBody, &envelope); err != nil {
+			return nil, models.WMSPaginationMetaRaw{}, fmt.Errorf("gagal parse halaman %d sync ID cargo WMS: %w", page, err)
+		}
+		if !envelope.Success {
+			return nil, models.WMSPaginationMetaRaw{}, fmt.Errorf("WMS gagal mengembalikan sync ID cargo halaman %d: %s", page, envelope.Message)
+		}
+		return envelope.Data, envelope.Meta, nil
+	}
+
+	return nil, models.WMSPaginationMetaRaw{}, fmt.Errorf("token WMS tidak valid setelah dicoba ulang")
 }
 
 // TestConnection memanggil GET /api/integration/me dengan Bearer token untuk
@@ -655,4 +762,3 @@ func (s *wmsService) UpdateCargoActualPrice(ctx context.Context, cargoID string,
 
 	return &envelope.Data, nil
 }
-

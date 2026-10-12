@@ -86,6 +86,74 @@ type WMSPaginationMetaRaw struct {
 	TotalPage  int   `json:"total_page"`
 }
 
+// WMSCargoSyncID adalah pemetaan ID cargo WMS baru ke ID cargo Bulky lama.
+// LegacyID nil berarti cargo tersebut tidak memiliki pasangan lama di Bulky.
+type WMSCargoSyncID struct {
+	ID       string `json:"id"`
+	Code     string `json:"code"`
+	LegacyID *int64 `json:"legacy_id"`
+}
+
+// WMSCargoSyncIDEnvelope respons GET /api/integration/cargos/sync-ids.
+type WMSCargoSyncIDEnvelope struct {
+	Success bool                 `json:"success"`
+	Message string               `json:"message"`
+	Data    []WMSCargoSyncID     `json:"data"`
+	Meta    WMSPaginationMetaRaw `json:"meta"`
+}
+
+type WMSCargoIDSyncFailure struct {
+	LegacyID int64  `json:"legacy_id"`
+	Code     string `json:"code,omitempty"`
+	Reason   string `json:"reason"`
+}
+
+type WMSCargoIDSyncCandidate struct {
+	ProductID            string  `json:"product_id"`
+	ProductName          string  `json:"product_name"`
+	LegacyID             int64   `json:"legacy_id"`
+	CurrentIDCargo       *string `json:"current_id_cargo"`
+	CurrentReferenceCode *string `json:"current_reference_code"`
+	WMSID                string  `json:"wms_id"`
+	WMSCode              string  `json:"wms_code"`
+}
+
+type WMSCargoIDSyncPreview struct {
+	PreviewToken         string                    `json:"preview_token"`
+	TotalFromWMS         int                       `json:"total_from_wms"`
+	Matched              int                       `json:"matched"`
+	LegacyIDCargoMatches int                       `json:"legacy_id_cargo_matches"`
+	WillUpdate           int                       `json:"will_update"`
+	AlreadyCurrent       int                       `json:"already_current"`
+	SkippedNoLegacyID    int                       `json:"skipped_no_legacy_id"`
+	NotFound             int                       `json:"not_found"`
+	UnmatchedLegacyIDs   []int64                   `json:"unmatched_legacy_ids,omitempty"`
+	Failed               int                       `json:"failed"`
+	Failures             []WMSCargoIDSyncFailure   `json:"failures,omitempty"`
+	Candidates           []WMSCargoIDSyncCandidate `json:"candidates"`
+}
+
+type SyncWMSCargoIDsRequest struct {
+	PreviewToken       string   `json:"preview_token"`
+	SelectedProductIDs []string `json:"selected_product_ids"`
+}
+
+// WMSCargoIDSyncResult ringkasan hasil re-sync ID cargo dari WMS ke Bulky.
+type WMSCargoIDSyncResult struct {
+	TotalFromWMS         int                     `json:"total_from_wms"`
+	Matched              int                     `json:"matched"`
+	LegacyIDCargoMatches int                     `json:"legacy_id_cargo_matches"`
+	AlreadyCurrent       int                     `json:"already_current"`
+	Selected             int                     `json:"selected"`
+	NotSelected          int                     `json:"not_selected"`
+	Updated              int                     `json:"updated"`
+	SkippedNoLegacyID    int                     `json:"skipped_no_legacy_id"`
+	NotFound             int                     `json:"not_found"`
+	UnmatchedLegacyIDs   []int64                 `json:"unmatched_legacy_ids,omitempty"`
+	Failed               int                     `json:"failed"`
+	Failures             []WMSCargoIDSyncFailure `json:"failures,omitempty"`
+}
+
 // WMSCargoReadyToPriceCountResponse jumlah cargo yang siap diberi harga
 // (GET /api/integration/cargos/ready-to-price/count di sisi WMS) — dipakai
 // untuk badge notifikasi tanpa menarik seluruh isi daftar.
@@ -251,4 +319,3 @@ func (r *InternalUpdatePenjualanProdukRequest) GetValue() float64 {
 	}
 	return r.Value
 }
-
