@@ -52,6 +52,7 @@ type WMSCargoRef struct {
 type WMSCargoPricingResponse struct {
 	ID                    string         `json:"id"`
 	Code                  string         `json:"code"`
+	Name                  string         `json:"name"`
 	LengthCM              float64        `json:"length_cm"`
 	WidthCM               float64        `json:"width_cm"`
 	HeightCM              float64        `json:"height_cm"`
@@ -231,6 +232,7 @@ type WMSErrorEnvelope struct {
 type WMSCargoPricedResponse struct {
 	ID                    string         `json:"id"`
 	Code                  string         `json:"code"`
+	Name                  string         `json:"name"`
 	LengthCM              float64        `json:"length_cm"`
 	WidthCM               float64        `json:"width_cm"`
 	HeightCM              float64        `json:"height_cm"`
