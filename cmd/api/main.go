@@ -50,6 +50,7 @@ func main() {
 	kondisiPaketRepo := repositories.NewKondisiPaketRepository(db)
 	sumberRepo := repositories.NewSumberProdukRepository(db)
 	warehouseRepo := repositories.NewWarehouseRepository(db)
+	warehouseVisitRepo := repositories.NewWarehouseVisitRepository(db)
 	tipeProdukRepo := repositories.NewTipeProdukRepository(db)
 	diskonKategoriRepo := repositories.NewDiskonKategoriRepository(db)
 	bannerTipeProdukRepo := repositories.NewBannerTipeProdukRepository(db)
@@ -128,6 +129,7 @@ func main() {
 	ulasanService := services.NewUlasanService(ulasanRepo, pesananItemRepo, pesananRepo, cfg.UploadPath, cfg.BaseURL)
 	ulasanAdminService := services.NewUlasanAdminService(ulasanRepo)
 	activityLogService := services.NewActivityLogService(activityLogRepo)
+	warehouseVisitService := services.NewWarehouseVisitService(warehouseVisitRepo, warehouseRepo)
 	delivereeVehicleTypeService := services.NewDelivereeVehicleTypeService(delivereeVehicleTypeRepo, warehouseRepo, activityLogService)
 	forwarderMappingService := services.NewForwarderMappingService(forwarderMappingRepo)
 	wmsService := services.NewWMSService(cfg.WMSBaseURL, cfg.WMSClientID, cfg.WMSClientSecret)
@@ -172,6 +174,7 @@ func main() {
 	kondisiPaketController := controllers.NewKondisiPaketController(kondisiPaketService, reorderService, activityLogService)
 	sumberController := controllers.NewSumberProdukController(sumberService, activityLogService)
 	warehouseController := controllers.NewWarehouseController(warehouseService, activityLogService)
+	warehouseVisitController := controllers.NewWarehouseVisitController(warehouseVisitService, activityLogService)
 	tipeProdukController := controllers.NewTipeProdukController(tipeProdukService)
 	diskonKategoriController := controllers.NewDiskonKategoriController(diskonKategoriService, activityLogService)
 	bannerTipeProdukController := controllers.NewBannerTipeProdukController(bannerTipeProdukService, reorderService, cfg, activityLogService)
@@ -270,6 +273,7 @@ func main() {
 		wmsController,
 		backupController,
 		auctionController,
+		warehouseVisitController,
 	)
 
 	// Setup Auth V2 routes (new authentication system with roles & permissions)

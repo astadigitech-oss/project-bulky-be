@@ -65,6 +65,7 @@ func SetupRoutes(
 	wmsController *controllers.WMSController,
 	backupController *controllers.BackupController,
 	auctionController *controllers.AuctionController,
+	warehouseVisitController *controllers.WarehouseVisitController,
 ) {
 	// Health check
 	router.Get("/api/health", func(c *fiber.Ctx) error {
@@ -80,6 +81,24 @@ func SetupRoutes(
 
 	// API routes
 	v1 := router.Group("/api")
+
+	// Warehouse visit availability - Public
+	warehouseVisitPublic := v1.Group("/public/warehouse-visits")
+	warehouseVisitPublic.Get("/availability", warehouseVisitController.GetPublicAvailability)
+
+	// Warehouse visit booking management - Admin
+	warehouseVisitAdmin := v1.Group("/panel/warehouse-visits",
+		middleware.AuthMiddleware(),
+		middleware.AdminOnly(),
+	)
+	warehouseVisitAdmin.Get("/dates", middleware.RequirePermission("warehouse_visit:read"), warehouseVisitController.GetDates)
+	warehouseVisitAdmin.Post("/dates", middleware.RequirePermission("warehouse_visit:manage"), warehouseVisitController.CreateDate)
+	warehouseVisitAdmin.Put("/dates/:id", middleware.RequirePermission("warehouse_visit:manage"), warehouseVisitController.UpdateDate)
+	warehouseVisitAdmin.Delete("/dates/:id", middleware.RequirePermission("warehouse_visit:manage"), warehouseVisitController.DeleteDate)
+	warehouseVisitAdmin.Get("/bookings", middleware.RequirePermission("warehouse_visit:read"), warehouseVisitController.GetBookings)
+	warehouseVisitAdmin.Patch("/bookings/:id/reschedule", middleware.RequirePermission("warehouse_visit:manage"), warehouseVisitController.RescheduleBooking)
+	warehouseVisitAdmin.Patch("/bookings/:id/cancel", middleware.RequirePermission("warehouse_visit:manage"), warehouseVisitController.CancelBooking)
+	warehouseVisitAdmin.Patch("/bookings/:id/attendance", middleware.RequirePermission("warehouse_visit:manage"), warehouseVisitController.SetAttendance)
 
 	// Dasbor Admin Routes
 	dasbor := v1.Group("/panel/dasbor",
